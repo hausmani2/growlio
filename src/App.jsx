@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './components/mainSceens/Home';
 import Settings from './components/mainSceens/Settings';
 import ProtectedRoutes from './routes/ProtectedRoutes';
-import LoginPage from './components/authScreens/auth/LoginPage';
-import SignUpPage from './components/authScreens/auth/SignUpPage';
+import LoginPage from './components/authScreens/LoginPage';
+import SignUpPage from './components/authScreens/SignUpPage';
 
 function App() {
   return (
@@ -12,7 +12,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<SignUpPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>

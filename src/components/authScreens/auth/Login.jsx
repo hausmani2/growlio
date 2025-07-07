@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../../assets/logo.png';
+import Message from "../../../assets/svgs/Message_open.svg"
+import Lock from "../../../assets/svgs/Lock.svg"
+import PrimaryBtn from '../../buttons/Buttons';
+import { Link } from 'react-router-dom';
+import { Input } from 'antd';
 
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -45,14 +51,21 @@ const Login = () => {
     <div className="w-full max-w-md">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6"
+        className="w-full max-w-md bg-white p-8 space-y-2"
       >
-        <h2 className="text-2xl font-bold text-center text-blue-700 mb-2">Sign In</h2>
-        <p className="text-center text-gray-500 mb-4">Login to your account</p>
-        <div className="space-y-4">
+        <img src={logo} alt="logo" className="mb-6" />
+        <div className='flex flex-col mt-4 gap-3'>
+          <h5 className="text-2xl !font-black text-start text-neutral drop-shadow !mb-0" >
+            Login <span role="img" aria-label="peace">✌️</span>
+          </h5>
+          <p className="text-xl text-neutral mb-8 font-medium" >
+            Know Your Number and Grow Your Profits. Welcome to Growlio
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="email">Email</label>
-            <input
+            <label className="block text-[20px] font-bold mb-2" htmlFor="email">Email Address</label>
+            <Input
               id="email"
               name="email"
               type="email"
@@ -60,34 +73,43 @@ const Login = () => {
               required
               value={form.email}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="you@email.com"
+              placeholder="Write Email Address"
+              prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand "
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="password">Password</label>
-            <input
+            <label className="block text-[20px] font-bold mb-2" htmlFor="password" >Password</label>
+            <Input.Password
               id="password"
               name="password"
-              type="password"
               autoComplete="current-password"
               required
               value={form.password}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="••••••••"
+              placeholder="Write Password"
+              prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand"
             />
+          </div>
+          <div className='flex justify-end items-center'>
+            <p className='text-neutral-900 text-sm font-bold'>Forgot Password?</p>
           </div>
         </div>
         {error && <div className="text-red-500 text-center text-sm">{error}</div>}
-        <button
-          type="submit"
+        <PrimaryBtn
+            className="w-full btn-brand"
+          title={loading ? 'Logging in...' : 'Login'}
           disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-200 disabled:opacity-50"
-        >
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
+        />
       </form>
+      <div className='flex justify-center items-center mt-6'>
+        <p className='text-neutral-600 text-base font-bold'>
+          Don't have an account? <Link to="/signup" className='text-[#FF8132] font-bold hover:text-[#EB5B00]'>Sign Up</Link>
+        </p>
+      </div>
     </div>
   );
 };

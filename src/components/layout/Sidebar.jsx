@@ -61,7 +61,7 @@ const Sidebar = ({ menuItems = [] }) => {
         collapsible
         collapsed={collapsed}
         trigger={null}
-        className={`h-screen !bg-white shadow-lg transition-transform duration-300 ${mobileOpen ? 'fixed top-0 left-0 z-50 translate-x-0' : 'lg:static lg:translate-x-0'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:block`}
+        className={`h-screen bg-white shadow-lg transition-transform duration-300 tw-sider ${mobileOpen ? 'fixed top-0 left-0 z-50 translate-x-0' : 'lg:static lg:translate-x-0'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:block`}
         width={220}
         style={{ minHeight: '100vh' }}
       >
@@ -90,7 +90,7 @@ const Sidebar = ({ menuItems = [] }) => {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
-          className="border-none"
+          className="border-none tw-menu"
         />
       </Sider>
     </>

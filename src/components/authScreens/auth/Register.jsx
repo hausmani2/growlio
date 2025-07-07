@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import useStore from '../../../store/store';
+import { useNavigate } from 'react-router-dom';
+import logo from '../../../assets/logo.png';
+import Message from "../../../assets/svgs/Message_open.svg"
+import Lock from "../../../assets/svgs/Lock.svg"
+import User from "../../../assets/svgs/User.svg"
+import PrimaryBtn from '../../buttons/Buttons';
+import { Link } from 'react-router-dom';
+import { Input } from 'antd';
 
 const Register = () => {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-  });
+  const [form, setForm] = useState({ name: '', email: '', username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const register = useStore((state) => state.register);
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  // const register = useStore((state) => state.register);
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (isAuthenticated) navigate('/');
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,8 +32,18 @@ const Register = () => {
     setError('');
     setSuccess('');
     try {
-      await register(form);
-      setSuccess('Registration successful!');
+      // Replace with your actual registration API call
+      // Example: const { user, token } = await apiRegister(form);
+      // register(user, token);
+      // For now, fake registration:
+      if (form.email && form.password && form.name && form.username) {
+        // register({ email: form.email, name: form.name, username: form.username }, 'fake-token');
+        localStorage.setItem('token', 'fake-token');
+        setSuccess('Registration successful!');
+        setTimeout(() => navigate('/'), 1000);
+      } else {
+        throw new Error('Please fill in all fields');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -33,17 +52,24 @@ const Register = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-blue-200 py-8 px-4">
+    <div className="w-full max-w-md">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6"
+        className="w-full max-w-md bg-white p-8 space-y-2"
       >
-        <h2 className="text-2xl font-bold text-center text-blue-700 mb-2">Create Account</h2>
-        <p className="text-center text-gray-500 mb-4">Sign up to get started</p>
-        <div className="space-y-4">
+        <img src={logo} alt="logo" className="mb-6" />
+        <div className='flex flex-col mt-4 gap-3'>
+          <h2 className="text-3xl !font-black text-start text-neutral !mb-0">
+            Join Growlio Today
+          </h2>
+          <p className="text-xl text-neutral mb-2" >
+            Get discovered, manage bookings, and showcase your menu — all in one place.
+          </p>
+        </div>
+        <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="name">Name</label>
-            <input
+            <label className="block text-[20px] font-bold mb-2" htmlFor="name">Full Name</label>
+            <Input
               id="name"
               name="name"
               type="text"
@@ -51,13 +77,16 @@ const Register = () => {
               required
               value={form.name}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Your Name"
+              placeholder="Write Full Name"
+              prefix={<img src={User} alt="User" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="email">Email</label>
-            <input
+            <label className="block text-[20px] font-bold mb-2" htmlFor="email">Email Address</label>
+            <Input
               id="email"
               name="email"
               type="email"
@@ -65,49 +94,63 @@ const Register = () => {
               required
               value={form.email}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="you@email.com"
+              placeholder="Write Email Address"
+              prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="phone">Phone</label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              autoComplete="tel"
+            <label className="block text-[20px] font-bold mb-2" htmlFor="username">Username</label>
+            <Input
+              id="username"
+              name="username"
+              type="text"
+              autoComplete="username"
               required
-              value={form.phone}
+              value={form.username}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="123-456-7890"
+              placeholder="Write Username"
+              prefix={<img src={User} alt="User" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+
             />
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-1" htmlFor="password">Password</label>
-            <input
+            <label className="block text-[20px] font-bold mb-2" htmlFor="password">Password</label>
+            <Input.Password
               id="password"
               name="password"
-              type="password"
-              autoComplete="new-password"
+              autoComplete="current-password"
               required
               value={form.password}
               onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="••••••••"
+              placeholder="Write Password"
+              prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
+              size="large"
+              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+
             />
+          </div>
+          <div className='flex justify-end items-center'>
+            <p className='text-neutral-900 text-sm font-bold'>Forgot Password?</p>
           </div>
         </div>
         {error && <div className="text-red-500 text-center text-sm">{error}</div>}
-        {success && <div className="text-green-600 text-center text-sm">{success}</div>}
-        <button
-          type="submit"
+        {success && <div className="text-green-500 text-center text-sm">{success}</div>}
+        <PrimaryBtn
+          className="w-full btn-brand"
+          title={loading ? 'Creating account...' : 'Create Account'}
           disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-200 disabled:opacity-50"
-        >
-          {loading ? 'Registering...' : 'Register'}
-        </button>
+        />
       </form>
+      <div className='flex justify-center items-center mt-6'>
+        <p className='text-neutral-600 text-base font-bold'>
+          Already have an account? <Link to="/login" className='text-[#FF8132] font-bold hover:text-[#EB5B00]'>Login</Link>
+        </p>
+      </div>
     </div>
   );
 };
