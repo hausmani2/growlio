@@ -4,7 +4,7 @@ import Login from './auth/Login';
 
 export default function LoginPage() {
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <AuthWrapper>
         <Login />
       </AuthWrapper>

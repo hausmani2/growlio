@@ -52,10 +52,10 @@ const Register = () => {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-sm">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-8 space-y-2"
+        className="w-full bg-white p-8 space-y-2"
       >
         <img src={logo} alt="logo" className="mb-6" />
         <div className='flex flex-col mt-4 gap-3'>

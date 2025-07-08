@@ -5,6 +5,8 @@ import Settings from './components/mainSceens/Settings';
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
+import Congratulations from './components/authScreens/auth/Congratulations';
+import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 
 function App() {
   return (
@@ -13,11 +15,13 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/congratulations" element={<Congratulations />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Home />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/onboarding" element={<OnboardingWrapper />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

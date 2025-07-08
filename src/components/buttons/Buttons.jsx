@@ -11,7 +11,7 @@ export default function PrimaryBtn({
   color = "gray",
 }) {
   // Base classes that work with the new Tailwind configuration
-  const baseClasses = "border rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50 hover:border-black";
+  const baseClasses = "border rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50 hover:border-black px-4 py-2 sm:px-6 sm:py-3";
   
   // Dynamic color classes - using Tailwind's color system
   const colorClasses = {
@@ -34,7 +34,7 @@ export default function PrimaryBtn({
       className={`${baseClasses} ${selectedColorClass} ${className}`}
     >
       {icon && <img src={icon} alt="icon" style={{ height: `${iconSize}px`, width: `${iconSize}px` }} />}
-      <span className="text-sm">{title}</span>
+      <span className="text-sm sm:text-base font-medium">{title}</span>
       {icon2 && <img src={icon2} alt="icon2" style={{ height: `${iconSize}px`, width: `${iconSize}px` }} />}
     </button>
   );
