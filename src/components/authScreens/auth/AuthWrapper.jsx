@@ -11,7 +11,7 @@ const AuthWrapper = ({ children }) => {
         <img
           src={orderBooker}
           alt="Order Book"
-          className="absolute inset-0 w-full h-auto object-cover"
+          className="absolute inset-0 w-full h-full object-cover object-[20%_0%]"
         />
       </div>
     </div>

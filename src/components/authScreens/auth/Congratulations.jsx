@@ -4,8 +4,10 @@ import Cafe from "../../../assets/pngs/cafe.png"
 
 import ImageLayout from "../../imageWrapper/ImageLayout";
 import PrimaryBtn from "../../buttons/Buttons";
+import { useNavigate } from "react-router-dom";
 
 const Congratulations = () => {
+    const navigate = useNavigate();
     return (
         <div className="min-h-screen flex flex-col lg:flex-row">
             {/* Content Section */}
@@ -40,7 +42,8 @@ const Congratulations = () => {
 
                         {/* Button */}
                         <div className="mt-2">
-                            <PrimaryBtn title="Get Started" className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4" />
+                            <PrimaryBtn title="Continue" className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4"
+                            onClick={()=>{navigate('/onboarding')}} />
                         </div>
                     </div>
                 </div>

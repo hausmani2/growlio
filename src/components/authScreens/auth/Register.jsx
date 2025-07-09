@@ -144,6 +144,7 @@ const Register = () => {
           className="w-full btn-brand"
           title={loading ? 'Creating account...' : 'Create Account'}
           disabled={loading}
+          onClick={()=>{navigate('/congratulations')}}
         />
       </form>
       <div className='flex justify-center items-center mt-6'>
