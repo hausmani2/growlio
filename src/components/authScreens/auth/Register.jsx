@@ -32,6 +32,7 @@ const Register = () => {
     setError('');
     setSuccess('');
     try {
+      navigate('/onboarding');
       // Replace with your actual registration API call
       // Example: const { user, token } = await apiRegister(form);
       // register(user, token);

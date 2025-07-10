@@ -7,11 +7,11 @@ export default function PrimaryBtn({
   disabled = false,
   icon = null,
   icon2 = null,
-  iconSize = 16,
+  iconSize = 24,
   color = "gray",
 }) {
   // Base classes that work with the new Tailwind configuration
-  const baseClasses = "border rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50 hover:border-black px-4 py-2 sm:px-6 sm:py-3";
+  const baseClasses = "border rounded-md flex items-center justify-center space-x-2 transition-all disabled:opacity-50 hover:border-black px-4 py-2 sm:px-6 sm:py-3";
   
   // Dynamic color classes - using Tailwind's color system
   const colorClasses = {

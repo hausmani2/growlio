@@ -5,9 +5,11 @@ import ImageLayout from "../imageWrapper/ImageLayout";
 import PrimaryBtn from "../buttons/Buttons";
 import { Checkbox } from "antd";
 import { FaArrowLeftLong } from "react-icons/fa6";
+import { useNavigate } from "react-router-dom";
 
 const OnboardingWrapper = () => {
-    return (
+    const navigate = useNavigate();
+        return (
         <div className="min-h-screen flex flex-col lg:flex-row">
             {/* Content Section */}
             <div className="w-full lg:w-1/2 flex items-center justify-center">
@@ -53,7 +55,7 @@ const OnboardingWrapper = () => {
 
                     {/* Button */}
                     <div className="mt-2">
-                        <PrimaryBtn title="Continue" className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4" />
+                        <PrimaryBtn title="Continue" className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4" onClick={()=>{navigate('/create-restaurant-info')}} />
                     </div>
                     </div>
 

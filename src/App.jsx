@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Home from './components/mainSceens/Home';
-import Settings from './components/mainSceens/Settings';
+
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
@@ -20,14 +19,12 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/create-restaurant-info" element={<RestaurantInfo />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
       </Routes>
     </Router>
   );
