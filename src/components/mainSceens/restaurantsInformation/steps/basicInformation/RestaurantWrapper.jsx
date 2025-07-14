@@ -7,7 +7,7 @@ const RestaurantWrapper = () => {
     // State for Restaurant Information
     const [restaurantData, setRestaurantData] = useState({
         restaurantName: "",
-        numberOfLocations: "",
+        numberOfLocations: undefined,
         locationName: "",
         otherLocationName: ""
     });

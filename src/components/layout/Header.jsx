@@ -22,7 +22,7 @@ const Header = () => {
     const name = user?.name || 'Haris james';
     // const image = user?.image; // If you add image support later
     return (
-        <div className='flex items-center justify-between w-full'>
+        <div className='flex items-center justify-between w-full p-6 bg-white'>
             <img src={logo} alt="logo" />
             <div className='flex items-center gap-2'>
                 {/* Avatar with initials */}

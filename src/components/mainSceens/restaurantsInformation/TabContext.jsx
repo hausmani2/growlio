@@ -4,6 +4,7 @@ import FoodCostWrapper from './steps/foodCostDetails/FoodCostWrapper';
 import LaborInformationWrapper from './steps/laborInformation/LaborInformationWrapper';
 import { TabContext } from './context/TabContext';
 import SalesChannelsWrapper from './steps/salesChannels/SalesChannelsWrapper';
+import ExpenseWrapper from './steps/Expense/ExpenseWrapper';
 
 export const TabProvider = ({ children }) => {
     const [activeTab, setActiveTab] = useState(0);
@@ -12,7 +13,8 @@ export const TabProvider = ({ children }) => {
         { id: 0, title: 'Basic Information' },
         { id: 1, title: 'Labour Information' },
         { id: 2, title: 'Food Cost Details' },
-        { id: 3, title: 'Sales Channels' }
+        { id: 3, title: 'Sales Channels' },
+        { id: 4, title: 'Expense' },
     ];
 
     const handleTabClick = (tabId) => {
@@ -30,6 +32,8 @@ export const TabProvider = ({ children }) => {
                 return <FoodCostWrapper />;
             case 3:
                 return <SalesChannelsWrapper />;
+            case 4:
+                return <ExpenseWrapper />;
             default:
                 return <RestaurantWrapper />;
         }

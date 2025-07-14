@@ -7,6 +7,10 @@ import SignUpPage from './components/authScreens/SignUpPage';
 import Congratulations from './components/authScreens/auth/Congratulations';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
+import CompleteSteps from './components/mainSceens/restaurantsInformation/CompleteSteps';
+import Wrapper from './components/layout/Wrapper';
+import Dashboard from './components/mainSceens/dashbaordComponents/Dashboard';
+import Settings from './components/mainSceens/dashbaordComponents/Setting';
 
 function App() {
   return (
@@ -21,6 +25,9 @@ function App() {
         <Route element={<ProtectedRoutes />}>
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/create-restaurant-info" element={<RestaurantInfo />} />
+          <Route path="/complete-steps" element={<CompleteSteps />} />
+          <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
+          <Route path="/settings" element={<Wrapper showSidebar={true} children={<Settings />} />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

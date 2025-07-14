@@ -3,7 +3,7 @@ import { Layout } from 'antd';
 import Sidebar from './Sidebar';
 import { HomeOutlined, SettingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-
+import Header from './Header';
 const { Content } = Layout;
 
 /**
@@ -15,10 +15,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const navigate = useNavigate();
   const menuItems = [
     {
-      key: 'home',
+      key: 'dashboard',
       icon: <HomeOutlined />,
-      label: 'Home',
-      onClick: () => navigate('/'),
+      label: 'Dashboard',
+      onClick: () => navigate('/dashboard'),
     },
     {
       key: 'settings',
@@ -29,14 +29,24 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   ];
 
   return (
-    <Layout className="min-h-screen">
-      {showSidebar && <Sidebar menuItems={menuItems} />}
-      <Layout>
-        <Content className={`p-6 bg-gray-50 min-h-screen w-full ${className}`}>
-          {children}
-        </Content>
-      </Layout>
-    </Layout>
+    <div className="h-screen flex flex-col">
+      <div className="flex-shrink-0">
+        <Header />
+        <div className='border-t border-gray-200'></div>
+      </div>
+      <div className="flex-1 flex flex-row min-h-0">
+        {showSidebar && (
+          <div className="flex-shrink-0 h-full">
+            <Sidebar menuItems={menuItems} />
+          </div>
+        )}
+        <div className={`flex-1 min-h-0 overflow-auto`}>
+          <Content className={`p-6 bg-gray-50 w-full ${className}`}>
+            {children}
+          </Content>
+        </div>
+      </div>
+    </div>
   );
 };
 

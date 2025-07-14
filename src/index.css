@@ -132,6 +132,30 @@ body {
   font-family: var(--font-family-primary) !important;
 }
 
+/* Select component overrides to match other inputs */
+.ant-select .ant-select-selector {
+  height: 60px !important;
+  padding: 8px 12px !important;
+  font-size: 18px !important;
+  font-weight: normal !important;
+  color: #374151 !important;
+  border-radius: 6px !important;
+}
+
+.ant-select .ant-select-selection-placeholder {
+  font-size: 18px !important;
+  font-weight: normal !important;
+  color: #9CA3AF !important;
+  line-height: 44px !important;
+}
+
+.ant-select .ant-select-selection-item {
+  font-size: 18px !important;
+  font-weight: normal !important;
+  color: #374151 !important;
+  line-height: 44px !important;
+}
+
 /* Custom utility classes that work with Tailwind */
 .text-balance {
   text-wrap: balance;
@@ -211,4 +235,43 @@ body {
   a[href]:after {
     content: " (" attr(href) ")";
   }
+}
+
+/* Custom sidebar menu styles - consistent dimensions for all states */
+.ant-menu-light .ant-menu-item {
+  height: 48px !important;
+  width: 100% !important;
+  max-width: 200px !important;
+  border-radius: 8px !important;
+  margin: 4px 8px !important;
+  padding: 0 16px !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.ant-menu-light .ant-menu-item:hover {
+  color: var(--color-brand-orange) !important;
+  background-color: rgba(255, 129, 50, 0.05) !important;
+  border: none !important;
+}
+
+.ant-menu-light .ant-menu-item-selected,
+.ant-menu-light .ant-menu-item-active {
+  background-color: rgba(255, 129, 50, 0.1) !important;
+  color: var(--color-brand-orange) !important;
+  border: 1px solid var(--color-brand-orange) !important;
+  font-weight: 500 !important;
+}
+
+.ant-menu-light .ant-menu-item-selected .anticon,
+.ant-menu-light .ant-menu-item-active .anticon {
+  color: var(--color-brand-orange) !important;
+}
+
+/* Remove default background on hover for selected */
+.ant-menu-light .ant-menu-item-selected:hover {
+  background-color: rgba(255, 129, 50, 0.15) !important;
+  color: var(--color-brand-orange) !important;
 }

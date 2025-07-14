@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
-import {
-  MenuUnfoldOutlined,
-  MenuFoldOutlined,
-  HomeOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 import 'antd/dist/reset.css';
+import PrimaryBtn from '../buttons/Buttons';
 
 const { Sider } = Layout;
 
@@ -22,10 +17,11 @@ const Sidebar = ({ menuItems = [] }) => {
 
   // Map pathname to menu key
   const pathKeyMap = {
-    '/': 'home',
+    '/dashboard': 'dashboard',
     '/settings': 'settings',
+    '/restaurants': 'restaurants',
   };
-  const selectedKey = pathKeyMap[location.pathname] || 'home';
+  const selectedKey = pathKeyMap[location.pathname] || 'dashboard';
 
   // Close sidebar on window resize if desktop
   useEffect(() => {
@@ -42,13 +38,13 @@ const Sidebar = ({ menuItems = [] }) => {
   return (
     <>
       {/* Mobile Hamburger Button */}
-      <button
+      {/* <button
         className="lg:hidden fixed top-4 left-4 z-50 bg-white rounded-full shadow p-2 text-xl"
         aria-label="Open sidebar"
         onClick={() => setMobileOpen(true)}
       >
         <MenuUnfoldOutlined />
-      </button>
+      </button> */}
       {/* Sidebar Overlay for Mobile - only render on mobile and when open */}
       {mobileOpen && (
         <div
@@ -61,37 +57,47 @@ const Sidebar = ({ menuItems = [] }) => {
         collapsible
         collapsed={collapsed}
         trigger={null}
-        className={`h-screen bg-white shadow-lg transition-transform duration-300 tw-sider ${mobileOpen ? 'fixed top-0 left-0 z-50 translate-x-0' : 'lg:static lg:translate-x-0'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:block`}
-        width={220}
-        style={{ minHeight: '100vh' }}
+        className={`!bg-white shadow-md transition-transform duration-300 tw-sider p-5 !flex flex-col justify-between h-full ${mobileOpen ? 'fixed top-0 left-0 z-50 translate-x-0' : 'lg:static lg:translate-x-0'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} lg:block`}
+        width={256}
       >
-        <div className="flex items-center justify-between p-4">
-          <span className={`text-xl font-bold transition-all duration-300 ${collapsed ? 'hidden' : 'block'}`}>Growlio</span>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <span className={`text-base font-medium text-gray-700 transition-all duration-300 ${collapsed ? 'hidden' : 'block'}`}>MAIN MENU</span>
           {/* Close button for mobile */}
-          <button
+          {/* <button
             className="text-lg focus:outline-none lg:hidden"
             aria-label="Close sidebar"
             onClick={() => setMobileOpen(false)}
           >
             <MenuFoldOutlined />
-          </button>
+          </button> */}
           {/* Collapse/Expand button for desktop, always visible on lg+ */}
-          <button
+          {/* <button
             className="text-lg focus:outline-none hidden lg:inline-flex items-center justify-center"
             aria-label="Toggle collapse"
             onClick={() => setCollapsed(!collapsed)}
             style={{ minWidth: 32 }}
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </button>
+          </button> */}
         </div>
-        <Menu
-          theme="light"
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={menuItems}
-          className="border-none tw-menu"
-        />
+        <div className="flex-1 flex flex-col justify-between h-[calc(90vh-100px)]">
+          <div className=''>
+
+          <Menu
+            theme="light"
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            items={menuItems}
+            className="!border-none !w-full !bg-transparent"
+            style={{ border: 'none' }}
+            />
+            </div>
+        {/* Bottom buttons */}
+        {/* <div className="flex flex-col gap-5 items-center p-4 border-t border-gray-100">
+          <button className="w-full">Info</button>
+          <button className="w-full">Logout</button>
+        </div> */}
+        </div>
       </Sider>
     </>
   );

@@ -10,13 +10,13 @@ const DetailsTab = () => {
                 <span className="text-lg text-neutral-600 font-medium">Fill out the info, add your hours, and start serving customers on Growlio.</span>
             </div>
 
-            <div className="h-[114px] bg-orange-300 flex items-center rounded-xl py-4 px-8 w-full max-w-[1140px]">
+            <div className="bg-orange-300 flex items-center rounded-xl py-4 px-8 w-full max-w-full">
                 <div className="flex items-center gap-3 w-full justify-center">
                     {tabs.map((tab) => (
                         <div
                             key={tab.id}
                             onClick={() => handleTabClick(tab.id)}
-                            className={`h-[68px] bg-white border-l-3 rounded-xl flex items-center justify-center w-[260px] cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            className={`h-[68px] bg-white border-l-3 rounded-xl flex items-center justify-center px-3 cursor-pointer transition-all duration-200 hover:shadow-md ${
                                 activeTab === tab.id 
                                     ? 'border-orange-400 shadow-lg' 
                                     : 'border-gray-400'
