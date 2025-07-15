@@ -36,19 +36,19 @@ const FoodCostDetails = ({ data, updateData }) => {
         <div className="flex mt-5">
         <div className="w-[40%]">
             <div className="flex flex-col gap-2">
-                <h4 className="text-[26px] !font-bold !mb-0">Food Cost Details </h4>
-                <span className="text-[22px] text-neutral-600">Share your average food cost and pricing structure to help us better support your business planning.</span>
+                <h4 className="text-lg !font-bold !mb-0">Food Cost Details </h4>
+                <span className="text-base text-neutral-600">Share your average food cost and pricing structure to help us better support your business planning.</span>
             </div>
         </div>
         <div className="w-[60%]">
-            <div className="flex flex-col gap-6 p-6 bg-white rounded-xl" >
+            <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                 <div>
-                    <span className="text-[24px] font-bold ">
+                    <span className="text-lg font-bold ">
                     Cost of Goods (COGS) Goals
                     </span>
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="cogs" className="text-[20px] !font-bold text-neutral-600 flex items-center gap-2">What is your COGS goal as a percentage of sales? <img src={SubTrack} alt="SubTrack" /></label>
+                    <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2">What is your COGS goal as a percentage of sales? <img src={SubTrack} alt="SubTrack" /></label>
                     <Select
                         id="cogs"
                         placeholder="Select Percentage"
@@ -56,8 +56,8 @@ const FoodCostDetails = ({ data, updateData }) => {
                         onChange={handleCogsChange}
                         options={generatePercentageOptions()}
                         style={{
-                            height: '60px',
-                            fontSize: '18px'
+                            height: '40px',
+                            fontSize: '16px'
                         }}
                         className="w-full"
                     />

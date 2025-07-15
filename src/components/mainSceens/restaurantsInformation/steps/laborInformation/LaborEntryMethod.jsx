@@ -129,37 +129,38 @@ const LaborEntryMethod = ({ data, updateData }) => {
         <div className="flex mt-5">
         <div className="w-[40%]">
             <div className="flex flex-col gap-2">
-                <h4 className="text-[26px] !font-bold !mb-0">Labor Information </h4>
-                <span className="text-[22px] text-neutral-600">Add basic labor details so we can help you manage operations more effectively.</span>
+                <h4 className="text-lg !font-bold !mb-0">Labor Information </h4>
+                <span className="text-base text-neutral-600">Add basic labor details so we can help you manage operations more effectively.</span>
             </div>
         </div>
         <div className="w-[60%]">
-            <div className="flex flex-col gap-6 p-6 bg-white rounded-xl" >
+            <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="hourlyRate" className="text-[20px] !font-bold text-neutral-600">What is your average hourly rate for all staff roles?</label>
+                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600">What is your average hourly rate for all staff roles?</label>
                    <div className="relative">
                         <input 
                             type="number" 
                             id="hourlyRate" 
                             placeholder="Write Hourly Wage" 
-                            className="w-full p-2 pr-8 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700 pl-6" 
+                            className="w-full p-2 pr-8 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6" 
                             value={formData.hourlyRate}
                             onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
                         />
                         {formData.hourlyRate && (
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-[18px]">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">
                                 $
                             </span>
                         )}
                     </div>
                 </div>
-                <div className="flex flex-col gap-5">
-                    <label htmlFor="needsAttention" className="text-[20px] !font-bold text-neutral-600">How would you like to record your labor?</label>
+                <div className="flex flex-col gap-4">
+                    <div className='flex flex-col gap-2'>
+                    <label htmlFor="needsAttention" className="text-base !font-bold text-neutral-600">How would you like to record your labor?</label>
                     <div className='flex items-center gap-2 justify-between w-full'>
                         <PrimaryButton 
                             title="Daily Hours & Costs (Recommended)" 
-                            className={`h-[44px] px-3 py-4 text-[14px] font-medium rounded-md hover:border-orange-300 ${
+                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
                                 formData.entryMethod === 'daily-hours-costs' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral'
@@ -168,7 +169,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         />
                         <PrimaryButton 
                             title="Hours Only" 
-                            className={`h-[44px] px-3 py-4 text-[14px] font-medium rounded-md hover:border-orange-300 ${
+                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
                                 formData.entryMethod === 'hours-only' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral '
@@ -177,7 +178,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         />
                         <PrimaryButton 
                             title="Cost Only" 
-                            className={`h-[44px] px-3 py-4 text-[14px] font-medium rounded-md hover:border-orange-300 ${
+                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
                                 formData.entryMethod === 'cost-only' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral '
@@ -186,10 +187,11 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         />
 
                     </div>
+                    </div>
                     <div
                                 className={`flex items-center justify-between px-6 py-4 border border-gray-200 rounded-xl bg-white`}
                             >
-                                <span className={`text-[18px]`}>{getToggleText()}</span>
+                                <span className={`text-base`}>{getToggleText()}</span>
                                 <ToggleSwitch
                                     isOn={isToggleEnabled()}
                                     setIsOn={handleToggleSwitch}
@@ -199,12 +201,12 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
                 </div>
                 <div className="flex flex-col gap-2">
-                        <label htmlFor="ticketCount" className="text-[20px] !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count?</label>
+                        <label htmlFor="ticketCount" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count?</label>
                         <Select 
                             type="text" 
                             id="ticketCount" 
                             placeholder="No" 
-                            className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                            className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
                             value={data.ticketCount}
                             onChange={(value) => updateData('ticketCount', value)}
                         >
@@ -213,12 +215,12 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         </Select>                
                     </div>
                 <div className="flex flex-col gap-2">
-                        <label htmlFor="previousLaborReport" className="text-[20px] !font-bold text-neutral-600 flex items-center gap-2">Forword previous week's actual labor rate?</label>
+                        <label htmlFor="previousLaborReport" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Forword previous week's actual labor rate?</label>
                         <Select 
                             type="text" 
                             id="previousLaborReport" 
                             placeholder="No" 
-                            className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                            className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
                             value={data.previousLaborReport}
                             onChange={(value) => updateData('ticketCount', value)}
                         >
@@ -230,7 +232,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
             </div>
             <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[60px]" onClick={handleGoBack} />
+                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} />
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"

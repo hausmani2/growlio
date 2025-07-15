@@ -1,6 +1,6 @@
 import { useState } from "react";
 import SalesChannel from "./SalesChannel";
-import ThirdPartyProviders from "./ThirdPartyProviders";
+import ThirdPartyProviders from "../foodCostDetails/ThirdPartyProviders";
 import { TabProvider } from "../../TabContext";
 
 const SalesChannelsWrapper = () => {

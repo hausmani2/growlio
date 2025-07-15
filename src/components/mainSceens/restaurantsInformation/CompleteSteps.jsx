@@ -10,11 +10,11 @@ const CompleteSteps = () => {
            <Header />
            <div className="flex flex-col gap-5 container mx-auto justify-center items-center h-full">
             <div className="flex flex-col justify-center items-center gap-2">
-                <h2 className="text-[36px] !font-bold !mb-0"> 🎉 Congratulations!</h2>
+                <h2 className="text-2xl !font-bold !mb-0"> 🎉 Congratulations!</h2>
                 <div className="flex items-center flex-col ">
 
-                <span className="text-[22px] font-medium  text-neutral-600">You've successfully completed all your restaurant setup details.</span>
-                    <span className="text-[22px] font-medium  text-neutral-600"> Your dashboard is now ready — start exploring, managing, and growing your business!</span>
+                <span className="text-base font-medium  text-neutral-600">You've successfully completed all your restaurant setup details.</span>
+                    <span className="text-base font-medium  text-neutral-600"> Your dashboard is now ready — start exploring, managing, and growing your business!</span>
                 </div>
 
             </div>

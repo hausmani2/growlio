@@ -33,20 +33,20 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
         <div className="flex mt-5">
             <div className="w-[40%]">
                 <div className="flex flex-col gap-2">
-                    <h4 className="text-[26px] !font-bold !mb-0">Delivery Frequency</h4>
-                    <span className="text-[22px] text-neutral-600">How many times per week are receiving deliveries from your suppliers?</span>
+                    <h4 className="text-lg !font-bold !mb-0">Delivery Frequency</h4>
+                    <span className="text-base text-neutral-600">How many times per week are receiving deliveries from your suppliers?</span>
                 </div>
             </div>
             <div className="w-[60%]">
-                <div className="flex flex-col gap-6 p-6 bg-white rounded-xl" >
+                <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                     <div className="flex flex-col gap-4">
-                        <label htmlFor="cogs" className="text-[20px] !font-bold text-neutral-600 flex items-center gap-2 mb-2">Select your delivery days</label>
+                        <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2 mb-2">Select your delivery days</label>
                         {days.map((day, index) => (
                             <div
                                 key={index}
                                 className={`flex items-center justify-between px-6 py-4 border border-gray-200 rounded-xl bg-white ${day.disabled ? 'opacity-60 cursor-not-allowed' : ''} mb-3`}
                             >
-                                <span className={`text-[18px] ${day.disabled ? 'text-gray-400' : 'text-neutral-600'}`}>{day.name}</span>
+                                <span className={`text-base ${day.disabled ? 'text-gray-400' : 'text-neutral-600'}`}>{day.name}</span>
                                 <ToggleSwitch
                                     isOn={data.selectedDays[day.name] || false}
                                     setIsOn={() => !day.disabled && handleDayToggle(day.name)}
@@ -57,7 +57,7 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
                     </div>
                 </div>
                 <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[60px]" onClick={handleGoBack} />
+                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} />
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"

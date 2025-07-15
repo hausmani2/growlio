@@ -7,15 +7,15 @@ const RestaurantContent = () => {
     const { renderActiveContent } = useTabHook();
 
     return (
-        <div className="flex flex-col gap-6 bg-white">
+        <div className="flex flex-col bg-white">
             <Header />
 
             <div className="flex flex-col">
-                <div className="mb-10 mx-auto container  max-w-[1400px] p-10 ">
+                <div className=" mx-auto container  max-w-[1400px] px-10 py-4">
                     <DetailsTab />
                 </div>
                 <div className="w-full bg-gray-100 h-full">
-                    <div className="flex flex-col gap-5 mx-auto p-2 container   max-w-[1400px] px-10">
+                    <div className="flex flex-col gap-2 mx-auto p-2 container   max-w-[1400px] px-10">
                         {renderActiveContent()}
                     </div>
                 </div>

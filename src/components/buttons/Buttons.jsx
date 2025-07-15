@@ -7,7 +7,7 @@ export default function PrimaryBtn({
   disabled = false,
   icon = null,
   icon2 = null,
-  iconSize = 24,
+  iconSize = 16,
   color = "gray",
 }) {
   // Base classes that work with the new Tailwind configuration

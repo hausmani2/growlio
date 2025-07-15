@@ -134,26 +134,22 @@ body {
 
 /* Select component overrides to match other inputs */
 .ant-select .ant-select-selector {
-  height: 60px !important;
+  height: 40px !important;
   padding: 8px 12px !important;
-  font-size: 18px !important;
+  font-size: 16px !important;
   font-weight: normal !important;
   color: #374151 !important;
   border-radius: 6px !important;
 }
 
 .ant-select .ant-select-selection-placeholder {
-  font-size: 18px !important;
+  font-size: 14px !important;
   font-weight: normal !important;
-  color: #9CA3AF !important;
-  line-height: 44px !important;
 }
 
 .ant-select .ant-select-selection-item {
-  font-size: 18px !important;
+  font-size: 16px !important;
   font-weight: normal !important;
-  color: #374151 !important;
-  line-height: 44px !important;
 }
 
 /* Custom utility classes that work with Tailwind */
@@ -176,8 +172,8 @@ body {
   color: white;
   border: none;
   border-radius: 12px;
-  height: 60px;
-  font-size: 20px;
+  height: 40px;
+  font-size: 16px;
   font-weight: 700;
   transition: all 0.3s ease;
 }
@@ -189,9 +185,9 @@ body {
 
 /* Custom input styles */
 .input-brand {
-  height: 60px;
+  height: 40px;
   border-radius: 12px;
-  font-size: 18px;
+  font-size: 16px;
   border: 1px solid #d9d9d9;
   transition: all 0.3s ease;
   color: var(--color-neutral-500);
@@ -209,13 +205,13 @@ body {
 /* Responsive text utilities */
 @media (max-width: 640px) {
   .text-responsive-h1 {
-    font-size: var(--font-size-3xl);
-  }
-  .text-responsive-h2 {
     font-size: var(--font-size-2xl);
   }
-  .text-responsive-h3 {
+  .text-responsive-h2 {
     font-size: var(--font-size-xl);
+  }
+  .text-responsive-h3 {
+    font-size: var(--font-size-lg);
   }
 }
 

@@ -55,16 +55,16 @@ const Login = () => {
       >
         <img src={logo} alt="logo" className="mb-6" />
         <div className='flex flex-col mt-4 gap-3'>
-          <h5 className="text-2xl !font-black text-start text-neutral drop-shadow !mb-0" >
+          <h5 className="text-lg !font-black text-start text-neutral drop-shadow !mb-0" >
             Login <span role="img" aria-label="peace">✌️</span>
           </h5>
-          <p className="text-xl text-neutral mb-8 font-medium" >
+          <p className="text-base text-neutral mb-8 font-medium" >
             Know Your Number and Grow Your Profits. Welcome to Growlio
           </p>
         </div>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="email">Email Address</label>
+            <label className="block text-base font-bold mb-2" htmlFor="email">Email Address</label>
             <Input
               id="email"
               name="email"
@@ -76,11 +76,11 @@ const Login = () => {
               placeholder="Write Email Address"
               prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand "
+              className="h-[40px] rounded-md text-lg tw-input input-brand "
             />
           </div>
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="password" >Password</label>
+            <label className="block text-base font-bold mb-2" htmlFor="password" >Password</label>
             <Input.Password
               id="password"
               name="password"
@@ -91,7 +91,7 @@ const Login = () => {
               placeholder="Write Password"
               prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+              className="h-[40px] rounded-md text-lg tw-input input-brand"
             />
           </div>
           <div className='flex justify-end items-center'>

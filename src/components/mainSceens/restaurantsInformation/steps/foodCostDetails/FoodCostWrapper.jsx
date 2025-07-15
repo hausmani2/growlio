@@ -1,7 +1,7 @@
 import { useState } from "react";
 import FoodCostDetails from "./FoodCostDetails";
 import DeliveryFrequency from "./DeliveryFrequency";
-import ThirdPartyProviders from "../salesChannels/ThirdPartyProviders";
+import ThirdPartyProviders from "./ThirdPartyProviders";
 import { TabProvider } from "../../TabContext";
 
 const FoodCostWrapper = () => {

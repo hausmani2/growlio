@@ -19,22 +19,22 @@ const TotalExpense = ({ data,  onSave }) => {
             <div className="flex mt-5">
                 <div className="w-[40%]">
                     <div className="flex flex-col gap-2">
-                        <h4 className="text-[26px] !font-bold !mb-0">Total Expenses</h4>
-                        <span className="text-[22px] text-neutral-600"></span>
+                        <h4 className="text-lg !font-bold !mb-0">Total Expenses</h4>
+                        <span className="text-base text-neutral-600"></span>
                     </div>
                 </div>
                 <div className="w-[60%]">
-                    <div className="flex flex-col gap-6 p-6 bg-white rounded-xl" >
+                    <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                         <div className="flex items-center justify-between pt-4">
-                            <label htmlFor="totalVariableCost" className="text-[20px] !font-bold text-neutral-600">
+                            <label htmlFor="totalVariableCost" className="text-base !font-bold text-neutral-600">
                             Total Expenses:
                             </label>
-                            <span className="text-[20px] !font-bold ">
+                            <span className="text-base !font-bold ">
                                 ${totalExpenses}
                             </span>
                         </div>
                         <div className="flex justify-between items-center my-5">
-                         <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[60px]"/>
+                         <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]"/>
                          <PrimaryBtn 
                              title="Save & Continue" 
                              className="btn-brand"

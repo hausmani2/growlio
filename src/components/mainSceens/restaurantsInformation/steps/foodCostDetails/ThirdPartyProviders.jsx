@@ -81,20 +81,20 @@ const ThirdPartyProviders = ({ data, updateData }) => {
         <div className="flex mt-5">
             <div className="w-[40%]">
                 <div className="flex flex-col gap-2">
-                    <h4 className="text-[26px] !font-bold !mb-0">Third-Party Providers</h4>
-                    <span className="text-[22px] text-neutral-600">Does this Location use hired party delivery?</span>
+                    <h4 className="text-lg !font-bold !mb-0">Third-Party Providers</h4>
+                    <span className="text-base text-neutral-600">Does this Location use hired party delivery?</span>
                 </div>
             </div>
             <div className="w-[60%]">
-                <div className="flex flex-col gap-6 p-6 bg-white rounded-xl" >
+                <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
 
                     {/* Hired Party Delivery Question */}
-                    <div className="border border-gray-200 rounded-lg p-4">
+                    <div className=" rounded-lg">
                         <div className="flex flex-col gap-2">
-                            <label className="text-[20px] !font-bold text-neutral-600">Does this Location use third party delivery?</label>
+                            <label className="text-base !font-bold text-neutral-600">Does this Location use third party delivery?</label>
                             <Select
                                 placeholder="Select Yes or No"
-                                className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                                className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
                                 value={useHiredPartyDelivery}
                                 onChange={handleHiredPartyDeliveryChange}
                                 options={yesNoOptions}
@@ -106,26 +106,26 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                     {useHiredPartyDelivery === 'yes' && (
                         <>
                             {providers.map((provider) => (
-                                <div key={provider.id} className="border border-gray-200 rounded-lg p-4">
+                                <div key={provider.id} className=" rounded-lg ">
                                     <div className="flex flex-col gap-2 mb-4">
-                                        <label htmlFor={`providerName-${provider.id}`} className="text-[20px] !font-bold text-neutral-600">Provider Name</label>
+                                        <label htmlFor={`providerName-${provider.id}`} className="text-base !font-bold text-neutral-600">Provider Name</label>
                                         <input
                                             type="text"
                                             id={`providerName-${provider.id}`}
                                             placeholder="Select Provider Name"
-                                            className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                                            className="w-full p-2 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700"
                                             value={provider.providerName}
                                             onChange={(e) => updateProvider(provider.id, 'providerName', e.target.value)}
                                         />
                                     </div>
 
                                     <div className="flex flex-col gap-2">
-                                        <label htmlFor={`providerFee-${provider.id}`} className="text-[20px] !font-bold text-neutral-600">Provider Fee</label>
+                                        <label htmlFor={`providerFee-${provider.id}`} className="text-base !font-bold text-neutral-600">Provider Fee</label>
                                         <Select
                                             type="text"
                                             id={`providerFee-${provider.id}`}
                                             placeholder="Select percentage"
-                                            className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                                            className="w-full p-2  !h-[40px] rounded-md text-base font-normal text-neutral-700"
                                             value={provider.providerFee || undefined}
                                             onChange={(value) => updateProvider(provider.id, 'providerFee', value)}
                                             options={percentageOptions}
@@ -137,7 +137,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                             <div className="flex justify-start">
                                 <PrimaryButton
                                     title="Add Another Provider"
-                                    className="bg-neutral-200 text-black h-[40px] rounded-md !text-[18px] !font-bold"
+                                    className="bg-neutral-200 text-black h-[40px] rounded-md !text-base !font-bold"
                                     onClick={addProvider}
                                 />
                             </div>

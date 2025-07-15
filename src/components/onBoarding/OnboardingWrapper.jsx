@@ -23,10 +23,10 @@ const OnboardingWrapper = () => {
                         </div>
                         {/* Header */}
                         <div className="flex flex-col gap-2 sm:gap-2">
-                            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[36px] font-bold leading-tight !mb-0 !font-bold">
+                            <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] font-bold leading-tight !mb-0 !font-bold">
                                 Is Your Restaurant Already on Growlio?
                             </h1>
-                            <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] !font-bold text-gray-800 leading-tight !mb-0">
+                            <h2 className="text-base sm:text-lg lg:text-xl xl:text-[18px] !font-bold text-gray-800 leading-tight !mb-0">
                                 Let us know how you’d like to get started.
                             </h2>
                         </div>
@@ -36,19 +36,19 @@ const OnboardingWrapper = () => {
                         <div className="border border-gray-300 rounded-lg p-6">
                                 <div className="flex items-center gap-2">
                                     <Checkbox />
-                                    <span className="text-[20px] font-bold">Yes, My Restaurant Exists</span>
+                                    <span className="text-base font-bold">Yes, My Restaurant Exists</span>
 
                                 </div>
-                                <p className="text-[18px] font-regular text-gray-700 leading-relaxed !mb-0">Claim and manage an existing listing.</p>
+                                <p className="text-base font-regular text-gray-700 leading-relaxed !mb-0">Claim and manage an existing listing.</p>
 
                             </div>
                             <div className="border border-gray-300 rounded-lg p-6">
                                 <div className="flex items-center gap-2">
                                     <Checkbox />
-                                    <span className="text-[20px] font-bold">No, I Want to Create a New One</span>
+                                    <span className="text-base font-bold">No, I Want to Create a New One</span>
 
                                 </div>
-                                <p className="text-[18px] font-regular text-gray-700 leading-relaxed !mb-0"> Register a new restaurant on Growlio.</p>
+                                <p className="text-base font-regular text-gray-700 leading-relaxed !mb-0"> Register a new restaurant on Growlio.</p>
 
                             </div>
                         </div>

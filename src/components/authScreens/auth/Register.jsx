@@ -60,16 +60,16 @@ const Register = () => {
       >
         <img src={logo} alt="logo" className="mb-6" />
         <div className='flex flex-col mt-4 gap-3'>
-          <h2 className="text-3xl !font-black text-start text-neutral !mb-0">
+          <h2 className="text-lg !font-black text-start text-neutral !mb-0">
             Join Growlio Today
           </h2>
-          <p className="text-xl text-neutral mb-2" >
+          <p className="text-base text-neutral mb-2" >
             Get discovered, manage bookings, and showcase your menu — all in one place.
           </p>
         </div>
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="name">Full Name</label>
+            <label className="block text-base font-bold mb-2" htmlFor="name">Full Name</label>
             <Input
               id="name"
               name="name"
@@ -79,14 +79,14 @@ const Register = () => {
               value={form.name}
               onChange={handleChange}
               placeholder="Write Full Name"
-              prefix={<img src={User} alt="User" className="h-6 w-6" />}
+              prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+              className="h-[40px] rounded-md text-lg tw-input input-brand"
 
             />
           </div>
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="email">Email Address</label>
+            <label className="block text-base font-bold mb-2" htmlFor="email">Email Address</label>
             <Input
               id="email"
               name="email"
@@ -96,14 +96,14 @@ const Register = () => {
               value={form.email}
               onChange={handleChange}
               placeholder="Write Email Address"
-              prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
+              prefix={<img src={Message} alt="Message" className="h-4 w-4" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+              className="h-[40px] rounded-md text-lg tw-input input-brand"
 
             />
           </div>
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="username">Username</label>
+            <label className="block text-base font-bold mb-2" htmlFor="username">Username</label>
             <Input
               id="username"
               name="username"
@@ -113,14 +113,14 @@ const Register = () => {
               value={form.username}
               onChange={handleChange}
               placeholder="Write Username"
-              prefix={<img src={User} alt="User" className="h-6 w-6" />}
+              prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+              className="h-[40px] rounded-md text-lg tw-input input-brand"
 
             />
           </div>
           <div>
-            <label className="block text-[20px] font-bold mb-2" htmlFor="password">Password</label>
+            <label className="block text-base font-bold mb-2" htmlFor="password">Password</label>
             <Input.Password
               id="password"
               name="password"
@@ -129,9 +129,9 @@ const Register = () => {
               value={form.password}
               onChange={handleChange}
               placeholder="Write Password"
-              prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
+              prefix={<img src={Lock} alt="Lock" className="h-4 w-4" />}
               size="large"
-              className="h-[60px] rounded-xl text-lg tw-input input-brand"
+              className="h-[40px] rounded-md text-lg tw-input input-brand"
 
             />
           </div>
