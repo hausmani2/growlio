@@ -2,6 +2,7 @@ import { useState } from "react";
 import FoodCostDetails from "./FoodCostDetails";
 import DeliveryFrequency from "./DeliveryFrequency";
 import ThirdPartyProviders from "../salesChannels/ThirdPartyProviders";
+import { TabProvider } from "../../TabContext";
 
 const FoodCostWrapper = () => {
     // State for Food Cost Details
@@ -60,21 +61,23 @@ const FoodCostWrapper = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            <FoodCostDetails 
-                data={foodCostData}
-                updateData={updateFoodCostData}
-            />
-                <ThirdPartyProviders
-                    data={thirdPartyData}
-                    updateData={updateThirdPartyData}
+        <TabProvider>
+            <div className="flex flex-col gap-6">
+                <FoodCostDetails 
+                    data={foodCostData}
+                    updateData={updateFoodCostData}
                 />
-            <DeliveryFrequency 
-                data={deliveryData}
-                updateData={updateDeliveryData}
-                onSaveAndContinue={handleSaveAndContinue}
-            />
-        </div>
+                    <ThirdPartyProviders
+                        data={thirdPartyData}
+                        updateData={updateThirdPartyData}
+                    />
+                <DeliveryFrequency 
+                    data={deliveryData}
+                    updateData={updateDeliveryData}
+                    onSaveAndContinue={handleSaveAndContinue}
+                />
+            </div>
+        </TabProvider>
     )
 }
 

@@ -18,8 +18,11 @@ const Sidebar = ({ menuItems = [] }) => {
   // Map pathname to menu key
   const pathKeyMap = {
     '/dashboard': 'dashboard',
-    '/settings': 'settings',
-    '/restaurants': 'restaurants',
+    '/basic-information': 'basic-information',
+    '/labour-information': 'labour-information',
+    '/food-cost-details': 'food-cost-details',
+    '/sales-channels': 'sales-channels',
+    '/expense': 'expense',
   };
   const selectedKey = pathKeyMap[location.pathname] || 'dashboard';
 

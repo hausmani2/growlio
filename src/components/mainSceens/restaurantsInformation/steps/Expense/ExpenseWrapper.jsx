@@ -4,6 +4,7 @@ import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
 import { useNavigate } from "react-router-dom";
 import TotalExpense from "./TotalExpense";
+import { TabProvider } from "../../TabContext";
 
 const ExpenseWrapper = () => {
     const navigate = useNavigate();
@@ -87,13 +88,15 @@ const ExpenseWrapper = () => {
     };
 
     return (
-        <div>
-            <div className="flex flex-col gap-6">
-                <FixedCost data={expenseData} updateData={updateExpenseData} />
-                <VariableFixed data={expenseData} updateData={updateExpenseData} onSave={handleSave} />
-                <TotalExpense data={expenseData} onSave={handleSave} />
+        <TabProvider>
+            <div>
+                <div className="flex flex-col gap-6">
+                    <FixedCost data={expenseData} updateData={updateExpenseData} />
+                    <VariableFixed data={expenseData} updateData={updateExpenseData} onSave={handleSave} />
+                    <TotalExpense data={expenseData} onSave={handleSave} />
+                </div>
             </div>
-        </div>
+        </TabProvider>
     )
 }
 

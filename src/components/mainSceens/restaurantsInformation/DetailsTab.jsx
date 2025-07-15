@@ -10,8 +10,8 @@ const DetailsTab = () => {
                 <span className="text-lg text-neutral-600 font-medium">Fill out the info, add your hours, and start serving customers on Growlio.</span>
             </div>
 
-            <div className="bg-orange-300 flex items-center rounded-xl py-4 px-8 w-full max-w-full">
-                <div className="flex items-center gap-3 w-full justify-center">
+            <div className="bg-orange-300 flex items-center rounded-xl py-4 px-4 w-full max-w-full max-xl:flex-col">
+                <div className="flex items-center gap-2 w-full justify-center max-xl:flex-col">
                     {tabs.map((tab) => (
                         <div
                             key={tab.id}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import SalesChannel from "./SalesChannel";
 import ThirdPartyProviders from "./ThirdPartyProviders";
+import { TabProvider } from "../../TabContext";
 
 const SalesChannelsWrapper = () => {
     // State for Sales Channels
@@ -20,18 +21,20 @@ const SalesChannelsWrapper = () => {
     };
 
     return (
-        <div>
-            <div className="flex flex-col gap-6">
-                <SalesChannel 
-                    data={{ salesChannels: salesChannelsData }}
-                    updateData={updateSalesChannelsData}
-                />
-                {/* <ThirdPartyProviders
-                    data={{ salesChannels: salesChannelsData }}
-                    updateData={updateSalesChannelsData}
-                /> */}
+        <TabProvider>
+            <div>
+                <div className="flex flex-col gap-6">
+                    <SalesChannel 
+                        data={{ salesChannels: salesChannelsData }}
+                        updateData={updateSalesChannelsData}
+                    />
+                    {/* <ThirdPartyProviders
+                        data={{ salesChannels: salesChannelsData }}
+                        updateData={updateSalesChannelsData}
+                    /> */}
+                </div>
             </div>
-        </div>
+        </TabProvider>
     )
 }
 

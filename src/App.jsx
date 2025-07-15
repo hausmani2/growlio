@@ -11,6 +11,11 @@ import CompleteSteps from './components/mainSceens/restaurantsInformation/Comple
 import Wrapper from './components/layout/Wrapper';
 import Dashboard from './components/mainSceens/dashbaordComponents/Dashboard';
 import Settings from './components/mainSceens/dashbaordComponents/Setting';
+import RestaurantWrapper from './components/mainSceens/restaurantsInformation/steps/basicInformation/RestaurantWrapper';
+import LaborInformationWrapper from './components/mainSceens/restaurantsInformation/steps/laborInformation/LaborInformationWrapper';
+import FoodCostDetailsWrapper from './components/mainSceens/restaurantsInformation/steps/foodCostDetails/FoodCostWrapper';
+import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation/steps/salesChannels/SalesChannelsWrapper';
+import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
 
 function App() {
   return (
@@ -32,7 +37,11 @@ function App() {
           <Route path="/create-restaurant-info/expense" element={<RestaurantInfo />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
-          <Route path="/settings" element={<Wrapper showSidebar={true} children={<Settings />} />} />
+          <Route path="/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
+          <Route path="/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
+          <Route path="/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
+          <Route path="/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
+          <Route path="/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

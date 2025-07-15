@@ -36,12 +36,13 @@ const AddressInformation = ({ data, updateData }) => {
                 <div className="flex flex-col gap-2">
                     <label htmlFor="country" className="text-[20px] !font-bold text-neutral-600">Country</label>
                     <Select 
-                        type="text" 
                         id="country" 
                         placeholder="Write Country" 
-                        className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                        value={data.country}
+                        className="w-full !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                        value={data.country || undefined}
                         onChange={(value) => updateData('country', value)}
+                        style={{ height: '60px' }}
+                        allowClear
                     >
                         <Select.Option value="1">United States</Select.Option>
                         <Select.Option value="2">Canada</Select.Option>
@@ -51,12 +52,13 @@ const AddressInformation = ({ data, updateData }) => {
                 <div className="flex flex-col gap-2">
                     <label htmlFor="state" className="text-[20px] !font-bold text-neutral-600">State</label>
                     <Select 
-                        type="text" 
                         id="state" 
                         placeholder="Write State" 
-                        className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                        value={data.state}
+                        className="w-full !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
+                        value={data.state || undefined}
                         onChange={(value) => updateData('state', value)}
+                        style={{ height: '60px' }}
+                        allowClear
                     >
                         <Select.Option value="1">California</Select.Option>
                         <Select.Option value="2">New York</Select.Option>

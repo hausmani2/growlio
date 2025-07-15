@@ -2,6 +2,7 @@ import { useState } from "react";
 import RestaurantInformation from "./RestaurantInformation";
 import AddressInformation from "./AddressInformation";
 import AddressType from "./Address2Information";
+import { TabProvider } from "../../TabContext";
 
 const RestaurantWrapper = () => {
     // State for Restaurant Information
@@ -73,21 +74,23 @@ const RestaurantWrapper = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6 ">
-            <RestaurantInformation 
-                data={restaurantData}
-                updateData={updateRestaurantData}
-            />
-            <AddressInformation 
-                data={addressData}
-                updateData={updateAddressData}
-            />
-            <AddressType 
-                data={addressTypeData}
-                updateData={updateAddressTypeData}
-                onSaveAndContinue={handleSaveAndContinue}
-            />
-        </div>
+        <TabProvider>
+            <div className="flex flex-col gap-6 ">
+                <RestaurantInformation 
+                    data={restaurantData}
+                    updateData={updateRestaurantData}
+                />
+                <AddressInformation 
+                    data={addressData}
+                    updateData={updateAddressData}
+                />
+                <AddressType 
+                    data={addressTypeData}
+                    updateData={updateAddressTypeData}
+                    onSaveAndContinue={handleSaveAndContinue}
+                />
+            </div>
+        </TabProvider>
     )
 }
 

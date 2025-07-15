@@ -126,7 +126,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                                             id={`providerFee-${provider.id}`}
                                             placeholder="Select percentage"
                                             className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                                            value={provider.providerFee}
+                                            value={provider.providerFee || undefined}
                                             onChange={(value) => updateProvider(provider.id, 'providerFee', value)}
                                             options={percentageOptions}
                                         />

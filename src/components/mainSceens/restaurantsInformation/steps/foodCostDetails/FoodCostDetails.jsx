@@ -52,7 +52,7 @@ const FoodCostDetails = ({ data, updateData }) => {
                     <Select
                         id="cogs"
                         placeholder="Select Percentage"
-                        value={data.cogsGoal}
+                        value={data.cogsGoal || undefined}
                         onChange={handleCogsChange}
                         options={generatePercentageOptions()}
                         style={{

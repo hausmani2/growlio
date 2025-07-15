@@ -33,7 +33,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                             id="franchise" 
                             placeholder="No" 
                             className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                            value={data.isFranchise}
+                            value={data.isFranchise || undefined}
                             onChange={(value) => updateData('isFranchise', value)}
                         >
                             <Select.Option value="1">No</Select.Option>

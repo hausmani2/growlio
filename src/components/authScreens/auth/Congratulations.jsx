@@ -11,38 +11,38 @@ const Congratulations = () => {
     return (
         <div className="min-h-screen flex flex-col lg:flex-row">
             {/* Content Section */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center">
+            <div className="w-full h-screen lg:w-1/2 flex items-center justify-center">
                 <div className="w-full max-w-sm mx-auto">
-                    <div className="flex flex-col gap-4 sm:gap-6">
+                    <div className="flex flex-col gap-4">
                         {/* Header */}
                         <div className="flex flex-col gap-2 sm:gap-2">
                             <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[36px] font-bold leading-tight !mb-0 !font-bold">
                                 🎉 Congratulations!
                             </h1>
-                            <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] !font-bold text-gray-800 leading-tight">
+                            <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] !font-bold text-gray-800 leading-tight !mb-0">
                                 Your account has been successfully created.
                             </h2>
                         </div>
 
                         {/* Cafe Image */}
-                        <div className="">
+                        <div className=" ">
                             <img 
                                 src={Cafe} 
                                 alt="Cafe illustration" 
-                                className="w-full h-full object-cover" 
+                                className=" object-cover h-[calc(60vh-100px)]" 
                             />
                         </div>
 
                         {/* Description */}
-                        <div className="mb-2">
-                            <p className="text-sm sm:text-base lg:text-lg xl:text-[22px] font-medium text-gray-700 leading-relaxed">
+                        <div className="">
+                            <p className="text-sm sm:text-base lg:text-lg xl:text-[22px] font-medium text-gray-700 ">
                                 You can now register your restaurant, set up your menu, manage bookings, and more — all from your dashboard.
                             </p>
                         </div>
 
                         {/* Button */}
-                        <div className="mt-2">
-                            <PrimaryBtn title="Continue" className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4"
+                        <div className="">
+                            <PrimaryBtn title="Continue" className="btn-brand w-full text-sm sm:text-base py-3"
                             onClick={()=>{navigate('/onboarding')}} />
                         </div>
                     </div>
@@ -52,9 +52,10 @@ const Congratulations = () => {
             {/* Image Section */}
             <div className="w-full lg:w-1/2 relative">
                 <ImageLayout>
-                    <div className="relative w-full h-full flex items-end justify-center">
+                    <div className="relative flex items-end justify-center ">
                         <img
                             src={Staff}
+                            className="h-[calc(100vh-100px)]"
                             alt="Staff illustration"
                             // className="w-4/5 sm:w-3/4 md:w-[70%] lg:w-[65%] xl:w-[60%] h-auto object-contain max-h-[80vh] lg:max-h-[85vh]"
                         />

@@ -11,11 +11,11 @@ const RestaurantContent = () => {
             <Header />
 
             <div className="flex flex-col">
-                <div className="mb-10 mx-auto container">
+                <div className="mb-10 mx-auto container  max-w-[1400px] p-10 ">
                     <DetailsTab />
                 </div>
                 <div className="w-full bg-gray-100 h-full">
-                    <div className="flex flex-col gap-5 mx-auto p-2 container">
+                    <div className="flex flex-col gap-5 mx-auto p-2 container   max-w-[1400px] px-10">
                         {renderActiveContent()}
                     </div>
                 </div>

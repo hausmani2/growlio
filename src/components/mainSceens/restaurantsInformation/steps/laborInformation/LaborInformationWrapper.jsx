@@ -1,6 +1,7 @@
 import { useState } from "react";
 import LaborInformation from "./LaborInformation";
 import LaborEntryMethod from "./LaborEntryMethod";
+import { TabProvider } from "../../TabContext";
 
 const LaborInformationWrapper = () => {
     const [laborData, setLaborData] = useState({
@@ -22,10 +23,12 @@ const LaborInformationWrapper = () => {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            <LaborInformation data={laborData} updateData={updateLaborData} />    
-            <LaborEntryMethod data={laborData.laborEntryMethod} updateData={updateLaborData} />
-        </div>
+        <TabProvider>
+            <div className="flex flex-col gap-6">
+                <LaborInformation data={laborData} updateData={updateLaborData} />    
+                <LaborEntryMethod data={laborData.laborEntryMethod} updateData={updateLaborData} />
+            </div>
+        </TabProvider>
     )
 }   
 

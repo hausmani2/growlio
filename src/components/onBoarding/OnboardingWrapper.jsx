@@ -70,6 +70,7 @@ const OnboardingWrapper = () => {
                 <img
                     src={OnBoard}
                     alt="onboarding "
+                    className="h-[calc(100vh-100px)]"
                 />
             </div>
         </ImageLayout>

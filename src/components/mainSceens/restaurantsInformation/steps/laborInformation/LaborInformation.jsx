@@ -36,7 +36,7 @@ const LaborInformation = ({ data, updateData }) => {
                         id="goal" 
                         placeholder="Select percentage" 
                         className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                        value={data.goal}
+                        value={data.goal || undefined}
                         onChange={(value) => updateData('goal', value)}
                         options={percentageOptions}
                     />
@@ -48,7 +48,7 @@ const LaborInformation = ({ data, updateData }) => {
                         id="needsAttention" 
                         placeholder="Select percentage" 
                         className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                        value={data.needsAttention}
+                        value={data.needsAttention || undefined}
                         onChange={(value) => updateData('needsAttention', value)}
                         options={percentageOptions}
                     />
@@ -60,7 +60,7 @@ const LaborInformation = ({ data, updateData }) => {
                         id="danger" 
                         placeholder="Select percentage" 
                         className="w-full p-2 border border-gray-300 !h-[60px] rounded-md text-[18px] font-normal text-neutral-700"
-                        value={data.danger}
+                        value={data.danger || undefined}
                         onChange={(value) => updateData('danger', value)}
                         options={percentageOptions}
                     />
