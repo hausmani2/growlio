@@ -25,6 +25,11 @@ function App() {
         <Route element={<ProtectedRoutes />}>
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/create-restaurant-info" element={<RestaurantInfo />} />
+          <Route path="/create-restaurant-info/basic-information" element={<RestaurantInfo />} />
+          <Route path="/create-restaurant-info/labour-information" element={<RestaurantInfo />} />
+          <Route path="/create-restaurant-info/food-cost-details" element={<RestaurantInfo />} />
+          <Route path="/create-restaurant-info/sales-channels" element={<RestaurantInfo />} />
+          <Route path="/create-restaurant-info/expense" element={<RestaurantInfo />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/settings" element={<Wrapper showSidebar={true} children={<Settings />} />} />
