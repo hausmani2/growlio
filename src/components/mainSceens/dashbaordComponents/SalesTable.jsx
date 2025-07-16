@@ -291,9 +291,9 @@ const SalesTable = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <Title level={2} className="mb-6">Sales Performance Dashboard</Title>
+    <div className=" min-h-screen w-full">
+      <div className="w-full mx-auto">
+        <Title level={3} className=" pl-2 pb-2">Sales Performance Dashboard</Title>
         
         <Row gutter={24}>
           {/* Monthly Totals Section */}
