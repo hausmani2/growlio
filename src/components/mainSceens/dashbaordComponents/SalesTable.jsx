@@ -291,7 +291,7 @@ const SalesTable = () => {
   };
 
   return (
-    <div className=" min-h-screen w-full">
+    <div className=" w-full">
       <div className="w-full mx-auto">
         <Title level={3} className=" pl-2 pb-2">Sales Performance Dashboard</Title>
         

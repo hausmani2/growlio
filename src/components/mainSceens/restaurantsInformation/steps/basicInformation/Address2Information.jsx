@@ -1,6 +1,6 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import { TiArrowLeft } from "react-icons/ti";
 import PrimaryButton from '../../../../../components/buttons/Buttons';
 
@@ -17,7 +17,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                 <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                     <div className="flex flex-col gap-2">
                         <label htmlFor="sqft" className="text-base !font-bold text-neutral-600 flex items-center gap-2">How many SQFT is your location? <img src={SubTrack} alt="SubTrack" /></label>
-                        <input 
+                        <Input 
                             type="text" 
                             id="sqft" 
                             placeholder="Enter SQFT" 
@@ -43,7 +43,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
 
                     <div className="flex flex-col gap-2">
                         <label htmlFor="restaurantType" className="text-base !font-bold text-neutral-600">Restaurant Type</label>
-                        <input 
+                        <Input 
                             type="text" 
                             id="restaurantType" 
                             placeholder="Enter Restaurant Type" 
@@ -54,7 +54,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                     </div>
                     <div className="flex flex-col gap-2">
                         <label htmlFor="menuType" className="text-base !font-bold text-neutral-600">Menu Type</label>
-                        <input 
+                        <Input 
                             type="text" 
                             id="menuType" 
                             placeholder="Enter Menu Type" 

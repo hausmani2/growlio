@@ -1,4 +1,4 @@
-import { Select } from "antd";
+import { Input, Select } from "antd";
 
 const RestaurantInformation = ({ data, updateData }) => {
     return (
@@ -14,7 +14,7 @@ const RestaurantInformation = ({ data, updateData }) => {
                                 <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                                     <div className="flex flex-col gap-2">
                                         <label htmlFor="restaurantName" className="text-base !font-bold text-neutral-600">Restaurant Name</label>
-                                        <input 
+                                        <Input 
                                             type="text" 
                                             id="restaurantName" 
                                             placeholder="Enter your restaurant name" 
@@ -44,7 +44,7 @@ const RestaurantInformation = ({ data, updateData }) => {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         <label htmlFor="locationName" className="text-base !font-bold text-neutral-600">Location Name</label>
-                                        <input 
+                                        <Input 
                                             type="text" 
                                             id="locationName" 
                                             placeholder="Enter your location" 

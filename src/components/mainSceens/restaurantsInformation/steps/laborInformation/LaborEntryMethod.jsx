@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
@@ -139,7 +139,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                 <div className="flex flex-col gap-2">
                     <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600">What is your average hourly rate for all staff roles?</label>
                    <div className="relative">
-                        <input 
+                        <Input 
                             type="number" 
                             id="hourlyRate" 
                             placeholder="Enter Hourly Wage" 

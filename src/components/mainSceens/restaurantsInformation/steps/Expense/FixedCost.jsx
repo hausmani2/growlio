@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal, Input } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 
 const FixedCost = ({ data, updateData }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -53,6 +54,9 @@ const FixedCost = ({ data, updateData }) => {
         setDynamicFields(prev => prev.filter(field => field.id !== id));
     };
 
+    // Show static field only when there are no dynamic fields
+    const shouldShowStaticField = dynamicFields.length === 0;
+
     return (
         <div>
             <div className="flex mt-5">
@@ -60,12 +64,40 @@ const FixedCost = ({ data, updateData }) => {
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Fixed Cost</h4>
                         <span className="text-base text-neutral-600">
-                            
+                            What are the fixed costs for this location?
+                            Add a new field to add a fixed cost.
                         </span>
                     </div>
                 </div>
                 <div className="w-[60%]">
                     <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
+                        
+                        {/* Static Field - only show when no dynamic fields */}
+                        {shouldShowStaticField && (
+                            <div className="flex items-center justify-between gap-2">
+                                <label htmlFor="rent" className="w-1/4 text-base !font-bold text-neutral-600">Rent</label>
+                                <div className="flex items-center gap-2 w-full">
+                                    <div className="relative w-full">
+                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
+                                        <Input 
+                                            type="number" 
+                                            id="rent" 
+                                            placeholder="Enter Rent" 
+                                            className="w-full p-2 pl-8 border border-gray-300 h-[40px] rounded-md text-[18px] font-normal text-neutral-700"
+                                            value={data.rent}
+                                            onChange={(e) => updateData('rent', e.target.value)}
+                                            min="0"
+                                            onKeyDown={(e) => {
+                                                if (e.key === '-') {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Dynamic Fields */}
                         {dynamicFields.map((field) => (
                             <div key={field.id} className="flex items-center justify-between gap-2">
@@ -75,7 +107,7 @@ const FixedCost = ({ data, updateData }) => {
                                 <div className="flex items-center gap-2 w-full">
                                     <div className="relative w-full">
                                         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                        <input 
+                                            <Input 
                                             type="number" 
                                             id={field.key} 
                                             placeholder={`Enter ${field.label}`} 
@@ -101,8 +133,8 @@ const FixedCost = ({ data, updateData }) => {
                         ))}
 
                         <div className="flex justify-end">
-                            <Button className="w-1/4" onClick={showModal}>Add Field</Button>
-                        </div>
+                            <Button className="" onClick={showModal}><PlusOutlined /></Button>
+                            </div>
                        
                         <div className="flex items-center justify-between ">
                             <label htmlFor="other" className="text-base !font-bold text-neutral-600">Total Fixed Cost</label>
@@ -114,7 +146,7 @@ const FixedCost = ({ data, updateData }) => {
 
             {/* Modal for adding new fields */}
             <Modal
-                title="Add New Field"
+                title=""
                 open={isModalVisible}
                 onOk={handleOk}
                 onCancel={handleCancel}
@@ -123,11 +155,11 @@ const FixedCost = ({ data, updateData }) => {
             >
                 <div className="flex flex-col gap-4">
                     <label htmlFor="fieldLabel" className="text-base font-semibold text-neutral-600">
-                        Field Label
+                        Add Expense
                     </label>
                     <Input
                         id="fieldLabel"
-                        placeholder="Enter field label (e.g., Bank Fees, Insurance, Rent, etc.)"
+                        placeholder="Enter Expense"
                         value={newFieldLabel}
                         onChange={(e) => setNewFieldLabel(e.target.value)}
                         onPressEnter={handleOk}

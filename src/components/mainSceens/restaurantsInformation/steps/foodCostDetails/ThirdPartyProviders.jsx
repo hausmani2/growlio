@@ -1,4 +1,4 @@
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 import { useState, useEffect } from 'react';
 import PrimaryButton from '../../../../buttons/Buttons';
 
@@ -95,7 +95,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                             <Select
                                 placeholder="Select Yes or No"
                                 className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                                value={useHiredPartyDelivery}
+                                value={useHiredPartyDelivery || undefined}
                                 onChange={handleHiredPartyDeliveryChange}
                                 options={yesNoOptions}
                             />
@@ -109,7 +109,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                                 <div key={provider.id} className=" rounded-lg ">
                                     <div className="flex flex-col gap-2 mb-4">
                                         <label htmlFor={`providerName-${provider.id}`} className="text-base !font-bold text-neutral-600">Provider Name</label>
-                                        <input
+                                        <Input
                                             type="text"
                                             id={`providerName-${provider.id}`}
                                             placeholder="Enter Provider Name"

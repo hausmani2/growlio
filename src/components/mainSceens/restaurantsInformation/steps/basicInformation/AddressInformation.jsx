@@ -1,4 +1,4 @@
-import { Select } from 'antd';
+import { Input, Select } from 'antd';
 
 const AddressInformation = ({ data, updateData }) => {
     return (
@@ -13,7 +13,7 @@ const AddressInformation = ({ data, updateData }) => {
             <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                 <div className="flex flex-col gap-2">
                     <label htmlFor="address1" className="text-base !font-bold text-neutral-600">Address 1</label>
-                    <textarea 
+                    <Input.TextArea 
                         type="text" 
                         id="address1" 
                         placeholder="Enter Address" 
@@ -57,7 +57,7 @@ const AddressInformation = ({ data, updateData }) => {
                 </div>
                 <div className="flex flex-col gap-2">
                     <label htmlFor="zipCode" className="text-base !font-bold text-neutral-600">Zip Code</label>
-                    <input 
+                        <Input 
                         type="text" 
                         id="zipCode" 
                         placeholder="Enter Zip Code" 
