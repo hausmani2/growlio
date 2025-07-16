@@ -3,7 +3,7 @@ import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/logo.png';
 import Message from "../../../assets/svgs/Message_open.svg"
-import Lock from "../../../assets/svgs/Lock.svg"
+import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
 import PrimaryBtn from '../../buttons/Buttons';
 import { Link } from 'react-router-dom';
