@@ -90,7 +90,7 @@ const ExpenseWrapper = () => {
     return (
         <TabProvider>
             <div>
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col">
                     <FixedCost data={expenseData} updateData={updateExpenseData} />
                     <VariableFixed data={expenseData} updateData={updateExpenseData} onSave={handleSave} />
                     <TotalExpense data={expenseData} onSave={handleSave} />

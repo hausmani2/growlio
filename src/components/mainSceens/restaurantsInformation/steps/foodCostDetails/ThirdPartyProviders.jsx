@@ -112,9 +112,9 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                                         <input
                                             type="text"
                                             id={`providerName-${provider.id}`}
-                                            placeholder="Select Provider Name"
+                                            placeholder="Enter Provider Name"
                                             className="w-full p-2 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                                            value={provider.providerName}
+                                            value={provider.providerName || undefined}
                                             onChange={(e) => updateProvider(provider.id, 'providerName', e.target.value)}
                                         />
                                     </div>

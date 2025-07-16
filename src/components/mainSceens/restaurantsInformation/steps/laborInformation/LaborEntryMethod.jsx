@@ -142,7 +142,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <input 
                             type="number" 
                             id="hourlyRate" 
-                            placeholder="Write Hourly Wage" 
+                            placeholder="Enter Hourly Wage" 
                             className="w-full p-2 pr-8 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6" 
                             value={formData.hourlyRate}
                             onChange={(e) => handleInputChange('hourlyRate', e.target.value)}

@@ -68,7 +68,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-auto`}>
-          <Content className={`p-6 bg-gray-50 w-full ${className}`}>
+          <Content className={`px-4 py-4 bg-gray-100 w-full ${className}`}>
             {children}
           </Content>
         </div>

@@ -20,7 +20,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                         <input 
                             type="text" 
                             id="sqft" 
-                            placeholder="Write SQFT" 
+                            placeholder="Enter SQFT" 
                             className="w-full p-2 border border-gray-300 h-[40px] rounded-md text-base font-normal text-neutral-700"
                             value={data.sqft}
                             onChange={(e) => updateData('sqft', e.target.value)}
@@ -46,7 +46,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                         <input 
                             type="text" 
                             id="restaurantType" 
-                            placeholder="Write Restaurant Type" 
+                            placeholder="Enter Restaurant Type" 
                             className="w-full p-2 border border-gray-300 h-[40px] rounded-md text-base font-normal text-neutral-700"
                             value={data.restaurantType}
                             onChange={(e) => updateData('restaurantType', e.target.value)}
@@ -57,7 +57,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                         <input 
                             type="text" 
                             id="menuType" 
-                            placeholder="Write Menu Type" 
+                            placeholder="Enter Menu Type" 
                             className="w-full p-2 border border-gray-300 h-[40px] rounded-md text-base font-normal text-neutral-700"
                             value={data.menuType}
                             onChange={(e) => updateData('menuType', e.target.value)}

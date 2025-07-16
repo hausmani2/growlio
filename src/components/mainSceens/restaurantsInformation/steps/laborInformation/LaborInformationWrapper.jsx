@@ -24,7 +24,7 @@ const LaborInformationWrapper = () => {
 
     return (
         <TabProvider>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col">
                 <LaborInformation data={laborData} updateData={updateLaborData} />    
                 <LaborEntryMethod data={laborData.laborEntryMethod} updateData={updateLaborData} />
             </div>

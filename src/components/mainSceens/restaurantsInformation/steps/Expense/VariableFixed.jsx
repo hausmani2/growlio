@@ -59,7 +59,10 @@ const VariableFixed = ({ data, updateData }) => {
                 <div className="w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Variable Cost</h4>
-                        <span className="text-base text-neutral-600"></span>
+                        <span className="text-base text-neutral-600">
+                            What are the variable costs for this location?
+                            Add a new field to add a variable cost.
+                        </span>
                     </div>
                 </div>
                 <div className="w-[60%]">

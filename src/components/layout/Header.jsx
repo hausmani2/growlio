@@ -22,7 +22,7 @@ const Header = () => {
     const name = user?.name || 'Haris james';
     // const image = user?.image; // If you add image support later
     return (
-        <div className='flex items-center justify-between w-full p-6 bg-white'>
+        <div className='flex items-center justify-between w-full p-4 bg-white'>
             <img src={logo} alt="logo" />
             <div className='flex items-center gap-2'>
                 {/* Avatar with initials */}
@@ -32,7 +32,7 @@ const Header = () => {
                 {/* Name and dropdown */}
                 <Dropdown overlay={menu} trigger={['click']}>
                   <div className="flex items-center cursor-pointer select-none">
-                    <span className="font-semibold text-lg mr-2">{name}</span>
+                    <span className="font-semibold text-base mr-2">{name}</span>
                     <DownOutlined />
                   </div>
                 </Dropdown>

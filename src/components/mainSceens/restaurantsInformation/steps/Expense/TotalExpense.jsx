@@ -20,7 +20,9 @@ const TotalExpense = ({ data,  onSave }) => {
                 <div className="w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Total Expenses</h4>
-                        <span className="text-base text-neutral-600"></span>
+                        <span className="text-base text-neutral-600">
+                           Your total expenses are calculated by adding your variable and fixed costs.
+                        </span>
                     </div>
                 </div>
                 <div className="w-[60%]">

@@ -6,7 +6,7 @@ const DetailsTab = () => {
     return (
         <div className='flex flex-col gap-4'>
             <div className="flex flex-col gap-2">
-                <h2 className='text-2xl font-bold !mb-0'>Let's Get Your Restaurant Online</h2>
+                <h2 className='text-2xl font-bold !mb-0 text-neutral-700'>Let's Get Your Restaurant Online</h2>
                 <span className="text-base text-neutral-600 font-medium">Fill out the info, add your hours, and start serving customers on Growlio.</span>
             </div>
 

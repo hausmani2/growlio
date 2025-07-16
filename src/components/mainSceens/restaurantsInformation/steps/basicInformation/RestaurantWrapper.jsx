@@ -75,7 +75,7 @@ const RestaurantWrapper = () => {
 
     return (
         <TabProvider>
-            <div className="flex flex-col gap-4 ">
+            <div className="flex flex-col ">
                 <RestaurantInformation 
                     data={restaurantData}
                     updateData={updateRestaurantData}

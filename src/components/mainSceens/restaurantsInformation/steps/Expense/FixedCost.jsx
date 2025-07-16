@@ -59,7 +59,9 @@ const FixedCost = ({ data, updateData }) => {
                 <div className="w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Fixed Cost</h4>
-                        <span className="text-base text-neutral-600"></span>
+                        <span className="text-base text-neutral-600">
+                            
+                        </span>
                     </div>
                 </div>
                 <div className="w-[60%]">

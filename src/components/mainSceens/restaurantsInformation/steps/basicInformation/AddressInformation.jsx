@@ -16,7 +16,7 @@ const AddressInformation = ({ data, updateData }) => {
                     <textarea 
                         type="text" 
                         id="address1" 
-                        placeholder="Write Address 1" 
+                        placeholder="Enter Address" 
                         className="w-full p-2 border border-gray-300 h-[60px] rounded-md text-base font-normal text-neutral-700"
                         value={data.address1}
                         onChange={(e) => updateData('address1', e.target.value)}
@@ -27,7 +27,7 @@ const AddressInformation = ({ data, updateData }) => {
                     <label htmlFor="country" className="text-base !font-bold text-neutral-600">Country</label>
                     <Select 
                         id="country" 
-                        placeholder="Write Country" 
+                        placeholder="Select Country" 
                         className="w-full !h-[40px] rounded-md text-base font-normal text-neutral-700"
                         value={data.country || undefined}
                         onChange={(value) => updateData('country', value)}
@@ -43,7 +43,7 @@ const AddressInformation = ({ data, updateData }) => {
                     <label htmlFor="state" className="text-base !font-bold text-neutral-600">State</label>
                     <Select 
                         id="state" 
-                        placeholder="Write State" 
+                        placeholder="Select State" 
                         className="w-full !h-[40px] rounded-md text-base font-normal text-neutral-700"
                         value={data.state || undefined}
                         onChange={(value) => updateData('state', value)}
@@ -60,7 +60,7 @@ const AddressInformation = ({ data, updateData }) => {
                     <input 
                         type="text" 
                         id="zipCode" 
-                        placeholder="Write Zip Code" 
+                        placeholder="Enter Zip Code" 
                         className="w-full p-2 border border-gray-300 h-[40px] rounded-md text-base font-normal text-neutral-700"
                         value={data.zipCode}
                         onChange={(e) => updateData('zipCode', e.target.value)}

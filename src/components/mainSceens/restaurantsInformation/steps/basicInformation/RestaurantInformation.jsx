@@ -47,7 +47,7 @@ const RestaurantInformation = ({ data, updateData }) => {
                                         <input 
                                             type="text" 
                                             id="locationName" 
-                                            placeholder="Write Location Name" 
+                                            placeholder="Enter your location" 
                                             className="w-full p-2 border border-gray-300 h-[40px] rounded-md text-base font-normal text-neutral-700 "
                                             value={data.locationName}
                                             onChange={(e) => updateData('locationName', e.target.value)}
