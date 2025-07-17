@@ -175,6 +175,26 @@ body {
 .input-brand:hover {
   border-color: var(--color-brand-orange);
 }
+.ant-btn-color-primary{
+  background-color: var(--color-brand-orange) !important;
+  color: white !important;
+}
+.ant-btn:hover{
+  background-color: var(--color-brand-orange-dark) !important;
+  color: white !important;
+}
+
+.ant-btn-color-default{
+  background-color: transparent !important;
+  color: black !important;
+}
+.ant-btn-color-default:hover{
+  background-color: transparent !important;
+  color: black !important;
+}
+
+
+
 
 /* Responsive text utilities */
 @media (max-width: 640px) {

@@ -78,7 +78,7 @@ const Register = () => {
               required
               value={form.name}
               onChange={handleChange}
-              placeholder="Write Full Name"
+              placeholder="Enter Full Name"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand"
@@ -95,7 +95,7 @@ const Register = () => {
               required
               value={form.email}
               onChange={handleChange}
-              placeholder="Write Email Address"
+              placeholder="Enter Email Address"
               prefix={<img src={Message} alt="Message" className="h-4 w-4" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand"
@@ -112,7 +112,7 @@ const Register = () => {
               required
               value={form.username}
               onChange={handleChange}
-              placeholder="Write Username"
+              placeholder="Enter Username"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand"
@@ -128,7 +128,7 @@ const Register = () => {
               required
               value={form.password}
               onChange={handleChange}
-              placeholder="Write Password"
+              placeholder="Enter Password"
               prefix={<img src={Lock} alt="Lock" className="h-4 w-4" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand"

@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-const SalesTable = () => {
+const ProfitCogsTable = () => {
   const [monthlyData, setMonthlyData] = useState({
-    salesBudget: 13000,
-    actualSalesInStore: 4000,
-    actualSalesAppOnline: 400,
-    actualSalesDoorDash: 0,
-    netSalesActual: 4400,
-    dailyTickets: 0,
-    averageDailyTicket: 0
+    thirdPartyFees: 0,
+    profitAfterCogsLabor: -100,
+    dailyVariableProfitPercentage: 0,
+    weeklyVariableProfitPercentage: -2
   });
 
   const [weeklyData, setWeeklyData] = useState([]);
@@ -22,19 +19,9 @@ const SalesTable = () => {
   const [editingWeek, setEditingWeek] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
 
-  // Calculate percentages
-  const calculatePercentage = (actual, budget) => {
-    if (budget === 0) return 0;
-    return ((actual - budget) / budget) * 100;
-  };
-
-  const percentageActualVsBudget = calculatePercentage(monthlyData.netSalesActual, monthlyData.salesBudget);
-
   // Handle monthly data changes
   const handleMonthlyDataChange = (field, value) => {
     const newData = { ...monthlyData, [field]: value };
-    // Recalculate net sales
-    newData.netSalesActual = newData.actualSalesInStore + newData.actualSalesAppOnline + newData.actualSalesDoorDash;
     setMonthlyData(newData);
   };
 
@@ -75,20 +62,30 @@ const SalesTable = () => {
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
     const totals = {
-      budgetedSales: 0,
-      actualSalesInStore: 0,
-      actualSalesAppOnline: 0,
-      actualSalesDoorDash: 0,
-      netSalesActual: 0
+      thirdPartyFees: 0,
+      profitAfterCogsLabor: 0,
+      dailyVariableProfitPercentage: 0,
+      weeklyVariableProfitPercentage: 0
     };
 
     weekData.dailyData.forEach(day => {
-      totals.budgetedSales += day.budgetedSales || 0;
-      totals.actualSalesInStore += day.actualSalesInStore || 0;
-      totals.actualSalesAppOnline += day.actualSalesAppOnline || 0;
-      totals.actualSalesDoorDash += day.actualSalesDoorDash || 0;
-      totals.netSalesActual += (day.actualSalesInStore || 0) + (day.actualSalesAppOnline || 0) + (day.actualSalesDoorDash || 0);
+      totals.thirdPartyFees += day.thirdPartyFees || 0;
+      totals.profitAfterCogsLabor += day.profitAfterCogsLabor || 0;
     });
+
+    // Calculate average percentages
+    const validDailyPercentages = weekData.dailyData.filter(day => day.dailyVariableProfitPercentage !== 0).length;
+    const validWeeklyPercentages = weekData.dailyData.filter(day => day.weeklyVariableProfitPercentage !== 0).length;
+
+    if (validDailyPercentages > 0) {
+      totals.dailyVariableProfitPercentage = weekData.dailyData.reduce((sum, day) => 
+        sum + (day.dailyVariableProfitPercentage || 0), 0) / validDailyPercentages;
+    }
+
+    if (validWeeklyPercentages > 0) {
+      totals.weeklyVariableProfitPercentage = weekData.dailyData.reduce((sum, day) => 
+        sum + (day.weeklyVariableProfitPercentage || 0), 0) / validWeeklyPercentages;
+    }
 
     return totals;
   };
@@ -96,15 +93,16 @@ const SalesTable = () => {
   // Generate 7 days of data starting from a given date
   const generateDailyData = (startDate) => {
     const days = [];
+    const safeStartDate = startDate || dayjs();
     for (let i = 0; i < 7; i++) {
-      const currentDate = dayjs(startDate).add(i, 'day');
+      const currentDate = dayjs(safeStartDate).add(i, 'day');
       days.push({
         date: currentDate,
         dayName: currentDate.format('dddd'),
-        budgetedSales: 0,
-        actualSalesInStore: 0,
-        actualSalesAppOnline: 0,
-        actualSalesDoorDash: 0
+        thirdPartyFees: 0,
+        profitAfterCogsLabor: 0,
+        dailyVariableProfitPercentage: 0,
+        weeklyVariableProfitPercentage: 0
       });
     }
     return days;
@@ -140,7 +138,7 @@ const SalesTable = () => {
       setWeekFormData({
         ...weekFormData,
         startDate: date,
-        dailyData: generateDailyData(date)
+        dailyData: generateDailyData(date || dayjs())
       });
     };
 
@@ -150,7 +148,7 @@ const SalesTable = () => {
 
     return (
       <Modal
-        title={editingWeek ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
+        title={editingWeek ? "Edit Weekly Profit Data" : "Add Weekly Profit Data"}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={[
@@ -183,7 +181,7 @@ const SalesTable = () => {
             </Col>
           </Row>
 
-          <Divider>Daily Sales Data</Divider>
+          <Divider>Daily Profit Data</Divider>
 
           <Table
             dataSource={weekFormData.dailyData}
@@ -198,90 +196,79 @@ const SalesTable = () => {
                 render: (text, record) => (
                   <div>
                     <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
-                    </div>
+                                      <div style={{ fontSize: '12px', color: '#666' }}>
+                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
+                  </div>
                   </div>
                 )
               },
               {
-                title: 'Budgeted Sales',
-                dataIndex: 'budgetedSales',
-                key: 'budgetedSales',
+                title: '3rd Party Fees',
+                dataIndex: 'thirdPartyFees',
+                key: 'thirdPartyFees',
                 width: 150,
                 render: (value, record, index) => (
                   <Input
                     type="number"
                     value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleDailyDataChange(index, 'thirdPartyFees', parseFloat(e.target.value) || 0)}
                     prefix="$"
                   />
                 )
               },
               {
-                title: 'Actual Sales - In Store',
-                dataIndex: 'actualSalesInStore',
-                key: 'actualSalesInStore',
+                title: 'Profit After COGS & Labor',
+                dataIndex: 'profitAfterCogsLabor',
+                key: 'profitAfterCogsLabor',
+                width: 200,
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'profitAfterCogsLabor', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                    style={{ 
+                      color: value < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                )
+              },
+              {
+                title: 'Daily Variable Profit %',
+                dataIndex: 'dailyVariableProfitPercentage',
+                key: 'dailyVariableProfitPercentage',
                 width: 180,
                 render: (value, record, index) => (
                   <Input
                     type="number"
                     value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    onChange={(e) => handleDailyDataChange(index, 'dailyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
+                    style={{ 
+                      color: value < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
                   />
                 )
               },
               {
-                title: 'Actual Sales - App/Online',
-                dataIndex: 'actualSalesAppOnline',
-                key: 'actualSalesAppOnline',
+                title: 'Weekly Variable Profit %',
+                dataIndex: 'weeklyVariableProfitPercentage',
+                key: 'weeklyVariableProfitPercentage',
                 width: 180,
                 render: (value, record, index) => (
                   <Input
                     type="number"
                     value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    onChange={(e) => handleDailyDataChange(index, 'weeklyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
+                    style={{ 
+                      color: value < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
                   />
                 )
-              },
-              {
-                title: 'Actual Sales - Door Dash',
-                dataIndex: 'actualSalesDoorDash',
-                key: 'actualSalesDoorDash',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesDoorDash', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Net Sales - Actual',
-                key: 'netSalesActual',
-                width: 150,
-                render: (record) => {
-                  const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                  return <Text strong>${netSales.toFixed(2)}</Text>;
-                }
-              },
-              {
-                title: '% Actual vs Budgeted',
-                key: 'percentage',
-                width: 150,
-                render: (record) => {
-                  const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                  const percentage = calculatePercentage(netSales, record.budgetedSales || 0);
-                  return (
-                    <Text style={{ color: percentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                      {percentage.toFixed(0)}%
-                    </Text>
-                  );
-                }
               }
             ]}
           />
@@ -291,9 +278,9 @@ const SalesTable = () => {
   };
 
   return (
-    <div className=" w-full">
+    <div className="w-full">
       <div className="w-full mx-auto">
-        <Title level={3} className=" pl-2 pb-2">Sales Performance Dashboard</Title>
+        <Title level={3} className="pl-2 pb-2">Profit After COGS & Labor Dashboard</Title>
         
         <Row gutter={24}>
           {/* Monthly Totals Section */}
@@ -310,87 +297,58 @@ const SalesTable = () => {
               
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
-                  <Text strong>Sales - Budget:</Text>
+                  <Text strong>3rd Party Fees:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.salesBudget}
-                    onChange={(e) => handleMonthlyDataChange('salesBudget', parseFloat(e.target.value) || 0)}
+                    value={monthlyData.thirdPartyFees}
+                    onChange={(e) => handleMonthlyDataChange('thirdPartyFees', parseFloat(e.target.value) || 0)}
                     prefix="$"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - In Store:</Text>
+                  <Text strong>Profit After COGS & Labor:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesInStore}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesInStore', parseFloat(e.target.value) || 0)}
+                    value={monthlyData.profitAfterCogsLabor}
+                    onChange={(e) => handleMonthlyDataChange('profitAfterCogsLabor', parseFloat(e.target.value) || 0)}
                     prefix="$"
                     className="mt-1"
+                    style={{ 
+                      color: monthlyData.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: monthlyData.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - App / On Line:</Text>
+                  <Text strong>Daily Variable Profit %:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesAppOnline}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesAppOnline', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={monthlyData.dailyVariableProfitPercentage}
+                    onChange={(e) => handleMonthlyDataChange('dailyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
                     className="mt-1"
+                    style={{ 
+                      color: monthlyData.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: monthlyData.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - Door Dash:</Text>
+                  <Text strong>Weekly Variable Profit %:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesDoorDash}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesDoorDash', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={monthlyData.weeklyVariableProfitPercentage}
+                    onChange={(e) => handleMonthlyDataChange('weeklyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
                     className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Net Sales - Actual:</Text>
-                  <Input
-                    value={monthlyData.netSalesActual}
-                    prefix="$"
-                    className="mt-1"
-                    disabled
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>% Actual vs Budgeted Sales:</Text>
-                  <Input
-                    value={`${percentageActualVsBudget.toFixed(0)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ color: percentageActualVsBudget < 0 ? '#ff4d4f' : '#52c41a' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong># Daily Tickets:</Text>
-                  <Input
-                    type="number"
-                    value={monthlyData.dailyTickets}
-                    onChange={(e) => handleMonthlyDataChange('dailyTickets', parseInt(e.target.value) || 0)}
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Average Daily Ticket:</Text>
-                  <Input
-                    type="number"
-                    value={monthlyData.averageDailyTicket}
-                    onChange={(e) => handleMonthlyDataChange('averageDailyTicket', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                    className="mt-1"
+                    style={{ 
+                      color: monthlyData.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
+                      borderColor: monthlyData.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
                   />
                 </div>
               </Space>
@@ -400,27 +358,26 @@ const SalesTable = () => {
           {/* Weekly Data Section */}
           <Col span={18}>
             <Card 
-              title="Weekly Sales Data" 
+              title={`Profit After COGS & Labor: ${selectedMonth ? selectedMonth.format('MMM-YY') : ''}`}
               extra={
                 <Button 
                   type="primary" 
                   icon={<PlusOutlined />} 
                   onClick={showAddWeeklyModal}
                 >
-                  Add Weekly Sales
+                  Add Weekly Profit Data
                 </Button>
               }
             >
               {weeklyData.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <CalendarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                  <div>No weekly data added yet. Click "Add Weekly Sales" to get started.</div>
+                  <DollarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                  <div>No weekly profit data added yet. Click "Add Weekly Profit Data" to get started.</div>
                 </div>
               ) : (
-                                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-                   {weeklyData.map((week) => {
-                     const totals = calculateWeeklyTotals(week);
-                     const weekPercentage = calculatePercentage(totals.netSalesActual, totals.budgetedSales);
+                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                  {weeklyData.map((week) => {
+                    const totals = calculateWeeklyTotals(week);
                     
                     return (
                       <Card 
@@ -461,61 +418,50 @@ const SalesTable = () => {
                                 <div>
                                   <div>{text}</div>
                                   <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {record.date.format('MMM DD, YYYY')}
+                                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
                                   </div>
                                 </div>
                               )
                             },
                             {
-                              title: 'Budgeted Sales',
-                              dataIndex: 'budgetedSales',
-                              key: 'budgetedSales',
-                              width: 120,
+                              title: '3rd Party Fees',
+                              dataIndex: 'thirdPartyFees',
+                              key: 'thirdPartyFees',
+                              width: 140,
                               render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
                             },
                             {
-                              title: 'Actual Sales - In Store',
-                              dataIndex: 'actualSalesInStore',
-                              key: 'actualSalesInStore',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
+                              title: 'Profit After COGS & Labor',
+                              dataIndex: 'profitAfterCogsLabor',
+                              key: 'profitAfterCogsLabor',
+                              width: 180,
+                              render: (value) => (
+                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  ${value?.toFixed(0) || '0'}
+                                </Text>
+                              )
                             },
                             {
-                              title: 'Actual Sales - App/Online',
-                              dataIndex: 'actualSalesAppOnline',
-                              key: 'actualSalesAppOnline',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
+                              title: 'Daily Variable Profit %',
+                              dataIndex: 'dailyVariableProfitPercentage',
+                              key: 'dailyVariableProfitPercentage',
+                              width: 160,
+                              render: (value) => (
+                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  {value?.toFixed(0) || '0'}%
+                                </Text>
+                              )
                             },
                             {
-                              title: 'Actual Sales - Door Dash',
-                              dataIndex: 'actualSalesDoorDash',
-                              key: 'actualSalesDoorDash',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
-                            },
-                            {
-                              title: 'Net Sales - Actual',
-                              key: 'netSalesActual',
-                              width: 120,
-                              render: (record) => {
-                                const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                                return <Text strong>${netSales.toFixed(2)}</Text>;
-                              }
-                            },
-                            {
-                              title: '% Actual vs Budgeted',
-                              key: 'percentage',
-                              width: 120,
-                              render: (record) => {
-                                const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                                const percentage = calculatePercentage(netSales, record.budgetedSales || 0);
-                                return (
-                                  <Text style={{ color: percentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                    {percentage.toFixed(0)}%
-                                  </Text>
-                                );
-                              }
+                              title: 'Weekly Variable Profit %',
+                              dataIndex: 'weeklyVariableProfitPercentage',
+                              key: 'weeklyVariableProfitPercentage',
+                              width: 160,
+                              render: (value) => (
+                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  {value?.toFixed(0) || '0'}%
+                                </Text>
+                              )
                             }
                           ]}
                           summary={() => (
@@ -524,23 +470,21 @@ const SalesTable = () => {
                                 <Text strong>Total</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={1}>
-                                <Text strong>${totals.budgetedSales.toFixed(2)}</Text>
+                                <Text strong>${totals.thirdPartyFees.toFixed(2)}</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={2}>
-                                <Text strong>${totals.actualSalesInStore.toFixed(2)}</Text>
+                                <Text strong style={{ color: totals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  ${totals.profitAfterCogsLabor.toFixed(0)}
+                                </Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={3}>
-                                <Text strong>${totals.actualSalesAppOnline.toFixed(2)}</Text>
+                                <Text strong style={{ color: totals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  {totals.dailyVariableProfitPercentage.toFixed(0)}%
+                                </Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={4}>
-                                <Text strong>${totals.actualSalesDoorDash.toFixed(2)}</Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={5}>
-                                <Text strong>${totals.netSalesActual.toFixed(2)}</Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={6}>
-                                <Text strong style={{ color: weekPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {weekPercentage.toFixed(0)}%
+                                <Text strong style={{ color: totals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                  {totals.weeklyVariableProfitPercentage.toFixed(0)}%
                                 </Text>
                               </Table.Summary.Cell>
                             </Table.Summary.Row>
@@ -561,4 +505,4 @@ const SalesTable = () => {
   );
 };
 
-export default SalesTable;
+export default ProfitCogsTable;

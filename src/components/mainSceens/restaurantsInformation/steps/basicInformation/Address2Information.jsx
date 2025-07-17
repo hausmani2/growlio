@@ -65,7 +65,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                     </div>
                 </div>
                 <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]"/>
+                        <PrimaryButton  className=" border-none"/>
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"

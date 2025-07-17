@@ -1,17 +1,21 @@
 import React from "react";
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryBtn from "../../../../buttons/Buttons";
+import { useTabHook } from "../../useTabHook";
 
 
 const TotalExpense = ({ data,  onSave }) => {
-    
+    const { handleTabClick } = useTabHook();
+
     // Calculate total expenses properly
     const calculateTotalExpenses = () => {
         const variableCost = parseFloat(data.totalVariableCost) || 0;
         const fixedCost = parseFloat(data.totalFixedCost) || 0;
         return (variableCost + fixedCost).toFixed(2);
     };
-    
+    const handleBack = () => {
+        handleTabClick(3);
+    };
     const totalExpenses = calculateTotalExpenses();
        
     return (
@@ -36,7 +40,7 @@ const TotalExpense = ({ data,  onSave }) => {
                             </span>
                         </div>
                         <div className="flex justify-between items-center my-5">
-                         <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]"/>
+                         <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleBack} />
                          <PrimaryBtn 
                              title="Save & Continue" 
                              className="btn-brand"

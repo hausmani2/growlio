@@ -1,40 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-const SalesTable = () => {
+const LabourTable = () => {
   const [monthlyData, setMonthlyData] = useState({
-    salesBudget: 13000,
-    actualSalesInStore: 4000,
-    actualSalesAppOnline: 400,
-    actualSalesDoorDash: 0,
-    netSalesActual: 4400,
-    dailyTickets: 0,
-    averageDailyTicket: 0
+    laborHoursBudget: 260.0,
+    laborHoursActual: 190.0,
+    budgetedLaborDollars: 8550,
+    actualLaborDollars: 2000,
+    dailyLaborRate: 10.53,
+    dailyLaborPercentage: 0,
+    weeklyLaborPercentage: 45
   });
 
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
+  const [hourlyRate, setHourlyRate] = useState(15.00);
 
-  // Calculate percentages
-  const calculatePercentage = (actual, budget) => {
-    if (budget === 0) return 0;
-    return ((actual - budget) / budget) * 100;
-  };
 
-  const percentageActualVsBudget = calculatePercentage(monthlyData.netSalesActual, monthlyData.salesBudget);
 
   // Handle monthly data changes
   const handleMonthlyDataChange = (field, value) => {
     const newData = { ...monthlyData, [field]: value };
-    // Recalculate net sales
-    newData.netSalesActual = newData.actualSalesInStore + newData.actualSalesAppOnline + newData.actualSalesDoorDash;
     setMonthlyData(newData);
   };
 
@@ -75,20 +68,26 @@ const SalesTable = () => {
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
     const totals = {
-      budgetedSales: 0,
-      actualSalesInStore: 0,
-      actualSalesAppOnline: 0,
-      actualSalesDoorDash: 0,
-      netSalesActual: 0
+      laborHoursBudget: 0,
+      laborHoursActual: 0,
+      budgetedLaborDollars: 0,
+      actualLaborDollars: 0,
+      dailyLaborRate: 0,
+      dailyLaborPercentage: 0,
+      weeklyLaborPercentage: 0
     };
 
     weekData.dailyData.forEach(day => {
-      totals.budgetedSales += day.budgetedSales || 0;
-      totals.actualSalesInStore += day.actualSalesInStore || 0;
-      totals.actualSalesAppOnline += day.actualSalesAppOnline || 0;
-      totals.actualSalesDoorDash += day.actualSalesDoorDash || 0;
-      totals.netSalesActual += (day.actualSalesInStore || 0) + (day.actualSalesAppOnline || 0) + (day.actualSalesDoorDash || 0);
+      totals.laborHoursBudget += day.laborHoursBudget || 0;
+      totals.laborHoursActual += day.laborHoursActual || 0;
+      totals.budgetedLaborDollars += day.budgetedLaborDollars || 0;
+      totals.actualLaborDollars += day.actualLaborDollars || 0;
     });
+
+    // Calculate averages
+    if (totals.laborHoursActual > 0) {
+      totals.dailyLaborRate = totals.actualLaborDollars / totals.laborHoursActual;
+    }
 
     return totals;
   };
@@ -96,15 +95,19 @@ const SalesTable = () => {
   // Generate 7 days of data starting from a given date
   const generateDailyData = (startDate) => {
     const days = [];
+    const safeStartDate = startDate || dayjs();
     for (let i = 0; i < 7; i++) {
-      const currentDate = dayjs(startDate).add(i, 'day');
+      const currentDate = dayjs(safeStartDate).add(i, 'day');
       days.push({
         date: currentDate,
         dayName: currentDate.format('dddd'),
-        budgetedSales: 0,
-        actualSalesInStore: 0,
-        actualSalesAppOnline: 0,
-        actualSalesDoorDash: 0
+        laborHoursBudget: 0,
+        laborHoursActual: 0,
+        budgetedLaborDollars: 0,
+        actualLaborDollars: 0,
+        dailyLaborRate: 0,
+        dailyLaborPercentage: 45,
+        weeklyLaborPercentage: 45
       });
     }
     return days;
@@ -133,6 +136,26 @@ const SalesTable = () => {
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
+      
+      // Auto-calculate budgeted labor dollars based on hours and hourly rate
+      if (field === 'laborHoursBudget') {
+        newDailyData[dayIndex].budgetedLaborDollars = value * hourlyRate;
+      }
+      
+      // Auto-calculate actual labor dollars based on hours and hourly rate
+      if (field === 'laborHoursActual') {
+        newDailyData[dayIndex].actualLaborDollars = value * hourlyRate;
+      }
+      
+      // Auto-calculate daily labor rate
+      if (field === 'actualLaborDollars' || field === 'laborHoursActual') {
+        const actualDollars = field === 'actualLaborDollars' ? value : newDailyData[dayIndex].actualLaborDollars;
+        const actualHours = field === 'laborHoursActual' ? value : newDailyData[dayIndex].laborHoursActual;
+        if (actualHours > 0) {
+          newDailyData[dayIndex].dailyLaborRate = actualDollars / actualHours;
+        }
+      }
+      
       setWeekFormData({ ...weekFormData, dailyData: newDailyData });
     };
 
@@ -140,7 +163,7 @@ const SalesTable = () => {
       setWeekFormData({
         ...weekFormData,
         startDate: date,
-        dailyData: generateDailyData(date)
+        dailyData: generateDailyData(date || dayjs())
       });
     };
 
@@ -150,7 +173,7 @@ const SalesTable = () => {
 
     return (
       <Modal
-        title={editingWeek ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
+        title={editingWeek ? "Edit Weekly Labor Data" : "Add Weekly Labor Data"}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={[
@@ -161,11 +184,11 @@ const SalesTable = () => {
             {editingWeek ? 'Update' : 'Add'} Week
           </Button>
         ]}
-        width={1200}
+        width={1400}
       >
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Row gutter={16}>
-            <Col span={12}>
+            <Col span={8}>
               <Text strong>Week Title:</Text>
               <Input
                 value={weekFormData.weekTitle}
@@ -173,7 +196,7 @@ const SalesTable = () => {
                 placeholder="Enter week title"
               />
             </Col>
-            <Col span={12}>
+            <Col span={8}>
               <Text strong>Start Date:</Text>
               <DatePicker
                 value={weekFormData.startDate}
@@ -181,9 +204,19 @@ const SalesTable = () => {
                 style={{ width: '100%' }}
               />
             </Col>
+            <Col span={8}>
+              <Text strong>Hourly Rate:</Text>
+              <Input
+                type="number"
+                value={hourlyRate}
+                onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
+                prefix="$"
+                style={{ width: '100%' }}
+              />
+            </Col>
           </Row>
 
-          <Divider>Daily Sales Data</Divider>
+          <Divider>Daily Labor Data</Divider>
 
           <Table
             dataSource={weekFormData.dailyData}
@@ -198,90 +231,110 @@ const SalesTable = () => {
                 render: (text, record) => (
                   <div>
                     <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
-                    </div>
+                                      <div style={{ fontSize: '12px', color: '#666' }}>
+                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
+                  </div>
                   </div>
                 )
               },
               {
-                title: 'Budgeted Sales',
-                dataIndex: 'budgetedSales',
-                key: 'budgetedSales',
+                title: 'Labor Hours - Budget',
+                dataIndex: 'laborHoursBudget',
+                key: 'laborHoursBudget',
                 width: 150,
                 render: (value, record, index) => (
                   <Input
                     type="number"
                     value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    onChange={(e) => handleDailyDataChange(index, 'laborHoursBudget', parseFloat(e.target.value) || 0)}
+                    suffix="hrs"
                   />
                 )
               },
               {
-                title: 'Actual Sales - In Store',
-                dataIndex: 'actualSalesInStore',
-                key: 'actualSalesInStore',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Actual Sales - App/Online',
-                dataIndex: 'actualSalesAppOnline',
-                key: 'actualSalesAppOnline',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Actual Sales - Door Dash',
-                dataIndex: 'actualSalesDoorDash',
-                key: 'actualSalesDoorDash',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesDoorDash', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Net Sales - Actual',
-                key: 'netSalesActual',
+                title: 'Labor Hours - Actual',
+                dataIndex: 'laborHoursActual',
+                key: 'laborHoursActual',
                 width: 150,
-                render: (record) => {
-                  const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                  return <Text strong>${netSales.toFixed(2)}</Text>;
-                }
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0)}
+                    suffix="hrs"
+                  />
+                )
               },
               {
-                title: '% Actual vs Budgeted',
-                key: 'percentage',
+                title: 'Budgeted Labor $',
+                dataIndex: 'budgetedLaborDollars',
+                key: 'budgetedLaborDollars',
                 width: 150,
-                render: (record) => {
-                  const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                  const percentage = calculatePercentage(netSales, record.budgetedSales || 0);
-                  return (
-                    <Text style={{ color: percentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                      {percentage.toFixed(0)}%
-                    </Text>
-                  );
-                }
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'budgetedLaborDollars', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                  />
+                )
+              },
+              {
+                title: 'Actual Labor $',
+                dataIndex: 'actualLaborDollars',
+                key: 'actualLaborDollars',
+                width: 150,
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                  />
+                )
+              },
+              {
+                title: 'Daily Labor Rate',
+                dataIndex: 'dailyLaborRate',
+                key: 'dailyLaborRate',
+                width: 150,
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'dailyLaborRate', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                    disabled
+                  />
+                )
+              },
+              {
+                title: 'Daily Labor %',
+                dataIndex: 'dailyLaborPercentage',
+                key: 'dailyLaborPercentage',
+                width: 150,
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'dailyLaborPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
+                  />
+                )
+              },
+              {
+                title: 'Weekly Labor %',
+                dataIndex: 'weeklyLaborPercentage',
+                key: 'weeklyLaborPercentage',
+                width: 150,
+                render: (value, record, index) => (
+                  <Input
+                    type="number"
+                    value={value}
+                    onChange={(e) => handleDailyDataChange(index, 'weeklyLaborPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
+                  />
+                )
               }
             ]}
           />
@@ -291,9 +344,9 @@ const SalesTable = () => {
   };
 
   return (
-    <div className=" w-full">
+    <div className="w-full">
       <div className="w-full mx-auto">
-        <Title level={3} className=" pl-2 pb-2">Sales Performance Dashboard</Title>
+        <Title level={3} className="pl-2 pb-2">Labor Performance Dashboard</Title>
         
         <Row gutter={24}>
           {/* Monthly Totals Section */}
@@ -310,86 +363,78 @@ const SalesTable = () => {
               
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
-                  <Text strong>Sales - Budget:</Text>
+                  <Text strong>Labor Hours - Budget:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.salesBudget}
-                    onChange={(e) => handleMonthlyDataChange('salesBudget', parseFloat(e.target.value) || 0)}
+                    value={monthlyData.laborHoursBudget}
+                    onChange={(e) => handleMonthlyDataChange('laborHoursBudget', parseFloat(e.target.value) || 0)}
+                    suffix="hrs"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Labor Hours - Actual:</Text>
+                  <Input
+                    type="number"
+                    value={monthlyData.laborHoursActual}
+                    onChange={(e) => handleMonthlyDataChange('laborHoursActual', parseFloat(e.target.value) || 0)}
+                    suffix="hrs"
+                    className="mt-1"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Budgeted Labor $:</Text>
+                  <Input
+                    type="number"
+                    value={monthlyData.budgetedLaborDollars}
+                    onChange={(e) => handleMonthlyDataChange('budgetedLaborDollars', parseFloat(e.target.value) || 0)}
                     prefix="$"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - In Store:</Text>
+                  <Text strong>Actual Labor $:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesInStore}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesInStore', parseFloat(e.target.value) || 0)}
+                    value={monthlyData.actualLaborDollars}
+                    onChange={(e) => handleMonthlyDataChange('actualLaborDollars', parseFloat(e.target.value) || 0)}
                     prefix="$"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - App / On Line:</Text>
+                  <Text strong>Daily Labor Rate:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesAppOnline}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                    value={monthlyData.dailyLaborRate}
+                    onChange={(e) => handleMonthlyDataChange('dailyLaborRate', parseFloat(e.target.value) || 0)}
                     prefix="$"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Actual Sales - Door Dash:</Text>
+                  <Text strong>Daily Labor %:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.actualSalesDoorDash}
-                    onChange={(e) => handleMonthlyDataChange('actualSalesDoorDash', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={monthlyData.dailyLaborPercentage}
+                    onChange={(e) => handleMonthlyDataChange('dailyLaborPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Text strong>Net Sales - Actual:</Text>
-                  <Input
-                    value={monthlyData.netSalesActual}
-                    prefix="$"
-                    className="mt-1"
-                    disabled
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>% Actual vs Budgeted Sales:</Text>
-                  <Input
-                    value={`${percentageActualVsBudget.toFixed(0)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ color: percentageActualVsBudget < 0 ? '#ff4d4f' : '#52c41a' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong># Daily Tickets:</Text>
+                  <Text strong>Weekly Labor %:</Text>
                   <Input
                     type="number"
-                    value={monthlyData.dailyTickets}
-                    onChange={(e) => handleMonthlyDataChange('dailyTickets', parseInt(e.target.value) || 0)}
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Average Daily Ticket:</Text>
-                  <Input
-                    type="number"
-                    value={monthlyData.averageDailyTicket}
-                    onChange={(e) => handleMonthlyDataChange('averageDailyTicket', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={monthlyData.weeklyLaborPercentage}
+                    onChange={(e) => handleMonthlyDataChange('weeklyLaborPercentage', parseFloat(e.target.value) || 0)}
+                    suffix="%"
                     className="mt-1"
                   />
                 </div>
@@ -400,27 +445,26 @@ const SalesTable = () => {
           {/* Weekly Data Section */}
           <Col span={18}>
             <Card 
-              title="Weekly Sales Data" 
+              title={`Labor @ $${hourlyRate.toFixed(2)}/Hour: ${selectedMonth ? selectedMonth.format('MMM-YY') : ''}`}
               extra={
                 <Button 
                   type="primary" 
                   icon={<PlusOutlined />} 
                   onClick={showAddWeeklyModal}
                 >
-                  Add Weekly Sales
+                  Add Weekly Labor
                 </Button>
               }
             >
               {weeklyData.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <CalendarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                  <div>No weekly data added yet. Click "Add Weekly Sales" to get started.</div>
+                  <UserOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                  <div>No weekly labor data added yet. Click "Add Weekly Labor" to get started.</div>
                 </div>
               ) : (
-                                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-                   {weeklyData.map((week) => {
-                     const totals = calculateWeeklyTotals(week);
-                     const weekPercentage = calculatePercentage(totals.netSalesActual, totals.budgetedSales);
+                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                  {weeklyData.map((week) => {
+                    const totals = calculateWeeklyTotals(week);
                     
                     return (
                       <Card 
@@ -461,61 +505,59 @@ const SalesTable = () => {
                                 <div>
                                   <div>{text}</div>
                                   <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {record.date.format('MMM DD, YYYY')}
+                                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
                                   </div>
                                 </div>
                               )
                             },
                             {
-                              title: 'Budgeted Sales',
-                              dataIndex: 'budgetedSales',
-                              key: 'budgetedSales',
-                              width: 120,
+                              title: 'Labor Hours - Budget',
+                              dataIndex: 'laborHoursBudget',
+                              key: 'laborHoursBudget',
+                              width: 140,
+                              render: (value) => <Text>{value?.toFixed(1) || '0.0'} hrs</Text>
+                            },
+                            {
+                              title: 'Labor Hours - Actual',
+                              dataIndex: 'laborHoursActual',
+                              key: 'laborHoursActual',
+                              width: 140,
+                              render: (value) => <Text>{value?.toFixed(1) || '0.0'} hrs</Text>
+                            },
+                            {
+                              title: 'Budgeted Labor $',
+                              dataIndex: 'budgetedLaborDollars',
+                              key: 'budgetedLaborDollars',
+                              width: 140,
+                              render: (value) => <Text>${value?.toFixed(0) || '0'}</Text>
+                            },
+                            {
+                              title: 'Actual Labor $',
+                              dataIndex: 'actualLaborDollars',
+                              key: 'actualLaborDollars',
+                              width: 140,
+                              render: (value) => <Text>${value?.toFixed(0) || '0'}</Text>
+                            },
+                            {
+                              title: 'Daily Labor Rate',
+                              dataIndex: 'dailyLaborRate',
+                              key: 'dailyLaborRate',
+                              width: 140,
                               render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
                             },
                             {
-                              title: 'Actual Sales - In Store',
-                              dataIndex: 'actualSalesInStore',
-                              key: 'actualSalesInStore',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
+                              title: 'Daily Labor %',
+                              dataIndex: 'dailyLaborPercentage',
+                              key: 'dailyLaborPercentage',
+                              width: 140,
+                              render: (value) => <Text>{value?.toFixed(0) || '0'}%</Text>
                             },
                             {
-                              title: 'Actual Sales - App/Online',
-                              dataIndex: 'actualSalesAppOnline',
-                              key: 'actualSalesAppOnline',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
-                            },
-                            {
-                              title: 'Actual Sales - Door Dash',
-                              dataIndex: 'actualSalesDoorDash',
-                              key: 'actualSalesDoorDash',
-                              width: 150,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
-                            },
-                            {
-                              title: 'Net Sales - Actual',
-                              key: 'netSalesActual',
-                              width: 120,
-                              render: (record) => {
-                                const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                                return <Text strong>${netSales.toFixed(2)}</Text>;
-                              }
-                            },
-                            {
-                              title: '% Actual vs Budgeted',
-                              key: 'percentage',
-                              width: 120,
-                              render: (record) => {
-                                const netSales = (record.actualSalesInStore || 0) + (record.actualSalesAppOnline || 0) + (record.actualSalesDoorDash || 0);
-                                const percentage = calculatePercentage(netSales, record.budgetedSales || 0);
-                                return (
-                                  <Text style={{ color: percentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                    {percentage.toFixed(0)}%
-                                  </Text>
-                                );
-                              }
+                              title: 'Weekly Labor %',
+                              dataIndex: 'weeklyLaborPercentage',
+                              key: 'weeklyLaborPercentage',
+                              width: 140,
+                              render: (value) => <Text>{value?.toFixed(0) || '0'}%</Text>
                             }
                           ]}
                           summary={() => (
@@ -524,24 +566,25 @@ const SalesTable = () => {
                                 <Text strong>Total</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={1}>
-                                <Text strong>${totals.budgetedSales.toFixed(2)}</Text>
+                                <Text strong>{totals.laborHoursBudget.toFixed(1)} hrs</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={2}>
-                                <Text strong>${totals.actualSalesInStore.toFixed(2)}</Text>
+                                <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={3}>
-                                <Text strong>${totals.actualSalesAppOnline.toFixed(2)}</Text>
+                                <Text strong>${totals.budgetedLaborDollars.toFixed(0)}</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={4}>
-                                <Text strong>${totals.actualSalesDoorDash.toFixed(2)}</Text>
+                                <Text strong>${totals.actualLaborDollars.toFixed(0)}</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={5}>
-                                <Text strong>${totals.netSalesActual.toFixed(2)}</Text>
+                                <Text strong>${totals.dailyLaborRate.toFixed(2)}</Text>
                               </Table.Summary.Cell>
                               <Table.Summary.Cell index={6}>
-                                <Text strong style={{ color: weekPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {weekPercentage.toFixed(0)}%
-                                </Text>
+                                <Text strong>{monthlyData.dailyLaborPercentage.toFixed(0)}%</Text>
+                              </Table.Summary.Cell>
+                              <Table.Summary.Cell index={7}>
+                                <Text strong>{monthlyData.weeklyLaborPercentage.toFixed(0)}%</Text>
                               </Table.Summary.Cell>
                             </Table.Summary.Row>
                           )}
@@ -561,4 +604,4 @@ const SalesTable = () => {
   );
 };
 
-export default SalesTable;
+export default LabourTable;

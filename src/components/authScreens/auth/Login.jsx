@@ -73,7 +73,7 @@ const Login = () => {
               required
               value={form.email}
               onChange={handleChange}
-              placeholder="Write Email Address"
+              placeholder="Enter Email Address"
               prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand "
@@ -88,7 +88,7 @@ const Login = () => {
               required
               value={form.password}
               onChange={handleChange}
-              placeholder="Write Password"
+              placeholder="Enter Password"
               prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
               size="large"
               className="h-[40px] rounded-md text-lg tw-input input-brand"

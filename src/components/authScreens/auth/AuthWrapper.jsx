@@ -4,8 +4,8 @@ import orderBooker from "../../../assets/auth/happy-man.png"
 const AuthWrapper = ({ children }) => {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      <div className="w-full lg:w-1/2 h-full flex items-center justify-center">
-        <div className="w-full max-w-sm">{children}</div>
+      <div className="w-full lg:w-1/2 min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-sm px-4">{children}</div>
       </div>
       <div className="w-full lg:w-1/2 hidden lg:block relative">
         <img
