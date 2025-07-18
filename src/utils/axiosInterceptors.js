@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an Axios instance
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api', // Adjust as needed
+  baseURL: import.meta.env.VITE_ROOT_URL  , // Updated to match your API
   timeout: 10000, // 10 seconds
   headers: {
     'Content-Type': 'application/json',
@@ -27,12 +27,36 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Handle specific status codes
-      if (error.response.status === 401) {
-        // Optionally, handle token refresh or redirect to login
-        // window.location.href = '/login';
+      switch (error.response.status) {
+        case 401:
+          // Unauthorized - clear token and redirect to login
+          localStorage.removeItem('token');
+          // You can add a global auth state management here
+          break;
+        case 403:
+          // Forbidden
+          console.error('Access forbidden');
+          break;
+        case 404:
+          // Not found
+          console.error('Resource not found');
+          break;
+        case 500:
+          // Server error
+          console.error('Server error occurred');
+          break;
+        default:
+          // Other errors
+          console.error('API Error:', error.response.status, error.response.data);
       }
-      // You can add more status code handling here
+    } else if (error.request) {
+      // Network error
+      console.error('Network error - no response received');
+    } else {
+      // Other error
+      console.error('Error:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );

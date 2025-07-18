@@ -1,56 +1,134 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../../assets/logo.png';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
-import PrimaryBtn from '../../buttons/Buttons';
 import { Link } from 'react-router-dom';
-import { Input } from 'antd';
+import { Input, message, Button, Spin } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
 
 const Register = () => {
-  const [form, setForm] = useState({ name: '', email: '', username: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const isAuthenticated = useStore((state) => state.isAuthenticated);
-  // const register = useStore((state) => state.register);
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    username: '', 
+    password: '' 
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Zustand store hooks
+  const { 
+    register, 
+    loading, 
+    error, 
+    isAuthenticated, 
+    clearError 
+  } = useStore();
+  
   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (isAuthenticated) navigate('/');
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
   }, [isAuthenticated, navigate]);
 
+  // Clear error when component unmounts or form changes
+  useEffect(() => {
+    return () => {
+      try {
+        clearError();
+      } catch (error) {
+        // Silently handle errors during cleanup
+        console.warn('Error during cleanup:', error);
+      }
+    };
+  }, [clearError]);
+
+  // Form validation
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!form.name.trim()) {
+      errors.name = 'Full name is required';
+    } else if (form.name.trim().length < 2) {
+      errors.name = 'Full name must be at least 2 characters';
+    }
+    
+    if (!form.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!form.username.trim()) {
+      errors.username = 'Username is required';
+    } else if (form.username.trim().length < 3) {
+      errors.username = 'Username must be at least 3 characters';
+    } else if (!/^[a-zA-Z0-9_]+$/.test(form.username)) {
+      errors.username = 'Username can only contain letters, numbers, and underscores';
+    }
+    
+    if (!form.password) {
+      errors.password = 'Password is required';
+    } else if (form.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Clear field-specific error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    
+    // Clear global error when user makes changes
+    if (error) {
+      clearError();
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
+    
+    // Validate form
+    if (!validateForm()) {
+      message.error('Please fix the errors in the form');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      navigate('/onboarding');
-      // Replace with your actual registration API call
-      // Example: const { user, token } = await apiRegister(form);
-      // register(user, token);
-      // For now, fake registration:
-      if (form.email && form.password && form.name && form.username) {
-        // register({ email: form.email, name: form.name, username: form.username }, 'fake-token');
-        localStorage.setItem('token', 'fake-token');
-        setSuccess('Registration successful!');
-        setTimeout(() => navigate('/'), 1000);
-      } else {
-        throw new Error('Please fill in all fields');
+      const result = await register(form);
+      
+      if (result.success) {
+        message.success('Registration successful! Welcome to Growlio!');
+        // Navigate to onboarding after successful registration
+        setTimeout(() => {
+          navigate('/onboarding');
+        }, 1500);
       }
     } catch (err) {
-      setError(err.message);
+      // Error is already handled in the store
+      console.error('Registration error:', err);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  const isFormValid = form.name && form.email && form.username && form.password;
+  const isLoading = loading || isSubmitting;
 
   return (
     <div className="w-full max-w-sm">
@@ -67,9 +145,12 @@ const Register = () => {
             Get discovered, manage bookings, and showcase your menu — all in one place.
           </p>
         </div>
+        
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-base font-bold mb-2" htmlFor="name">Full Name</label>
+            <label className="block text-base font-bold mb-2" htmlFor="name">
+              Full Name
+            </label>
             <Input
               id="name"
               name="name"
@@ -81,12 +162,20 @@ const Register = () => {
               placeholder="Enter Full Name"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className="h-[40px] rounded-md text-lg tw-input input-brand"
-
+              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+                formErrors.name ? 'border-red-500' : ''
+              }`}
+              status={formErrors.name ? 'error' : ''}
             />
+            {formErrors.name && (
+              <div className="text-red-500 text-sm mt-1">{formErrors.name}</div>
+            )}
           </div>
+          
           <div>
-            <label className="block text-base font-bold mb-2" htmlFor="email">Email Address</label>
+            <label className="block text-base font-bold mb-2" htmlFor="email">
+              Email Address
+            </label>
             <Input
               id="email"
               name="email"
@@ -98,12 +187,20 @@ const Register = () => {
               placeholder="Enter Email Address"
               prefix={<img src={Message} alt="Message" className="h-4 w-4" />}
               size="large"
-              className="h-[40px] rounded-md text-lg tw-input input-brand"
-
+              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+                formErrors.email ? 'border-red-500' : ''
+              }`}
+              status={formErrors.email ? 'error' : ''}
             />
+            {formErrors.email && (
+              <div className="text-red-500 text-sm mt-1">{formErrors.email}</div>
+            )}
           </div>
+          
           <div>
-            <label className="block text-base font-bold mb-2" htmlFor="username">Username</label>
+            <label className="block text-base font-bold mb-2" htmlFor="username">
+              Username
+            </label>
             <Input
               id="username"
               name="username"
@@ -115,39 +212,65 @@ const Register = () => {
               placeholder="Enter Username"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className="h-[40px] rounded-md text-lg tw-input input-brand"
-
+              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+                formErrors.username ? 'border-red-500' : ''
+              }`}
+              status={formErrors.username ? 'error' : ''}
             />
+            {formErrors.username && (
+              <div className="text-red-500 text-sm mt-1">{formErrors.username}</div>
+            )}
           </div>
+          
           <div>
-            <label className="block text-base font-bold mb-2" htmlFor="password">Password</label>
+            <label className="block text-base font-bold mb-2" htmlFor="password">
+              Password
+            </label>
             <Input.Password
               id="password"
               name="password"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
               value={form.password}
               onChange={handleChange}
               placeholder="Enter Password"
               prefix={<img src={Lock} alt="Lock" className="h-4 w-4" />}
               size="large"
-              className="h-[40px] rounded-md text-lg tw-input input-brand"
-
+              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+                formErrors.password ? 'border-red-500' : ''
+              }`}
+              status={formErrors.password ? 'error' : ''}
             />
+            {formErrors.password && (
+              <div className="text-red-500 text-sm mt-1">{formErrors.password}</div>
+            )}
           </div>
+          
           <div className='flex justify-end items-center'>
             <p className='text-neutral-900 text-sm font-bold'>Forgot Password?</p>
           </div>
         </div>
-        {error && <div className="text-red-500 text-center text-sm">{error}</div>}
-        {success && <div className="text-green-500 text-center text-sm">{success}</div>}
-        <PrimaryBtn
-          className="w-full btn-brand"
-          title={loading ? 'Creating account...' : 'Create Account'}
-          disabled={loading}
-          onClick={()=>{navigate('/congratulations')}}
-        />
+        
+        {/* Global error display */}
+        {error && (
+          <div className="text-red-500 text-center text-sm bg-red-50 p-3 rounded-md border border-red-200">
+            {error}
+          </div>
+        )}
+        
+        <Button
+          type="primary"
+          htmlType="submit"
+          size="large"
+          loading={isLoading}
+          disabled={!isFormValid}
+          className="w-full h-[48px] bg-[#FF8132] border-[#FF8132] hover:bg-[#EB5B00] hover:border-[#EB5B00] text-white font-bold text-base rounded-md"
+          icon={isLoading ? <LoadingOutlined /> : null}
+        >
+          {isLoading ? 'Creating account...' : 'Create Account'}
+        </Button>
       </form>
+      
       <div className='flex justify-center items-center mt-6'>
         <p className='text-neutral-600 text-base font-bold'>
           Already have an account? <Link to="/login" className='text-[#FF8132] font-bold hover:text-[#EB5B00]'>Login</Link>
