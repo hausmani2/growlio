@@ -1,10 +1,12 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
-import { Input, Select } from 'antd';
+import { Input, Select, Tooltip } from 'antd';
 import { TiArrowLeft } from "react-icons/ti";
 import PrimaryButton from '../../../../../components/buttons/Buttons';
+import { useTabHook } from '../../useTabHook';
 
 const AddressType = ({ data, updateData, onSaveAndContinue }) => {
+    const { handleTabClick } = useTabHook();
     return (
         <div className="flex mt-5">
             <div className="w-[40%]">
@@ -16,7 +18,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
             <div className="w-[60%]">
                 <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="sqft" className="text-base !font-bold text-neutral-600 flex items-center gap-2">How many SQFT is your location? <img src={SubTrack} alt="SubTrack" /></label>
+                        <label htmlFor="sqft" className="text-base !font-bold text-neutral-600 flex items-center gap-2">How many SQFT is your location? <Tooltip placement="bottomLeft" title="Enter the total square footage of your restaurant location"><img src={SubTrack} alt="SubTrack" /></Tooltip></label>
                         <Input 
                             type="text" 
                             id="sqft" 
@@ -27,7 +29,7 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                         />
                     </div>
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="franchise" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Is this location a franchise? <img src={SubTrack} alt="SubTrack" /></label>
+                        <label htmlFor="franchise" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Is this location a franchise?  <Tooltip placement="bottomLeft" title="Select whether this restaurant location is part of a franchise or independently owned"><img src={SubTrack} alt="SubTrack" /></Tooltip></label>
                         <Select 
                             type="text" 
                             id="franchise" 
@@ -69,7 +71,10 @@ const AddressType = ({ data, updateData, onSaveAndContinue }) => {
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"
-                            onClick={onSaveAndContinue}
+                            onClick={()=>{
+                                handleTabClick(1)
+                            }}
+                            // onClick={onSaveAndContinue}
                         />
                 </div>
             </div>

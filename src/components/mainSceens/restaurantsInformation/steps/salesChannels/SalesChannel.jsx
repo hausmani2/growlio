@@ -28,7 +28,7 @@ const SalesChannel = ({ data, updateData }) => {
     };
 
     return (
-        <div className="flex mt-5">
+        <div className="flex mt-5 ">
             <div className="w-[40%]">
                 <div className="flex flex-col gap-2">
                     <h4 className="text-lg !font-bold !mb-0">Sales Channel</h4>
@@ -62,7 +62,10 @@ const SalesChannel = ({ data, updateData }) => {
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"
-                            onClick={handleSaveAndContinue}
+                            onClick={()=>{
+                                handleTabClick(4)
+                            }}
+                            // onClick={handleSaveAndContinue}
                         />
                 </div>
                

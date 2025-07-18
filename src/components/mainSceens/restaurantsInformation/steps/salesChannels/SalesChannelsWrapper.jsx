@@ -23,7 +23,7 @@ const SalesChannelsWrapper = () => {
     return (
         <TabProvider>
             <div>
-                <div className="flex flex-col">
+                <div className="flex flex-col h-[80vh]">
                     <SalesChannel 
                         data={{ salesChannels: salesChannelsData }}
                         updateData={updateSalesChannelsData}
