@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Input, Select } from 'antd';
+import { Input, Select, Tooltip } from 'antd';
 import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
 import { useTabHook } from '../../useTabHook';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
+import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
 const LaborEntryMethod = ({ data, updateData }) => {
     const { handleTabClick } = useTabHook();
@@ -137,7 +138,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
             <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600">What is your average hourly rate for all staff roles?</label>
+                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600 flex items-center gap-2">What is your average hourly rate for all staff roles?<Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count"><img src={SubTrack} alt="SubTrack" /></Tooltip></label>
                    <div className="relative">
                         <Input 
                             type="number" 
@@ -201,7 +202,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
                 </div>
                 <div className="flex flex-col gap-2">
-                        <label htmlFor="ticketCount" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count?</label>
+                        <label htmlFor="ticketCount" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count? </label>
                         <Select 
                             type="text" 
                             id="ticketCount" 
@@ -236,7 +237,10 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"
-                            onClick={handleSaveAndContinue}
+                            onClick={()=>{
+                                handleTabClick(2)
+                            }}
+                            // onClick={handleSaveAndContinue}
                         />
                 </div>
         </div>

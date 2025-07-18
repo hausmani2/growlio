@@ -1,5 +1,5 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
-import { Select } from 'antd';
+import { Select, Tooltip } from 'antd';
 
 const FoodCostDetails = ({ data, updateData }) => {
     const handleCogsChange = (value) => {
@@ -48,7 +48,7 @@ const FoodCostDetails = ({ data, updateData }) => {
                     </span>
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2">What is your COGS goal as a percentage of sales? <img src={SubTrack} alt="SubTrack" /></label>
+                    <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2">What is your COGS goal as a percentage of sales?<Tooltip placement="bottomLeft" title="Select the percentage of sales that you want to achieve as your COGS goal"><img src={SubTrack} alt="SubTrack" /></Tooltip></label>
                     <Select
                         id="cogs"
                         placeholder="Select Percentage"

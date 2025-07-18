@@ -61,7 +61,10 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
                         <PrimaryButton 
                             title="Save & Continue" 
                             className="btn-brand"
-                            onClick={onSaveAndContinue}
+                            onClick={()=>{
+                                handleTabClick(3)
+                            }}
+                            //   onClick={onSaveAndContinue}
                         />
                 </div>
             </div>
