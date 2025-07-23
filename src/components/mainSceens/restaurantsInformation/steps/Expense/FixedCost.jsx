@@ -5,16 +5,20 @@ import { PlusOutlined } from "@ant-design/icons";
 const FixedCost = ({ data, updateData }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
-    const [dynamicFields, setDynamicFields] = useState(data.dynamicFields || []);
+    const [dynamicFields, setDynamicFields] = useState(data.dynamicFixedFields || []);
 
-    // Calculate total fixed cost whenever any input changes
+    // Update parent component when dynamic fields change
+    useEffect(() => {
+        updateData('dynamicFixedFields', dynamicFields);
+    }, [dynamicFields, updateData]);
+
+    // Calculate total fixed cost from dynamic fields only
     useEffect(() => {
         const dynamicTotal = dynamicFields.reduce((sum, field) => {
             return sum + parseFloat(field.value || 0);
         }, 0);
         
         updateData('totalFixedCost', dynamicTotal.toFixed(2));
-        updateData('dynamicFields', dynamicFields);
     }, [dynamicFields, updateData]);
 
     const showModal = () => {
@@ -24,10 +28,10 @@ const FixedCost = ({ data, updateData }) => {
     const handleOk = () => {
         if (newFieldLabel.trim()) {
             const newField = {
-                id: Date.now(),
+                id: Date.now() + Math.random(),
                 label: newFieldLabel.trim(),
                 value: "",
-                key: `dynamic_${Date.now()}`
+                key: `dynamic_fixed_${Date.now()}_${Math.random()}`
             };
             setDynamicFields([...dynamicFields, newField]);
             setNewFieldLabel("");
@@ -54,9 +58,6 @@ const FixedCost = ({ data, updateData }) => {
         setDynamicFields(prev => prev.filter(field => field.id !== id));
     };
 
-    // Show static field only when there are no dynamic fields
-    const shouldShowStaticField = dynamicFields.length === 0;
-
     return (
         <div>
             <div className="flex mt-5">
@@ -72,32 +73,6 @@ const FixedCost = ({ data, updateData }) => {
                 <div className="w-[60%]">
                     <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                         
-                        {/* Static Field - only show when no dynamic fields */}
-                        {shouldShowStaticField && (
-                            <div className="flex items-center justify-between gap-2">
-                                <label htmlFor="rent" className="w-1/4 text-base !font-bold text-neutral-600">Rent</label>
-                                <div className="flex items-center gap-2 w-full">
-                                    <div className="relative w-full">
-                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                        <Input 
-                                            type="number" 
-                                            id="rent" 
-                                            placeholder="Enter Rent" 
-                                            className="w-full p-2 pl-8 border border-gray-300 h-[40px] rounded-md text-[18px] font-normal text-neutral-700"
-                                            value={data.rent}
-                                            onChange={(e) => updateData('rent', e.target.value)}
-                                            min="0"
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-') {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Dynamic Fields */}
                         {dynamicFields.map((field) => (
                             <div key={field.id} className="flex items-center justify-between gap-2">
@@ -132,6 +107,13 @@ const FixedCost = ({ data, updateData }) => {
                             </div>
                         ))}
 
+                        {/* Show message when no fields are added */}
+                        {dynamicFields.length === 0 && (
+                            <div className="text-center py-4 text-gray-500">
+                                <p className="text-sm">No fixed costs added yet. Click the + button to add your first expense.</p>
+                            </div>
+                        )}
+
                         <div className="flex justify-end">
                             <Button className="" onClick={showModal}><PlusOutlined /></Button>
                             </div>
@@ -155,11 +137,11 @@ const FixedCost = ({ data, updateData }) => {
             >
                 <div className="flex flex-col gap-4">
                     <label htmlFor="fieldLabel" className="text-base font-semibold text-neutral-600">
-                        Add Expense
+                        Add Fixed Cost
                     </label>
                     <Input
                         id="fieldLabel"
-                        placeholder="Enter Expense"
+                        placeholder="Enter Fixed Cost Name"
                         value={newFieldLabel}
                         onChange={(e) => setNewFieldLabel(e.target.value)}
                         onPressEnter={handleOk}

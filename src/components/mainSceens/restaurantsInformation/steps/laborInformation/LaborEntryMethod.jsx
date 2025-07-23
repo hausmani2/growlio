@@ -7,14 +7,14 @@ import { useTabHook } from '../../useTabHook';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
-const LaborEntryMethod = ({ data, updateData }) => {
-    const { handleTabClick } = useTabHook();
+const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
     
     // Local state for form data
     const [formData, setFormData] = useState({
         goal: '',
-        entryMethod: 'daily-hours-costs', // default value
-        isDailyHoursCostsEnabled: true
+        entryMethod: data.labor_record_method || 'daily-hours-costs', // default value
+        isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
     });
 
     // Update local state when props change
@@ -22,13 +22,28 @@ const LaborEntryMethod = ({ data, updateData }) => {
         if (data) {
             setFormData(prev => ({
                 ...prev,
-                ...data
+                entryMethod: data.labor_record_method || 'daily-hours-costs',
+                isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
             }));
         }
     }, [data]);
 
     const handleGoBack = () => {
-        handleTabClick(0); // Navigate to Food Cost Details (tab index 1)
+        navigateToPreviousStep();
+    };
+
+    const handleSaveAndContinueClick = async () => {
+        if (onSaveAndContinue) {
+            try {
+                const result = await onSaveAndContinue();
+                if (result?.success) {
+                    // Navigate to next step after successful save
+                    navigateToNextStep();
+                }
+            } catch (error) {
+                console.error('Error in handleSaveAndContinueClick:', error);
+            }
+        }
     };
 
     const handleSaveAndContinue = () => {
@@ -83,6 +98,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
     };
 
     const handleEntryMethodSelect = (method) => {
+        updateData('labor_record_method', method);
         setFormData(prev => ({
             ...prev,
             entryMethod: method,
@@ -109,7 +125,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
     // Function to get toggle text based on entry method
     const getToggleText = () => {
-        switch (formData.entryMethod) {
+        switch (data.labor_record_method) {
             case 'daily-hours-costs':
                 return 'Daily Hours & Costs (Recommended)';
             case 'hours-only':
@@ -123,7 +139,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
     // Function to check if toggle should be enabled
     const isToggleEnabled = () => {
-        return formData.isDailyHoursCostsEnabled;
+        return data.labor_record_method === 'daily-hours-costs';
     };
 
     return (
@@ -142,15 +158,15 @@ const LaborEntryMethod = ({ data, updateData }) => {
                    <div className="relative">
                         <Input 
                             type="number" 
-                            id="hourlyRate" 
+                            id="avg_hourly_rate" 
                             placeholder="Enter Hourly Wage" 
-                            className="w-full p-2 pr-8 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6" 
-                            value={formData.hourlyRate}
-                            onChange={(e) => handleInputChange('hourlyRate', e.target.value)}
+                            className="w-full p-2 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6" 
+                            value={data.avg_hourly_rate}
+                            onChange={(e) => updateData('avg_hourly_rate', e.target.value)}
                         />
-                        {formData.hourlyRate && (
+                        {data.avg_hourly_rate && (
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">
-                                $
+                                
                             </span>
                         )}
                     </div>
@@ -162,7 +178,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <PrimaryButton 
                             title="Daily Hours & Costs (Recommended)" 
                             className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                formData.entryMethod === 'daily-hours-costs' 
+                                data.labor_record_method === 'daily-hours-costs' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral'
                             }`}
@@ -171,7 +187,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <PrimaryButton 
                             title="Hours Only" 
                             className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                formData.entryMethod === 'hours-only' 
+                                data.labor_record_method === 'hours-only' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral '
                             }`}
@@ -180,7 +196,7 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <PrimaryButton 
                             title="Cost Only" 
                             className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                formData.entryMethod === 'cost-only' 
+                                data.labor_record_method === 'cost-only' 
                                     ? 'border border-orange-500 text-orange-500' 
                                     : 'text-neutral '
                             }`}
@@ -205,11 +221,11 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <label htmlFor="ticketCount" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count? </label>
                         <Select 
                             type="text" 
-                            id="ticketCount" 
+                            id="daily_ticket_count" 
                             placeholder="No" 
                             className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                            value={data.ticketCount}
-                            onChange={(value) => updateData('ticketCount', value)}
+                            value={data.daily_ticket_count}
+                            onChange={(value) => updateData('daily_ticket_count', value)}
                         >
                             <Select.Option value="1">No</Select.Option>
                             <Select.Option value="2">Yes</Select.Option>
@@ -219,11 +235,11 @@ const LaborEntryMethod = ({ data, updateData }) => {
                         <label htmlFor="previousLaborReport" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Forword previous week's actual labor rate?</label>
                         <Select 
                             type="text" 
-                            id="previousLaborReport" 
+                            id="forward_prev_week_rate" 
                             placeholder="No" 
                             className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                            value={data.previousLaborReport}
-                            onChange={(value) => updateData('ticketCount', value)}
+                            value={data.forward_prev_week_rate}
+                            onChange={(value) => updateData('forward_prev_week_rate', value)}
                         >
                             <Select.Option value="1">No</Select.Option>
                             <Select.Option value="2">Yes</Select.Option>
@@ -233,14 +249,12 @@ const LaborEntryMethod = ({ data, updateData }) => {
 
             </div>
             <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} />
+                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
                         <PrimaryButton 
-                            title="Save & Continue" 
+                            title={loading ? "Saving..." : "Save & Continue"} 
                             className="btn-brand"
-                            onClick={()=>{
-                                handleTabClick(2)
-                            }}
-                            // onClick={handleSaveAndContinue}
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
                         />
                 </div>
         </div>

@@ -59,13 +59,6 @@ const ThirdPartyProviders = ({ data, updateData }) => {
         updateData('providers', updatedProviders);
     };
 
-    // Remove a provider
-    // const removeProvider = (providerId) => {
-    //     const updatedProviders = providers.filter(provider => provider.id !== providerId);
-    //     setProviders(updatedProviders);
-    //     updateData('providers', updatedProviders);
-    // };
-
     // Update a specific provider
     const updateProvider = (providerId, field, value) => {
         const updatedProviders = providers.map(provider =>

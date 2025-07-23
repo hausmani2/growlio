@@ -5,7 +5,7 @@ import logo from '../../../assets/logo.png';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button } from 'antd';
+import { Input, message, Button, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 
 const Login = () => {
@@ -19,10 +19,11 @@ const Login = () => {
   // Zustand store hooks
   const { 
     login, 
-    loading, 
+    checkOnboardingStatus,
     error, 
     isAuthenticated, 
-    clearError 
+    clearError,
+    onboardingStatus
   } = useStore();
   
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
@@ -94,25 +95,61 @@ const Login = () => {
       const result = await login(form);
       
       if (result.success) {
-        message.success('Login successful! Welcome back to Growlio!');
-        // Navigate to dashboard after successful login
-        setTimeout(() => {
-          navigate('/');
-        }, 1000);
+        message.success('Login successful! Checking your onboarding status...');
+        
+        // Check onboarding status after successful login
+        const onboardingResult = await checkOnboardingStatus();
+        
+        if (onboardingResult.success) {
+          const isComplete = onboardingResult.onboarding_complete;
+          
+          if (isComplete) {
+            message.success('Welcome back! Redirecting to dashboard...');
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1000);
+          } else {
+            message.info('Please complete your onboarding setup...');
+            setTimeout(() => {
+              navigate('/onboarding');
+            }, 1000);
+          }
+        } else {
+          // Fallback to onboarding if check fails
+          message.info('Redirecting to onboarding...');
+          setTimeout(() => {
+            navigate('/onboarding');
+          }, 1000);
+        }
       }
     } catch (err) {
       // Error is already handled in the store
       console.error('Login error:', err);
     } finally {
+      // Ensure both loading states are reset
       setIsSubmitting(false);
     }
   };
 
   const isFormValid = form.email && form.password;
-  const isLoading = loading || isSubmitting;
+  // Use only local isSubmitting state for button loading to avoid conflicts
+  const isLoading = isSubmitting;
+  
+  // Show loading overlay during onboarding check
+  const showLoadingOverlay = onboardingStatus === 'loading';
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full max-w-sm relative">
+      {/* Loading Overlay */}
+      {showLoadingOverlay && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-lg">
+          <div className="text-center">
+            <Spin size="large" />
+            <p className="mt-2 text-gray-600">Checking onboarding status...</p>
+          </div>
+        </div>
+      )}
+      
       <form
         onSubmit={handleSubmit}
         className="w-full bg-white p-8 space-y-2"

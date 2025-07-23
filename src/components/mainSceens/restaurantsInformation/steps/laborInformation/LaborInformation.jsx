@@ -42,14 +42,14 @@ const LaborInformation = ({ data, updateData }) => {
                     />
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="needsAttention" className="text-base !font-bold text-neutral-600">Needs Attention ⚠️</label>
+                    <label htmlFor="needs_attention" className="text-base !font-bold text-neutral-600">Needs Attention ⚠️</label>
                     <Select 
                         type="text" 
-                        id="needsAttention" 
+                        id="needs_attention" 
                         placeholder="Select percentage" 
                         className="w-full p-2  !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                        value={data.needsAttention || undefined}
-                        onChange={(value) => updateData('needsAttention', value)}
+                        value={data.needs_attention || undefined}
+                        onChange={(value) => updateData('needs_attention', value)}
                         options={percentageOptions}
                     />
                 </div>

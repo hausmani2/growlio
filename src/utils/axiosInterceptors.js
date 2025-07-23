@@ -13,6 +13,13 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    console.log('API Request Interceptor:', {
+      url: config.url,
+      method: config.method,
+      token: token ? 'TOKEN_EXISTS' : 'UNDEFINED',
+      tokenType: typeof token
+    });
+    
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -30,8 +37,13 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           // Unauthorized - clear token and redirect to login
+          console.log('401 Unauthorized - clearing token and redirecting to login');
           localStorage.removeItem('token');
-          // You can add a global auth state management here
+          
+          // Redirect to login page if not already there
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           break;
         case 403:
           // Forbidden

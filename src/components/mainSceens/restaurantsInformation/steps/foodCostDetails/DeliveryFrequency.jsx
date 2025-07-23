@@ -4,8 +4,8 @@ import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import PrimaryButton from '../../../../buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
 
-const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
-    const { handleTabClick } = useTabHook();
+const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
     
     const days = [
         { name: 'Sunday', disabled: true },
@@ -26,7 +26,35 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
     };
 
     const handleGoBack = () => {
-        handleTabClick(1); // Navigate to Basic Information (tab index 0)
+        navigateToPreviousStep();
+    };
+
+    const handleSaveAndContinueClick = async () => {
+        console.log("=== DeliveryFrequency Save & Continue Click ===");
+        console.log("onSaveAndContinue prop:", onSaveAndContinue);
+        console.log("loading prop:", loading);
+        console.log("Current data:", data);
+        console.log("Current selectedDays:", data.selectedDays);
+        
+        if (onSaveAndContinue) {
+            try {
+                console.log("Calling onSaveAndContinue...");
+                const result = await onSaveAndContinue();
+                console.log("onSaveAndContinue result:", result);
+                
+                if (result?.success) {
+                    console.log("Success! Navigating to next step...");
+                    // Navigate to next step after successful save
+                    navigateToNextStep();
+                } else {
+                    console.log("Save failed:", result);
+                }
+            } catch (error) {
+                console.error('Error in handleSaveAndContinueClick:', error);
+            }
+        } else {
+            console.log("❌ onSaveAndContinue prop is not provided!");
+        }
     };
 
     return (
@@ -57,14 +85,15 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue }) => {
                     </div>
                 </div>
                 <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} />
+                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
                         <PrimaryButton 
-                            title="Save & Continue" 
+                            title={loading ? "Saving..." : "Save & Continue"} 
                             className="btn-brand"
-                            onClick={()=>{
-                                handleTabClick(3)
+                            onClick={() => {
+                                console.log("Save & Continue button clicked!");
+                                handleSaveAndContinueClick();
                             }}
-                            //   onClick={onSaveAndContinue}
+                            disabled={loading}
                         />
                 </div>
             </div>

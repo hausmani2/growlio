@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import useStore from './store/store';
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
@@ -18,6 +19,12 @@ import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
 
 function App() {
+  const initializeAuth = useStore((state) => state.initializeAuth);
+  
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <Router>
       <Routes>
@@ -28,13 +35,13 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
-          <Route path="/create-restaurant-info" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/basic-information" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/labour-information" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/food-cost-details" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/sales-channels" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/expense" element={<RestaurantInfo />} />
+          <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
+          <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
+          <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
+          <Route path="/onboarding/sales-channels" element={<RestaurantInfo />} />
+          <Route path="/onboarding/expense" element={<RestaurantInfo />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
@@ -45,7 +52,7 @@ function App() {
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}
-        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

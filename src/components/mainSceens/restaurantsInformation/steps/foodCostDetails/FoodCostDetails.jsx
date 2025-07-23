@@ -3,7 +3,7 @@ import { Select, Tooltip } from 'antd';
 
 const FoodCostDetails = ({ data, updateData }) => {
     const handleCogsChange = (value) => {
-        updateData('cogsGoal', value);
+        updateData('cogs_goal', value);
     };
 
     // Generate percentage options from 20% to 50%
@@ -52,7 +52,7 @@ const FoodCostDetails = ({ data, updateData }) => {
                     <Select
                         id="cogs"
                         placeholder="Select Percentage"
-                        value={data.cogsGoal || undefined}
+                        value={data.cogs_goal || undefined}
                         onChange={handleCogsChange}
                         options={generatePercentageOptions()}
                         style={{

@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import createAuthSlice from './slices/authSlice';
-import createOnBoardingSlice from './slices/onBoarding';
+import createOnBoardingSlice from './slices/onBoardingSlice';
 
 const useStore = create(
   devtools(
     persist(
       (set, get) => ({
-        ...createAuthSlice(set, get),
-        ...createOnBoardingSlice(),
+        ...createAuthSlice(set),
+        ...createOnBoardingSlice(set, get),
       }),
-      { name: 'app-store' }
+      { name: 'growlio-store' }
     )
   )
 );

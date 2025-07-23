@@ -11,7 +11,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 
 const Register = () => {
   const [form, setForm] = useState({ 
-    name: '', 
+    full_name: '', 
     email: '', 
     username: '', 
     password: '' 
@@ -33,7 +33,7 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
@@ -53,10 +53,10 @@ const Register = () => {
   const validateForm = () => {
     const errors = {};
     
-    if (!form.name.trim()) {
-      errors.name = 'Full name is required';
-    } else if (form.name.trim().length < 2) {
-      errors.name = 'Full name must be at least 2 characters';
+    if (!form.full_name.trim()) {
+      errors.full_name = 'Full name is required';
+    } else if (form.full_name.trim().length < 2) {
+      errors.full_name = 'Full name must be at least 2 characters';
     }
     
     if (!form.email.trim()) {
@@ -113,11 +113,19 @@ const Register = () => {
       const result = await register(form);
       
       if (result.success) {
-        message.success('Registration successful! Welcome to Growlio!');
-        // Navigate to onboarding after successful registration
-        setTimeout(() => {
-          navigate('/onboarding');
-        }, 1500);
+        if (result.needsLogin) {
+          message.success('Registration successful! Please login to continue.');
+          // Navigate to login after successful registration
+          setTimeout(() => {
+            navigate('/login');
+          }, 1500);
+        } else {
+          message.success('Registration successful! Welcome to Growlio!');
+          // Navigate to onboarding after successful registration with token
+          setTimeout(() => {
+            navigate('/onboarding');
+          }, 1500);
+        }
       }
     } catch (err) {
       // Error is already handled in the store
@@ -127,7 +135,7 @@ const Register = () => {
     }
   };
 
-  const isFormValid = form.name && form.email && form.username && form.password;
+  const isFormValid = form.full_name && form.email && form.username && form.password;
   const isLoading = loading || isSubmitting;
 
   return (
@@ -152,23 +160,23 @@ const Register = () => {
               Full Name
             </label>
             <Input
-              id="name"
-              name="name"
+              id="full_name"
+              name="full_name"
               type="text"
-              autoComplete="name"
+              autoComplete="full_name"
               required
-              value={form.name}
+              value={form.full_name}
               onChange={handleChange}
               placeholder="Enter Full Name"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
               className={`h-[40px] rounded-md text-lg tw-input input-brand ${
-                formErrors.name ? 'border-red-500' : ''
+                formErrors.full_name ? 'border-red-500' : ''
               }`}
-              status={formErrors.name ? 'error' : ''}
+              status={formErrors.full_name ? 'error' : ''}
             />
-            {formErrors.name && (
-              <div className="text-red-500 text-sm mt-1">{formErrors.name}</div>
+            {formErrors.full_name && (
+              <div className="text-red-500 text-sm mt-1">{formErrors.full_name}</div>
             )}
           </div>
           

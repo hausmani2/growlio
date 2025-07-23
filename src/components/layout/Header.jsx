@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import useStore from '../../store/store';
 import { DownOutlined } from '@ant-design/icons';
@@ -10,17 +11,34 @@ const getInitials = (name = '') => {
   return (parts[0][0] + (parts[parts.length - 1][0] || '')).toUpperCase();
 };
 
-const menu = (
-  <Menu>
-    <Menu.Item key="1">Profile</Menu.Item>
-    <Menu.Item key="2">Logout</Menu.Item>
-  </Menu>
-);
-
 const Header = () => {
+    const navigate = useNavigate();
     const user = useStore((state) => state.user);
-    const name = user?.name || 'Haris james';
+    const logout = useStore((state) => state.logout);
+    
+    // Format name with first letter capitalized
+    const formatName = (fullName) => {
+        if (!fullName) return 'User';
+        return fullName.split(' ').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+    };
+    
+    const name = formatName(user?.full_name);
     // const image = user?.image; // If you add image support later
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const menu = (
+        <Menu>
+            <Menu.Item key="1">Profile</Menu.Item>
+            <Menu.Item key="2" onClick={handleLogout}>Logout</Menu.Item>
+        </Menu>
+    );
+
     return (
         <div className='flex items-center justify-between w-full p-4 bg-white'>
             <img src={logo} alt="logo" />
