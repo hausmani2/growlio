@@ -7,7 +7,7 @@ const useStore = create(
   devtools(
     persist(
       (set, get) => ({
-        ...createAuthSlice(set),
+        ...createAuthSlice(set, get),
         ...createOnBoardingSlice(set, get),
       }),
       { name: 'growlio-store' }

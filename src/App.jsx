@@ -42,6 +42,7 @@ function App() {
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
           <Route path="/onboarding/sales-channels" element={<RestaurantInfo />} />
           <Route path="/onboarding/expense" element={<RestaurantInfo />} />
+          <Route path="/onboarding/complete" element={<CompleteSteps />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />

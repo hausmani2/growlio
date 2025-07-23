@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { message } from 'antd';
 import RestaurantWrapper from './steps/basicInformation/RestaurantWrapper';
@@ -8,18 +8,61 @@ import { TabContext } from './context/TabContext';
 import SalesChannelsWrapper from './steps/salesChannels/SalesChannelsWrapper';
 import ExpenseWrapper from './steps/Expense/ExpenseWrapper';
 import useStore from '../../../store/store';
+import useStepNavigation from './hooks/useStepNavigation';
 
 export const TabProvider = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [activeTab, setActiveTab] = useState(0);
-    const { completeOnboardingData, resetStepStatus, getRestaurantId, ensureAllStepsInitialized, isOnboardingComplete } = useStore();
-    const autoAdvanceTimeoutRef = useRef(null);
-    const lastAutoAdvanceStep = useRef(null);
+    const { 
+        completeOnboardingData, 
+        resetStepStatus, 
+        getRestaurantId, 
+        ensureAllStepsInitialized,
+        loadExistingOnboardingData,
+        checkOnboardingCompletion,
+        loading
+    } = useStore();
+    const { loadStepData, saveCurrentStepData } = useStepNavigation();
+
+    // Check if we need to load existing onboarding data
+    const shouldLoadExistingData = () => {
+        const hasAnyCompletedSteps = Object.values(completeOnboardingData).some(step => 
+            step && typeof step === 'object' && step.status === true
+        );
+        
+        const hasRestaurantId = completeOnboardingData.restaurant_id || localStorage.getItem('restaurant_id');
+        
+        // If we have a restaurant_id but no completed steps, we should load data
+        if (hasRestaurantId && !hasAnyCompletedSteps) {
+            return true;
+        }
+        
+        return false;
+    };
+
+    // Load existing onboarding data if needed
+    const loadExistingDataIfNeeded = async () => {
+        if (shouldLoadExistingData()) {
+            console.log('🔄 Detected existing restaurant_id but no completed steps - loading existing data...');
+            try {
+                const result = await loadExistingOnboardingData();
+                if (result.success) {
+                    console.log('✅ Successfully loaded existing onboarding data');
+                    message.success('Loaded your existing setup data');
+                } else {
+                    console.log('❌ Failed to load existing data');
+                }
+            } catch (error) {
+                console.error('❌ Error loading existing data:', error);
+            }
+        }
+    };
 
     // Ensure all steps are properly initialized when component mounts
     useEffect(() => {
         ensureAllStepsInitialized();
+        loadExistingDataIfNeeded();
     }, []);
 
     const tabs = [
@@ -101,19 +144,14 @@ export const TabProvider = ({ children }) => {
 
     // Get the next incomplete step
     const getNextIncompleteStep = () => {
-        // First, check if all onboarding steps are completed
-        const completionStatus = isOnboardingComplete();
-        
-        if (completionStatus.isComplete) {
-            console.log('🎉 All onboarding steps are completed! Redirecting to dashboard...');
-            navigate('/dashboard', { replace: true });
-            return 0; // Return 0 as fallback, but navigation will happen
-        }
-        
         // Check if there are any steps with data at all
         const hasAnyStepData = Object.values(completeOnboardingData).some(step => 
             step && typeof step === 'object' && step.status !== undefined
         );
+        
+        console.log('🔍 Finding next incomplete step...');
+        console.log('completeOnboardingData:', completeOnboardingData);
+        console.log('hasAnyStepData:', hasAnyStepData);
         
         if (!hasAnyStepData) {
             console.log('📭 No onboarding data found - user should start with Basic Information');
@@ -122,11 +160,18 @@ export const TabProvider = ({ children }) => {
         
         for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i];
-            if (!isStepCompleted(tab.title)) {
+            const isCompleted = isStepCompleted(tab.title);
+            console.log(`🔍 Step ${i}: ${tab.title} - Completed: ${isCompleted}`);
+            
+            if (!isCompleted) {
+                console.log(`✅ Found next incomplete step: ${tab.title} (index: ${i})`);
                 return i;
             }
         }
-        return 0; // Default to first step if all are completed
+        
+        // If all steps are completed locally, return the last step index
+        console.log('🎉 All local steps are completed!');
+        return tabs.length - 1; // Return last step index instead of navigating
     };
 
     // Navigate to the next incomplete step
@@ -135,79 +180,24 @@ export const TabProvider = ({ children }) => {
         handleTabClick(nextStepId);
     };
 
-    // Auto-advance to next step if current step is completed
-    const autoAdvanceIfCompleted = () => {
-        // First, check if all onboarding steps are completed
-        const completionStatus = isOnboardingComplete();
-        
-        if (completionStatus.isComplete) {
-            console.log('🎉 All onboarding steps are completed! Redirecting to dashboard...');
-            navigate('/dashboard', { replace: true });
-            return;
-        }
-        
-        const currentTab = tabs[activeTab];
-        if (currentTab && isStepCompleted(currentTab.title)) {
-            const nextTabId = activeTab + 1;
-            if (nextTabId < tabs.length) {
-                // Auto-advance to next step after a short delay
-                setTimeout(() => {
-                    handleTabClick(nextTabId);
-                }, 500);
-            }
-        }
-    };
+    // Auto-advance function removed to prevent unwanted navigation
+    // const autoAdvanceIfCompleted = () => {
+    //     // Auto-advance logic removed
+    // };
 
-    // Monitor step completion changes and auto-advance
-    useEffect(() => {
-        // First, check if all onboarding steps are completed
-        const completionStatus = isOnboardingComplete();
-        
-        if (completionStatus.isComplete) {
-            console.log('🎉 All onboarding steps are completed! Redirecting to dashboard...');
-            
-            // Clear any existing timeouts
-            if (autoAdvanceTimeoutRef.current) {
-                clearTimeout(autoAdvanceTimeoutRef.current);
-            }
-            
-            // Redirect to dashboard after a short delay
-            autoAdvanceTimeoutRef.current = setTimeout(() => {
-                navigate('/dashboard', { replace: true });
-            }, 1000);
-            
-            return; // Don't proceed with auto-advance logic
-        }
-        
-        // If not all steps are completed, continue with normal auto-advance logic
-        const currentTab = tabs[activeTab];
-        if (currentTab && isStepCompleted(currentTab.title)) {
-            const nextTabId = activeTab + 1;
-            if (nextTabId < tabs.length && lastAutoAdvanceStep.current !== nextTabId) {
-                // Clear any existing timeout
-                if (autoAdvanceTimeoutRef.current) {
-                    clearTimeout(autoAdvanceTimeoutRef.current);
-                }
-                
-                // Prevent multiple auto-advances to the same step
-                lastAutoAdvanceStep.current = nextTabId;
-                
-                // Auto-advance to next step after a short delay
-                autoAdvanceTimeoutRef.current = setTimeout(() => {
-                    handleTabClick(nextTabId);
-                }, 500);
-            }
-        }
-    }, [completeOnboardingData, activeTab, isOnboardingComplete, navigate]);
+    // Monitor step completion changes - REMOVED AUTO-ADVANCE LOGIC
+    // useEffect(() => {
+    //     // Auto-advance logic removed to prevent unwanted navigation
+    // }, [completeOnboardingData, activeTab, navigate]);
 
-    // Cleanup timeouts on unmount
-    useEffect(() => {
-        return () => {
-            if (autoAdvanceTimeoutRef.current) {
-                clearTimeout(autoAdvanceTimeoutRef.current);
-            }
-        };
-    }, []);
+    // Cleanup timeouts on unmount - REMOVED since no auto-advance timeouts
+    // useEffect(() => {
+    //     return () => {
+    //         if (autoAdvanceTimeoutRef.current) {
+    //             clearTimeout(autoAdvanceTimeoutRef.current);
+    //         }
+    //     };
+    // }, []);
 
     // Update active tab based on URL
     useEffect(() => {
@@ -215,41 +205,12 @@ export const TabProvider = ({ children }) => {
         const pathSegments = pathname.split('/');
         const lastSegment = pathSegments[pathSegments.length - 1];
         
-        // First, check if all onboarding steps are completed
-        const completionStatus = isOnboardingComplete();
-        
-        if (completionStatus.isComplete) {
-            console.log('🎉 All onboarding steps are completed! Redirecting to dashboard...');
-            navigate('/dashboard', { replace: true });
-            return;
-        }
-        
         if (pathToTabId[lastSegment] !== undefined) {
             const targetTabId = pathToTabId[lastSegment];
             
             // Check if user can navigate to this tab
             if (canNavigateToTab(targetTabId)) {
                 setActiveTab(targetTabId);
-                
-                // Check if current step is completed, then auto-advance to next step
-                const currentTab = tabs[targetTabId];
-                if (currentTab && isStepCompleted(currentTab.title)) {
-                    const nextTabId = targetTabId + 1;
-                    if (nextTabId < tabs.length && lastAutoAdvanceStep.current !== nextTabId) {
-                        // Clear any existing timeout
-                        if (autoAdvanceTimeoutRef.current) {
-                            clearTimeout(autoAdvanceTimeoutRef.current);
-                        }
-                        
-                        // Prevent multiple auto-advances to the same step
-                        lastAutoAdvanceStep.current = nextTabId;
-                        
-                        // Auto-advance to next step after a short delay
-                        autoAdvanceTimeoutRef.current = setTimeout(() => {
-                            handleTabClick(nextTabId);
-                        }, 500);
-                    }
-                }
             } else {
                 // Redirect to Basic Information if not accessible
                 setActiveTab(0);
@@ -260,43 +221,72 @@ export const TabProvider = ({ children }) => {
             setActiveTab(0);
             navigate('/onboarding/basic-information', { replace: true });
         }
-    }, [location.pathname, navigate, completeOnboardingData, isOnboardingComplete]);
+    }, [location.pathname, navigate, completeOnboardingData]);
 
     const handleTabClick = (tabId) => {
+        console.log(`🔄 handleTabClick called with tabId: ${tabId}`);
+        
         // Check if user can navigate to this tab
         if (!canNavigateToTab(tabId)) {
+            console.log(`❌ Cannot navigate to tab ${tabId} - navigation blocked`);
             return;
         }
 
+        console.log(`✅ Navigation allowed to tab ${tabId}`);
+
+        // Load saved data into temporary form data for the target step
+        const targetTab = tabs.find(t => t.id === tabId);
+        if (targetTab) {
+            console.log(`📂 Loading data for step: ${targetTab.title}`);
+            loadStepData(targetTab.title);
+        }
+
+        console.log(`🔄 Setting activeTab from ${activeTab} to ${tabId}`);
         setActiveTab(tabId);
+        
         const tab = tabs.find(t => t.id === tabId);
         if (tab) {
-            navigate(`/onboarding/${tab.path}`);
+            const targetPath = `/onboarding/${tab.path}`;
+            console.log(`🧭 Navigating to: ${targetPath}`);
+            navigate(targetPath);
+        } else {
+            console.error(`❌ Tab not found for id: ${tabId}`);
         }
     };
 
     // Navigate to next step (used by Save & Continue buttons)
-    const navigateToNextStep = () => {
-        // First, check if all onboarding steps are completed
-        const completionStatus = isOnboardingComplete();
-        
-        if (completionStatus.isComplete) {
-            console.log('🎉 All onboarding steps are completed! Redirecting to dashboard...');
-            message.success('All onboarding steps completed successfully! Welcome to your dashboard.');
-            navigate('/dashboard', { replace: true });
-            return;
-        }
-        
+    const navigateToNextStep = async () => {
+        console.log(`🔄 navigateToNextStep called from activeTab: ${activeTab}`);
         const nextTabId = activeTab + 1;
+        console.log(`📋 Next tab ID would be: ${nextTabId}, total tabs: ${tabs.length}`);
         
         if (nextTabId < tabs.length) {
+            console.log(`✅ Next tab exists, checking if can navigate to tab ${nextTabId}`);
             if (canNavigateToTab(nextTabId)) {
+                console.log(`✅ Can navigate to next tab ${nextTabId}, calling handleTabClick`);
                 handleTabClick(nextTabId);
+            } else {
+                console.log(`❌ Cannot navigate to next tab ${nextTabId}`);
             }
         } else {
-            // All steps completed - navigate to dashboard
-            message.success('All onboarding steps completed successfully!');
-            navigate('/dashboard', { replace: true });
+            // All local steps completed - check if onboarding is actually complete
+            console.log('🎉 All local steps completed! Checking if onboarding is complete...');
+            
+            try {
+                const completionResult = await checkOnboardingCompletion();
+                
+                if (completionResult.success && completionResult.isComplete) {
+                    console.log('✅ Onboarding is complete! Navigating to completion page...');
+                    message.success('Congratulations! Your onboarding is complete!');
+                    completeOnboarding();
+                } else {
+                    console.log('⚠️ Onboarding not yet complete, staying on current step');
+                    message.info('All steps completed! Please wait for final confirmation.');
+                }
+            } catch (error) {
+                console.error('❌ Error checking onboarding completion:', error);
+                message.warning('All steps completed! Please check your onboarding status.');
+            }
         }
     };
 
@@ -305,14 +295,25 @@ export const TabProvider = ({ children }) => {
         const prevTabId = activeTab - 1;
         
         if (prevTabId >= 0) {
-            // Reset the current step's status to false when going back
+            // Save current step's temporary form data before going back
             const currentTab = tabs[activeTab];
             if (currentTab) {
-                resetStepStatus(currentTab.title);
+                const currentStepName = currentTab.title;
+                saveCurrentStepData(currentStepName);
+                
+                // Reset the current step's status to false when going back
+                resetStepStatus(currentStepName);
             }
             
             handleTabClick(prevTabId);
         }
+    };
+
+    // Complete onboarding (explicitly called by user)
+    const completeOnboarding = () => {
+        console.log('🎉 User explicitly completing onboarding! Navigating to completion page...');
+        message.success('Finalizing your setup...');
+        navigate('/onboarding/complete', { replace: true });
     };
 
     // Render different content based on active tab
@@ -344,7 +345,7 @@ export const TabProvider = ({ children }) => {
         getStepStatus,
         isStepCompleted,
         navigateToNextIncompleteStep,
-        autoAdvanceIfCompleted
+        completeOnboarding
     };
 
     return (

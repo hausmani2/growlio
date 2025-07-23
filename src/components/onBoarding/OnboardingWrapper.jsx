@@ -8,11 +8,12 @@ import { FaArrowLeftLong } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../store/store";
 import { message } from "antd";
+import { apiGet } from "../../utils/axiosInterceptors";
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
     const [isChecking, setIsChecking] = useState(false);
-    const { checkOnboardingStatus } = useStore();
+    const { checkOnboardingStatus, loadExistingOnboardingData } = useStore();
     
     const handleSubmit = async () => {
         setIsChecking(true);
@@ -20,26 +21,88 @@ const OnboardingWrapper = () => {
         try {
             console.log("📋 User clicking Continue - checking onboarding status...");
             
-            // Check onboarding status to ensure proper routing
-            const result = await checkOnboardingStatus();
+            // Call the API to check onboarding status
+            const response = await apiGet('/restaurant/restaurants-onboarding/');
+            const onboardingData = response.data;
             
-            if (result.success) {
-                const isComplete = result.onboarding_complete;
+            console.log('Onboarding Status Check - Raw data:', onboardingData);
+            
+            // Check if user has no restaurants (new user)
+            if (onboardingData && onboardingData.message === "No restaurants found for this user." && 
+                (!onboardingData.restaurants || onboardingData.restaurants.length === 0)) {
+                console.log('✅ New user with no restaurants - redirecting to Basic Information');
+                message.success("Welcome! Let's set up your restaurant.");
+                navigate('/onboarding/basic-information');
+                return;
+            }
+            
+            // Check if user has restaurants
+            if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+                // Check if any restaurant has onboarding_complete: true
+                const hasCompletedOnboarding = onboardingData.restaurants.some(restaurant => 
+                    restaurant.onboarding_complete === true
+                );
                 
-                if (isComplete) {
-                    console.log("✅ User has completed onboarding - redirecting to dashboard");
+                if (hasCompletedOnboarding) {
+                    console.log('✅ User has restaurants with completed onboarding - redirecting to dashboard');
                     message.success("Welcome back! Redirecting to your dashboard...");
                     setTimeout(() => {
                         navigate('/dashboard');
                     }, 1000);
+                    return;
                 } else {
-                    console.log("📋 User needs to complete onboarding - redirecting to Basic Information");
-                    navigate('/onboarding/basic-information');
+                    console.log('⚠️ User has restaurants but onboarding is not complete - loading existing data');
+                    message.info("Loading your existing setup...");
+                    
+                    // Load existing onboarding data from API
+                    const result = await loadExistingOnboardingData();
+                    
+                    if (result.success) {
+                        console.log('✅ Successfully loaded existing onboarding data');
+                        
+                        // Determine which step to navigate to based on incomplete steps
+                        const { incompleteSteps, completedSteps } = result;
+                        
+                        if (incompleteSteps.length === 0) {
+                            // All steps are complete, go to completion page
+                            console.log('🎉 All steps are complete - navigating to completion page');
+                            navigate('/onboarding/complete');
+                        } else {
+                            // Navigate to the first incomplete step
+                            const firstIncompleteStep = incompleteSteps[0];
+                            console.log(`📋 Navigating to first incomplete step: ${firstIncompleteStep}`);
+                            
+                            // Map step names to routes
+                            const stepToRoute = {
+                                "Basic Information": "/onboarding/basic-information",
+                                "Labour Information": "/onboarding/labour-information",
+                                "Food Cost Details": "/onboarding/food-cost-details",
+                                "Sales Channels": "/onboarding/sales-channels",
+                                "Expense": "/onboarding/expense"
+                            };
+                            
+                            const targetRoute = stepToRoute[firstIncompleteStep];
+                            if (targetRoute) {
+                                message.success(`Continuing from ${firstIncompleteStep}...`);
+                                navigate(targetRoute);
+                            } else {
+                                console.error('❌ Unknown step name:', firstIncompleteStep);
+                                navigate('/onboarding/basic-information');
+                            }
+                        }
+                    } else {
+                        console.log('❌ Failed to load existing onboarding data - starting fresh');
+                        message.warning("Starting fresh setup...");
+                        navigate('/onboarding/basic-information');
+                    }
+                    return;
                 }
-            } else {
-                console.log("⚠️ Onboarding check failed - proceeding to Basic Information");
-                navigate('/onboarding/basic-information');
             }
+            
+            // Fallback case
+            console.log('⚠️ Unexpected response format - proceeding to Basic Information');
+            navigate('/onboarding/basic-information');
+            
         } catch (error) {
             console.error("Error checking onboarding status:", error);
             message.error("Something went wrong. Please try again.");

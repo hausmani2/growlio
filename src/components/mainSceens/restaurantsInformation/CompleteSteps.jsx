@@ -2,9 +2,57 @@ import Header from "../../layout/Header";
 import Card from "../../../assets/pngs/cafe.png";
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { message } from "antd";
+import { apiGet } from "../../../utils/axiosInterceptors";
 
 const CompleteSteps = () => {
     const navigate = useNavigate();
+    const [isChecking, setIsChecking] = useState(false);
+
+    const handleGoToDashboard = async () => {
+        setIsChecking(true);
+        
+        try {
+            console.log("🎉 User completed all steps - checking final onboarding status...");
+            
+            // Call the API to check final onboarding status
+            const response = await apiGet('/restaurant/restaurants-onboarding/');
+            const onboardingData = response.data;
+            
+            console.log('Final Onboarding Status Check - Raw data:', onboardingData);
+            
+            // Check if user has restaurants with completed onboarding
+            if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+                const hasCompletedOnboarding = onboardingData.restaurants.some(restaurant => 
+                    restaurant.onboarding_complete === true
+                );
+                
+                if (hasCompletedOnboarding) {
+                    console.log('✅ Onboarding confirmed complete - redirecting to dashboard');
+                    message.success("Welcome to your dashboard!");
+                    navigate('/dashboard');
+                } else {
+                    console.log('⚠️ Onboarding not yet complete - staying on completion page');
+                    message.warning("Please wait while we finalize your setup...");
+                    // Stay on the completion page for now
+                }
+            } else {
+                console.log('⚠️ No restaurants found - redirecting to dashboard anyway');
+                message.info("Redirecting to dashboard...");
+                navigate('/dashboard');
+            }
+            
+        } catch (error) {
+            console.error("Error checking final onboarding status:", error);
+            message.error("Something went wrong. Please try again.");
+            // Fallback to dashboard
+            navigate('/dashboard');
+        } finally {
+            setIsChecking(false);
+        }
+    };
+
     return (
         <div className=" flex flex-col gap-6 px-5 h-screen bg-white">
            <Header />
@@ -20,7 +68,12 @@ const CompleteSteps = () => {
             </div>
             <img src={Card} alt="cafe" className="w-[400px] h-[370px] object-cover " />
 
-            <PrimaryBtn title="Go to Dashboard" className="btn-brand w-[500px]" onClick={() => navigate("/dashboard")} />
+            <PrimaryBtn 
+                title={isChecking ? "Checking..." : "Go to Dashboard"} 
+                className="btn-brand w-[500px]" 
+                onClick={handleGoToDashboard}
+                disabled={isChecking}
+            />
 
            </div>
 

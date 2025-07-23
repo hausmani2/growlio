@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { message } from "antd";
 import SalesChannel from "./SalesChannel";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const SalesChannelsWrapper = () => {
     const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateSalesChannels } = useStepValidation();
+    const { navigateToNextStep } = useTabHook();
     
     // State for Sales Channels
     const [salesChannelsData, setSalesChannelsData] = useState({
@@ -73,19 +75,23 @@ const SalesChannelsWrapper = () => {
             
             console.log("Submitting Sales Channels data:", stepData);
             
-            // Step 3: Call API through Zustand store
-            const result = await submitStepData("Sales Channels", stepData);
+            // Step 3: Call API through Zustand store with success callback
+            const result = await submitStepData("Sales Channels", stepData, (responseData) => {
+                // Success callback - navigate to next step
+                console.log("✅ Sales Channels saved successfully, navigating to next step");
+                message.success("Sales channels saved successfully!");
+                
+                // Check if restaurant_id was returned and log it
+                if (responseData && responseData.restaurant_id) {
+                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
+                }
+                
+                // Navigate to next step using the TabContext
+                navigateToNextStep();
+            });
             
             // Step 4: Handle success
             if (result.success) {
-                message.success("Sales channels saved successfully!");
-                console.log("Sales channels saved successfully, ready for next step");
-                
-                // Check if restaurant_id was returned and log it
-                if (result.data && result.data.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", result.data.restaurant_id);
-                }
-                
                 return { success: true, data: result.data };
             } else {
                 message.error("Failed to save sales channels. Please try again.");

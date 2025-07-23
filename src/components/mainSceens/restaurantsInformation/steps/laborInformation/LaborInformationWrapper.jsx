@@ -3,13 +3,18 @@ import { message } from "antd";
 import LaborInformation from "./LaborInformation";
 import LaborEntryMethod from "./LaborEntryMethod";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
+import { useNavigate } from "react-router-dom";
 
 const LaborInformationWrapper = () => {
+    const navigate = useNavigate();
     const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateLabourInformation } = useStepValidation();
+    const { navigateToNextStep } = useTabHook();
     
+    // State for labor data
     const [laborData, setLaborData] = useState({
         goal: '',
         needs_attention: '',
@@ -89,21 +94,25 @@ const LaborInformationWrapper = () => {
             
             console.log("Prepared stepData for API:", stepData);
             
-            // Step 3: Call API through Zustand store
+            // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
-            const result = await submitStepData("Labour Information", stepData);
+            const result = await submitStepData("Labour Information", stepData, (responseData) => {
+                // Success callback - navigate to next step
+                console.log("✅ Labour Information saved successfully, navigating to next step");
+                message.success("Labor information saved successfully!");
+                
+                // Check if restaurant_id was returned and log it
+                if (responseData && responseData.restaurant_id) {
+                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
+                }
+                
+                // Navigate to next step using the pre-fetched navigation function
+                navigateToNextStep();
+            });
             console.log("submitStepData result:", result);
             
             // Step 4: Handle success
             if (result.success) {
-                message.success("Labor information saved successfully!");
-                console.log("Labor information saved successfully, ready for next step");
-                
-                // Check if restaurant_id was returned and log it
-                if (result.data && result.data.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", result.data.restaurant_id);
-                }
-                
                 return { success: true, data: result.data };
             } else {
                 message.error("Failed to save labor information. Please try again.");

@@ -4,12 +4,14 @@ import FoodCostDetails from "./FoodCostDetails";
 import DeliveryFrequency from "./DeliveryFrequency";
 import ThirdPartyProviders from "./ThirdPartyProviders";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const FoodCostWrapper = () => {
     const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateFoodCostDetails } = useStepValidation();
+    const { navigateToNextStep } = useTabHook();
     
     // State for Food Cost Details
     const [foodCostData, setFoodCostData] = useState({
@@ -163,21 +165,25 @@ const FoodCostWrapper = () => {
             console.log("Final cogs_goal for API:", stepData.cogs_goal);
             console.log("delivery_days:", stepData.delivery_days);
             
-            // Step 3: Call API through Zustand store
+            // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
-            const result = await submitStepData("Food Cost Details", stepData);
+            const result = await submitStepData("Food Cost Details", stepData, (responseData) => {
+                // Success callback - navigate to next step
+                console.log("✅ Food Cost Details saved successfully, navigating to next step");
+                message.success("Food cost details saved successfully!");
+                
+                // Check if restaurant_id was returned and log it
+                if (responseData && responseData.restaurant_id) {
+                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
+                }
+                
+                // Navigate to next step using the TabContext
+                navigateToNextStep();
+            });
             console.log("submitStepData result:", result);
             
             // Step 4: Handle success
             if (result.success) {
-                message.success("Food cost details saved successfully!");
-                console.log("Food cost details saved successfully, ready for next step");
-                
-                // Check if restaurant_id was returned and log it
-                if (result.data && result.data.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", result.data.restaurant_id);
-                }
-                
                 return { success: true, data: result.data };
             } else {
                 message.error("Failed to save food cost details. Please try again.");

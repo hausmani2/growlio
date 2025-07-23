@@ -4,39 +4,59 @@ import RestaurantInformation from "./RestaurantInformation";
 import AddressInformation from "./AddressInformation";
 import AddressType from "./Address2Information";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useFormValidation from "./useFormValidation";
+import StepDataManager from "../../StepDataManager";
 
 const RestaurantWrapper = () => {
-    const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
+    const { 
+        submitStepData, 
+        loading, 
+        error, 
+        clearError, 
+        completeOnboardingData,
+        getTempFormData,
+        updateTempFormData
+    } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
+    const { navigateToNextStep } = useTabHook();
+    
+    // Get temporary form data from store
+    const tempFormData = getTempFormData("Basic Information");
     
     // State for Restaurant Information
-    const [restaurantData, setRestaurantData] = useState({
-        restaurantName: "",
-        numberOfLocations: undefined,
-        locationName: "",
-        otherLocationName: ""
-    });
+    const [restaurantData, setRestaurantData] = useState(
+        tempFormData?.restaurantData || {
+            restaurantName: "",
+            numberOfLocations: undefined,
+            locationName: "",
+            otherLocationName: ""
+        }
+    );
 
     // State for Address Information
-    const [addressData, setAddressData] = useState({
-        address1: "",
-        address2: "",
-        country: "",
-        state: "",
-        zipCode: ""
-    });
+    const [addressData, setAddressData] = useState(
+        tempFormData?.addressData || {
+            address1: "",
+            address2: "",
+            country: "",
+            state: "",
+            zipCode: ""
+        }
+    );
 
     // State for Address Type Information
-    const [addressTypeData, setAddressTypeData] = useState({
-        sqft: "",
-        isFranchise: "",
-        royaltyPercentage: "",
-        advertisementFee: "",
-        restaurantType: "",
-        menuType: ""
-    });
+    const [addressTypeData, setAddressTypeData] = useState(
+        tempFormData?.addressTypeData || {
+            sqft: "",
+            isFranchise: "",
+            royaltyPercentage: "",
+            advertisementFee: "",
+            restaurantType: "",
+            menuType: ""
+        }
+    );
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
@@ -137,6 +157,8 @@ const RestaurantWrapper = () => {
             ...prev,
             [field]: value
         }));
+        // Also update in store
+        updateTempFormData("Basic Information", "restaurantData", field, value);
         clearFieldError(field);
     };
 
@@ -146,6 +168,8 @@ const RestaurantWrapper = () => {
             ...prev,
             [field]: value
         }));
+        // Also update in store
+        updateTempFormData("Basic Information", "addressData", field, value);
         clearFieldError(field);
     };
 
@@ -155,6 +179,8 @@ const RestaurantWrapper = () => {
             ...prev,
             [field]: value
         }));
+        // Also update in store
+        updateTempFormData("Basic Information", "addressTypeData", field, value);
         clearFieldError(field);
     };
 
@@ -176,6 +202,10 @@ const RestaurantWrapper = () => {
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
+
+            // Step 1.5: Save temporary form data to store
+            const { saveTempFormData } = useStore.getState();
+            saveTempFormData("Basic Information");
 
             // Step 2: Prepare data for API
             const stepData = {
@@ -200,21 +230,25 @@ const RestaurantWrapper = () => {
             console.log("restaurant_type value:", stepData.restaurant_type);
             console.log("menu_type value:", stepData.menu_type);
             
-            // Step 3: Call API through Zustand store
+            // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
-            const result = await submitStepData("Basic Information", stepData);
+            const result = await submitStepData("Basic Information", stepData, (responseData) => {
+                // Success callback - navigate to next step
+                console.log("✅ Basic Information saved successfully, navigating to next step");
+                message.success("Basic information saved successfully!");
+                
+                // Check if restaurant_id was returned and log it
+                if (responseData && responseData.restaurant_id) {
+                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
+                }
+                
+                // Navigate to next step using the TabContext
+                navigateToNextStep();
+            });
             console.log("submitStepData result:", result);
             
             // Step 4: Handle success
             if (result.success) {
-                message.success("Basic information saved successfully!");
-                console.log("Basic information saved successfully, ready for next step");
-                
-                // Check if restaurant_id was returned and log it
-                if (result.data && result.data.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", result.data.restaurant_id);
-                }
-                
                 return { success: true, data: result.data };
             } else {
                 message.error("Failed to save basic information. Please try again.");
@@ -233,25 +267,27 @@ const RestaurantWrapper = () => {
 
     return (
         <TabProvider>
-            <div className="flex flex-col">
-                <RestaurantInformation 
-                    data={restaurantData}
-                    updateData={updateRestaurantData}
-                    errors={validationErrors}
-                />
-                <AddressInformation 
-                    data={addressData}
-                    updateData={updateAddressData}
-                    errors={validationErrors}
-                />
-                <AddressType 
-                    data={addressTypeData}
-                    updateData={updateAddressTypeData}
-                    onSaveAndContinue={handleSaveAndContinue}
-                    errors={validationErrors}
-                    loading={loading}
-                />
-            </div>
+            <StepDataManager stepName="Basic Information">
+                <div className="flex flex-col">
+                    <RestaurantInformation 
+                        data={restaurantData}
+                        updateData={updateRestaurantData}
+                        errors={validationErrors}
+                    />
+                    <AddressInformation 
+                        data={addressData}
+                        updateData={updateAddressData}
+                        errors={validationErrors}
+                    />
+                    <AddressType 
+                        data={addressTypeData}
+                        updateData={updateAddressTypeData}
+                        onSaveAndContinue={handleSaveAndContinue}
+                        errors={validationErrors}
+                        loading={loading}
+                    />
+                </div>
+            </StepDataManager>
         </TabProvider>
     );
 };

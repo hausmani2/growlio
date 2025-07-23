@@ -6,13 +6,15 @@ import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
 import TotalExpense from "./TotalExpense";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const ExpenseWrapper = () => {
     const navigate = useNavigate();
-    const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, loading, error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense } = useStepValidation();
+    const { navigateToNextStep, completeOnboarding } = useTabHook();
     
     // State for expense data - only dynamic fields
     const [expenseData, setExpenseData] = useState({
@@ -197,11 +199,10 @@ const ExpenseWrapper = () => {
             
             console.log("Submitting Expense data:", stepData);
             
-            // Step 4: Call API through Zustand store
-            const result = await submitStepData("Expense", stepData);
-            
-            // Step 5: Handle success
-            if (result.success) {
+            // Step 4: Call API through Zustand store with success callback
+            const result = await submitStepData("Expense", stepData, async (responseData) => {
+                // Success callback - check if onboarding is complete
+                console.log("✅ Expense saved successfully, checking if onboarding is complete...");
                 message.success("Expense information saved successfully!");
                 
                 // Log detailed expense summary
@@ -226,16 +227,39 @@ const ExpenseWrapper = () => {
                 console.log("================================");
                 
                 // Check if restaurant_id was returned and log it
-                if (result.data && result.data.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", result.data.restaurant_id);
+                if (responseData && responseData.restaurant_id) {
+                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
 
-                // Redirect to dashboard after successful save
-                message.success("Onboarding completed! Redirecting to dashboard...");
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 1500);
-                
+                // Check if onboarding is complete
+                try {
+                    console.log("🔄 Checking if onboarding is complete...");
+                    const completionResult = await checkOnboardingCompletion();
+                    
+                    if (completionResult.success && completionResult.isComplete) {
+                        console.log("🎉 Onboarding is complete! Navigating to completion page...");
+                        message.success("Congratulations! Your onboarding is complete!");
+                        
+                        // Navigate to completion page
+                        completeOnboarding();
+                    } else {
+                        console.log("⚠️ Onboarding not yet complete, staying on current step");
+                        message.info("Expense saved! Please complete remaining steps.");
+                        
+                        // Stay on current step or navigate to next incomplete step
+                        navigateToNextStep();
+                    }
+                } catch (error) {
+                    console.error("❌ Error checking onboarding completion:", error);
+                    message.warning("Expense saved! Please check your onboarding status.");
+                    
+                    // Fallback: navigate to completion page
+                    completeOnboarding();
+                }
+            });
+            
+            // Step 5: Handle success
+            if (result.success) {
                 return { success: true };
             } else {
                 message.error("Failed to save expense information. Please try again.");

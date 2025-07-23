@@ -6,7 +6,7 @@ const hasToken = (token) => {
 };
 
 // Auth slice
-const createAuthSlice = (set) => {
+const createAuthSlice = (set, get) => {
   const storedToken = localStorage.getItem('token');
   const hasStoredToken = hasToken(storedToken);
   
@@ -190,10 +190,45 @@ const createAuthSlice = (set) => {
       }
     },
     
+    // Logout function - clears all state and redirects to login
     logout: () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('restaurant_id');
-      set(() => ({ user: null, token: null, isAuthenticated: false, error: null, onboardingStatus: null }));
+      // Use the comprehensive clearAllState function
+      const state = get();
+      if (state.clearAllState) {
+        state.clearAllState();
+      } else {
+        // Fallback if clearAllState is not available
+        // Clear all localStorage items related to the app
+        const keysToRemove = [
+          'token',
+          'restaurant_id',
+          'growlio-store' // This is the Zustand persist key
+        ];
+        
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+        });
+        
+        // Clear sessionStorage as well
+        sessionStorage.clear();
+        
+        // Clear all auth state
+        set(() => ({ 
+          user: null, 
+          token: null, 
+          isAuthenticated: false, 
+          error: null, 
+          onboardingStatus: null,
+          loading: false
+        }));
+        
+        // Reset onboarding state
+        if (state.resetOnboarding) {
+          state.resetOnboarding();
+        }
+      }
+      
+      console.log('🚪 Logout completed - all state and localStorage cleared');
     },
     
     register: async (formData) => {
@@ -263,6 +298,46 @@ const createAuthSlice = (set) => {
     },
     
     clearError: () => set(() => ({ error: null })),
+    
+    // Clear all application state (for logout or reset)
+    // This function clears:
+    // - All localStorage items (token, restaurant_id, growlio-store)
+    // - All sessionStorage
+    // - All auth state (user, token, isAuthenticated, etc.)
+    // - All onboarding state (completeOnboardingData, tempFormData, etc.)
+    clearAllState: () => {
+      // Clear all localStorage items related to the app
+      const keysToRemove = [
+        'token',
+        'restaurant_id',
+        'growlio-store' // This is the Zustand persist key
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+      
+      // Clear sessionStorage as well
+      sessionStorage.clear();
+      
+      // Clear all auth state
+      set(() => ({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false, 
+        error: null, 
+        onboardingStatus: null,
+        loading: false
+      }));
+      
+      // Reset onboarding state
+      const state = get();
+      if (state.resetOnboarding) {
+        state.resetOnboarding();
+      }
+      
+      console.log('🧹 All application state cleared');
+    },
     
     // Initialize authentication state from localStorage
     initializeAuth: () => {
