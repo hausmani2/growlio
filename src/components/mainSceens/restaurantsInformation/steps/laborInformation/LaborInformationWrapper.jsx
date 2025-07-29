@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 
 const LaborInformationWrapper = () => {
     const navigate = useNavigate();
-    const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateLabourInformation } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
     

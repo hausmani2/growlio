@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useStore from '../store/store';
+import LoadingSpinner from '../components/layout/LoadingSpinner';
 
 const ProtectedRoutes = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ const ProtectedRoutes = () => {
   // Get onboarding status and check function
   const onboardingStatus = useStore((state) => state.onboardingStatus);
   const checkOnboardingStatus = useStore((state) => state.checkOnboardingStatus);
+  const onboardingLoading = useStore((state) => state.onboardingLoading);
 
   // Simple token check - just undefined vs token
   console.log('ProtectedRoutes - Token Check:', {
@@ -50,6 +52,14 @@ const ProtectedRoutes = () => {
             window.location.href = '/dashboard';
             return;
           }
+        } else {
+          // Handle API failure gracefully
+          console.log('Onboarding check failed - allowing access to onboarding pages');
+          if (location.pathname === '/dashboard') {
+            console.log('Redirecting to onboarding as fallback');
+            window.location.href = '/onboarding';
+            return;
+          }
         }
       } catch (error) {
         console.error('ProtectedRoutes - Error checking onboarding status:', error);
@@ -81,14 +91,7 @@ const ProtectedRoutes = () => {
 
   // Show loading while checking onboarding status
   if (isCheckingOnboarding) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking your setup...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Checking your setup..." />;
   }
 
   console.log('Access granted - token is valid and onboarding status checked');

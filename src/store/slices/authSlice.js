@@ -30,8 +30,16 @@ const createAuthSlice = (set, get) => {
       set(() => ({ onboardingStatus: 'loading' }));
       
       try {
-        const response = await apiGet('/restaurant/restaurants-onboarding/');
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+        
+        const apiPromise = apiGet('/restaurant/restaurants-onboarding/');
+        const response = await Promise.race([apiPromise, timeoutPromise]);
         const onboardingData = response.data;
+        const restaurantId = onboardingData.restaurants[0].restaurant_id;
+        set(() => ({ restaurantId }));
         
         console.log('Onboarding Status Check - Raw data:', onboardingData);
         
@@ -94,13 +102,23 @@ const createAuthSlice = (set, get) => {
       } catch (error) {
         console.error('Onboarding status check failed:', error);
         
+        let errorMessage = 'Failed to check onboarding status';
+        
+        if (error.message === 'Request timeout') {
+          errorMessage = 'Request timed out. Please check your connection.';
+        } else if (error.response?.status === 401) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         // If API fails, assume onboarding is incomplete
         set(() => ({ onboardingStatus: 'incomplete' }));
         
         return {
           success: false,
           onboarding_complete: false,
-          error: error.message
+          error: errorMessage
         };
       }
     },

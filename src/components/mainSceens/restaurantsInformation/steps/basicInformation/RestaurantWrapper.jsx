@@ -12,8 +12,8 @@ import StepDataManager from "../../StepDataManager";
 const RestaurantWrapper = () => {
     const { 
         submitStepData, 
-        loading, 
-        error, 
+        onboardingLoading: loading, 
+        onboardingError: error, 
         clearError, 
         completeOnboardingData,
         getTempFormData,
@@ -242,8 +242,17 @@ const RestaurantWrapper = () => {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
                 
-                // Navigate to next step using the TabContext
-                navigateToNextStep();
+                // Add a small delay to ensure state is updated before navigation
+                setTimeout(() => {
+                    console.log("🔄 Navigating to next step after state update...");
+                    
+                    // Debug: Check current state
+                    const currentState = useStore.getState();
+                    console.log("Current completeOnboardingData:", currentState.completeOnboardingData);
+                    console.log("Basic Information status:", currentState.completeOnboardingData["Basic Information"]?.status);
+                    
+                    navigateToNextStep();
+                }, 100);
             });
             console.log("submitStepData result:", result);
             

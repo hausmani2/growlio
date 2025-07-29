@@ -9,7 +9,7 @@ import useStore from "../../../store/store";
 const RestaurantContent = () => {
     const navigate = useNavigate();
     const { renderActiveContent } = useTabHook();
-    const { isAuthenticated, token, loading } = useStore();
+    const { isAuthenticated, token, onboardingLoading: loading } = useStore();
 
     // Check authentication before rendering content
     useEffect(() => {

@@ -12,7 +12,7 @@ import useStepValidation from "../useStepValidation";
 
 const ExpenseWrapper = () => {
     const navigate = useNavigate();
-    const { submitStepData, loading, error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
     

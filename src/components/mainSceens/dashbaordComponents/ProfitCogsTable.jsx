@@ -1,28 +1,131 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, DollarOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import useStore from '../../../store/store';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
 
-const ProfitCogsTable = () => {
-  const [monthlyData, setMonthlyData] = useState({
-    thirdPartyFees: 0,
-    profitAfterCogsLabor: -100,
-    dailyVariableProfitPercentage: 0,
-    weeklyVariableProfitPercentage: -2
-  });
-
+const ProfitCogsTable = ({ selectedDate }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(dayjs());
+  const [dataNotFound, setDataNotFound] = useState(false);
 
-  // Handle monthly data changes
-  const handleMonthlyDataChange = (field, value) => {
-    const newData = { ...monthlyData, [field]: value };
-    setMonthlyData(newData);
+  // Store integration
+  const { 
+    fetchDashboardData, 
+    saveDashboardData, 
+    loading: storeLoading, 
+    error: storeError 
+  } = useStore();
+
+  // Load data when selectedDate changes
+  useEffect(() => {
+    if (selectedDate) {
+      loadDashboardData();
+    }
+  }, [selectedDate]);
+
+  // Load dashboard data
+  const loadDashboardData = async () => {
+    try {
+      setDataNotFound(false);
+      const data = await fetchDashboardData(selectedDate.format('YYYY-MM-DD'));
+      
+      if (data && data['Profit']) {
+        // Extract weekly data from daily_entries
+        const weeklyTableData = [{
+          id: 'consolidated-week',
+          weekTitle: 'Weekly Profit Data',
+          startDate: selectedDate,
+          dailyData: data.daily_entries?.map(entry => ({
+            date: dayjs(entry.date),
+            dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+            thirdPartyFees: entry['Profit']?.third_party_fees || 0,
+            profitAfterCogsLabor: entry['Profit']?.profit_after_cogs_labor || 0,
+            dailyVariableProfitPercentage: entry['Profit']?.daily_variable_profit_percent || 0,
+            weeklyVariableProfitPercentage: entry['Profit']?.weekly_variable_profit_percent || 0
+          })) || [],
+          // Load weekly goals from API response
+          weeklyTotals: {
+            thirdPartyFees: parseFloat(data['Profit']?.third_party_fees) || 0,
+            profitAfterCogsLabor: parseFloat(data['Profit']?.profit_after_cogs_labor) || 0,
+            dailyVariableProfitPercentage: parseFloat(data['Profit']?.daily_variable_profit_percent) || 0,
+            weeklyVariableProfitPercentage: parseFloat(data['Profit']?.weekly_variable_profit_percent) || 0
+          }
+        }];
+        setWeeklyData(weeklyTableData);
+      } else {
+        // No data found, reset to defaults
+        setWeeklyData([]);
+      }
+    } catch (error) {
+      // Check if it's a 404 error
+      if (error.response && error.response.status === 404) {
+        setDataNotFound(true);
+        setWeeklyData([]);
+        message.info('No profit data found for the selected period.');
+      } else {
+        message.error(`Failed to load profit data: ${error.message}`);
+      }
+    }
+  };
+
+  // Save dashboard data
+  const saveData = async () => {
+    try {
+      // Only save the current week's data (first week in the array)
+      const currentWeek = weeklyData.length > 0 ? weeklyData[0] : null;
+      
+      if (!currentWeek || !currentWeek.dailyData) {
+        message.warning('No weekly data to save. Please add weekly Profit data first.');
+        return;
+      }
+
+      // Use the weekly totals from the form data
+      const weeklyTotals = currentWeek.weeklyTotals || {
+        thirdPartyFees: 0,
+        profitAfterCogsLabor: 0,
+        dailyVariableProfitPercentage: 0,
+        weeklyVariableProfitPercentage: 0
+      };
+
+      // Calculate final totals for this week
+      const finalTotals = {
+        thirdPartyFees: weeklyTotals.thirdPartyFees,
+        profitAfterCogsLabor: weeklyTotals.profitAfterCogsLabor,
+        dailyVariableProfitPercentage: weeklyTotals.dailyVariableProfitPercentage,
+        weeklyVariableProfitPercentage: weeklyTotals.weeklyVariableProfitPercentage
+      };
+
+      // Transform data to API format - only save the current week's daily data
+      const transformedData = {
+        week_start: selectedDate.format('YYYY-MM-DD'),
+        section: "Profit",
+        section_data: {
+          weekly: {
+            third_party_fees: finalTotals.thirdPartyFees,
+            profit_after_cogs_labor: finalTotals.profitAfterCogsLabor,
+            daily_variable_profit_percent: finalTotals.dailyVariableProfitPercentage,
+            weekly_variable_profit_percent: finalTotals.weeklyVariableProfitPercentage
+          },
+          daily: currentWeek.dailyData.map(day => ({
+            date: day.date.format('YYYY-MM-DD'),
+            third_party_fees: (day.thirdPartyFees || 0),
+            profit_after_cogs_labor: (day.profitAfterCogsLabor || 0),
+            daily_variable_profit_percent: (day.dailyVariableProfitPercentage || 0),
+            weekly_variable_profit_percent: (day.weeklyVariableProfitPercentage || 0)
+          }))
+        }
+      };
+
+      await saveDashboardData(transformedData);
+      message.success('Profit data saved successfully!');
+      await loadDashboardData();
+    } catch (error) {
+      message.error(`Failed to save profit data: ${error.message}`);
+    }
   };
 
   // Handle weekly data modal
@@ -61,31 +164,17 @@ const ProfitCogsTable = () => {
 
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
-    const totals = {
+    const totals = weekData.dailyData.reduce((acc, day) => ({
+      thirdPartyFees: acc.thirdPartyFees + (parseFloat(day.thirdPartyFees) || 0),
+      profitAfterCogsLabor: acc.profitAfterCogsLabor + (parseFloat(day.profitAfterCogsLabor) || 0),
+      dailyVariableProfitPercentage: acc.dailyVariableProfitPercentage + (parseFloat(day.dailyVariableProfitPercentage) || 0),
+      weeklyVariableProfitPercentage: acc.weeklyVariableProfitPercentage + (parseFloat(day.weeklyVariableProfitPercentage) || 0)
+    }), {
       thirdPartyFees: 0,
       profitAfterCogsLabor: 0,
       dailyVariableProfitPercentage: 0,
       weeklyVariableProfitPercentage: 0
-    };
-
-    weekData.dailyData.forEach(day => {
-      totals.thirdPartyFees += day.thirdPartyFees || 0;
-      totals.profitAfterCogsLabor += day.profitAfterCogsLabor || 0;
     });
-
-    // Calculate average percentages
-    const validDailyPercentages = weekData.dailyData.filter(day => day.dailyVariableProfitPercentage !== 0).length;
-    const validWeeklyPercentages = weekData.dailyData.filter(day => day.weeklyVariableProfitPercentage !== 0).length;
-
-    if (validDailyPercentages > 0) {
-      totals.dailyVariableProfitPercentage = weekData.dailyData.reduce((sum, day) => 
-        sum + (day.dailyVariableProfitPercentage || 0), 0) / validDailyPercentages;
-    }
-
-    if (validWeeklyPercentages > 0) {
-      totals.weeklyVariableProfitPercentage = weekData.dailyData.reduce((sum, day) => 
-        sum + (day.weeklyVariableProfitPercentage || 0), 0) / validWeeklyPercentages;
-    }
 
     return totals;
   };
@@ -93,9 +182,8 @@ const ProfitCogsTable = () => {
   // Generate 7 days of data starting from a given date
   const generateDailyData = (startDate) => {
     const days = [];
-    const safeStartDate = startDate || dayjs();
     for (let i = 0; i < 7; i++) {
-      const currentDate = dayjs(safeStartDate).add(i, 'day');
+      const currentDate = dayjs(startDate).add(i, 'day');
       days.push({
         date: currentDate,
         dayName: currentDate.format('dddd'),
@@ -113,7 +201,14 @@ const ProfitCogsTable = () => {
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
       startDate: dayjs(),
-      dailyData: generateDailyData(dayjs())
+      dailyData: generateDailyData(dayjs()),
+      // Add weekly totals for the modal
+      weeklyTotals: {
+        thirdPartyFees: 0,
+        profitAfterCogsLabor: 0,
+        dailyVariableProfitPercentage: 0,
+        weeklyVariableProfitPercentage: 0
+      }
     });
 
     useEffect(() => {
@@ -123,7 +218,13 @@ const ProfitCogsTable = () => {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
           startDate: dayjs(),
-          dailyData: generateDailyData(dayjs())
+          dailyData: generateDailyData(dayjs()),
+          weeklyTotals: {
+            thirdPartyFees: 0,
+            profitAfterCogsLabor: 0,
+            dailyVariableProfitPercentage: 0,
+            weeklyVariableProfitPercentage: 0
+          }
         });
       }
     }, [editingWeek, weeklyData.length]);
@@ -132,14 +233,6 @@ const ProfitCogsTable = () => {
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       setWeekFormData({ ...weekFormData, dailyData: newDailyData });
-    };
-
-    const handleStartDateChange = (date) => {
-      setWeekFormData({
-        ...weekFormData,
-        startDate: date,
-        dailyData: generateDailyData(date || dayjs())
-      });
     };
 
     const handleSubmit = () => {
@@ -162,31 +255,144 @@ const ProfitCogsTable = () => {
         width={1200}
       >
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Text strong>Week Title:</Text>
-              <Input
-                value={weekFormData.weekTitle}
-                onChange={(e) => setWeekFormData({ ...weekFormData, weekTitle: e.target.value })}
-                placeholder="Enter week title"
-              />
-            </Col>
-            <Col span={12}>
-              <Text strong>Start Date:</Text>
-              <DatePicker
-                value={weekFormData.startDate}
-                onChange={handleStartDateChange}
-                style={{ width: '100%' }}
-              />
-            </Col>
-          </Row>
 
-          <Divider>Daily Profit Data</Divider>
+          {/* Weekly Goals Input Section */}
+          <Card title="Weekly Profit Goals" size="small">
+            <Row gutter={16}>
+              <Col span={6}>
+                <Text strong>Third Party Fees:</Text>
+                <Input
+                  type="number"
+                  value={weekFormData.weeklyTotals.thirdPartyFees}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        thirdPartyFees: value
+                      }
+                    }));
+                  }}
+                  prefix="$"
+                  placeholder="0.00"
+                />
+              </Col>
+              <Col span={6}>
+                <Text strong>Profit After COGS & Labor:</Text>
+                <Input
+                  type="number"
+                  value={weekFormData.weeklyTotals.profitAfterCogsLabor}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        profitAfterCogsLabor: value
+                      }
+                    }));
+                  }}
+                  prefix="$"
+                  placeholder="0.00"
+                  style={{ 
+                    color: weekFormData.weeklyTotals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a',
+                    borderColor: weekFormData.weeklyTotals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
+                  }}
+                />
+              </Col>
+              <Col span={6}>
+                <Text strong>Daily Variable Profit %:</Text>
+                <Input
+                  type="number"
+                  value={weekFormData.weeklyTotals.dailyVariableProfitPercentage}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        dailyVariableProfitPercentage: value
+                      }
+                    }));
+                  }}
+                  suffix="%"
+                  placeholder="0.0"
+                  style={{ 
+                    color: weekFormData.weeklyTotals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
+                    borderColor: weekFormData.weeklyTotals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                  }}
+                />
+              </Col>
+              <Col span={6}>
+                <Text strong>Weekly Variable Profit %:</Text>
+                <Input
+                  type="number"
+                  value={weekFormData.weeklyTotals.weeklyVariableProfitPercentage}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        weeklyVariableProfitPercentage: value
+                      }
+                    }));
+                  }}
+                  suffix="%"
+                  placeholder="0.0"
+                  style={{ 
+                    color: weekFormData.weeklyTotals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
+                    borderColor: weekFormData.weeklyTotals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                  }}
+                />
+              </Col>
+            </Row>
+          </Card>
 
           <Table
             dataSource={weekFormData.dailyData}
             pagination={false}
             size="small"
+            summary={(pageData) => {
+              const totals = pageData.reduce((acc, record) => ({
+                thirdPartyFees: acc.thirdPartyFees + (parseFloat(record.thirdPartyFees) || 0),
+                profitAfterCogsLabor: acc.profitAfterCogsLabor + (parseFloat(record.profitAfterCogsLabor) || 0),
+                dailyVariableProfitPercentage: acc.dailyVariableProfitPercentage + (parseFloat(record.dailyVariableProfitPercentage) || 0),
+                weeklyVariableProfitPercentage: acc.weeklyVariableProfitPercentage + (parseFloat(record.weeklyVariableProfitPercentage) || 0)
+              }), {
+                thirdPartyFees: 0,
+                profitAfterCogsLabor: 0,
+                dailyVariableProfitPercentage: 0,
+                weeklyVariableProfitPercentage: 0
+              });
+
+              return (
+                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                  <Table.Summary.Cell index={0}>
+                    <Text strong>Totals:</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={1}>
+                    <Text strong>${totals.thirdPartyFees.toFixed(2)}</Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={2}>
+                    <Text strong style={{ color: totals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a' }}>
+                      ${totals.profitAfterCogsLabor.toFixed(2)}
+                    </Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={3}>
+                    <Text strong style={{ color: totals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                      {totals.dailyVariableProfitPercentage.toFixed(1)}%
+                    </Text>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={4}>
+                    <Text strong style={{ color: totals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                      {totals.weeklyVariableProfitPercentage.toFixed(1)}%
+                    </Text>
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              );
+            }}
             columns={[
               {
                 title: 'Day',
@@ -196,14 +402,14 @@ const ProfitCogsTable = () => {
                 render: (text, record) => (
                   <div>
                     <div>{text}</div>
-                                      <div style={{ fontSize: '12px', color: '#666' }}>
-                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
-                  </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {record.date.format('MMM DD, YYYY')}
+                    </div>
                   </div>
                 )
               },
               {
-                title: '3rd Party Fees',
+                title: 'Third Party Fees',
                 dataIndex: 'thirdPartyFees',
                 key: 'thirdPartyFees',
                 width: 150,
@@ -277,47 +483,56 @@ const ProfitCogsTable = () => {
     );
   };
 
+  // Get weekly response values from API
+  const getWeeklyResponseValues = () => {
+    if (weeklyData.length > 0 && weeklyData[0].weeklyTotals) {
+      return weeklyData[0].weeklyTotals;
+    }
+    return {
+      thirdPartyFees: 0,
+      profitAfterCogsLabor: 0,
+      dailyVariableProfitPercentage: 0,
+      weeklyVariableProfitPercentage: 0
+    };
+  };
+
+  const weeklyResponseValues = getWeeklyResponseValues();
+
   return (
     <div className="w-full">
       <div className="w-full mx-auto">
         <Title level={3} className="pl-2 pb-2">Profit After COGS & Labor Dashboard</Title>
         
+        {storeError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+            <Text type="danger">{storeError}</Text>
+          </div>
+        )}
+        
         <Row gutter={24}>
-          {/* Monthly Totals Section */}
+          {/* Weekly Totals Section */}
           <Col span={6}>
-            <Card title="Monthly Totals For The Month Of:" className="h-fit">
-              <div className="mb-4">
-                <DatePicker
-                  picker="month"
-                  value={selectedMonth}
-                  onChange={setSelectedMonth}
-                  style={{ width: '100%' }}
-                />
-              </div>
-              
+            <Card title="Weekly Profit Totals" className="h-fit">
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
-                  <Text strong>3rd Party Fees:</Text>
+                  <Text strong>Third Party Fees:</Text>
                   <Input
-                    type="number"
-                    value={monthlyData.thirdPartyFees}
-                    onChange={(e) => handleMonthlyDataChange('thirdPartyFees', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={`$${weeklyResponseValues.thirdPartyFees.toFixed(2)}`}
                     className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong>Profit After COGS & Labor:</Text>
                   <Input
-                    type="number"
-                    value={monthlyData.profitAfterCogsLabor}
-                    onChange={(e) => handleMonthlyDataChange('profitAfterCogsLabor', parseFloat(e.target.value) || 0)}
-                    prefix="$"
+                    value={`$${weeklyResponseValues.profitAfterCogsLabor.toFixed(2)}`}
                     className="mt-1"
+                    disabled
                     style={{ 
-                      color: monthlyData.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a',
-                      borderColor: monthlyData.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
                     }}
                   />
                 </div>
@@ -325,14 +540,12 @@ const ProfitCogsTable = () => {
                 <div>
                   <Text strong>Daily Variable Profit %:</Text>
                   <Input
-                    type="number"
-                    value={monthlyData.dailyVariableProfitPercentage}
-                    onChange={(e) => handleMonthlyDataChange('dailyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
-                    suffix="%"
+                    value={`${weeklyResponseValues.dailyVariableProfitPercentage.toFixed(1)}%`}
                     className="mt-1"
+                    disabled
                     style={{ 
-                      color: monthlyData.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
-                      borderColor: monthlyData.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
                     }}
                   />
                 </div>
@@ -340,14 +553,12 @@ const ProfitCogsTable = () => {
                 <div>
                   <Text strong>Weekly Variable Profit %:</Text>
                   <Input
-                    type="number"
-                    value={monthlyData.weeklyVariableProfitPercentage}
-                    onChange={(e) => handleMonthlyDataChange('weeklyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
-                    suffix="%"
+                    value={`${weeklyResponseValues.weeklyVariableProfitPercentage.toFixed(1)}%`}
                     className="mt-1"
+                    disabled
                     style={{ 
-                      color: monthlyData.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a',
-                      borderColor: monthlyData.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
                     }}
                   />
                 </div>
@@ -358,142 +569,180 @@ const ProfitCogsTable = () => {
           {/* Weekly Data Section */}
           <Col span={18}>
             <Card 
-              title={`Profit After COGS & Labor: ${selectedMonth ? selectedMonth.format('MMM-YY') : ''}`}
+              title={`Profit After COGS & Labor: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
               extra={
-                <Button 
-                  type="primary" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                >
-                  Add Weekly Profit Data
-                </Button>
+                <Space>
+                  <Button 
+                    onClick={loadDashboardData}
+                    loading={storeLoading}
+                  >
+                    Refresh
+                  </Button>
+                  <Button 
+                    type="primary" 
+                    onClick={saveData}
+                    loading={storeLoading}
+                  >
+                    Save Data
+                  </Button>
+                  <Button 
+                    type="default" 
+                    icon={<PlusOutlined />} 
+                    onClick={showAddWeeklyModal}
+                  >
+                    Add Weekly Profit
+                  </Button>
+                </Space>
               }
             >
-              {weeklyData.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                  <div>No weekly profit data added yet. Click "Add Weekly Profit Data" to get started.</div>
-                </div>
+              {dataNotFound ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No profit data found for the selected period."
+                />
               ) : (
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  {weeklyData.map((week) => {
-                    const totals = calculateWeeklyTotals(week);
-                    
-                    return (
-                      <Card 
-                        key={week.id} 
-                        size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                            <Button 
-                              size="small" 
-                              danger 
-                              icon={<DeleteOutlined />} 
-                              onClick={() => deleteWeek(week.id)}
-                            >
-                              Delete
-                            </Button>
-                          </Space>
-                        }
-                      >
-                        <Table
-                          dataSource={week.dailyData}
-                          pagination={false}
-                          size="small"
-                          columns={[
-                            {
-                              title: 'Day',
-                              dataIndex: 'dayName',
-                              key: 'dayName',
-                              width: 120,
-                              render: (text, record) => (
-                                <div>
-                                  <div>{text}</div>
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {record.date ? record.date.format('MMM DD, YYYY') : ''}
+                weeklyData.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <DollarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                    <div>No weekly profit data added yet. Click "Add Weekly Profit" to get started.</div>
+                  </div>
+                ) : (
+                  <Space direction="vertical" style={{ width: '100%' }} size="large">
+                    {weeklyData.map((week) => {
+                      const totals = calculateWeeklyTotals(week);
+                      return (
+                        <Card 
+                          key={week.id} 
+                          size="small" 
+                          title={week.weekTitle}
+                          extra={
+                            <Space>
+                              <Text type="secondary">
+                                Total: ${totals.profitAfterCogsLabor.toFixed(2)}
+                              </Text>
+                              <Button 
+                                size="small" 
+                                icon={<EditOutlined />} 
+                                onClick={() => showEditWeeklyModal(week)}
+                              >
+                                Edit
+                              </Button>
+                              <Button 
+                                size="small" 
+                                danger 
+                                icon={<DeleteOutlined />} 
+                                onClick={() => deleteWeek(week.id)}
+                              >
+                                Delete
+                              </Button>
+                            </Space>
+                          }
+                        >
+                          <Table
+                            dataSource={week.dailyData || []}
+                            pagination={false}
+                            size="small"
+                            summary={(pageData) => {
+                              const weekTotals = pageData.reduce((acc, record) => ({
+                                thirdPartyFees: acc.thirdPartyFees + (parseFloat(record.thirdPartyFees) || 0),
+                                profitAfterCogsLabor: acc.profitAfterCogsLabor + (parseFloat(record.profitAfterCogsLabor) || 0),
+                                dailyVariableProfitPercentage: acc.dailyVariableProfitPercentage + (parseFloat(record.dailyVariableProfitPercentage) || 0),
+                                weeklyVariableProfitPercentage: acc.weeklyVariableProfitPercentage + (parseFloat(record.weeklyVariableProfitPercentage) || 0)
+                              }), {
+                                thirdPartyFees: 0,
+                                profitAfterCogsLabor: 0,
+                                dailyVariableProfitPercentage: 0,
+                                weeklyVariableProfitPercentage: 0
+                              });
+
+                              return (
+                                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                                  <Table.Summary.Cell index={0}>
+                                    <Text strong>Week Totals:</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={1}>
+                                    <Text strong>${weekTotals.thirdPartyFees.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={2}>
+                                    <Text strong style={{ color: weekTotals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                      ${weekTotals.profitAfterCogsLabor.toFixed(2)}
+                                    </Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={3}>
+                                    <Text strong style={{ color: weekTotals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                      {weekTotals.dailyVariableProfitPercentage.toFixed(1)}%
+                                    </Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={4}>
+                                    <Text strong style={{ color: weekTotals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                      {weekTotals.weeklyVariableProfitPercentage.toFixed(1)}%
+                                    </Text>
+                                  </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                              );
+                            }}
+                            columns={[
+                              {
+                                title: 'Day',
+                                dataIndex: 'dayName',
+                                key: 'dayName',
+                                width: 120,
+                                render: (text, record) => (
+                                  <div>
+                                    <div>{text}</div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                      {record.date.format('MMM DD, YYYY')}
+                                    </div>
                                   </div>
-                                </div>
-                              )
-                            },
-                            {
-                              title: '3rd Party Fees',
-                              dataIndex: 'thirdPartyFees',
-                              key: 'thirdPartyFees',
-                              width: 140,
-                              render: (value) => <Text>${value?.toFixed(2) || '0.00'}</Text>
-                            },
-                            {
-                              title: 'Profit After COGS & Labor',
-                              dataIndex: 'profitAfterCogsLabor',
-                              key: 'profitAfterCogsLabor',
-                              width: 180,
-                              render: (value) => (
-                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  ${value?.toFixed(0) || '0'}
-                                </Text>
-                              )
-                            },
-                            {
-                              title: 'Daily Variable Profit %',
-                              dataIndex: 'dailyVariableProfitPercentage',
-                              key: 'dailyVariableProfitPercentage',
-                              width: 160,
-                              render: (value) => (
-                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {value?.toFixed(0) || '0'}%
-                                </Text>
-                              )
-                            },
-                            {
-                              title: 'Weekly Variable Profit %',
-                              dataIndex: 'weeklyVariableProfitPercentage',
-                              key: 'weeklyVariableProfitPercentage',
-                              width: 160,
-                              render: (value) => (
-                                <Text style={{ color: value < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {value?.toFixed(0) || '0'}%
-                                </Text>
-                              )
-                            }
-                          ]}
-                          summary={() => (
-                            <Table.Summary.Row>
-                              <Table.Summary.Cell index={0}>
-                                <Text strong>Total</Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={1}>
-                                <Text strong>${totals.thirdPartyFees.toFixed(2)}</Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={2}>
-                                <Text strong style={{ color: totals.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  ${totals.profitAfterCogsLabor.toFixed(0)}
-                                </Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={3}>
-                                <Text strong style={{ color: totals.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {totals.dailyVariableProfitPercentage.toFixed(0)}%
-                                </Text>
-                              </Table.Summary.Cell>
-                              <Table.Summary.Cell index={4}>
-                                <Text strong style={{ color: totals.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a' }}>
-                                  {totals.weeklyVariableProfitPercentage.toFixed(0)}%
-                                </Text>
-                              </Table.Summary.Cell>
-                            </Table.Summary.Row>
-                          )}
-                        />
-                      </Card>
-                    );
-                  })}
-                </Space>
+                                )
+                              },
+                              {
+                                title: 'Third Party Fees',
+                                dataIndex: 'thirdPartyFees',
+                                key: 'thirdPartyFees',
+                                width: 140,
+                                render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              {
+                                title: 'Profit After COGS & Labor',
+                                dataIndex: 'profitAfterCogsLabor',
+                                key: 'profitAfterCogsLabor',
+                                width: 180,
+                                render: (value) => (
+                                  <Text style={{ color: (parseFloat(value) || 0) < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                    ${(parseFloat(value) || 0).toFixed(2)}
+                                  </Text>
+                                )
+                              },
+                              {
+                                title: 'Daily Variable Profit %',
+                                dataIndex: 'dailyVariableProfitPercentage',
+                                key: 'dailyVariableProfitPercentage',
+                                width: 160,
+                                render: (value) => (
+                                  <Text style={{ color: (parseFloat(value) || 0) < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                    {(parseFloat(value) || 0).toFixed(1)}%
+                                  </Text>
+                                )
+                              },
+                              {
+                                title: 'Weekly Variable Profit %',
+                                dataIndex: 'weeklyVariableProfitPercentage',
+                                key: 'weeklyVariableProfitPercentage',
+                                width: 160,
+                                render: (value) => (
+                                  <Text style={{ color: (parseFloat(value) || 0) < 0 ? '#ff4d4f' : '#52c41a' }}>
+                                    {(parseFloat(value) || 0).toFixed(1)}%
+                                  </Text>
+                                )
+                              }
+                            ]}
+                          />
+                        </Card>
+                      );
+                    })}
+                  </Space>
+                )
               )}
             </Card>
           </Col>

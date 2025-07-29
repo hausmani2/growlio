@@ -21,7 +21,7 @@ export const TabProvider = ({ children }) => {
         ensureAllStepsInitialized,
         loadExistingOnboardingData,
         checkOnboardingCompletion,
-        loading
+        onboardingLoading: loading
     } = useStore();
     const { loadStepData, saveCurrentStepData } = useStepNavigation();
 
@@ -260,13 +260,31 @@ export const TabProvider = ({ children }) => {
         const nextTabId = activeTab + 1;
         console.log(`📋 Next tab ID would be: ${nextTabId}, total tabs: ${tabs.length}`);
         
+        // Debug: Check current state before navigation
+        console.log("Current completeOnboardingData:", completeOnboardingData);
+        console.log("Basic Information status:", completeOnboardingData["Basic Information"]?.status);
+        
         if (nextTabId < tabs.length) {
             console.log(`✅ Next tab exists, checking if can navigate to tab ${nextTabId}`);
+            
+            // Force check the current step completion status
+            const currentStepName = tabs[activeTab]?.title;
+            if (currentStepName) {
+                console.log(`🔍 Checking if current step "${currentStepName}" is completed...`);
+                const isCurrentStepCompleted = isStepCompleted(currentStepName);
+                console.log(`Current step "${currentStepName}" completed: ${isCurrentStepCompleted}`);
+            }
+            
             if (canNavigateToTab(nextTabId)) {
                 console.log(`✅ Can navigate to next tab ${nextTabId}, calling handleTabClick`);
                 handleTabClick(nextTabId);
             } else {
                 console.log(`❌ Cannot navigate to next tab ${nextTabId}`);
+                // Try to force navigation if we're on Basic Information and it should be completed
+                if (activeTab === 0 && completeOnboardingData["Basic Information"]?.status === true) {
+                    console.log("🔄 Force navigating to next tab despite canNavigateToTab check...");
+                    handleTabClick(nextTabId);
+                }
             }
         } else {
             // All local steps completed - check if onboarding is actually complete

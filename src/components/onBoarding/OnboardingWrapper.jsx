@@ -1,19 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import OnBoard from "../../assets/pngs/onBoard.png"
 
 import ImageLayout from "../imageWrapper/ImageLayout";
 import PrimaryBtn from "../buttons/Buttons";
+import LoadingSpinner from "../layout/LoadingSpinner";
 import { Checkbox } from "antd";
 import { FaArrowLeftLong } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../store/store";
 import { message } from "antd";
 import { apiGet } from "../../utils/axiosInterceptors";
+import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
     const [isChecking, setIsChecking] = useState(false);
-    const { checkOnboardingStatus, loadExistingOnboardingData } = useStore();
+    const { 
+        checkOnboardingStatus, 
+        loadExistingOnboardingData, 
+        onboardingStatus,
+        onboardingLoading 
+    } = useStore();
+
+    // Check if we should show loading state
+    const shouldShowLoading = onboardingLoading || onboardingStatus === 'loading';
     
     const handleSubmit = async () => {
         setIsChecking(true);
@@ -21,9 +31,28 @@ const OnboardingWrapper = () => {
         try {
             console.log("📋 User clicking Continue - checking onboarding status...");
             
-            // Call the API to check onboarding status
-            const response = await apiGet('/restaurant/restaurants-onboarding/');
-            const onboardingData = response.data;
+            // Use the onboarding status from store if available, otherwise make API call
+            let onboardingData;
+            
+            if (onboardingStatus === 'loading') {
+                // Wait for the existing check to complete
+                console.log('⏳ Waiting for existing onboarding status check...');
+                message.info("Please wait while we check your status...");
+                return;
+            }
+            
+            if (onboardingStatus === null) {
+                // No status available, make API call
+                console.log('🔄 Making API call to check onboarding status...');
+                message.info("Checking your restaurant status...");
+                const response = await apiGet('/restaurant/restaurants-onboarding/');
+                onboardingData = response.data;
+            } else {
+                // Use cached status from store
+                console.log('✅ Using cached onboarding status from store');
+                const result = await checkOnboardingStatus();
+                onboardingData = result;
+            }
             
             console.log('Onboarding Status Check - Raw data:', onboardingData);
             
@@ -61,7 +90,7 @@ const OnboardingWrapper = () => {
                         console.log('✅ Successfully loaded existing onboarding data');
                         
                         // Determine which step to navigate to based on incomplete steps
-                        const { incompleteSteps, completedSteps } = result;
+                        const { incompleteSteps } = result;
                         
                         if (incompleteSteps.length === 0) {
                             // All steps are complete, go to completion page
@@ -105,16 +134,64 @@ const OnboardingWrapper = () => {
             
         } catch (error) {
             console.error("Error checking onboarding status:", error);
-            message.error("Something went wrong. Please try again.");
-            // Fallback to Basic Information
-            navigate('/onboarding/basic-information');
+            
+            let errorMessage = "Something went wrong. Please try again.";
+            
+            if (error.message === 'Request timeout') {
+                errorMessage = "Request timed out. Please check your connection and try again.";
+            } else if (error.response?.status === 401) {
+                errorMessage = "Authentication required. Please log in again.";
+            } else if (error.response?.status === 404) {
+                errorMessage = "No restaurant data found. Starting fresh setup.";
+            }
+            
+            message.error(errorMessage);
+            
+            // For certain errors, we can still proceed to onboarding
+            if (error.response?.status === 404 || error.message === 'Request timeout') {
+                console.log('Proceeding to Basic Information despite error');
+                navigate('/onboarding/basic-information');
+            } else {
+                // For other errors, stay on current page and let user retry
+                console.log('Staying on current page due to error');
+            }
         } finally {
             setIsChecking(false);
         }
     };
-        return (
-        <div className="min-h-screen flex flex-col lg:flex-row">
-            {/* Content Section */}
+
+    // Auto-navigate if onboarding status is already known
+    useEffect(() => {
+        if (onboardingStatus === 'complete') {
+            console.log('✅ Onboarding already complete - redirecting to dashboard');
+            navigate('/dashboard');
+        } else if (onboardingStatus === 'incomplete') {
+            console.log('⚠️ Onboarding incomplete - user can proceed with setup');
+        }
+    }, [onboardingStatus, navigate]);
+
+    // Auto-reset stuck loading state after 10 seconds
+    useEffect(() => {
+        if (onboardingLoading) {
+            const timer = setTimeout(() => {
+                console.log('⚠️ Loading state stuck for 10 seconds, auto-resetting...');
+                forceResetOnboardingLoading();
+            }, 10000);
+            
+            return () => clearTimeout(timer);
+        }
+    }, [onboardingLoading]);
+
+    // Show loading state if needed
+    if (shouldShowLoading) {
+        return <LoadingSpinner message="Loading onboarding data..." />;
+    }
+
+    return (
+        <>
+            <StoreDebugger />
+            <div className="min-h-screen flex flex-col lg:flex-row">
+                {/* Content Section */}
             <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0">
                 <div className="w-full max-w-sm mx-auto">
                     <div className="flex flex-col gap-4 sm:gap-6">
@@ -160,7 +237,7 @@ const OnboardingWrapper = () => {
                             title={isChecking ? "Checking..." : "Continue"} 
                             className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4" 
                             onClick={handleSubmit}
-                            disabled={isChecking}
+                            disabled={isChecking || onboardingLoading}
                         />
                     </div>
                     </div>
@@ -179,7 +256,8 @@ const OnboardingWrapper = () => {
                     </div>
                 </ImageLayout>
             </div>
-        </div >
+        </div>
+        </>
     );
 };
 

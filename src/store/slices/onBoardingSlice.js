@@ -4,8 +4,8 @@ const createOnBoardingSlice = (set, get) => ({
     name: 'onBoarding',
     user: null,
     isOnBoardingCompleted: false,
-    loading: false,
-    error: null,
+    onboardingLoading: false,
+    onboardingError: null,
     onboardingData: null,
     
     // Complete onboarding data structure
@@ -429,7 +429,7 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Submit complete onboarding data
     submitCompleteOnboarding: async () => {
-        set(() => ({ loading: true, error: null }));
+        set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             const currentData = get().completeOnboardingData;
@@ -444,8 +444,8 @@ const createOnBoardingSlice = (set, get) => ({
                 const errorMessage = `Complete onboarding failed with status ${response.status}. Please try again.`;
                 
                 set(() => ({
-                    loading: false,
-                    error: errorMessage
+                    onboardingLoading: false,
+                    onboardingError: errorMessage
                 }));
                 
                 throw new Error(errorMessage);
@@ -478,7 +478,7 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Submit individual step data
     submitStepData: async (stepName, stepData, onSuccess) => {
-        set(() => ({ loading: true, error: null }));
+        set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             const currentState = get().completeOnboardingData;
@@ -530,8 +530,8 @@ const createOnBoardingSlice = (set, get) => ({
                 const errorMessage = `API request failed with status ${response.status}. Please try again.`;
                 
                 set(() => ({
-                    loading: false,
-                    error: errorMessage
+                    onboardingLoading: false,
+                    onboardingError: errorMessage
                 }));
                 
                 throw new Error(errorMessage);
@@ -583,8 +583,8 @@ const createOnBoardingSlice = (set, get) => ({
                 
                 set(() => ({
                     completeOnboardingData: updatedData,
-                    loading: false,
-                    error: null
+                    onboardingLoading: false,
+                    onboardingError: null
                 }));
             } else {
                 // If no restaurant_id in response, preserve existing data and update current step
@@ -598,8 +598,8 @@ const createOnBoardingSlice = (set, get) => ({
                 
                 set(() => ({
                     completeOnboardingData: updatedData,
-                    loading: false,
-                    error: null
+                    onboardingLoading: false,
+                    onboardingError: null
                 }));
             }
             
@@ -619,8 +619,8 @@ const createOnBoardingSlice = (set, get) => ({
                                 `Failed to save ${stepName}. Please try again.`;
             
             set(() => ({
-                loading: false,
-                error: errorMessage
+                onboardingLoading: false,
+                onboardingError: errorMessage
             }));
             
             throw new Error(errorMessage);
@@ -629,7 +629,7 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Submit onboarding data (legacy - for basic information)
     submitOnboarding: async (onboardingData) => {
-        set(() => ({ loading: true, error: null }));
+        set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             const response = await apiPost('/restaurant/onboarding/', onboardingData);
@@ -659,7 +659,7 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Get onboarding status
     getOnboardingStatus: async () => {
-        set(() => ({ loading: true, error: null }));
+        set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             const response = await apiGet('/restaurant/onboarding/');
@@ -667,8 +667,8 @@ const createOnBoardingSlice = (set, get) => ({
             set(() => ({ 
                 isOnBoardingCompleted: response.data.isCompleted,
                 onboardingData: response.data.onboardingData,
-                loading: false, 
-                error: null 
+                onboardingLoading: false, 
+                onboardingError: null 
             }));
             
             return { success: true, data: response.data };
@@ -689,18 +689,25 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Load existing onboarding data from API and populate forms
     loadExistingOnboardingData: async () => {
-        set(() => ({ loading: true, error: null }));
+        set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             console.log('🔄 Loading existing onboarding data from API...');
-            const response = await apiGet('/restaurant/onboarding/');
+            
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Request timeout')), 15000)
+            );
+            
+            const apiPromise = apiGet('/restaurant/onboarding/');
+            const response = await Promise.race([apiPromise, timeoutPromise]);
             const apiData = response.data;
             
             console.log('📥 API Response:', apiData);
             
             if (!apiData) {
                 console.log('❌ No data received from API');
-                set(() => ({ loading: false, error: null }));
+                set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { success: false, message: 'No onboarding data found' };
             }
             
@@ -864,8 +871,8 @@ const createOnBoardingSlice = (set, get) => ({
             // Update the store with the loaded data
             set(() => ({
                 completeOnboardingData: updatedOnboardingData,
-                loading: false,
-                error: null
+                onboardingLoading: false,
+                onboardingError: null
             }));
             
             console.log('✅ Successfully loaded existing onboarding data');
@@ -897,17 +904,33 @@ const createOnBoardingSlice = (set, get) => ({
         } catch (error) {
             console.error('❌ Error loading existing onboarding data:', error);
             
-            const errorMessage = error.response?.data?.message || 
-                                error.response?.data?.error || 
-                                error.message || 
-                                'Failed to load existing onboarding data.';
+            let errorMessage = 'Failed to load existing onboarding data.';
+            
+            if (error.message === 'Request timeout') {
+                errorMessage = 'Request timed out. Please check your connection and try again.';
+            } else if (error.response?.status === 404) {
+                errorMessage = 'No onboarding data found. Starting fresh setup.';
+            } else if (error.response?.status === 401) {
+                errorMessage = 'Authentication required. Please log in again.';
+            } else if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
             
             set(() => ({ 
                 loading: false, 
                 error: errorMessage 
             }));
             
-            throw new Error(errorMessage);
+            // Don't throw error, return failure result instead
+            return { 
+                success: false, 
+                message: errorMessage,
+                error: error 
+            };
         }
     },
     
@@ -927,8 +950,8 @@ const createOnBoardingSlice = (set, get) => ({
                 const errorMessage = `Update onboarding failed with status ${response.status}. Please try again.`;
                 
                 set(() => ({
-                    loading: false,
-                    error: errorMessage
+                    onboardingLoading: false,
+                    onboardingError: errorMessage
                 }));
                 
                 throw new Error(errorMessage);
@@ -938,8 +961,8 @@ const createOnBoardingSlice = (set, get) => ({
             
             set(() => ({ 
                 onboardingData: response.data,
-                loading: false, 
-                error: null 
+                onboardingLoading: false, 
+                onboardingError: null 
             }));
             
             return { success: true, data: response.data };
@@ -950,8 +973,8 @@ const createOnBoardingSlice = (set, get) => ({
                                 'Failed to update onboarding data.';
             
             set(() => ({ 
-                loading: false, 
-                error: errorMessage 
+                onboardingLoading: false, 
+                onboardingError: errorMessage 
             }));
             
             throw new Error(errorMessage);
@@ -968,8 +991,8 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ 
             user: null,
             isOnBoardingCompleted: false,
-            loading: false,
-            error: null,
+            onboardingLoading: false,
+            onboardingError: null,
             onboardingData: null,
             completeOnboardingData: {
                 restaurant_id: null,
@@ -1258,12 +1281,14 @@ const createOnBoardingSlice = (set, get) => ({
             console.log('🔄 Checking if onboarding is complete...');
             const response = await apiGet('/restaurant/restaurants-onboarding/');
             const onboardingData = response.data;
+
+            console.log("onboardingData----------------", onboardingData);
             
             console.log('📥 Restaurants Onboarding API Response:', onboardingData);
             
             if (!onboardingData) {
                 console.log('❌ No data received from restaurants-onboarding API');
-                set(() => ({ loading: false, error: null }));
+                set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { success: false, message: 'No onboarding data found' };
             }
             
@@ -1277,8 +1302,8 @@ const createOnBoardingSlice = (set, get) => ({
                     console.log('✅ Onboarding is complete!');
                     set(() => ({ 
                         isOnBoardingCompleted: true,
-                        loading: false, 
-                        error: null 
+                        onboardingLoading: false, 
+                        onboardingError: null 
                     }));
                     
                     return { 
@@ -1290,8 +1315,8 @@ const createOnBoardingSlice = (set, get) => ({
                     console.log('⚠️ Onboarding is not yet complete');
                     set(() => ({ 
                         isOnBoardingCompleted: false,
-                        loading: false, 
-                        error: null 
+                        onboardingLoading: false, 
+                        onboardingError: null 
                     }));
                     
                     return { 
@@ -1304,8 +1329,8 @@ const createOnBoardingSlice = (set, get) => ({
                 console.log('⚠️ No restaurants found in response');
                 set(() => ({ 
                     isOnBoardingCompleted: false,
-                    loading: false, 
-                    error: null 
+                    onboardingLoading: false, 
+                    onboardingError: null 
                 }));
                 
                 return { 
@@ -1324,8 +1349,8 @@ const createOnBoardingSlice = (set, get) => ({
                                 'Failed to check onboarding completion.';
             
             set(() => ({ 
-                loading: false, 
-                error: errorMessage 
+                onboardingLoading: false, 
+                onboardingError: errorMessage 
             }));
             
             throw new Error(errorMessage);

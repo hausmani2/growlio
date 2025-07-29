@@ -7,7 +7,7 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const SalesChannelsWrapper = () => {
-    const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateSalesChannels } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
     

@@ -9,7 +9,7 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const FoodCostWrapper = () => {
-    const { submitStepData, loading, error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateFoodCostDetails } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
     
