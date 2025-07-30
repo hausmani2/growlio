@@ -6,7 +6,7 @@ import useStore from '../../../store/store';
 
 const { Title, Text } = Typography;
 
-const ProfitCogsTable = ({ selectedDate }) => {
+const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -20,33 +20,61 @@ const ProfitCogsTable = ({ selectedDate }) => {
     error: storeError 
   } = useStore();
 
-  // Load data when selectedDate changes
+  // Load data when selectedDate or weekDays changes
   useEffect(() => {
     if (selectedDate) {
       loadDashboardData();
     }
-  }, [selectedDate]);
+  }, [selectedDate, weekDays]);
 
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
       setDataNotFound(false);
-      const data = await fetchDashboardData(selectedDate.format('YYYY-MM-DD'));
+      
+      // Use the first day of the week if weekDays are provided, otherwise use selectedDate
+      const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
       
       if (data && data['Profit']) {
-        // Extract weekly data from daily_entries
+        // Extract all daily entries into one consolidated table
+        const allDailyEntries = data.daily_entries?.map((entry) => ({
+          key: `day-${entry.date}`,
+          date: dayjs(entry.date),
+          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          thirdPartyFees: entry['Profit']?.third_party_fees || 0,
+          profitAfterCogsLabor: entry['Profit']?.profit_after_cogs_labor || 0,
+          dailyVariableProfitPercentage: entry['Profit']?.daily_variable_profit_percent || 0,
+          weeklyVariableProfitPercentage: entry['Profit']?.weekly_variable_profit_percent || 0
+        })) || [];
+
+        // If weekDays are provided, use them to create the daily data structure
+        let dailyData = allDailyEntries;
+        if (weekDays.length > 0) {
+          // Create daily data structure based on weekDays
+          dailyData = weekDays.map((day) => {
+            // Find existing entry for this day
+            const existingEntry = allDailyEntries.find(entry => 
+              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+            );
+            
+            return existingEntry || {
+              key: `day-${day.date.format('YYYY-MM-DD')}`,
+              date: day.date,
+              dayName: day.dayName.toLowerCase(),
+              thirdPartyFees: 0,
+              profitAfterCogsLabor: 0,
+              dailyVariableProfitPercentage: 0,
+              weeklyVariableProfitPercentage: 0
+            };
+          });
+        }
+
         const weeklyTableData = [{
           id: 'consolidated-week',
           weekTitle: 'Weekly Profit Data',
-          startDate: selectedDate,
-          dailyData: data.daily_entries?.map(entry => ({
-            date: dayjs(entry.date),
-            dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-            thirdPartyFees: entry['Profit']?.third_party_fees || 0,
-            profitAfterCogsLabor: entry['Profit']?.profit_after_cogs_labor || 0,
-            dailyVariableProfitPercentage: entry['Profit']?.daily_variable_profit_percent || 0,
-            weeklyVariableProfitPercentage: entry['Profit']?.weekly_variable_profit_percent || 0
-          })) || [],
+          startDate: weekStartDate,
+          dailyData: dailyData,
           // Load weekly goals from API response
           weeklyTotals: {
             thirdPartyFees: parseFloat(data['Profit']?.third_party_fees) || 0,
@@ -101,7 +129,7 @@ const ProfitCogsTable = ({ selectedDate }) => {
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
         section: "Profit",
         section_data: {
           weekly: {
@@ -140,11 +168,14 @@ const ProfitCogsTable = ({ selectedDate }) => {
   };
 
   const handleWeeklySubmit = (weekData) => {
+    let newWeekId = null;
+    
     if (editingWeek) {
       // Edit existing week
       setWeeklyData(prev => prev.map(week => 
         week.id === editingWeek.id ? { ...weekData, id: week.id } : week
       ));
+      newWeekId = editingWeek.id;
     } else {
       // Add new week
       const newWeek = {
@@ -152,8 +183,20 @@ const ProfitCogsTable = ({ selectedDate }) => {
         id: Date.now(),
         weekNumber: weeklyData.length + 1
       };
+      newWeekId = newWeek.id;
       setWeeklyData(prev => [...prev, newWeek]);
     }
+    
+    // Update weekly totals from the modal data
+    if (weekData.weeklyTotals) {
+      // Update the weekly data with the modal's weekly totals
+      setWeeklyData(prev => prev.map(week => 
+        week.id === newWeekId 
+          ? { ...week, weeklyTotals: weekData.weeklyTotals }
+          : week
+      ));
+    }
+    
     setIsModalVisible(false);
     setEditingWeek(null);
   };
@@ -200,8 +243,8 @@ const ProfitCogsTable = ({ selectedDate }) => {
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
-      startDate: dayjs(),
-      dailyData: generateDailyData(dayjs()),
+      startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+      dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
       // Add weekly totals for the modal
       weeklyTotals: {
         thirdPartyFees: 0,
@@ -217,8 +260,8 @@ const ProfitCogsTable = ({ selectedDate }) => {
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
-          startDate: dayjs(),
-          dailyData: generateDailyData(dayjs()),
+          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
           weeklyTotals: {
             thirdPartyFees: 0,
             profitAfterCogsLabor: 0,
@@ -227,7 +270,7 @@ const ProfitCogsTable = ({ selectedDate }) => {
           }
         });
       }
-    }, [editingWeek, weeklyData.length]);
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];

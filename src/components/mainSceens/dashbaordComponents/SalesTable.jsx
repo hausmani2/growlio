@@ -6,7 +6,17 @@ import useStore from '../../../store/store';
 
 const { Title, Text } = Typography;
 
-const SalesTable = ({ selectedDate }) => {
+const SalesTable = ({ selectedDate, weekDays = [] }) => {
+  const [weeklyGoals, setWeeklyGoals] = useState({
+    salesBudget: 0,
+    actualSalesInStore: 0,
+    actualSalesAppOnline: 0,
+    actualSalesDoorDash: 0,
+    netSalesActual: 0,
+    dailyTickets: 0,
+    averageDailyTicket: 0
+  });
+
   const [weeklyTotals, setWeeklyTotals] = useState({
     salesBudget: 0,
     actualSalesInStore: 0,
@@ -30,12 +40,12 @@ const SalesTable = ({ selectedDate }) => {
     error: storeError 
   } = useStore();
 
-  // Load data when selectedDate changes
+  // Load data when selectedDate or weekDays changes
   useEffect(() => {
     if (selectedDate) {
       loadDashboardData();
     }
-  }, [selectedDate]);
+  }, [selectedDate, weekDays]);
 
   // Recalculate weekly totals when weeklyData changes
   useEffect(() => {
@@ -88,9 +98,28 @@ const SalesTable = ({ selectedDate }) => {
   const loadDashboardData = async () => {
     try {
       setDataNotFound(false);
-      const data = await fetchDashboardData(selectedDate.format('YYYY-MM-DD'));
       
-      if (data) {
+      // Use the first day of the week if weekDays are provided, otherwise use selectedDate
+      const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
+      
+      if (data && data['Sales Performance']) {
+        // Load weekly goals from the Sales Performance section
+        const salesPerformance = data['Sales Performance'];
+        
+        if (salesPerformance) {
+          const goals = {
+            salesBudget: parseFloat(salesPerformance.sales_budget) || 0,
+            actualSalesInStore: parseFloat(salesPerformance.actual_sales_in_store) || 0,
+            actualSalesAppOnline: parseFloat(salesPerformance.actual_sales_app_online) || 0,
+            actualSalesDoorDash: parseFloat(salesPerformance.actual_sales_door_dash) || 0,
+            netSalesActual: parseFloat(salesPerformance.net_sales_actual) || 0,
+            dailyTickets: parseFloat(salesPerformance.daily_tickets) || 0,
+            averageDailyTicket: parseFloat(salesPerformance.average_daily_ticket) || 0
+          };
+          setWeeklyGoals(goals);
+        }
+
         // Extract all daily entries into one consolidated table
         const allDailyEntries = data.daily_entries?.map((entry) => ({
           key: `day-${entry.date}`,
@@ -103,21 +132,60 @@ const SalesTable = ({ selectedDate }) => {
           dailyTickets: entry['Sales Performance']?.daily_tickets || 0,
           averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0
         })) || [];
+
+        // If weekDays are provided, use them to create the daily data structure
+        let dailyData = allDailyEntries;
+        if (weekDays.length > 0) {
+          // Create daily data structure based on weekDays
+          dailyData = weekDays.map((day) => {
+            // Find existing entry for this day
+            const existingEntry = allDailyEntries.find(entry => 
+              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+            );
+            
+            return existingEntry || {
+              key: `day-${day.date.format('YYYY-MM-DD')}`,
+              date: day.date,
+              dayName: day.dayName.toLowerCase(),
+              budgetedSales: 0,
+              actualSalesInStore: 0,
+              actualSalesAppOnline: 0,
+              actualSalesDoorDash: 0,
+              dailyTickets: 0,
+              averageDailyTicket: 0
+            };
+          });
+        } else {
+          // If no weekDays provided, use all daily entries or generate default structure
+          dailyData = allDailyEntries.length > 0 ? allDailyEntries : [];
+        }
         
         setWeeklyData([{
           id: 'consolidated-week',
           weekTitle: 'Weekly Sales Data',
-          startDate: selectedDate,
-          dailyData: allDailyEntries
+          startDate: weekStartDate,
+          dailyData: dailyData
         }]);
         
         // Calculate weekly totals from the consolidated data
         calculateWeeklyTotalsFromData([{
           id: 'consolidated-week',
           weekTitle: 'Weekly Sales Data',
-          startDate: selectedDate,
-          dailyData: allDailyEntries
+          startDate: weekStartDate,
+          dailyData: dailyData
         }]);
+      } else {
+        // No data found, reset to defaults
+        setWeeklyData([]);
+        setWeeklyGoals({
+          salesBudget: 0,
+          actualSalesInStore: 0,
+          actualSalesAppOnline: 0,
+          actualSalesDoorDash: 0,
+          netSalesActual: 0,
+          dailyTickets: 0,
+          averageDailyTicket: 0
+        });
       }
     } catch (error) {
       // Check if it's a 404 error
@@ -125,6 +193,15 @@ const SalesTable = ({ selectedDate }) => {
         setDataNotFound(true);
         setWeeklyData([]);
         setWeeklyTotals({
+          salesBudget: 0,
+          actualSalesInStore: 0,
+          actualSalesAppOnline: 0,
+          actualSalesDoorDash: 0,
+          netSalesActual: 0,
+          dailyTickets: 0,
+          averageDailyTicket: 0
+        });
+        setWeeklyGoals({
           salesBudget: 0,
           actualSalesInStore: 0,
           actualSalesAppOnline: 0,
@@ -143,73 +220,63 @@ const SalesTable = ({ selectedDate }) => {
   // Save dashboard data
   const saveData = async () => {
     try {
-      // Get the current weekly totals (either from modal or existing data)
-      const currentWeeklyTotals = weeklyData.length > 0 ? 
-        weeklyData.reduce((acc, week) => {
-          const weekTotals = week.dailyData.reduce((weekAcc, day) => ({
-            salesBudget: weekAcc.salesBudget + (parseFloat(day.budgetedSales) || 0),
-            actualSalesInStore: weekAcc.actualSalesInStore + (parseFloat(day.actualSalesInStore) || 0),
-            actualSalesAppOnline: weekAcc.actualSalesAppOnline + (parseFloat(day.actualSalesAppOnline) || 0),
-            actualSalesDoorDash: weekAcc.actualSalesDoorDash + (parseFloat(day.actualSalesDoorDash) || 0),
-            dailyTickets: weekAcc.dailyTickets + (parseFloat(day.dailyTickets) || 0),
-            averageDailyTicket: weekAcc.averageDailyTicket + (parseFloat(day.averageDailyTicket) || 0)
-          }), {
-            salesBudget: 0,
-            actualSalesInStore: 0,
-            actualSalesAppOnline: 0,
-            actualSalesDoorDash: 0,
-            dailyTickets: 0,
-            averageDailyTicket: 0
-          });
-          
-          return {
-            salesBudget: acc.salesBudget + weekTotals.salesBudget,
-            actualSalesInStore: acc.actualSalesInStore + weekTotals.actualSalesInStore,
-            actualSalesAppOnline: acc.actualSalesAppOnline + weekTotals.actualSalesAppOnline,
-            actualSalesDoorDash: acc.actualSalesDoorDash + weekTotals.actualSalesDoorDash,
-            dailyTickets: acc.dailyTickets + weekTotals.dailyTickets,
-            averageDailyTicket: acc.averageDailyTicket + weekTotals.averageDailyTicket
-          };
-        }, {
-          salesBudget: 0,
-          actualSalesInStore: 0,
-          actualSalesAppOnline: 0,
-          actualSalesDoorDash: 0,
-          dailyTickets: 0,
-          averageDailyTicket: 0
-        }) : weeklyTotals;
+      // Only save the current week's data (first week in the array)
+      const currentWeek = weeklyData.length > 0 ? weeklyData[0] : null;
+      
+      if (!currentWeek || !currentWeek.dailyData) {
+        message.warning('No weekly data to save. Please add weekly Sales data first.');
+        return;
+      }
 
-      // Transform data to API format with the new structure
+      // Use the weekly totals from the modal data
+      const weeklyTotals = currentWeek.weeklyTotals || {
+        salesBudget: 0,
+        actualSalesInStore: 0,
+        actualSalesAppOnline: 0,
+        actualSalesDoorDash: 0,
+        netSalesActual: 0,
+        dailyTickets: 0,
+        averageDailyTicket: 0
+      };
+
+      // Calculate final totals for this week
+      const finalTotals = {
+        salesBudget: weeklyTotals.salesBudget,
+        actualSalesInStore: weeklyTotals.actualSalesInStore,
+        actualSalesAppOnline: weeklyTotals.actualSalesAppOnline,
+        actualSalesDoorDash: weeklyTotals.actualSalesDoorDash,
+        netSalesActual: weeklyTotals.netSalesActual || (weeklyTotals.actualSalesInStore + weeklyTotals.actualSalesAppOnline + weeklyTotals.actualSalesDoorDash),
+        dailyTickets: weeklyTotals.dailyTickets,
+        averageDailyTicket: weeklyTotals.averageDailyTicket
+      };
+
+      // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
         section: "Sales Performance",
         section_data: {
           weekly: {
-            sales_budget: currentWeeklyTotals.salesBudget.toFixed(2),
-            actual_sales_in_store: currentWeeklyTotals.actualSalesInStore.toFixed(2),
-            actual_sales_app_online: currentWeeklyTotals.actualSalesAppOnline.toFixed(2),
-            actual_sales_door_dash: currentWeeklyTotals.actualSalesDoorDash.toFixed(2),
-            net_sales_actual: (currentWeeklyTotals.actualSalesInStore + 
-                             currentWeeklyTotals.actualSalesAppOnline + 
-                             currentWeeklyTotals.actualSalesDoorDash).toFixed(2),
-            daily_tickets: currentWeeklyTotals.dailyTickets || 0,
-            average_daily_ticket: (currentWeeklyTotals.averageDailyTicket || 0).toFixed(2)
+            sales_budget: finalTotals.salesBudget.toFixed(2),
+            actual_sales_in_store: finalTotals.actualSalesInStore.toFixed(2),
+            actual_sales_app_online: finalTotals.actualSalesAppOnline.toFixed(2),
+            actual_sales_door_dash: finalTotals.actualSalesDoorDash.toFixed(2),
+            net_sales_actual: finalTotals.netSalesActual.toFixed(2),
+            daily_tickets: finalTotals.dailyTickets || 0,
+            average_daily_ticket: (finalTotals.averageDailyTicket || 0).toFixed(2)
           },
-          daily: weeklyData.flatMap(week => 
-            week.dailyData.map(day => ({
-              date: day.date.format('YYYY-MM-DD'),
-              day: day.date.format('dddd'),
-              sales_budget: (day.budgetedSales || 0).toFixed(2),
-              actual_sales_in_store: (day.actualSalesInStore || 0).toFixed(2),
-              actual_sales_app_online: (day.actualSalesAppOnline || 0).toFixed(2),
-              actual_sales_door_dash: (day.actualSalesDoorDash || 0).toFixed(2),
-              net_sales_actual: ((day.actualSalesInStore || 0) +
-                               (day.actualSalesAppOnline || 0) +
-                               (day.actualSalesDoorDash || 0)).toFixed(2),
-              daily_tickets: day.dailyTickets || 0,
-              average_daily_ticket: (day.averageDailyTicket || 0).toFixed(2)
-            }))
-          )
+          daily: currentWeek.dailyData.map(day => ({
+            date: day.date.format('YYYY-MM-DD'),
+            day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
+            sales_budget: (day.budgetedSales || 0).toFixed(2),
+            actual_sales_in_store: (day.actualSalesInStore || 0).toFixed(2),
+            actual_sales_app_online: (day.actualSalesAppOnline || 0).toFixed(2),
+            actual_sales_door_dash: (day.actualSalesDoorDash || 0).toFixed(2),
+            net_sales_actual: ((day.actualSalesInStore || 0) +
+                             (day.actualSalesAppOnline || 0) +
+                             (day.actualSalesDoorDash || 0)).toFixed(2),
+            daily_tickets: day.dailyTickets || 0,
+            average_daily_ticket: (day.averageDailyTicket || 0).toFixed(2)
+          }))
         }
       };
 
@@ -227,7 +294,7 @@ const SalesTable = ({ selectedDate }) => {
     return ((actual - budget) / budget) * 100;
   };
 
-  const percentageActualVsBudget = calculatePercentage(weeklyTotals.netSalesActual, weeklyTotals.salesBudget);
+  const percentageActualVsBudget = calculatePercentage(weeklyTotals.netSalesActual, weeklyGoals.salesBudget);
 
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
@@ -255,6 +322,20 @@ const SalesTable = ({ selectedDate }) => {
       };
       setWeeklyData(prev => [...prev, newWeek]);
     }
+    
+    // Update weekly goals from the modal data
+    if (weekData.weeklyTotals) {
+      setWeeklyGoals({
+        salesBudget: weekData.weeklyTotals.salesBudget || 0,
+        actualSalesInStore: weekData.weeklyTotals.actualSalesInStore || 0,
+        actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
+        actualSalesDoorDash: weekData.weeklyTotals.actualSalesDoorDash || 0,
+        netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
+        dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
+        averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0
+      });
+    }
+    
     setIsModalVisible(false);
     setEditingWeek(null);
   };
@@ -304,8 +385,8 @@ const SalesTable = ({ selectedDate }) => {
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
-      startDate: dayjs(),
-      dailyData: generateDailyData(dayjs()),
+      startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+      dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
       // Add weekly totals for the modal
       weeklyTotals: {
         salesBudget: 0,
@@ -323,8 +404,8 @@ const SalesTable = ({ selectedDate }) => {
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
-          startDate: dayjs(),
-          dailyData: generateDailyData(dayjs()),
+          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
           weeklyTotals: {
             salesBudget: 0,
             actualSalesInStore: 0,
@@ -335,7 +416,7 @@ const SalesTable = ({ selectedDate }) => {
           }
         });
       }
-    }, [editingWeek, weeklyData.length]);
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
 
 
@@ -738,9 +819,9 @@ const SalesTable = ({ selectedDate }) => {
         )}
         
         <Row gutter={24}>
-          {/* Weekly Totals Section */}
+          {/* Weekly Goals Section */}
           <Col span={6}>
-            <Card title="Weekly Sales Totals" className="h-fit">
+            <Card title="Weekly Sales Goals" className="h-fit">
               {dataNotFound ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -752,7 +833,7 @@ const SalesTable = ({ selectedDate }) => {
                   <div>
                     <Text strong>Sales - Budget:</Text>
                     <Input
-                      value={`$${(weeklyTotals.salesBudget || 0).toFixed(2)}`}
+                      value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
@@ -762,7 +843,7 @@ const SalesTable = ({ selectedDate }) => {
                   <div>
                     <Text strong>Actual Sales - In Store:</Text>
                     <Input
-                      value={`$${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
+                      value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
@@ -772,7 +853,7 @@ const SalesTable = ({ selectedDate }) => {
                   <div>
                     <Text strong>Actual Sales - App / On Line:</Text>
                     <Input
-                      value={`$${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
+                      value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
@@ -782,7 +863,7 @@ const SalesTable = ({ selectedDate }) => {
                   <div>
                     <Text strong>Actual Sales - Door Dash:</Text>
                     <Input
-                      value={`$${(weeklyTotals.actualSalesDoorDash || 0).toFixed(2)}`}
+                      value={`$${(weeklyGoals.actualSalesDoorDash || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
@@ -795,30 +876,33 @@ const SalesTable = ({ selectedDate }) => {
                       (Auto-calculated: In Store + App/Online + Door Dash)
                     </Text>
                     <Input
-                      value={`$${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
+                      value={weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline + weeklyGoals.actualSalesDoorDash}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
+                      prefix="$"
                     />
                   </div>
                   
                   <div>
                     <Text strong>% Actual vs Budgeted Sales:</Text>
                     <Input
-                      value={`${(parseFloat(percentageActualVsBudget) || 0).toFixed(0)}%`}
+                      value={weeklyGoals.salesBudget > 0 ? 
+                        (((weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline + weeklyGoals.actualSalesDoorDash) - weeklyGoals.salesBudget) / weeklyGoals.salesBudget * 100) : 0}
                       className="mt-1"
                       disabled
                       style={{ 
                         color: percentageActualVsBudget < 0 ? '#ff4d4f' : '#52c41a',
                         backgroundColor: '#f5f5f5'
                       }}
+                      prefix="%"
                     />
                   </div>
                   
                   <div>
                     <Text strong># Daily Tickets:</Text>
                     <Input
-                      value={weeklyTotals.dailyTickets || 0}
+                      value={weeklyGoals.dailyTickets || 0}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
@@ -828,7 +912,7 @@ const SalesTable = ({ selectedDate }) => {
                   <div>
                     <Text strong>Average Daily Ticket:</Text>
                     <Input
-                      value={`${(weeklyTotals.averageDailyTicket || 0).toFixed(0)}`}
+                      value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}

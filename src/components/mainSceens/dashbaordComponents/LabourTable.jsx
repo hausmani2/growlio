@@ -6,12 +6,19 @@ import useStore from '../../../store/store';
 
 const { Title, Text } = Typography;
 
-const LabourTable = ({ selectedDate }) => {
+const LabourTable = ({ selectedDate, weekDays = [] }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [hourlyRate] = useState(15);
   const [dataNotFound, setDataNotFound] = useState(false);
+  const [weeklyTotals, setWeeklyTotals] = useState({
+    labor_hours_budget: "0.00",
+    labor_hours_actual: "0.00",
+    budgeted_labor_dollars: "0.00",
+    actual_labor_dollars: "0.00",
+    daily_labor_rate: "0.00"
+  });
 
   // Store integration
   const { 
@@ -26,28 +33,64 @@ const LabourTable = ({ selectedDate }) => {
     if (selectedDate) {
       loadDashboardData();
     }
-  }, [selectedDate]);
+  }, [selectedDate, weekDays]);
 
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
       setDataNotFound(false);
-      const data = await fetchDashboardData(selectedDate.format('YYYY-MM-DD'));
+      const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
       
       if (data && data['Labor Performance']) {
-        // Extract weekly data from daily_entries
+        // Extract weekly totals from the API response
+        const laborPerformance = data['Labor Performance'];
+        setWeeklyTotals({
+          labor_hours_budget: laborPerformance.labor_hours_budget || "0.00",
+          labor_hours_actual: laborPerformance.labor_hours_actual || "0.00",
+          budgeted_labor_dollars: laborPerformance.budgeted_labor_dollars || "0.00",
+          actual_labor_dollars: laborPerformance.actual_labor_dollars || "0.00",
+          daily_labor_rate: laborPerformance.daily_labor_rate || "0.00"
+        });
+
+        // Extract all daily entries into one consolidated table
+        const allDailyEntries = data.daily_entries?.map((entry) => ({
+          key: `day-${entry.date}`,
+          date: dayjs(entry.date),
+          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          laborHoursBudget: entry['Labor Performance']?.labor_hours_budget || 0,
+          laborHoursActual: entry['Labor Performance']?.labor_hours_actual || 0,
+          budgetedLaborDollars: entry['Labor Performance']?.budgeted_labor_dollars || 0,
+          actualLaborDollars: entry['Labor Performance']?.actual_labor_dollars || 0
+        })) || [];
+
+        // If weekDays are provided, use them to create the daily data structure
+        let dailyData = allDailyEntries;
+        if (weekDays.length > 0) {
+          // Create daily data structure based on weekDays
+          dailyData = weekDays.map((day) => {
+            // Find existing entry for this day
+            const existingEntry = allDailyEntries.find(entry => 
+              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+            );
+            
+            return existingEntry || {
+              key: `day-${day.date.format('YYYY-MM-DD')}`,
+              date: day.date,
+              dayName: day.dayName.toLowerCase(),
+              laborHoursBudget: 0,
+              laborHoursActual: 0,
+              budgetedLaborDollars: 0,
+              actualLaborDollars: 0
+            };
+          });
+        }
+
         const weeklyTableData = [{
           id: 'consolidated-week',
           weekTitle: 'Weekly Labor Data',
-          startDate: selectedDate,
-          dailyData: data.daily_entries?.map(entry => ({
-            date: dayjs(entry.date),
-            dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-            laborHoursBudget: entry['Labor Performance']?.labor_hours_budget || 0,
-            laborHoursActual: entry['Labor Performance']?.labor_hours_actual || 0,
-            budgetedLaborDollars: entry['Labor Performance']?.budgeted_labor_dollars || 0,
-            actualLaborDollars: entry['Labor Performance']?.actual_labor_dollars || 0
-          })) || []
+          startDate: weekStartDate,
+          dailyData: dailyData
         }];
         setWeeklyData(weeklyTableData);
       } else {
@@ -66,23 +109,7 @@ const LabourTable = ({ selectedDate }) => {
     }
   };
 
-  // Calculate totals for all weekly data
-  const calculateAllWeeklyTotals = () => {
-    return weeklyData.reduce((acc, week) => {
-      const weekTotals = calculateWeeklyTotals(week);
-      return {
-        laborHoursBudget: acc.laborHoursBudget + weekTotals.laborHoursBudget,
-        laborHoursActual: acc.laborHoursActual + weekTotals.laborHoursActual,
-        budgetedLaborDollars: acc.budgetedLaborDollars + weekTotals.budgetedLaborDollars,
-        actualLaborDollars: acc.actualLaborDollars + weekTotals.actualLaborDollars
-      };
-    }, {
-      laborHoursBudget: 0,
-      laborHoursActual: 0,
-      budgetedLaborDollars: 0,
-      actualLaborDollars: 0
-    });
-  };
+
 
   // Save dashboard data
   const saveData = async () => {
@@ -121,19 +148,21 @@ const LabourTable = ({ selectedDate }) => {
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
         section: "Labor Performance",
         section_data: {
-          labor_hours_budget: finalTotals.laborHoursBudget.toFixed(1),
-          labor_hours_actual: finalTotals.laborHoursActual.toFixed(1),
-          budgeted_labor_dollars: finalTotals.budgetedLaborDollars.toFixed(2),
-          actual_labor_dollars: finalTotals.actualLaborDollars.toFixed(2),
-          daily_labor_rate: finalTotals.dailyLaborRate.toFixed(2),
-          daily_labor_percentage: finalTotals.dailyLaborPercentage,
-          weekly_labor_percentage: finalTotals.weeklyLaborPercentage,
+          weekly: {
+            labor_hours_budget: finalTotals.laborHoursBudget.toFixed(1),
+            labor_hours_actual: finalTotals.laborHoursActual.toFixed(1),
+            budgeted_labor_dollars: finalTotals.budgetedLaborDollars.toFixed(2),
+            actual_labor_dollars: finalTotals.actualLaborDollars.toFixed(2),
+            daily_labor_rate: finalTotals.dailyLaborRate.toFixed(2),
+            daily_labor_percentage: finalTotals.dailyLaborPercentage,
+            weekly_labor_percentage: finalTotals.weeklyLaborPercentage
+          },
           daily: currentWeek.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
-            day: day.date.format('dddd'),
+            day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
             labor_hours_budget: (day.laborHoursBudget || 0).toFixed(1),
             labor_hours_actual: (day.laborHoursActual || 0).toFixed(1),
             budgeted_labor_dollars: (day.budgetedLaborDollars || 0).toFixed(2),
@@ -223,8 +252,8 @@ const LabourTable = ({ selectedDate }) => {
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
-      startDate: dayjs(),
-      dailyData: generateDailyData(dayjs()),
+      startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+      dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
       // Add weekly totals for the modal
       weeklyTotals: {
         laborHoursBudget: 0,
@@ -243,8 +272,8 @@ const LabourTable = ({ selectedDate }) => {
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
-          startDate: dayjs(),
-          dailyData: generateDailyData(dayjs()),
+          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
           weeklyTotals: {
             laborHoursBudget: 0,
             laborHoursActual: 0,
@@ -256,7 +285,7 @@ const LabourTable = ({ selectedDate }) => {
           }
         });
       }
-    }, [editingWeek, weeklyData.length]);
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
@@ -264,20 +293,9 @@ const LabourTable = ({ selectedDate }) => {
       setWeekFormData({ ...weekFormData, dailyData: newDailyData });
     };
 
-    const handleStartDateChange = (date) => {
-      setWeekFormData({
-        ...weekFormData,
-        startDate: date,
-        dailyData: generateDailyData(date)
-      });
-    };
-
     const handleSubmit = () => {
       handleWeeklySubmit(weekFormData);
     };
-
-    // Calculate totals for the current week form
-    const weekTotals = calculateWeeklyTotals(weekFormData);
 
     return (
       <Modal
@@ -295,24 +313,7 @@ const LabourTable = ({ selectedDate }) => {
         width={1200}
       >
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Text strong>Week Title:</Text>
-              <Input
-                value={weekFormData.weekTitle}
-                onChange={(e) => setWeekFormData({ ...weekFormData, weekTitle: e.target.value })}
-                placeholder="Enter week title"
-              />
-            </Col>
-            <Col span={12}>
-              <Text strong>Start Date:</Text>
-              <DatePicker
-                value={weekFormData.startDate}
-                onChange={handleStartDateChange}
-                style={{ width: '100%' }}
-              />
-            </Col>
-          </Row>
+
 
           {/* Weekly Goals Input Section */}
           <Card title="Weekly Labor Goals" size="small">
@@ -439,35 +440,6 @@ const LabourTable = ({ selectedDate }) => {
             </Row>
           </Card>
 
-          {/* Weekly Totals Summary */}
-          <Card size="small" title="Weekly Totals (Auto-calculated from daily entries)" style={{ backgroundColor: '#f8f9fa' }}>
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text strong>Total Hours Budget:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-                  {weekTotals.laborHoursBudget.toFixed(1)} hrs
-                </div>
-              </Col>
-              <Col span={6}>
-                <Text strong>Total Hours Actual:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
-                  {weekTotals.laborHoursActual.toFixed(1)} hrs
-                </div>
-              </Col>
-              <Col span={6}>
-                <Text strong>Total Budgeted Labor:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-                  ${weekTotals.budgetedLaborDollars.toFixed(2)}
-                </div>
-              </Col>
-              <Col span={6}>
-                <Text strong>Total Actual Labor:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
-                  ${weekTotals.actualLaborDollars.toFixed(2)}
-                </div>
-              </Col>
-            </Row>
-          </Card>
 
           <Table
             dataSource={weekFormData.dailyData}
@@ -628,8 +600,7 @@ const LabourTable = ({ selectedDate }) => {
     );
   };
 
-  // Calculate overall totals from all weekly data
-  const overallTotals = calculateAllWeeklyTotals();
+
 
   return (
     <div className="w-full">
@@ -643,14 +614,14 @@ const LabourTable = ({ selectedDate }) => {
         )}
         
         <Row gutter={24}>
-          {/* Monthly Totals Section */}
+          {/* Weekly Totals Section */}
           <Col span={6}>
-            <Card title="Monthly Labor Totals" className="h-fit">
+            <Card title="Weekly Labor Totals" className="h-fit">
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
                   <Text strong>Labor Hours - Budget:</Text>
                   <Input
-                    value={`${overallTotals.laborHoursBudget.toFixed(1)} hrs`}
+                    value={`${weeklyTotals.labor_hours_budget} hrs`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -660,7 +631,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Labor Hours - Actual:</Text>
                   <Input
-                    value={`${overallTotals.laborHoursActual.toFixed(1)} hrs`}
+                    value={`${weeklyTotals.labor_hours_actual} hrs`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -670,7 +641,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Budgeted Labor $:</Text>
                   <Input
-                    value={`$${overallTotals.budgetedLaborDollars.toFixed(2)}`}
+                    value={`$${weeklyTotals.budgeted_labor_dollars}`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -680,7 +651,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Actual Labor $:</Text>
                   <Input
-                    value={`$${overallTotals.actualLaborDollars.toFixed(2)}`}
+                    value={`$${weeklyTotals.actual_labor_dollars}`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -690,7 +661,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Daily Labor Rate:</Text>
                   <Input
-                    value={`$${hourlyRate.toFixed(2)}`}
+                    value={`$${weeklyTotals.daily_labor_rate}`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -700,7 +671,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Daily Labor %:</Text>
                   <Input
-                    value={`${overallTotals.actualLaborDollars > 0 ? ((overallTotals.actualLaborDollars / hourlyRate)).toFixed(1) : '0.0'}%`}
+                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / parseFloat(weeklyTotals.daily_labor_rate))).toFixed(1) : '0.0'}%`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
@@ -710,7 +681,7 @@ const LabourTable = ({ selectedDate }) => {
                 <div>
                   <Text strong>Weekly Labor %:</Text>
                   <Input
-                    value={`${overallTotals.actualLaborDollars > 0 ? ((overallTotals.actualLaborDollars / (overallTotals.actualLaborDollars + 5000)) * 100).toFixed(1) : '0.0'}%`}
+                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / (parseFloat(weeklyTotals.actual_labor_dollars) + 5000)) * 100).toFixed(1) : '0.0'}%`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}

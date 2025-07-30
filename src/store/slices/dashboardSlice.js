@@ -99,6 +99,7 @@ const createDashboardSlice = (set, get) => {
                 
                 if (isNewPayloadFormat) {
                     // Handle new payload format
+                    
                     // Get restaurant ID for new payload format
                     const restaurantId = await get().fetchRestaurantId();
                     
