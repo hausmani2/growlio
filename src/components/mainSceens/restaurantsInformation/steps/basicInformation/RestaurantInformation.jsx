@@ -71,8 +71,11 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
                                 className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
                                     errors.locationName ? 'border-red-500' : 'border-gray-300'
                                 }`}
-                                value={data.locationName}
-                                onChange={(e) => updateData('locationName', e.target.value)}
+                                value={data.locationName || ""}
+                                onChange={(e) => {
+                                    console.log('Location name changed to:', e.target.value);
+                                    updateData('locationName', e.target.value);
+                                }}
                                 status={errors.locationName ? 'error' : ''}
                             />
                             {errors.locationName && (

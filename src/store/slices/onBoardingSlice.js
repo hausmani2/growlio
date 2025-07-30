@@ -519,7 +519,18 @@ const createOnBoardingSlice = (set, get) => ({
             
             console.log('Sending payload with only active step having status: true');
             
-            // Call API to save the payload with only active step having status: true
+            // Check if we have an existing restaurant_id and add it to payload if it exists
+            const existingRestaurantId = get().getRestaurantId();
+            console.log('🔍 Existing restaurant_id for API call:', existingRestaurantId);
+            
+            // Add restaurant_id to payload if it exists (for updates)
+            if (existingRestaurantId) {
+                payload.restaurant_id = existingRestaurantId;
+                console.log('🔄 Adding restaurant_id to payload for update:', existingRestaurantId);
+            }
+            
+            // Always use POST endpoint, restaurant_id in payload determines create vs update
+            console.log('📤 Sending payload to API:', payload);
             const response = await apiPost('/restaurant/onboarding/', payload);
             console.log('API response:', response);
             console.log('Response status:', response.status);
@@ -538,33 +549,45 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             console.log('✅ API request successful with status 200');
+            console.log('🔍 Full API response data:', response.data);
             
             // Update the store with the response data (which includes restaurant_id)
             let foundRestaurantId = null;
             
             if (response.data) {
-                // Check direct property
+                console.log('🔍 Checking response.data for restaurant_id...');
+                
+                // Check direct property (most common case)
                 if (response.data.restaurant_id) {
                     foundRestaurantId = response.data.restaurant_id;
+                    console.log('✅ Found restaurant_id at top level:', foundRestaurantId);
                 }
                 // Check if it's nested in the first step data
                 else if (response.data["Basic Information"] && response.data["Basic Information"].data && response.data["Basic Information"].data.restaurant_id) {
                     foundRestaurantId = response.data["Basic Information"].data.restaurant_id;
+                    console.log('✅ Found restaurant_id in Basic Information data:', foundRestaurantId);
                 }
                 // Check if it's in the locations array
                 else if (response.data["Basic Information"] && response.data["Basic Information"].data && response.data["Basic Information"].data.locations && response.data["Basic Information"].data.locations[0] && response.data["Basic Information"].data.locations[0].restaurant_id) {
                     foundRestaurantId = response.data["Basic Information"].data.locations[0].restaurant_id;
+                    console.log('✅ Found restaurant_id in locations array:', foundRestaurantId);
                 }
                 // Check if response is an array and look for restaurant_id in any step
                 else if (Array.isArray(response.data)) {
+                    console.log('🔍 Response is an array, checking each step...');
                     for (const step of response.data) {
                         if (step.data && step.data.restaurant_id) {
                             foundRestaurantId = step.data.restaurant_id;
+                            console.log('✅ Found restaurant_id in array step:', foundRestaurantId);
                             break;
                         }
                     }
+                } else {
+                    console.log('❌ No restaurant_id found in response.data');
                 }
             }
+            
+            console.log('🔍 Found restaurant_id:', foundRestaurantId);
             
             if (foundRestaurantId) {
                 // Save restaurant_id to localStorage for persistence

@@ -106,28 +106,41 @@ export const TabProvider = ({ children }) => {
 
     // Check if user can navigate to a specific tab
     const canNavigateToTab = (targetTabId) => {
+        console.log(`🔍 canNavigateToTab called with targetTabId: ${targetTabId}`);
+        
         // Always allow navigation to Basic Information (tab 0)
-        if (targetTabId === 0) return true;
+        if (targetTabId === 0) {
+            console.log(`✅ Always allowing navigation to Basic Information (tab 0)`);
+            return true;
+        }
 
         // Check if Basic Information is completed
         const basicInfoCompleted = isStepCompleted('Basic Information');
+        console.log(`🔍 Basic Information completed: ${basicInfoCompleted}`);
         
         if (!basicInfoCompleted) {
+            console.log(`❌ Basic Information not completed - blocking navigation`);
             message.error('Please complete Basic Information before proceeding to other steps.');
             return false;
         }
 
-        // For other steps, check if previous steps are completed
+        // For other steps, check if ALL previous steps are completed (not including the target step)
         const requiredSteps = tabs.slice(0, targetTabId).filter(tab => tab.required);
+        console.log(`🔍 Required steps for tab ${targetTabId}:`, requiredSteps.map(s => s.title));
         
         for (const step of requiredSteps) {
             const stepName = step.title;
-            if (!isStepCompleted(stepName)) {
+            const stepCompleted = isStepCompleted(stepName);
+            console.log(`🔍 Checking step "${stepName}": ${stepCompleted}`);
+            
+            if (!stepCompleted) {
+                console.log(`❌ Step "${stepName}" not completed - blocking navigation`);
                 message.error(`Please complete ${stepName} before proceeding.`);
                 return false;
             }
         }
 
+        console.log(`✅ All required steps completed - allowing navigation to tab ${targetTabId}`);
         return true;
     };
 
@@ -226,12 +239,7 @@ export const TabProvider = ({ children }) => {
     const handleTabClick = (tabId) => {
         console.log(`🔄 handleTabClick called with tabId: ${tabId}`);
         
-        // Check if user can navigate to this tab
-        if (!canNavigateToTab(tabId)) {
-            console.log(`❌ Cannot navigate to tab ${tabId} - navigation blocked`);
-            return;
-        }
-
+        // SIMPLIFIED: Allow navigation to any tab without checking completion status
         console.log(`✅ Navigation allowed to tab ${tabId}`);
 
         // Load saved data into temporary form data for the target step
@@ -257,35 +265,22 @@ export const TabProvider = ({ children }) => {
     // Navigate to next step (used by Save & Continue buttons)
     const navigateToNextStep = async () => {
         console.log(`🔄 navigateToNextStep called from activeTab: ${activeTab}`);
+        console.log(`📋 Current tab name: ${tabs[activeTab]?.title}`);
         const nextTabId = activeTab + 1;
         console.log(`📋 Next tab ID would be: ${nextTabId}, total tabs: ${tabs.length}`);
+        console.log(`📋 Next tab name: ${tabs[nextTabId]?.title}`);
         
         // Debug: Check current state before navigation
         console.log("Current completeOnboardingData:", completeOnboardingData);
         console.log("Basic Information status:", completeOnboardingData["Basic Information"]?.status);
         
         if (nextTabId < tabs.length) {
-            console.log(`✅ Next tab exists, checking if can navigate to tab ${nextTabId}`);
+            console.log(`✅ Next tab exists, navigating directly to next step`);
             
-            // Force check the current step completion status
-            const currentStepName = tabs[activeTab]?.title;
-            if (currentStepName) {
-                console.log(`🔍 Checking if current step "${currentStepName}" is completed...`);
-                const isCurrentStepCompleted = isStepCompleted(currentStepName);
-                console.log(`Current step "${currentStepName}" completed: ${isCurrentStepCompleted}`);
-            }
-            
-            if (canNavigateToTab(nextTabId)) {
-                console.log(`✅ Can navigate to next tab ${nextTabId}, calling handleTabClick`);
-                handleTabClick(nextTabId);
-            } else {
-                console.log(`❌ Cannot navigate to next tab ${nextTabId}`);
-                // Try to force navigation if we're on Basic Information and it should be completed
-                if (activeTab === 0 && completeOnboardingData["Basic Information"]?.status === true) {
-                    console.log("🔄 Force navigating to next tab despite canNavigateToTab check...");
-                    handleTabClick(nextTabId);
-                }
-            }
+            // SIMPLIFIED LOGIC: Just navigate to the next step if we have a next step
+            // Don't check completion status of other steps - just go to the next one
+            console.log(`✅ Navigating to next tab ${nextTabId} (${tabs[nextTabId]?.title})`);
+            handleTabClick(nextTabId);
         } else {
             // All local steps completed - check if onboarding is actually complete
             console.log('🎉 All local steps completed! Checking if onboarding is complete...');

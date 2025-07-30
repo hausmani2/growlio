@@ -91,9 +91,10 @@ const RestaurantWrapper = () => {
                 const location = data.locations[0];
                 console.log("Loading location data:", location);
                 
+                console.log("Loading location name from:", location.location_name || location.name || "");
                 setRestaurantData(prev => ({
                     ...prev,
-                    locationName: location.name || ""
+                    locationName: location.location_name || location.name || ""
                 }));
                 
                 setAddressData(prev => ({
@@ -208,6 +209,10 @@ const RestaurantWrapper = () => {
             saveTempFormData("Basic Information");
 
             // Step 2: Prepare data for API
+            // Get existing restaurant_id if available (for updates)
+            const existingRestaurantId = useStore.getState().getRestaurantId();
+            console.log("🔍 Existing restaurant_id:", existingRestaurantId);
+            
             const stepData = {
                 restaurant_name: restaurantData.restaurantName,
                 number_of_locations: parseInt(restaurantData.numberOfLocations),
@@ -215,7 +220,7 @@ const RestaurantWrapper = () => {
                 menu_type: addressTypeData.menuType,
                 locations: [
                     {
-                        location_name: restaurantData.locationName,
+                        location_name: restaurantData.locationName, // API expects 'location_name'
                         address_1: addressData.address1,
                         country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
                         state: addressData.state === "1" ? "CA" : addressData.state === "2" ? "NY" : "TX",
@@ -226,9 +231,17 @@ const RestaurantWrapper = () => {
                 ]
             };
             
+            // Add restaurant_id to payload if it exists (for updates)
+            if (existingRestaurantId) {
+                stepData.restaurant_id = existingRestaurantId;
+                console.log("✅ Including existing restaurant_id in API payload:", existingRestaurantId);
+            }
+            
             console.log("Prepared stepData for API:", stepData);
             console.log("restaurant_type value:", stepData.restaurant_type);
             console.log("menu_type value:", stepData.menu_type);
+            console.log("location name value:", stepData.locations[0].location_name);
+            console.log("restaurantData.locationName:", restaurantData.locationName);
             
             // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
@@ -242,6 +255,11 @@ const RestaurantWrapper = () => {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
                 
+                // Ensure step is marked as completed before navigation
+                const { markStepCompleted } = useStore.getState();
+                markStepCompleted("Basic Information");
+                console.log("✅ Marked Basic Information as completed");
+                
                 // Add a small delay to ensure state is updated before navigation
                 setTimeout(() => {
                     console.log("🔄 Navigating to next step after state update...");
@@ -252,7 +270,7 @@ const RestaurantWrapper = () => {
                     console.log("Basic Information status:", currentState.completeOnboardingData["Basic Information"]?.status);
                     
                     navigateToNextStep();
-                }, 100);
+                }, 200); // Increased delay to ensure state update
             });
             console.log("submitStepData result:", result);
             
@@ -283,6 +301,7 @@ const RestaurantWrapper = () => {
                         updateData={updateRestaurantData}
                         errors={validationErrors}
                     />
+
                     <AddressInformation 
                         data={addressData}
                         updateData={updateAddressData}
