@@ -385,8 +385,19 @@ const createDashboardSlice = (set, get) => {
         },
 
         // Set restaurant ID
-        setRestaurantId: (id) => set({ restaurantId: id })
+        setRestaurantId: (id) => set({ restaurantId: id }),
+        
+        // Reset dashboard state (for logout)
+        resetDashboard: () => {
+            set(() => ({
+                dashboardData: null,
+                loading: false,
+                error: null,
+                restaurantId: null
+            }));
+            console.log('🗑️ Dashboard state reset');
+        }
     }
 }
 
-export default createDashboardSlice;
+export default createDashboardSlice;``

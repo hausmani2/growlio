@@ -24,12 +24,15 @@ const createAuthSlice = (set, get) => {
     loading: false,
     error: null,
     onboardingStatus: null, // 'loading', 'complete', 'incomplete', null
+    onboardingLoading: false, // Loading state for onboarding checks
     
     // Check onboarding status using /restaurant/restaurants-onboarding/ API
     checkOnboardingStatus: async () => {
-      set(() => ({ onboardingStatus: 'loading' }));
+      set(() => ({ onboardingStatus: 'loading', onboardingLoading: true }));
       
       try {
+        console.log('🔄 Checking onboarding status...');
+        
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Request timeout')), 10000)
@@ -38,16 +41,21 @@ const createAuthSlice = (set, get) => {
         const apiPromise = apiGet('/restaurant/restaurants-onboarding/');
         const response = await Promise.race([apiPromise, timeoutPromise]);
         const onboardingData = response.data;
-        const restaurantId = onboardingData.restaurants[0].restaurant_id;
-        set(() => ({ restaurantId }));
         
         console.log('Onboarding Status Check - Raw data:', onboardingData);
+        
+        // Safely get restaurant_id if available
+        let restaurantId = null;
+        if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+          restaurantId = onboardingData.restaurants[0].restaurant_id;
+          set(() => ({ restaurantId }));
+        }
         
         // Check if user has no restaurants (new user)
         if (onboardingData && onboardingData.message === "No restaurants found for this user." && 
             (!onboardingData.restaurants || onboardingData.restaurants.length === 0)) {
           console.log('✅ New user with no restaurants - onboarding incomplete');
-          set(() => ({ onboardingStatus: 'incomplete' }));
+          set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
           
           return {
             success: true,
@@ -66,7 +74,7 @@ const createAuthSlice = (set, get) => {
           
           if (hasCompletedOnboarding) {
             console.log('✅ User has restaurants with completed onboarding - onboarding complete');
-            set(() => ({ onboardingStatus: 'complete' }));
+            set(() => ({ onboardingStatus: 'complete', onboardingLoading: false }));
             
             return {
               success: true,
@@ -77,7 +85,7 @@ const createAuthSlice = (set, get) => {
             };
           } else {
             console.log('⚠️ User has restaurants but onboarding is not complete - onboarding incomplete');
-            set(() => ({ onboardingStatus: 'incomplete' }));
+            set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
             
             return {
               success: true,
@@ -91,7 +99,7 @@ const createAuthSlice = (set, get) => {
         
         // Fallback case
         console.log('⚠️ Unexpected response format - assuming onboarding incomplete');
-        set(() => ({ onboardingStatus: 'incomplete' }));
+        set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
         
         return {
           success: true,
@@ -113,7 +121,7 @@ const createAuthSlice = (set, get) => {
         }
         
         // If API fails, assume onboarding is incomplete
-        set(() => ({ onboardingStatus: 'incomplete' }));
+        set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
         
         return {
           success: false,
@@ -210,40 +218,47 @@ const createAuthSlice = (set, get) => {
     
     // Logout function - clears all state and redirects to login
     logout: () => {
-      // Use the comprehensive clearAllState function
+      console.log('🚪 Starting logout process...');
+      
+      // Clear all localStorage items related to the app
+      const keysToRemove = [
+        'token',
+        'restaurant_id',
+        'growlio-store' // This is the Zustand persist key
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`🗑️ Removed ${key} from localStorage`);
+      });
+      
+      // Clear sessionStorage as well
+      sessionStorage.clear();
+      console.log('🗑️ Cleared sessionStorage');
+      
+      // Clear all auth state
+      set(() => ({ 
+        user: null, 
+        token: null, 
+        isAuthenticated: false, 
+        error: null, 
+        onboardingStatus: null,
+        loading: false,
+        onboardingLoading: false
+      }));
+      console.log('🗑️ Cleared auth state');
+      
+      // Reset onboarding state
       const state = get();
-      if (state.clearAllState) {
-        state.clearAllState();
-      } else {
-        // Fallback if clearAllState is not available
-        // Clear all localStorage items related to the app
-        const keysToRemove = [
-          'token',
-          'restaurant_id',
-          'growlio-store' // This is the Zustand persist key
-        ];
-        
-        keysToRemove.forEach(key => {
-          localStorage.removeItem(key);
-        });
-        
-        // Clear sessionStorage as well
-        sessionStorage.clear();
-        
-        // Clear all auth state
-        set(() => ({ 
-          user: null, 
-          token: null, 
-          isAuthenticated: false, 
-          error: null, 
-          onboardingStatus: null,
-          loading: false
-        }));
-        
-        // Reset onboarding state
-        if (state.resetOnboarding) {
-          state.resetOnboarding();
-        }
+      if (state.resetOnboarding) {
+        state.resetOnboarding();
+        console.log('🗑️ Reset onboarding state');
+      }
+      
+      // Clear dashboard state
+      if (state.resetDashboard) {
+        state.resetDashboard();
+        console.log('🗑️ Cleared dashboard state');
       }
       
       console.log('🚪 Logout completed - all state and localStorage cleared');
@@ -323,7 +338,10 @@ const createAuthSlice = (set, get) => {
     // - All sessionStorage
     // - All auth state (user, token, isAuthenticated, etc.)
     // - All onboarding state (completeOnboardingData, tempFormData, etc.)
+    // - All dashboard state (dashboardData, loading, error, etc.)
     clearAllState: () => {
+      console.log('🧹 Starting comprehensive state clear...');
+      
       // Clear all localStorage items related to the app
       const keysToRemove = [
         'token',
@@ -333,10 +351,12 @@ const createAuthSlice = (set, get) => {
       
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
+        console.log(`🗑️ Removed ${key} from localStorage`);
       });
       
       // Clear sessionStorage as well
       sessionStorage.clear();
+      console.log('🗑️ Cleared sessionStorage');
       
       // Clear all auth state
       set(() => ({ 
@@ -345,13 +365,22 @@ const createAuthSlice = (set, get) => {
         isAuthenticated: false, 
         error: null, 
         onboardingStatus: null,
-        loading: false
+        loading: false,
+        onboardingLoading: false
       }));
+      console.log('🗑️ Cleared auth state');
       
       // Reset onboarding state
       const state = get();
       if (state.resetOnboarding) {
         state.resetOnboarding();
+        console.log('🗑️ Reset onboarding state');
+      }
+      
+      // Clear dashboard state
+      if (state.resetDashboard) {
+        state.resetDashboard();
+        console.log('🗑️ Cleared dashboard state');
       }
       
       console.log('🧹 All application state cleared');

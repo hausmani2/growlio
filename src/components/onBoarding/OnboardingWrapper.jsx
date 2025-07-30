@@ -189,7 +189,6 @@ const OnboardingWrapper = () => {
 
     return (
         <>
-            <StoreDebugger />
             <div className="min-h-screen flex flex-col lg:flex-row">
                 {/* Content Section */}
             <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0">
@@ -211,9 +210,9 @@ const OnboardingWrapper = () => {
                             </h2>
                         </div>
                         <div className="flex flex-col gap-6 sm:gap-8">
-                        <div className="border border-gray-300 rounded-lg p-4 sm:p-6">
+                        <div className="border border-gray-300 rounded-lg p-4 sm:p-6 " disabled>
                                 <div className="flex items-center gap-2">
-                                    <Checkbox />
+                                    <Checkbox disabled />
                                     <span className="text-sm sm:text-base font-bold">Yes, My Restaurant Exists</span>
 
                                 </div>
