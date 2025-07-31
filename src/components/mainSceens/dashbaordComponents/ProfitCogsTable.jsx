@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
+import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
@@ -11,6 +12,8 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [dataNotFound, setDataNotFound] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Store integration
   const { 
@@ -121,21 +124,22 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
     }
   };
 
-
-
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
     setEditingWeek(null);
+    setIsEditMode(false);
     setIsModalVisible(true);
   };
 
   const showEditWeeklyModal = (weekData) => {
     setEditingWeek(weekData);
+    setIsEditMode(true);
     setIsModalVisible(true);
   };
 
   const handleWeeklySubmit = async (weekData) => {
     try {
+      setIsSubmitting(true);
       let newWeekId = null;
       
       if (editingWeek) {
@@ -210,18 +214,17 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
       };
 
       await saveDashboardData(transformedData);
-      message.success('Profit data saved successfully!');
+      message.success(isEditMode ? 'Profit data updated successfully!' : 'Profit data saved successfully!');
       await loadDashboardData();
       
       setIsModalVisible(false);
       setEditingWeek(null);
+      setIsEditMode(false);
     } catch (error) {
-      message.error(`Failed to save profit data: ${error.message}`);
+      message.error(`Failed to ${isEditMode ? 'update' : 'save'} profit data: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const deleteWeek = (weekId) => {
-    setWeeklyData(prev => prev.filter(week => week.id !== weekId));
   };
 
   // Calculate weekly totals
@@ -303,19 +306,34 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
 
     return (
       <Modal
-        title={editingWeek ? "Edit Weekly Profit Data" : "Add Weekly Profit Data"}
+        title={isEditMode ? "Edit Weekly Profit Data" : "Add Weekly Profit Data"}
         open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+        }}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+          <Button key="cancel" onClick={() => {
+            setIsModalVisible(false);
+            setEditingWeek(null);
+            setIsEditMode(false);
+          }}>
             Cancel
           </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit}>
-            {editingWeek ? 'Update' : 'Add'} Week
+          <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
+            {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
         width={1200}
       >
+        {(isSubmitting || storeLoading) && (
+          <LoadingSpinner 
+            spinning={true} 
+            tip="Saving data..." 
+            fullScreen={false}
+          />
+        )}
         <Space direction="vertical" style={{ width: '100%' }} size="large">
 
           {/* Weekly Goals Input Section */}
@@ -682,14 +700,6 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
                                 onClick={() => showEditWeeklyModal(week)}
                               >
                                 Edit
-                              </Button>
-                              <Button 
-                                size="small" 
-                                danger 
-                                icon={<DeleteOutlined />} 
-                                onClick={() => deleteWeek(week.id)}
-                              >
-                                Delete
                               </Button>
                             </Space>
                           }

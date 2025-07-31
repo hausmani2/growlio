@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalculatorOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
-
+import LoadingSpinner from '../../layout/LoadingSpinner';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, weekDays = [] }) => {
@@ -31,6 +31,8 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [dataNotFound, setDataNotFound] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Store integration
   const { 
@@ -255,16 +257,22 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
     setEditingWeek(null);
+    setIsEditMode(false);
     setIsModalVisible(true);
   };
 
   const showEditWeeklyModal = (weekData) => {
     setEditingWeek(weekData);
+    setIsEditMode(true);
     setIsModalVisible(true);
   };
 
   const handleWeeklySubmit = async (weekData) => {
     try {
+      setIsSubmitting(true);
+      
+      console.log('handleWeeklySubmit called with:', { weekData, isEditMode, editingWeek });
+      
       if (editingWeek) {
         // Edit existing week
         setWeeklyData(prev => prev.map(week => 
@@ -296,9 +304,12 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
       // Save data to API when modal is submitted
       // Use the weekData from the modal instead of checking weeklyData state
       if (!weekData || !weekData.dailyData) {
+        console.log('Early return: No weekData or dailyData');
         message.warning('No weekly data to save. Please add weekly Sales data first.');
         return;
       }
+
+      console.log('Proceeding with API call...');
 
       // Use the weekly totals from the modal data
       const weeklyTotals = weekData.weeklyTotals || {
@@ -339,33 +350,37 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
           daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
             day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
-            sales_budget: (day.budgetedSales || 0).toFixed(2),
-            actual_sales_in_store: (day.actualSalesInStore || 0).toFixed(2),
-            actual_sales_app_online: (day.actualSalesAppOnline || 0).toFixed(2),
-            actual_sales_door_dash: (day.actualSalesDoorDash || 0).toFixed(2),
-            net_sales_actual: ((day.actualSalesInStore || 0) +
-                             (day.actualSalesAppOnline || 0) +
-                             (day.actualSalesDoorDash || 0)).toFixed(2),
-            daily_tickets: day.dailyTickets || 0,
-            average_daily_ticket: (day.averageDailyTicket || 0).toFixed(2)
+            sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
+            actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
+            actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
+            actual_sales_door_dash: (parseFloat(day.actualSalesDoorDash) || 0).toFixed(2),
+            net_sales_actual: ((parseFloat(day.actualSalesInStore) || 0) +
+                             (parseFloat(day.actualSalesAppOnline) || 0) +
+                             (parseFloat(day.actualSalesDoorDash) || 0)).toFixed(2),
+            daily_tickets: parseFloat(day.dailyTickets) || 0,
+            average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2)
           }))
         }
       };
 
+      console.log('Calling saveDashboardData with:', transformedData);
       await saveDashboardData(transformedData);
-      message.success('Sales data saved successfully!');
+      console.log('saveDashboardData completed successfully');
+      message.success(isEditMode ? 'Sales data updated successfully!' : 'Sales data saved successfully!');
       await loadDashboardData();
       
       setIsModalVisible(false);
       setEditingWeek(null);
+      setIsEditMode(false);
     } catch (error) {
-      message.error(`Failed to save sales data: ${error.message}`);
+      console.error('Error in handleWeeklySubmit:', error);
+      message.error(`Failed to ${isEditMode ? 'update' : 'save'} sales data: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const deleteWeek = (weekId) => {
-    setWeeklyData(prev => prev.filter(week => week.id !== weekId));
-  };
+
 
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
@@ -423,7 +438,18 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
 
     useEffect(() => {
       if (editingWeek) {
-        setWeekFormData(editingWeek);
+        // When editing, use the weeklyGoals for weeklyTotals since that's where the weekly data is stored
+        setWeekFormData({
+          ...editingWeek,
+          weeklyTotals: {
+            salesBudget: weeklyGoals.salesBudget || 0,
+            actualSalesInStore: weeklyGoals.actualSalesInStore || 0,
+            actualSalesAppOnline: weeklyGoals.actualSalesAppOnline || 0,
+            actualSalesDoorDash: weeklyGoals.actualSalesDoorDash || 0,
+            dailyTickets: weeklyGoals.dailyTickets || 0,
+            averageDailyTicket: weeklyGoals.averageDailyTicket || 0
+          }
+        });
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
@@ -439,7 +465,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
           }
         });
       }
-    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate, weeklyGoals]);
 
 
 
@@ -462,24 +488,40 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
 
 
     const handleSubmit = () => {
+      console.log('handleSubmit called with weekFormData:', weekFormData);
       handleWeeklySubmit(weekFormData);
     };
 
     return (
       <Modal
-        title={editingWeek ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
+        title={isEditMode ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
         open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+        }}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+          <Button key="cancel" onClick={() => {
+            setIsModalVisible(false);
+            setEditingWeek(null);
+            setIsEditMode(false);
+          }}>
             Cancel
           </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit}>
-            {editingWeek ? 'Update' : 'Add'} Week
+          <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
+            {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
         width={1000}
       >
+        {(isSubmitting || storeLoading) && (
+          <LoadingSpinner 
+            spinning={true} 
+            tip="Saving data..." 
+            fullScreen={false}
+          />
+        )}
         <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Row gutter={16}>
             <Col span={6}>
@@ -989,21 +1031,13 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                             <Text type="secondary">
                               Total: ${totals.netSalesActual.toFixed(2)}
                             </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                            <Button 
-                              size="small" 
-                              danger 
-                              icon={<DeleteOutlined />} 
-                              onClick={() => deleteWeek(week.id)}
-                            >
-                              Delete
-                            </Button>
+                                                          <Button 
+                                size="small" 
+                                icon={<EditOutlined />} 
+                                onClick={() => showEditWeeklyModal(week)}
+                              >
+                                Edit
+                              </Button>
                           </Space>
                         }
                       >

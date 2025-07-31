@@ -159,7 +159,7 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="w-full p-6">
+    <div className="w-full">
       <div className="w-full mx-auto">
         <div className="mb-6">
           <Title level={2} className="mb-4">

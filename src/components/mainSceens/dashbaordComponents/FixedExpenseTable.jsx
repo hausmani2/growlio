@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
+import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
@@ -11,6 +12,8 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [dataNotFound, setDataNotFound] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Store integration
   const { 
@@ -106,21 +109,22 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
     }
   };
 
-
-
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
     setEditingWeek(null);
+    setIsEditMode(false);
     setIsModalVisible(true);
   };
 
   const showEditWeeklyModal = (weekData) => {
     setEditingWeek(weekData);
+    setIsEditMode(true);
     setIsModalVisible(true);
   };
 
   const handleWeeklySubmit = async (weekData) => {
     try {
+      setIsSubmitting(true);
       let newWeekId = null;
       
       if (editingWeek) {
@@ -153,7 +157,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       // Save data to API when modal is submitted
       // Use the weekData from the modal instead of checking weeklyData state
       if (!weekData || !weekData.dailyData) {
-        message.warning('No weekly data to save. Please add weekly Fixed Expenses data first.');
+        message.warning('No weekly data to save. Please add weekly fixed expenses data first.');
         return;
       }
 
@@ -183,27 +187,25 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       };
 
       await saveDashboardData(transformedData);
-      message.success('Fixed expenses data saved successfully!');
+      message.success(isEditMode ? 'Fixed expenses data updated successfully!' : 'Fixed expenses data saved successfully!');
       await loadDashboardData();
       
       setIsModalVisible(false);
       setEditingWeek(null);
+      setIsEditMode(false);
     } catch (error) {
-      message.error(`Failed to save fixed expenses data: ${error.message}`);
+      message.error(`Failed to ${isEditMode ? 'update' : 'save'} fixed expenses data: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const deleteWeek = (weekId) => {
-    setWeeklyData(prev => prev.filter(week => week.id !== weekId));
   };
 
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
     const totals = weekData.dailyData.reduce((acc, day) => ({
-      fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(day.fixedWeeklyExpenses) || 0),
-
+      fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(day.fixedWeeklyExpenses) || 0)
     }), {
-      fixedWeeklyExpenses: 0,
+      fixedWeeklyExpenses: 0
     });
 
     return totals;
@@ -217,8 +219,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       days.push({
         date: currentDate,
         dayName: currentDate.format('dddd'),
-        fixedWeeklyExpenses: 0,
-
+        fixedWeeklyExpenses: 0
       });
     }
     return days;
@@ -232,7 +233,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
       // Add weekly totals for the modal
       weeklyTotals: {
-        fixedWeeklyExpenses: 0,
+        fixedWeeklyExpenses: 0
       }
     });
 
@@ -245,8 +246,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
           dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
           weeklyTotals: {
-            fixedWeeklyExpenses: 0,
-
+            fixedWeeklyExpenses: 0
           }
         });
       }
@@ -262,30 +262,42 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       handleWeeklySubmit(weekFormData);
     };
 
-    // Calculate totals for the current week form from daily entries
-    const weekTotals = calculateWeeklyTotals(weekFormData);
-
     return (
       <Modal
-        title={editingWeek ? "Edit Weekly Fixed Expenses" : "Add Weekly Fixed Expenses"}
+        title={isEditMode ? "Edit Weekly Fixed Expenses Data" : "Add Weekly Fixed Expenses Data"}
         open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        onCancel={() => {
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+        }}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+          <Button key="cancel" onClick={() => {
+            setIsModalVisible(false);
+            setEditingWeek(null);
+            setIsEditMode(false);
+          }}>
             Cancel
           </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit}>
-            {editingWeek ? 'Update' : 'Add'} Week
+          <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
+            {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
         width={1200}
       >
+        {(isSubmitting || storeLoading) && (
+          <LoadingSpinner 
+            spinning={true} 
+            tip="Saving data..." 
+            fullScreen={false}
+          />
+        )}
         <Space direction="vertical" style={{ width: '100%' }} size="large">
 
           {/* Weekly Goals Input Section */}
           <Card title="Weekly Fixed Expenses Goals" size="small">
             <Row gutter={16}>
-              <Col span={8}>
+              <Col span={6}>
                 <Text strong>Fixed Weekly Expenses:</Text>
                 <Input
                   type="number"
@@ -303,18 +315,6 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                   prefix="$"
                   placeholder="0.00"
                 />
-              </Col>
-            </Row>
-          </Card>
-
-          {/* Weekly Totals Summary */}
-          <Card size="small" title="Weekly Totals (Auto-calculated from daily entries)" style={{ backgroundColor: '#f8f9fa' }}>
-            <Row gutter={16}>
-              <Col span={8}>
-                <Text strong>Total Fixed Weekly Expenses:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-                  ${weekTotals.fixedWeeklyExpenses.toFixed(2)}
-                </div>
               </Col>
             </Row>
           </Card>
@@ -383,7 +383,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       return weeklyData[0].weeklyTotals;
     }
     return {
-      fixedWeeklyExpenses: 0,
+      fixedWeeklyExpenses: 0
     };
   };
 
@@ -414,7 +414,6 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                     style={{ backgroundColor: '#f5f5f5' }}
                   />
                 </div>
-                
               </Space>
             </Card>
           </Col>
@@ -474,14 +473,6 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                               >
                                 Edit
                               </Button>
-                              <Button 
-                                size="small" 
-                                danger 
-                                icon={<DeleteOutlined />} 
-                                onClick={() => deleteWeek(week.id)}
-                              >
-                                Delete
-                              </Button>
                             </Space>
                           }
                         >
@@ -491,11 +482,9 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                             size="small"
                             summary={(pageData) => {
                               const weekTotals = pageData.reduce((acc, record) => ({
-                                fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(record.fixedWeeklyExpenses) || 0),
-
+                                fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(record.fixedWeeklyExpenses) || 0)
                               }), {
-                                fixedWeeklyExpenses: 0,
-
+                                fixedWeeklyExpenses: 0
                               });
 
                               return (
@@ -506,7 +495,6 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                                   <Table.Summary.Cell index={1}>
                                     <Text strong>${weekTotals.fixedWeeklyExpenses.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-
                                 </Table.Summary.Row>
                               );
                             }}
@@ -531,9 +519,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                                 key: 'fixedWeeklyExpenses',
                                 width: 200,
                                 render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                              },
-                              
-                           
+                              }
                             ]}
                           />
                         </Card>
