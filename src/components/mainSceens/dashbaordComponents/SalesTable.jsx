@@ -54,6 +54,31 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
     }
   }, [weeklyData]);
 
+  // Helper function to check if all values in weeklyData are zeros
+  const areAllValuesZero = (weeklyData) => {
+    if (!weeklyData || weeklyData.length === 0) return true;
+    
+    return weeklyData.every(week => {
+      if (!week.dailyData || week.dailyData.length === 0) return true;
+      
+      return week.dailyData.every(day => {
+        const budgetedSales = parseFloat(day.budgetedSales) || 0;
+        const actualSalesInStore = parseFloat(day.actualSalesInStore) || 0;
+        const actualSalesAppOnline = parseFloat(day.actualSalesAppOnline) || 0;
+        const actualSalesDoorDash = parseFloat(day.actualSalesDoorDash) || 0;
+        const dailyTickets = parseFloat(day.dailyTickets) || 0;
+        const averageDailyTicket = parseFloat(day.averageDailyTicket) || 0;
+        
+        return budgetedSales === 0 && 
+               actualSalesInStore === 0 && 
+               actualSalesAppOnline === 0 && 
+               actualSalesDoorDash === 0 && 
+               dailyTickets === 0 && 
+               averageDailyTicket === 0;
+      });
+    });
+  };
+
   // Calculate weekly totals from weekly data
   const calculateWeeklyTotalsFromData = (weeklyTableData) => {
     const totals = weeklyTableData.reduce((acc, week) => {
@@ -217,19 +242,66 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
     }
   };
 
-  // Save dashboard data
-  const saveData = async () => {
+
+
+  // Calculate percentage
+  const calculatePercentage = (actual, budget) => {
+    if (budget === 0) return 0;
+    return ((actual - budget) / budget) * 100;
+  };
+
+  const percentageActualVsBudget = calculatePercentage(weeklyTotals.netSalesActual, weeklyGoals.salesBudget);
+
+  // Handle weekly data modal
+  const showAddWeeklyModal = () => {
+    setEditingWeek(null);
+    setIsModalVisible(true);
+  };
+
+  const showEditWeeklyModal = (weekData) => {
+    setEditingWeek(weekData);
+    setIsModalVisible(true);
+  };
+
+  const handleWeeklySubmit = async (weekData) => {
     try {
-      // Only save the current week's data (first week in the array)
-      const currentWeek = weeklyData.length > 0 ? weeklyData[0] : null;
+      if (editingWeek) {
+        // Edit existing week
+        setWeeklyData(prev => prev.map(week => 
+          week.id === editingWeek.id ? { ...weekData, id: week.id } : week
+        ));
+      } else {
+        // Add new week
+        const newWeek = {
+          ...weekData,
+          id: Date.now(),
+          weekNumber: weeklyData.length + 1
+        };
+        setWeeklyData(prev => [...prev, newWeek]);
+      }
       
-      if (!currentWeek || !currentWeek.dailyData) {
+      // Update weekly goals from the modal data
+      if (weekData.weeklyTotals) {
+        setWeeklyGoals({
+          salesBudget: weekData.weeklyTotals.salesBudget || 0,
+          actualSalesInStore: weekData.weeklyTotals.actualSalesInStore || 0,
+          actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
+          actualSalesDoorDash: weekData.weeklyTotals.actualSalesDoorDash || 0,
+          netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
+          dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
+          averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0
+        });
+      }
+
+      // Save data to API when modal is submitted
+      // Use the weekData from the modal instead of checking weeklyData state
+      if (!weekData || !weekData.dailyData) {
         message.warning('No weekly data to save. Please add weekly Sales data first.');
         return;
       }
 
       // Use the weekly totals from the modal data
-      const weeklyTotals = currentWeek.weeklyTotals || {
+      const weeklyTotals = weekData.weeklyTotals || {
         salesBudget: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
@@ -264,7 +336,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
             daily_tickets: finalTotals.dailyTickets || 0,
             average_daily_ticket: (finalTotals.averageDailyTicket || 0).toFixed(2)
           },
-          daily: currentWeek.dailyData.map(day => ({
+          daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
             day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
             sales_budget: (day.budgetedSales || 0).toFixed(2),
@@ -283,61 +355,12 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
       await saveDashboardData(transformedData);
       message.success('Sales data saved successfully!');
       await loadDashboardData();
+      
+      setIsModalVisible(false);
+      setEditingWeek(null);
     } catch (error) {
       message.error(`Failed to save sales data: ${error.message}`);
     }
-  };
-
-  // Calculate percentage
-  const calculatePercentage = (actual, budget) => {
-    if (budget === 0) return 0;
-    return ((actual - budget) / budget) * 100;
-  };
-
-  const percentageActualVsBudget = calculatePercentage(weeklyTotals.netSalesActual, weeklyGoals.salesBudget);
-
-  // Handle weekly data modal
-  const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsModalVisible(true);
-  };
-
-  const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsModalVisible(true);
-  };
-
-  const handleWeeklySubmit = (weekData) => {
-    if (editingWeek) {
-      // Edit existing week
-      setWeeklyData(prev => prev.map(week => 
-        week.id === editingWeek.id ? { ...weekData, id: week.id } : week
-      ));
-    } else {
-      // Add new week
-      const newWeek = {
-        ...weekData,
-        id: Date.now(),
-        weekNumber: weeklyData.length + 1
-      };
-      setWeeklyData(prev => [...prev, newWeek]);
-    }
-    
-    // Update weekly goals from the modal data
-    if (weekData.weeklyTotals) {
-      setWeeklyGoals({
-        salesBudget: weekData.weeklyTotals.salesBudget || 0,
-        actualSalesInStore: weekData.weeklyTotals.actualSalesInStore || 0,
-        actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
-        actualSalesDoorDash: weekData.weeklyTotals.actualSalesDoorDash || 0,
-        netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
-        dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
-        averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0
-      });
-    }
-    
-    setIsModalVisible(false);
-    setEditingWeek(null);
   };
 
   const deleteWeek = (weekId) => {
@@ -936,23 +959,17 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                     Refresh
                   </Button>
                   <Button 
-                    type="primary" 
-                    onClick={saveData}
-                    loading={storeLoading}
-                  >
-                    Save Data
-                  </Button>
-                  <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
+                    disabled={weeklyData.length > 0 && !areAllValuesZero(weeklyData)}
                   >
                     Add Weekly Sales
                   </Button>
                 </Space>
               }
             >
-              {dataNotFound ? (
+              {dataNotFound || areAllValuesZero(weeklyData) ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description="No sales data found for the selected period."

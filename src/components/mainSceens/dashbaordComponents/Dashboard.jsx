@@ -14,7 +14,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Calendar dropdown states
   const [calendarData, setCalendarData] = useState(null);

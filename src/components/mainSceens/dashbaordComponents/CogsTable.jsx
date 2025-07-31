@@ -48,6 +48,22 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
     }
   }, [selectedDate, weekDays]);
 
+  // Helper function to check if all values in weeklyData are zeros
+  const areAllValuesZero = (weeklyData) => {
+    if (!weeklyData || weeklyData.length === 0) return true;
+    
+    return weeklyData.every(week => {
+      if (!week.dailyData || week.dailyData.length === 0) return true;
+      
+      return week.dailyData.every(day => {
+        const budget = parseFloat(day.budget) || 0;
+        const actual = parseFloat(day.actual) || 0;
+        
+        return budget === 0 && actual === 0;
+      });
+    });
+  };
+
   // Load COGS data
   const loadCogsData = async () => {
     try {
@@ -140,19 +156,45 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
     }
   };
 
-  // Save COGS data
-  const saveData = async () => {
+
+
+  // Handle weekly data modal
+  const showAddWeeklyModal = () => {
+    setEditingWeek(null);
+    setIsModalVisible(true);
+  };
+
+  const showEditWeeklyModal = (weekData) => {
+    setEditingWeek(weekData);
+    setIsModalVisible(true);
+  };
+
+  const handleWeeklySubmit = async (weekData) => {
     try {
-      // Only save the current week's data (first week in the array)
-      const currentWeek = weeklyData.length > 0 ? weeklyData[0] : null;
-      
-      if (!currentWeek || !currentWeek.dailyData) {
+      if (editingWeek) {
+        // Edit existing week
+        setWeeklyData(prev => prev.map(week => 
+          week.id === editingWeek.id ? { ...weekData, id: week.id } : week
+        ));
+      } else {
+        // Add new week
+        const newWeek = {
+          ...weekData,
+          id: Date.now(),
+          weekNumber: weeklyData.length + 1
+        };
+        setWeeklyData(prev => [...prev, newWeek]);
+      }
+
+      // Save data to API when modal is submitted
+      // Use the weekData from the modal instead of checking weeklyData state
+      if (!weekData || !weekData.dailyData) {
         message.warning('No weekly data to save. Please add weekly COGS data first.');
         return;
       }
 
       // Use the weekly totals from the form data
-      const weeklyTotals = currentWeek.weeklyTotals || {
+      const weeklyTotals = weekData.weeklyTotals || {
         cogsBudget: 0,
         cogsActual: 0,
         cogsPercentage: 0,
@@ -178,52 +220,25 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
             cogs_percentage: finalTotals.cogsPercentage.toFixed(1),
             weekly_remaining_cog: finalTotals.weeklyRemainingCog.toFixed(2)
           },
-                     daily: currentWeek.dailyData.map(day => ({
-             date: day.date.format('YYYY-MM-DD'),
-             day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
-             cogs_budget: (day.budget || 0).toFixed(2),
-             cogs_actual: (day.actual || 0).toFixed(2),
-             weekly_remaining_cog: "0.00"
-           }))
+          daily: weekData.dailyData.map(day => ({
+            date: day.date.format('YYYY-MM-DD'),
+            day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
+            cogs_budget: (day.budget || 0).toFixed(2),
+            cogs_actual: (day.actual || 0).toFixed(2),
+            weekly_remaining_cog: "0.00"
+          }))
         }
       };
 
       await saveDashboardData(transformedData);
       message.success('COGS data saved successfully!');
       await loadCogsData();
+      
+      setIsModalVisible(false);
+      setEditingWeek(null);
     } catch (error) {
       message.error(`Failed to save COGS data: ${error.message}`);
     }
-  };
-
-  // Handle weekly data modal
-  const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsModalVisible(true);
-  };
-
-  const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsModalVisible(true);
-  };
-
-  const handleWeeklySubmit = (weekData) => {
-    if (editingWeek) {
-      // Edit existing week
-      setWeeklyData(prev => prev.map(week => 
-        week.id === editingWeek.id ? { ...weekData, id: week.id } : week
-      ));
-    } else {
-      // Add new week
-      const newWeek = {
-        ...weekData,
-        id: Date.now(),
-        weekNumber: weeklyData.length + 1
-      };
-      setWeeklyData(prev => [...prev, newWeek]);
-    }
-    setIsModalVisible(false);
-    setEditingWeek(null);
   };
 
   const deleteWeek = (weekId) => {
@@ -689,23 +704,17 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                     Refresh
                   </Button>
                   <Button 
-                    type="primary" 
-                    onClick={saveData}
-                    loading={storeLoading}
-                  >
-                    Save Data
-                  </Button>
-                  <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
+                    disabled={weeklyData.length > 0 && !areAllValuesZero(weeklyData)}
                   >
                     Add Weekly COGS
                   </Button>
                 </Space>
               }
             >
-              {dataNotFound ? (
+              {dataNotFound || areAllValuesZero(weeklyData) ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description="No COGS data found for the selected period."

@@ -27,6 +27,27 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
     }
   }, [selectedDate, weekDays]);
 
+  // Helper function to check if all values in weeklyData are zeros
+  const areAllValuesZero = (weeklyData) => {
+    if (!weeklyData || weeklyData.length === 0) return true;
+    
+    return weeklyData.every(week => {
+      if (!week.dailyData || week.dailyData.length === 0) return true;
+      
+      return week.dailyData.every(day => {
+        const thirdPartyFees = parseFloat(day.thirdPartyFees) || 0;
+        const profitAfterCogsLabor = parseFloat(day.profitAfterCogsLabor) || 0;
+        const dailyVariableProfitPercentage = parseFloat(day.dailyVariableProfitPercentage) || 0;
+        const weeklyVariableProfitPercentage = parseFloat(day.weeklyVariableProfitPercentage) || 0;
+        
+        return thirdPartyFees === 0 && 
+               profitAfterCogsLabor === 0 && 
+               dailyVariableProfitPercentage === 0 && 
+               weeklyVariableProfitPercentage === 0;
+      });
+    });
+  };
+
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
@@ -100,19 +121,59 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
     }
   };
 
-  // Save dashboard data
-  const saveData = async () => {
+
+
+  // Handle weekly data modal
+  const showAddWeeklyModal = () => {
+    setEditingWeek(null);
+    setIsModalVisible(true);
+  };
+
+  const showEditWeeklyModal = (weekData) => {
+    setEditingWeek(weekData);
+    setIsModalVisible(true);
+  };
+
+  const handleWeeklySubmit = async (weekData) => {
     try {
-      // Only save the current week's data (first week in the array)
-      const currentWeek = weeklyData.length > 0 ? weeklyData[0] : null;
+      let newWeekId = null;
       
-      if (!currentWeek || !currentWeek.dailyData) {
+      if (editingWeek) {
+        // Edit existing week
+        setWeeklyData(prev => prev.map(week => 
+          week.id === editingWeek.id ? { ...weekData, id: week.id } : week
+        ));
+        newWeekId = editingWeek.id;
+      } else {
+        // Add new week
+        const newWeek = {
+          ...weekData,
+          id: Date.now(),
+          weekNumber: weeklyData.length + 1
+        };
+        newWeekId = newWeek.id;
+        setWeeklyData(prev => [...prev, newWeek]);
+      }
+      
+      // Update weekly totals from the modal data
+      if (weekData.weeklyTotals) {
+        // Update the weekly data with the modal's weekly totals
+        setWeeklyData(prev => prev.map(week => 
+          week.id === newWeekId 
+            ? { ...week, weeklyTotals: weekData.weeklyTotals }
+            : week
+        ));
+      }
+
+      // Save data to API when modal is submitted
+      // Use the weekData from the modal instead of checking weeklyData state
+      if (!weekData || !weekData.dailyData) {
         message.warning('No weekly data to save. Please add weekly Profit data first.');
         return;
       }
 
       // Use the weekly totals from the form data
-      const weeklyTotals = currentWeek.weeklyTotals || {
+      const weeklyTotals = weekData.weeklyTotals || {
         thirdPartyFees: 0,
         profitAfterCogsLabor: 0,
         dailyVariableProfitPercentage: 0,
@@ -138,7 +199,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
             daily_variable_profit_percent: finalTotals.dailyVariableProfitPercentage,
             weekly_variable_profit_percent: finalTotals.weeklyVariableProfitPercentage
           },
-          daily: currentWeek.dailyData.map(day => ({
+          daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
             third_party_fees: (day.thirdPartyFees || 0),
             profit_after_cogs_labor: (day.profitAfterCogsLabor || 0),
@@ -151,54 +212,12 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
       await saveDashboardData(transformedData);
       message.success('Profit data saved successfully!');
       await loadDashboardData();
+      
+      setIsModalVisible(false);
+      setEditingWeek(null);
     } catch (error) {
       message.error(`Failed to save profit data: ${error.message}`);
     }
-  };
-
-  // Handle weekly data modal
-  const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsModalVisible(true);
-  };
-
-  const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsModalVisible(true);
-  };
-
-  const handleWeeklySubmit = (weekData) => {
-    let newWeekId = null;
-    
-    if (editingWeek) {
-      // Edit existing week
-      setWeeklyData(prev => prev.map(week => 
-        week.id === editingWeek.id ? { ...weekData, id: week.id } : week
-      ));
-      newWeekId = editingWeek.id;
-    } else {
-      // Add new week
-      const newWeek = {
-        ...weekData,
-        id: Date.now(),
-        weekNumber: weeklyData.length + 1
-      };
-      newWeekId = newWeek.id;
-      setWeeklyData(prev => [...prev, newWeek]);
-    }
-    
-    // Update weekly totals from the modal data
-    if (weekData.weeklyTotals) {
-      // Update the weekly data with the modal's weekly totals
-      setWeeklyData(prev => prev.map(week => 
-        week.id === newWeekId 
-          ? { ...week, weeklyTotals: weekData.weeklyTotals }
-          : week
-      ));
-    }
-    
-    setIsModalVisible(false);
-    setEditingWeek(null);
   };
 
   const deleteWeek = (weekId) => {
@@ -622,23 +641,17 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
                     Refresh
                   </Button>
                   <Button 
-                    type="primary" 
-                    onClick={saveData}
-                    loading={storeLoading}
-                  >
-                    Save Data
-                  </Button>
-                  <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
+                    disabled={weeklyData.length > 0 && !areAllValuesZero(weeklyData)}
                   >
                     Add Weekly Profit
                   </Button>
                 </Space>
               }
             >
-              {dataNotFound ? (
+              {dataNotFound || areAllValuesZero(weeklyData) ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description="No profit data found for the selected period."
