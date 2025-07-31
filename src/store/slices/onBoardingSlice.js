@@ -1167,20 +1167,28 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Get restaurant ID for step submission
     getRestaurantIdForStep: (stepName) => {
-        // For Basic Information step (first step), always return null for new users
+        const state = get();
+        const storeRestaurantId = state.completeOnboardingData?.restaurant_id;
+        const localRestaurantId = localStorage.getItem('restaurant_id');
+        
+        // For Basic Information step, check if we have an existing restaurant_id
         if (stepName === "Basic Information") {
+            // If we have a restaurant_id in store or localStorage, this is an update
+            if (storeRestaurantId || localRestaurantId) {
+                const existingId = storeRestaurantId || localRestaurantId;
+                console.log(`🔄 Basic Information update detected, using existing restaurant_id: ${existingId}`);
+                return existingId;
+            }
+            // If no restaurant_id exists, this is a new user
+            console.log(`🆕 New user detected for Basic Information, returning null`);
             return null;
         }
         
         // For other steps, get from state or localStorage
-        const state = get();
-        const storeRestaurantId = state.completeOnboardingData?.restaurant_id;
-        
         if (storeRestaurantId) {
             return storeRestaurantId;
         }
         
-        const localRestaurantId = localStorage.getItem('restaurant_id');
         if (localRestaurantId) {
             return localRestaurantId;
         }

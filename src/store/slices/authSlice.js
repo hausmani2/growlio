@@ -236,6 +236,19 @@ const createAuthSlice = (set, get) => {
       sessionStorage.clear();
       console.log('🗑️ Cleared sessionStorage');
       
+      // Reset onboarding state first
+      const currentState = get();
+      if (currentState.resetOnboarding) {
+        currentState.resetOnboarding();
+        console.log('🗑️ Reset onboarding state');
+      }
+      
+      // Clear dashboard state
+      if (currentState.resetDashboard) {
+        currentState.resetDashboard();
+        console.log('🗑️ Cleared dashboard state');
+      }
+      
       // Clear all auth state
       set(() => ({ 
         user: null, 
@@ -248,17 +261,10 @@ const createAuthSlice = (set, get) => {
       }));
       console.log('🗑️ Cleared auth state');
       
-      // Reset onboarding state
-      const state = get();
-      if (state.resetOnboarding) {
-        state.resetOnboarding();
-        console.log('🗑️ Reset onboarding state');
-      }
-      
-      // Clear dashboard state
-      if (state.resetDashboard) {
-        state.resetDashboard();
-        console.log('🗑️ Cleared dashboard state');
+      // Use the store's clearPersistedState function to completely reset all state
+      if (currentState.clearPersistedState) {
+        currentState.clearPersistedState();
+        console.log('🗑️ Cleared all persisted state using store function');
       }
       
       console.log('🚪 Logout completed - all state and localStorage cleared');
@@ -342,21 +348,18 @@ const createAuthSlice = (set, get) => {
     clearAllState: () => {
       console.log('🧹 Starting comprehensive state clear...');
       
-      // Clear all localStorage items related to the app
-      const keysToRemove = [
-        'token',
-        'restaurant_id',
-        'growlio-store' // This is the Zustand persist key
-      ];
+      // Reset onboarding state first
+      const currentState = get();
+      if (currentState.resetOnboarding) {
+        currentState.resetOnboarding();
+        console.log('🗑️ Reset onboarding state');
+      }
       
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-        console.log(`🗑️ Removed ${key} from localStorage`);
-      });
-      
-      // Clear sessionStorage as well
-      sessionStorage.clear();
-      console.log('🗑️ Cleared sessionStorage');
+      // Clear dashboard state
+      if (currentState.resetDashboard) {
+        currentState.resetDashboard();
+        console.log('🗑️ Cleared dashboard state');
+      }
       
       // Clear all auth state
       set(() => ({ 
@@ -370,17 +373,10 @@ const createAuthSlice = (set, get) => {
       }));
       console.log('🗑️ Cleared auth state');
       
-      // Reset onboarding state
-      const state = get();
-      if (state.resetOnboarding) {
-        state.resetOnboarding();
-        console.log('🗑️ Reset onboarding state');
-      }
-      
-      // Clear dashboard state
-      if (state.resetDashboard) {
-        state.resetDashboard();
-        console.log('🗑️ Cleared dashboard state');
+      // Use the store's clearPersistedState function to completely reset all state
+      if (currentState.clearPersistedState) {
+        currentState.clearPersistedState();
+        console.log('🗑️ Cleared all persisted state using store function');
       }
       
       console.log('🧹 All application state cleared');

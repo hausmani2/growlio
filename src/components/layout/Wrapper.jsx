@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { HomeOutlined, InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import { HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { FaPeopleCarry, FaStore } from 'react-icons/fa';
@@ -24,39 +24,44 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       onClick: () => navigate('/dashboard'),
     },
     {
-      key: 'basic-information',
-      icon: <InfoCircleOutlined />,
-      label: 'Basic Information',
-      disabled: true,
-      onClick: () => navigate('/basic-information'),
-    },
-    {
-      key: 'labour-information',
-      icon: <FaPeopleCarry/>,
-      label: 'Labour Information',
-      disabled: true,
-      onClick: () => navigate('/labour-information'),
-    },
-    {
-      key: 'food-cost-details',
-      icon: <MdOutlineFoodBank  />,
-      label: 'Food Cost Details',
-      disabled: true,
-      onClick: () => navigate('/food-cost-details'),
-    },
-    {
-      key: 'sales-channels',
-      icon: <FaStore  />,
-      label: 'Sales Channels',
-      disabled: true,
-      onClick: () => navigate('/sales-channels'),
-    },
-    {
-      key: 'expense',
-      icon: <SiExpensify  />,
-      label: 'Expense',
-      disabled: true,
-      onClick: () => navigate('/expense'),
+      key: 'onboarding',
+      icon: <UserOutlined />,
+      label: 'Onboarding',
+      children: [
+        {
+          key: 'basic-information',
+          icon: <InfoCircleOutlined />,
+          label: 'Basic Information',
+          onClick: () => navigate('/basic-information'),
+        },
+        {
+          key: 'labour-information',
+          icon: <FaPeopleCarry/>,
+          label: 'Labour Information',
+          onClick: () => navigate('/labour-information'),
+        },
+        {
+          key: 'food-cost-details',
+          icon: <MdOutlineFoodBank  />,
+          label: 'Food Cost Details',
+          disabled: true,
+          onClick: () => navigate('/food-cost-details'),
+        },
+        {
+          key: 'sales-channels',
+          icon: <FaStore  />,
+          label: 'Sales Channels',
+          disabled: true,
+          onClick: () => navigate('/sales-channels'),
+        },
+        {
+          key: 'expense',
+          icon: <SiExpensify  />,
+          label: 'Expense',
+          disabled: true,
+          onClick: () => navigate('/expense'),
+        },
+      ],
     },
   ];
 

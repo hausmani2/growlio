@@ -9,7 +9,7 @@ import { FaArrowLeftLong } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../store/store";
 import { message } from "antd";
-import { apiGet } from "../../utils/axiosInterceptors";
+
 import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
 
 const OnboardingWrapper = () => {
@@ -25,11 +25,22 @@ const OnboardingWrapper = () => {
     // Check if we should show loading state
     const shouldShowLoading = onboardingLoading || onboardingStatus === 'loading';
     
+    // Don't show loading for new users (incomplete or null status)
+    const isNewUser = onboardingStatus === 'incomplete' || onboardingStatus === null;
+    
     const handleSubmit = async () => {
         setIsChecking(true);
         
         try {
             console.log("📋 User clicking Continue - checking onboarding status...");
+            
+            // For new users, we can skip the API call and go directly to basic information
+            if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
+                console.log('✅ New user detected - proceeding directly to Basic Information');
+                message.success("Welcome! Let's set up your restaurant.");
+                navigate('/onboarding/basic-information');
+                return;
+            }
             
             // Use the onboarding status from store if available, otherwise make API call
             let onboardingData;
@@ -41,18 +52,10 @@ const OnboardingWrapper = () => {
                 return;
             }
             
-            if (onboardingStatus === null) {
-                // No status available, make API call
-                console.log('🔄 Making API call to check onboarding status...');
-                message.info("Checking your restaurant status...");
-                const response = await apiGet('/restaurant/restaurants-onboarding/');
-                onboardingData = response.data;
-            } else {
-                // Use cached status from store
-                console.log('✅ Using cached onboarding status from store');
-                const result = await checkOnboardingStatus();
-                onboardingData = result;
-            }
+            // Use cached status from store
+            console.log('✅ Using cached onboarding status from store');
+            const result = await checkOnboardingStatus();
+            onboardingData = result;
             
             console.log('Onboarding Status Check - Raw data:', onboardingData);
             
@@ -165,8 +168,8 @@ const OnboardingWrapper = () => {
         if (onboardingStatus === 'complete') {
             console.log('✅ Onboarding already complete - redirecting to dashboard');
             navigate('/dashboard');
-        } else if (onboardingStatus === 'incomplete') {
-            console.log('⚠️ Onboarding incomplete - user can proceed with setup');
+        } else if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
+            console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
         }
     }, [onboardingStatus, navigate]);
 
@@ -183,7 +186,7 @@ const OnboardingWrapper = () => {
     }, [onboardingLoading]);
 
     // Show loading state if needed
-    if (shouldShowLoading) {
+    if (shouldShowLoading && !isNewUser) {
         return <LoadingSpinner message="Loading onboarding data..." />;
     }
 

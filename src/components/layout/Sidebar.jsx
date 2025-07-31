@@ -18,6 +18,7 @@ const Sidebar = ({ menuItems = [] }) => {
   // Map pathname to menu key
   const pathKeyMap = {
     '/dashboard': 'dashboard',
+    '/onboarding': 'onboarding',
     '/basic-information': 'basic-information',
     '/labour-information': 'labour-information',
     '/food-cost-details': 'food-cost-details',

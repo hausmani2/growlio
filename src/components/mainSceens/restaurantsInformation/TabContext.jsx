@@ -314,8 +314,8 @@ export const TabProvider = ({ children }) => {
                 const currentStepName = currentTab.title;
                 saveCurrentStepData(currentStepName);
                 
-                // Reset the current step's status to false when going back
-                resetStepStatus(currentStepName);
+                // Don't reset step status when going back to preserve restaurant_id
+                // resetStepStatus(currentStepName);
             }
             
             handleTabClick(prevTabId);

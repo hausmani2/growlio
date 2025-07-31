@@ -37,14 +37,14 @@ const useStepNavigation = () => {
         // Save current step data
         saveCurrentStepData(currentStepName);
         
-        // Reset current step status
-        resetStepStatus(currentStepName);
+        // Don't reset step status when going back to preserve restaurant_id
+        // resetStepStatus(currentStepName);
         
         // Load previous step data
         loadStepData(previousStepName);
         
         console.log(`⬅️ Navigated from ${currentStepName} to ${previousStepName}`);
-    }, [saveCurrentStepData, resetStepStatus, loadStepData]);
+    }, [saveCurrentStepData, loadStepData]);
 
     // Get current step data
     const getCurrentStepData = useCallback((stepName) => {
