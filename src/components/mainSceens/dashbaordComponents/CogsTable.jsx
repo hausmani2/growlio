@@ -651,7 +651,7 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
-                    disabled={weeklyData.length > 0 && !areAllValuesZero(weeklyData)}
+                    disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
                   >
                     Add Weekly COGS
                   </Button>
