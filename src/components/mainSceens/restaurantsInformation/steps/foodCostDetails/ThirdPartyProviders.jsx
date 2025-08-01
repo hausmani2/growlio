@@ -24,8 +24,8 @@ const ThirdPartyProviders = ({ data, updateData }) => {
 
     // Yes/No options for hired party delivery
     const yesNoOptions = [
-        { value: 'yes', label: 'Yes' },
-        { value: 'no', label: 'No' }
+        { value: 'true', label: 'Yes' },
+        { value: 'false', label: 'No' }
     ];
 
     // Initialize providers from data if it exists
@@ -41,7 +41,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
         updateData('useHiredPartyDelivery', value);
         
         // If "No" is selected, clear providers data
-        if (value === 'no') {
+        if (value === 'false') {
             setProviders([{ id: 1, providerName: '', providerFee: '' }]);
             updateData('providers', []);
         }
@@ -96,7 +96,7 @@ const ThirdPartyProviders = ({ data, updateData }) => {
                     </div>
 
                     {/* Provider Details - Only show if "Yes" is selected */}
-                    {useHiredPartyDelivery === 'yes' && (
+                    {useHiredPartyDelivery === 'true' && (
                         <>
                             {providers.map((provider) => (
                                 <div key={provider.id} className=" rounded-lg ">
