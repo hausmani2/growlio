@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { message } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
 import TotalExpense from "./TotalExpense";
@@ -10,11 +10,15 @@ import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
-const ExpenseWrapper = () => {
+const ExpenseWrapperContent = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     // State for expense data - only dynamic fields
     const [expenseData, setExpenseData] = useState({
@@ -201,9 +205,8 @@ const ExpenseWrapper = () => {
             
             // Step 4: Call API through Zustand store with success callback
             const result = await submitStepData("Expense", stepData, async (responseData) => {
-                // Success callback - check if onboarding is complete
-                console.log("✅ Expense saved successfully, checking if onboarding is complete...");
-                message.success("Expense information saved successfully!");
+                // Success callback - handle navigation based on mode
+                console.log("✅ Expense saved successfully");
                 
                 // Log detailed expense summary
                 console.log("=== EXPENSE DATA SAVED ===");
@@ -231,30 +234,40 @@ const ExpenseWrapper = () => {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
 
-                // Check if onboarding is complete
-                try {
-                    console.log("🔄 Checking if onboarding is complete...");
-                    const completionResult = await checkOnboardingCompletion();
+                // Step 5: Handle navigation based on mode
+                if (isUpdateMode) {
+                    // In update mode, stay on the same page or go to dashboard
+                    console.log("🔄 Update mode - staying on current page");
+                    message.success("Expense information updated successfully!");
+                } else {
+                    // In onboarding mode, check if onboarding is complete
+                    console.log("🔄 Onboarding mode - checking completion status");
+                    message.success("Expense information saved successfully!");
                     
-                    if (completionResult.success && completionResult.isComplete) {
-                        console.log("🎉 Onboarding is complete! Navigating to completion page...");
-                        message.success("Congratulations! Your onboarding is complete!");
+                    try {
+                        console.log("🔄 Checking if onboarding is complete...");
+                        const completionResult = await checkOnboardingCompletion();
                         
-                        // Navigate to completion page
+                        if (completionResult.success && completionResult.isComplete) {
+                            console.log("🎉 Onboarding is complete! Navigating to completion page...");
+                            message.success("Congratulations! Your onboarding is complete!");
+                            
+                            // Navigate to completion page
+                            completeOnboarding();
+                        } else {
+                            console.log("⚠️ Onboarding not yet complete, staying on current step");
+                            message.info("Expense saved! Please complete remaining steps.");
+                            
+                            // Stay on current step or navigate to next incomplete step
+                            navigateToNextStep();
+                        }
+                    } catch (error) {
+                        console.error("❌ Error checking onboarding completion:", error);
+                        message.warning("Expense saved! Please check your onboarding status.");
+                        
+                        // Fallback: navigate to completion page
                         completeOnboarding();
-                    } else {
-                        console.log("⚠️ Onboarding not yet complete, staying on current step");
-                        message.info("Expense saved! Please complete remaining steps.");
-                        
-                        // Stay on current step or navigate to next incomplete step
-                        navigateToNextStep();
                     }
-                } catch (error) {
-                    console.error("❌ Error checking onboarding completion:", error);
-                    message.warning("Expense saved! Please check your onboarding status.");
-                    
-                    // Fallback: navigate to completion page
-                    completeOnboarding();
                 }
             });
             
@@ -273,25 +286,59 @@ const ExpenseWrapper = () => {
     };
 
     return (
-        <TabProvider>
-            <div className="flex flex-col">
-                
-                <FixedCost 
-                    data={expenseData} 
-                    updateData={updateExpenseData}
-                    errors={validationErrors}
-                />
-                <VariableFixed 
-                    data={expenseData} 
-                    updateData={updateExpenseData}
-                    errors={validationErrors}
-                />
-                <TotalExpense 
-                    data={expenseData} 
-                    onSave={handleSave}
-                    loading={loading}
-                />
+        <div className="flex flex-col gap-6">
+            {isUpdateMode && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
+                    <p className="text-blue-700">
+                        You are updating your expense information. Changes will be saved when you click "Save".
+                    </p>
+                </div>
+            )}
+            
+            <FixedCost 
+                data={expenseData} 
+                updateData={updateExpenseData}
+                errors={validationErrors}
+            />
+            <VariableFixed 
+                data={expenseData} 
+                updateData={updateExpenseData}
+                errors={validationErrors}
+            />
+            <TotalExpense 
+                data={expenseData} 
+                onSave={handleSave}
+                loading={loading}
+            />
+            
+            <div className="flex justify-between mt-6">
+                {isUpdateMode && (
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                        Back to Dashboard
+                    </button>
+                )}
+                {isUpdateMode && (
+                    <button
+                        onClick={handleSave}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        disabled={loading}
+                    >
+                        {loading ? "Saving..." : "Save Changes"}
+                    </button>
+                )}
             </div>
+        </div>
+    );
+};
+
+const ExpenseWrapper = () => {
+    return (
+        <TabProvider>
+            <ExpenseWrapperContent />
         </TabProvider>
     );
 };

@@ -8,8 +8,11 @@ import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useFormValidation from "./useFormValidation";
 import StepDataManager from "../../StepDataManager";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const RestaurantWrapper = () => {
+const RestaurantWrapperContent = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { 
         submitStepData, 
         onboardingLoading: loading, 
@@ -21,6 +24,9 @@ const RestaurantWrapper = () => {
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     // Get temporary form data from store
     const tempFormData = getTempFormData("Basic Information");
@@ -246,31 +252,41 @@ const RestaurantWrapper = () => {
             // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
             const result = await submitStepData("Basic Information", stepData, (responseData) => {
-                // Success callback - navigate to next step
-                console.log("✅ Basic Information saved successfully, navigating to next step");
-                message.success("Basic information saved successfully!");
+                // Success callback - handle navigation based on mode
+                console.log("✅ Basic Information saved successfully");
                 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
                 
-                // Ensure step is marked as completed before navigation
+                // Ensure step is marked as completed
                 const { markStepCompleted } = useStore.getState();
                 markStepCompleted("Basic Information");
                 console.log("✅ Marked Basic Information as completed");
                 
-                // Add a small delay to ensure state is updated before navigation
-                setTimeout(() => {
-                    console.log("🔄 Navigating to next step after state update...");
+                // Step 4: Handle navigation based on mode
+                if (isUpdateMode) {
+                    // In update mode, stay on the same page or go to dashboard
+                    console.log("🔄 Update mode - staying on current page");
+                    message.success("Basic information updated successfully!");
+                } else {
+                    // In onboarding mode, navigate to next step
+                    console.log("🔄 Onboarding mode - navigating to next step");
+                    message.success("Basic information saved successfully!");
                     
-                    // Debug: Check current state
-                    const currentState = useStore.getState();
-                    console.log("Current completeOnboardingData:", currentState.completeOnboardingData);
-                    console.log("Basic Information status:", currentState.completeOnboardingData["Basic Information"]?.status);
-                    
-                    navigateToNextStep();
-                }, 200); // Increased delay to ensure state update
+                    // Add a small delay to ensure state is updated before navigation
+                    setTimeout(() => {
+                        console.log("🔄 Navigating to next step after state update...");
+                        
+                        // Debug: Check current state
+                        const currentState = useStore.getState();
+                        console.log("Current completeOnboardingData:", currentState.completeOnboardingData);
+                        console.log("Basic Information status:", currentState.completeOnboardingData["Basic Information"]?.status);
+                        
+                        navigateToNextStep();
+                    }, 200); // Increased delay to ensure state update
+                }
             });
             console.log("submitStepData result:", result);
             
@@ -293,29 +309,63 @@ const RestaurantWrapper = () => {
     };
 
     return (
-        <TabProvider>
-            <StepDataManager stepName="Basic Information">
-                <div className="flex flex-col">
-                    <RestaurantInformation 
-                        data={restaurantData}
-                        updateData={updateRestaurantData}
-                        errors={validationErrors}
-                    />
+        <StepDataManager stepName="Basic Information">
+            <div className="flex flex-col gap-6">
+                {isUpdateMode && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
+                        <p className="text-blue-700">
+                            You are updating your basic restaurant information. Changes will be saved when you click "Save & Continue".
+                        </p>
+                    </div>
+                )}
+                
+                <RestaurantInformation 
+                    data={restaurantData}
+                    updateData={updateRestaurantData}
+                    errors={validationErrors}
+                />
 
-                    <AddressInformation 
-                        data={addressData}
-                        updateData={updateAddressData}
-                        errors={validationErrors}
-                    />
-                    <AddressType 
-                        data={addressTypeData}
-                        updateData={updateAddressTypeData}
-                        onSaveAndContinue={handleSaveAndContinue}
-                        errors={validationErrors}
-                        loading={loading}
-                    />
+                <AddressInformation 
+                    data={addressData}
+                    updateData={updateAddressData}
+                    errors={validationErrors}
+                />
+                <AddressType 
+                    data={addressTypeData}
+                    updateData={updateAddressTypeData}
+                    onSaveAndContinue={handleSaveAndContinue}
+                    errors={validationErrors}
+                    loading={loading}
+                />
+                
+                <div className="flex justify-between mt-6">
+                    {isUpdateMode && (
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                            Back to Dashboard
+                        </button>
+                    )}
+                    <div className="ml-auto">
+                        <button
+                            onClick={handleSaveAndContinue}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                        </button>
+                    </div>
                 </div>
-            </StepDataManager>
+            </div>
+        </StepDataManager>
+    );
+};
+
+const RestaurantWrapper = () => {
+    return (
+        <TabProvider>
+            <RestaurantWrapperContent />
         </TabProvider>
     );
 };

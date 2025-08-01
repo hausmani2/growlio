@@ -2,9 +2,14 @@ import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import { Input, Select, Tooltip } from 'antd';
 import PrimaryButton from '../../../../../components/buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
+import { useLocation } from 'react-router-dom';
 
 const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAndContinue }) => {
+    const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     const handleSaveAndContinueClick = async () => {
         if (onSaveAndContinue) {
@@ -125,20 +130,22 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                     </div>
                 </div>
                 
-                <div className="flex justify-between items-center my-5">
-                    <PrimaryButton 
-                        title="Back" 
-                        className="border-none"
-                        onClick={handleGoBack}
-                        disabled={loading}
-                    />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
-                </div>
+                {!isUpdateMode && (
+                    <div className="flex justify-between items-center my-5">
+                        <PrimaryButton 
+                            title="Back" 
+                            className="border-none"
+                            onClick={handleGoBack}
+                            disabled={loading}
+                        />
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

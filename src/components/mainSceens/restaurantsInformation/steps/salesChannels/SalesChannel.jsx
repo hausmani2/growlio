@@ -3,9 +3,14 @@ import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import PrimaryButton from '../../../../buttons/Buttons';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import { useTabHook } from '../../useTabHook';
+import { useLocation } from 'react-router-dom';
 
 const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false }) => {
+    const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     const salesChannels = [
         { 
@@ -91,21 +96,23 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                         )}
                     </div>
                 </div>
-                <div className="flex justify-between items-center my-5">
-                    <PrimaryButton 
-                        icon={LeftArrow} 
-                        title="Go Back" 
-                        className="bg-gray-200 text-black h-[40px]" 
-                        onClick={handleGoBack}
-                        disabled={loading}
-                    />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
-                </div>
+                {!isUpdateMode && (
+                    <div className="flex justify-between items-center my-5">
+                        <PrimaryButton 
+                            icon={LeftArrow} 
+                            title="Go Back" 
+                            className="bg-gray-200 text-black h-[40px]" 
+                            onClick={handleGoBack}
+                            disabled={loading}
+                        />
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

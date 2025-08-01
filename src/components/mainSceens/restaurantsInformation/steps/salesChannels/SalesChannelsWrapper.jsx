@@ -5,11 +5,17 @@ import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
+import { useNavigate, useLocation } from "react-router-dom";
 
-const SalesChannelsWrapper = () => {
+const SalesChannelsWrapperContent = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateSalesChannels } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     // State for Sales Channels
     const [salesChannelsData, setSalesChannelsData] = useState({
@@ -77,17 +83,25 @@ const SalesChannelsWrapper = () => {
             
             // Step 3: Call API through Zustand store with success callback
             const result = await submitStepData("Sales Channels", stepData, (responseData) => {
-                // Success callback - navigate to next step
-                console.log("✅ Sales Channels saved successfully, navigating to next step");
-                message.success("Sales channels saved successfully!");
+                // Success callback - handle navigation based on mode
+                console.log("✅ Sales Channels saved successfully");
                 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
                 
-                // Navigate to next step using the TabContext
-                navigateToNextStep();
+                // Step 4: Handle navigation based on mode
+                if (isUpdateMode) {
+                    // In update mode, stay on the same page or go to dashboard
+                    console.log("🔄 Update mode - staying on current page");
+                    message.success("Sales channels updated successfully!");
+                } else {
+                    // In onboarding mode, navigate to next step
+                    console.log("🔄 Onboarding mode - navigating to next step");
+                    message.success("Sales channels saved successfully!");
+                    navigateToNextStep();
+                }
             });
             
             // Step 4: Handle success
@@ -109,16 +123,50 @@ const SalesChannelsWrapper = () => {
     };
 
     return (
-        <TabProvider>
-            <div className="flex flex-col">
-                <SalesChannel 
-                    data={salesChannelsData}
-                    updateData={updateSalesChannelsData}
-                    errors={validationErrors}
-                    onSaveAndContinue={handleSaveAndContinue}
-                    loading={loading}
-                />
+        <div className="flex flex-col gap-6">
+            {isUpdateMode && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
+                    <p className="text-blue-700">
+                        You are updating your sales channels. Changes will be saved when you click "Save & Continue".
+                    </p>
+                </div>
+            )}
+            
+            <SalesChannel 
+                data={salesChannelsData}
+                updateData={updateSalesChannelsData}
+                errors={validationErrors}
+                onSaveAndContinue={handleSaveAndContinue}
+                loading={loading}
+            />
+            
+            <div className="flex justify-between mt-6">
+                {isUpdateMode && (
+                    <button
+                        onClick={() => navigate('/dashboard')}
+                        className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                        Back to Dashboard
+                    </button>
+                )}
+                <div className="ml-auto">
+                    <button
+                        onClick={handleSaveAndContinue}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                    </button>
+                </div>
             </div>
+        </div>
+    );
+};
+
+const SalesChannelsWrapper = () => {
+    return (
+        <TabProvider>
+            <SalesChannelsWrapperContent />
         </TabProvider>
     );
 };

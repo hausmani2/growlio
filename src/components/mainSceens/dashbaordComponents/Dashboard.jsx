@@ -9,6 +9,7 @@ import LabourTable from './LabourTable';
 import ProfitCogsTable from './ProfitCogsTable';
 import FixedExpensesTable from './FixedExpenseTable';
 import NetProfitTable from './NetProfitTable';
+import RestaurantInfoCard from './RestaurantInfoCard';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -260,6 +261,10 @@ const Dashboard = () => {
         </div>
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Restaurant Information Card */}
+          <RestaurantInfoCard />
+          
+          {/* Data Tables */}
           <SalesTable
             selectedDate={getSelectedWeekStartDate()}
             weekDays={getWeekDays()}

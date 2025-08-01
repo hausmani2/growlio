@@ -3,9 +3,14 @@ import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import PrimaryButton from '../../../../buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
+import { useLocation } from 'react-router-dom';
 
 const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+    const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     const days = [
         { name: 'Sunday', disabled: true },
@@ -84,7 +89,8 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                         ))}
                     </div>
                 </div>
-                <div className="flex justify-between items-center my-5">
+                {!isUpdateMode && (
+                    <div className="flex justify-between items-center my-5">
                         <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
                         <PrimaryButton 
                             title={loading ? "Saving..." : "Save & Continue"} 
@@ -95,7 +101,8 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                             }}
                             disabled={loading}
                         />
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

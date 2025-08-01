@@ -4,11 +4,16 @@ import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
 import { useTabHook } from '../../useTabHook';
+import { useLocation } from 'react-router-dom';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
 const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+    const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
     
     // Local state for form data
     const [formData, setFormData] = useState({
@@ -248,15 +253,17 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 
 
             </div>
-            <div className="flex justify-between items-center my-5">
-                        <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
-                        <PrimaryButton 
-                            title={loading ? "Saving..." : "Save & Continue"} 
-                            className="btn-brand"
-                            onClick={handleSaveAndContinueClick}
-                            disabled={loading}
-                        />
+            {!isUpdateMode && (
+                <div className="flex justify-between items-center my-5">
+                    <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
+                    <PrimaryButton 
+                        title={loading ? "Saving..." : "Save & Continue"} 
+                        className="btn-brand"
+                        onClick={handleSaveAndContinueClick}
+                        disabled={loading}
+                    />
                 </div>
+            )}
         </div>
     </div>
         )

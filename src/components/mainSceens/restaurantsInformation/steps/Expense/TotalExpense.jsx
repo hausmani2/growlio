@@ -2,10 +2,15 @@ import React from "react";
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryBtn from "../../../../buttons/Buttons";
 import { useTabHook } from "../../useTabHook";
+import { useLocation } from 'react-router-dom';
 
 
 const TotalExpense = ({ data,  onSave }) => {
+    const location = useLocation();
     const { handleTabClick } = useTabHook();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
 
     // Calculate total expenses properly
     const calculateTotalExpenses = () => {
@@ -39,14 +44,16 @@ const TotalExpense = ({ data,  onSave }) => {
                                 ${totalExpenses}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center my-5">
-                         <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleBack} />
-                         <PrimaryBtn 
-                             title="Save & Continue" 
-                             className="btn-brand"
-                         onClick={onSave}
-                         />
-                </div>
+                        {!isUpdateMode && (
+                            <div className="flex justify-between items-center my-5">
+                                <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleBack} />
+                                <PrimaryBtn 
+                                    title="Save & Continue" 
+                                    className="btn-brand"
+                                    onClick={onSave}
+                                />
+                            </div>
+                        )}
                         </div>
                         
                 </div>
