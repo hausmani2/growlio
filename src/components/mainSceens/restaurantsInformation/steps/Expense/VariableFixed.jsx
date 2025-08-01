@@ -7,6 +7,13 @@ const VariableFixed = ({ data, updateData }) => {
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicVariableFields || []);
 
+    // Update local state when data prop changes (when API data is loaded)
+    useEffect(() => {
+        if (data.dynamicVariableFields && data.dynamicVariableFields.length > 0) {
+            setDynamicFields(data.dynamicVariableFields);
+        }
+    }, [data.dynamicVariableFields]);
+
     // Update parent component when dynamic fields change
     useEffect(() => {
         updateData('dynamicVariableFields', dynamicFields);

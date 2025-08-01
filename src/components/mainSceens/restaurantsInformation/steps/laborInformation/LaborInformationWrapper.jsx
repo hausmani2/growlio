@@ -14,10 +14,10 @@ const LaborInformationWrapperContent = () => {
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateLabourInformation } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
-    
+
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
-    
+
     // State for labor data
     const [laborData, setLaborData] = useState({
         goal: '',
@@ -34,7 +34,7 @@ const LaborInformationWrapperContent = () => {
         const labourInfoData = completeOnboardingData["Labour Information"];
         if (labourInfoData && labourInfoData.data) {
             const data = labourInfoData.data;
-            
+
             setLaborData(prev => ({
                 ...prev,
                 goal: data.goal?.toString() || '',
@@ -73,12 +73,12 @@ const LaborInformationWrapperContent = () => {
         try {
             console.log("=== Labour Information Save & Continue ===");
             console.log("Current laborData:", laborData);
-            
+
             // Step 1: Validate form
             const validationResult = validateLabourInformation(laborData);
             console.log("Validation result:", validationResult);
             console.log("Validation passed:", Object.keys(validationResult).length === 0);
-            
+
             if (!validationResult || Object.keys(validationResult).length > 0) {
                 console.log("Validation failed with errors:", validationResult);
                 message.error("Please fill in all required fields correctly");
@@ -95,20 +95,20 @@ const LaborInformationWrapperContent = () => {
                 daily_ticket_count: laborData.daily_ticket_count === "2",
                 forward_prev_week_rate: laborData.forward_prev_week_rate === "2"
             };
-            
+
             console.log("Prepared stepData for API:", stepData);
-            
+
             // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
             const result = await submitStepData("Labour Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
                 console.log("✅ Labour Information saved successfully");
-                
+
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
                     console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
-                
+
                 // Step 4: Handle navigation based on mode
                 if (isUpdateMode) {
                     // In update mode, stay on the same page or go to dashboard
@@ -122,7 +122,7 @@ const LaborInformationWrapperContent = () => {
                 }
             });
             console.log("submitStepData result:", result);
-            
+
             // Step 4: Handle success
             if (result.success) {
                 return { success: true, data: result.data };
@@ -132,11 +132,11 @@ const LaborInformationWrapperContent = () => {
             }
         } catch (error) {
             console.error("Error saving labor information:", error);
-            
+
             // Show user-friendly error message
             const errorMessage = error.message || "An unexpected error occurred. Please try again.";
             message.error(errorMessage);
-            
+
             return { success: false, error: errorMessage };
         }
     };
@@ -151,37 +151,39 @@ const LaborInformationWrapperContent = () => {
                     </p>
                 </div>
             )}
-            
-            <LaborInformation 
-                data={laborData} 
+
+            <LaborInformation
+                data={laborData}
                 updateData={updateLaborData}
                 errors={validationErrors}
-            />    
-            <LaborEntryMethod 
-                data={laborData} 
+            />
+            <LaborEntryMethod
+                data={laborData}
                 updateData={updateLaborData}
                 errors={validationErrors}
                 onSaveAndContinue={handleSaveAndContinue}
                 loading={loading}
             />
-            
+
             <div className="flex justify-between mt-6">
                 {isUpdateMode && (
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                        Back to Dashboard
-                    </button>
+                    <>
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                            Back to Dashboard
+                        </button>
+                        <div className="ml-auto">
+                            <button
+                                onClick={handleSaveAndContinue}
+                                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                            </button>
+                        </div>
+                    </>
                 )}
-                <div className="ml-auto">
-                    <button
-                        onClick={handleSaveAndContinue}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                    </button>
-                </div>
             </div>
         </div>
     );

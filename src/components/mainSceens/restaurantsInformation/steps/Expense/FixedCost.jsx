@@ -7,6 +7,13 @@ const FixedCost = ({ data, updateData }) => {
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicFixedFields || []);
 
+    // Update local state when data prop changes (when API data is loaded)
+    useEffect(() => {
+        if (data.dynamicFixedFields && data.dynamicFixedFields.length > 0) {
+            setDynamicFields(data.dynamicFixedFields);
+        }
+    }, [data.dynamicFixedFields]);
+
     // Update parent component when dynamic fields change
     useEffect(() => {
         updateData('dynamicFixedFields', dynamicFields);

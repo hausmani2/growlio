@@ -341,21 +341,24 @@ const RestaurantWrapperContent = () => {
                 
                 <div className="flex justify-between mt-6">
                     {isUpdateMode && (
+                        <>
+
                         <button
                             onClick={() => navigate('/dashboard')}
                             className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                         >
                             Back to Dashboard
                         </button>
-                    )}
                     <div className="ml-auto">
                         <button
                             onClick={handleSaveAndContinue}
                             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
+                            >
                             {isUpdateMode ? "Save Changes" : "Save & Continue"}
                         </button>
                     </div>
+                            </>
+                        )}
                 </div>
             </div>
         </StepDataManager>

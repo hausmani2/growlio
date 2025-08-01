@@ -1444,6 +1444,95 @@ const createOnBoardingSlice = (set, get) => ({
             completedCount: completedSteps.length
         };
     },
+
+    // Restaurant name checking functionality
+    restaurantNameCheckLoading: false,
+    restaurantNameCheckError: null,
+    restaurantNameExists: false,
+
+    // Check if restaurant name already exists
+    checkRestaurantName: async (restaurantName, restaurantId = null) => {
+        if (!restaurantName || restaurantName.trim() === '') {
+            set(() => ({
+                restaurantNameCheckError: 'Restaurant name is required',
+                restaurantNameExists: false
+            }));
+            return { exists: false, error: 'Restaurant name is required' };
+        }
+
+        set(() => ({ 
+            restaurantNameCheckLoading: true, 
+            restaurantNameCheckError: null,
+            restaurantNameExists: false
+        }));
+
+        try {
+            // Get restaurant_id from store or localStorage if not provided
+            let finalRestaurantId = restaurantId;
+            if (!finalRestaurantId) {
+                const state = get();
+                finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
+            }
+
+            console.log('🔍 Checking restaurant name:', restaurantName, 'with restaurant_id:', finalRestaurantId);
+            
+            // Build the API URL with both parameters
+            let apiUrl = `/restaurant/check-restaurant/?restaurant_name=${encodeURIComponent(restaurantName.trim())}`;
+            if (finalRestaurantId) {
+                apiUrl += `&restaurant_id=${encodeURIComponent(finalRestaurantId)}`;
+            }
+            
+            const response = await apiGet(apiUrl);
+            
+            console.log('✅ Restaurant name check response:', response);
+            
+            // Check if restaurant exists (API should return true if exists, false if not)
+            const exists = response.data?.exists || response.data?.restaurant_exists || false;
+            
+            set(() => ({
+                restaurantNameCheckLoading: false,
+                restaurantNameCheckError: null,
+                restaurantNameExists: exists
+            }));
+
+            if (exists) {
+                const errorMessage = 'Restaurant name already exists. Please choose a different name.';
+                set(() => ({ restaurantNameCheckError: errorMessage }));
+                return { exists: true, error: errorMessage };
+            }
+
+            return { exists: false, error: null };
+        } catch (error) {
+            console.error('❌ Error checking restaurant name:', error);
+            
+            let errorMessage = 'Failed to check restaurant name. Please try again.';
+            
+            if (error.response?.status === 400) {
+                errorMessage = error.response.data?.message || 'Invalid restaurant name format.';
+            } else if (error.response?.status === 500) {
+                errorMessage = 'Server error occurred while checking restaurant name.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            set(() => ({
+                restaurantNameCheckLoading: false,
+                restaurantNameCheckError: errorMessage,
+                restaurantNameExists: false
+            }));
+            
+            return { exists: false, error: errorMessage };
+        }
+    },
+
+    // Clear restaurant name check state
+    clearRestaurantNameCheck: () => {
+        set(() => ({
+            restaurantNameCheckLoading: false,
+            restaurantNameCheckError: null,
+            restaurantNameExists: false
+        }));
+    },
 });
 
 export default createOnBoardingSlice;
