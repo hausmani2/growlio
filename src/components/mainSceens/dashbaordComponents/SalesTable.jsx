@@ -13,6 +13,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
     actualSalesAppOnline: 0,
     actualSalesDoorDash: 0,
     netSalesActual: 0,
+    actualVsBudgetSales: 0,
     dailyTickets: 0,
     averageDailyTicket: 0
   });
@@ -23,6 +24,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
     actualSalesAppOnline: 0,
     actualSalesDoorDash: 0,
     netSalesActual: 0,
+    actualVsBudgetSales: 0,
     dailyTickets: 0,
     averageDailyTicket: 0
   });
@@ -141,6 +143,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
             actualSalesAppOnline: parseFloat(salesPerformance.actual_sales_app_online) || 0,
             actualSalesDoorDash: parseFloat(salesPerformance.actual_sales_door_dash) || 0,
             netSalesActual: parseFloat(salesPerformance.net_sales_actual) || 0,
+            actualVsBudgetSales: parseFloat(salesPerformance.actual_vs_budget_sales) || 0,
             dailyTickets: parseFloat(salesPerformance.daily_tickets) || 0,
             averageDailyTicket: parseFloat(salesPerformance.average_daily_ticket) || 0
           };
@@ -156,6 +159,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
           actualSalesInStore: entry['Sales Performance']?.actual_sales_in_store || 0,
           actualSalesAppOnline: entry['Sales Performance']?.actual_sales_app_online || 0,
           actualSalesDoorDash: entry['Sales Performance']?.actual_sales_door_dash || 0,
+          actualVsBudgetSales: entry['Sales Performance']?.actual_vs_budget_sales || 0,
           dailyTickets: entry['Sales Performance']?.daily_tickets || 0,
           averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0
         })) || [];
@@ -178,6 +182,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
               actualSalesInStore: 0,
               actualSalesAppOnline: 0,
               actualSalesDoorDash: 0,
+              actualVsBudgetSales: 0,
               dailyTickets: 0,
               averageDailyTicket: 0
             };
@@ -246,13 +251,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
 
 
 
-  // Calculate percentage
-  const calculatePercentage = (actual, budget) => {
-    if (budget === 0) return 0;
-    return ((actual - budget) / budget) * 100;
-  };
 
-  const percentageActualVsBudget = calculatePercentage(weeklyTotals.netSalesActual, weeklyGoals.salesBudget);
 
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
@@ -324,6 +323,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
         actualSalesAppOnline: weeklyTotals.actualSalesAppOnline,
         actualSalesDoorDash: weeklyTotals.actualSalesDoorDash,
         netSalesActual: weeklyTotals.netSalesActual || (weeklyTotals.actualSalesInStore + weeklyTotals.actualSalesAppOnline + weeklyTotals.actualSalesDoorDash),
+        actualVsBudgetSales: weeklyTotals.actualVsBudgetSales || 0,
         dailyTickets: weeklyTotals.dailyTickets,
         averageDailyTicket: weeklyTotals.averageDailyTicket
       };
@@ -339,6 +339,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
             actual_sales_app_online: finalTotals.actualSalesAppOnline.toFixed(2),
             actual_sales_door_dash: finalTotals.actualSalesDoorDash.toFixed(2),
             net_sales_actual: finalTotals.netSalesActual.toFixed(2),
+            actual_vs_budget_sales: finalTotals.actualVsBudgetSales || 0,
             daily_tickets: finalTotals.dailyTickets || 0,
             average_daily_ticket: (finalTotals.averageDailyTicket || 0).toFixed(2)
           },
@@ -681,10 +682,10 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   <Table.Summary.Cell index={4}>
                     <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesDoorDash.toFixed(2)}</Text>
                   </Table.Summary.Cell>
-                  {/* <Table.Summary.Cell index={5}>
+                  <Table.Summary.Cell index={5}>
                     <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6}>
+                  {/* <Table.Summary.Cell index={6}>
                     <Text strong style={{ color: percentageTotal < 0 ? '#ff4d4f' : '#52c41a' }}>
                       {percentageTotal.toFixed(0)}%
                     </Text>
@@ -769,29 +770,29 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              // {
-              //   title: 'Net Sales - Actual (Auto-calculated)',
-              //   dataIndex: 'netSalesActual',
-              //   key: 'netSalesActual',
-              //   width: 180,
-              //   render: (value, record) => {
-              //     // Calculate the sum of actual sales for this day
-              //     const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-              //     const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-              //     const actualSalesDoorDash = parseFloat(record.actualSalesDoorDash) || 0;
-              //     const calculatedNetSales = actualSalesInStore + actualSalesAppOnline + actualSalesDoorDash;
+              {
+                title: 'Net Sales - Actual (Auto-calculated)',
+                dataIndex: 'netSalesActual',
+                key: 'netSalesActual',
+                width: 180,
+                render: (value, record) => {
+                  // Calculate the sum of actual sales for this day
+                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                  const actualSalesDoorDash = parseFloat(record.actualSalesDoorDash) || 0;
+                  const calculatedNetSales = actualSalesInStore + actualSalesAppOnline + actualSalesDoorDash;
                   
-              //     return (
-              //       <Input
-              //         type="number"
-              //         value={calculatedNetSales.toFixed(2)}
-              //         disabled
-              //         style={{ backgroundColor: '#f5f5f5' }}
-              //         prefix="$"
-              //       />
-              //     );
-              //   }
-              // },
+                  return (
+                    <Input
+                      type="number"
+                      value={calculatedNetSales.toFixed(2)}
+                      disabled
+                      style={{ backgroundColor: '#f5f5f5' }}
+                      prefix="$"
+                    />
+                  );
+                }
+              },
               // {
               //   title: '% Actual vs Budgeted Sales',
               //   dataIndex: 'percentageActualVsBudget',
@@ -923,12 +924,11 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   <div>
                     <Text strong>% Actual vs Budgeted Sales:</Text>
                     <Input
-                      value={weeklyGoals.salesBudget > 0 ? 
-                        (((weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline + weeklyGoals.actualSalesDoorDash) - weeklyGoals.salesBudget) / weeklyGoals.salesBudget * 100) : 0}
+                      value={weeklyGoals.actualVsBudgetSales || 0}
                       className="mt-1"
                       disabled
                       style={{ 
-                        color: percentageActualVsBudget < 0 ? '#ff4d4f' : '#52c41a',
+                        color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
                         backgroundColor: '#f5f5f5'
                       }}
                       prefix="%"
@@ -1070,7 +1070,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                                   <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={8}>
-                                  <Text strong style={{ color: '#1890ff' }}>${totals.averageDailyTicket.toFixed(2)}</Text>
+                                  <Text strong style={{ color: '#1890ff' }}>{totals.averageDailyTicket.toFixed(2)}</Text>
                                 </Table.Summary.Cell>
                               </Table.Summary.Row>
                             );
@@ -1135,10 +1135,26 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                             },
                             {
                               title: '% Actual vs Budgeted Sales',
-                              dataIndex: 'percentageActualVsBudget',
-                              key: 'percentageActualVsBudget',
+                              dataIndex: 'actualVsBudgetSales',
+                              key: 'actualVsBudgetSales',
                               width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(0)}%</Text>
+                              render: (value, record) => {
+                                // Use the value from the API response if available, otherwise calculate
+                                const percentageValue = record.actualVsBudgetSales !== undefined ? 
+                                  parseFloat(record.actualVsBudgetSales) : 
+                                  (parseFloat(record.percentageActualVsBudget) || 0);
+                                
+                                return (
+                                  <Text style={{ 
+                                    backgroundColor: '#f0f8ff', 
+                                    padding: '2px 6px', 
+                                    borderRadius: '3px',
+                                    color: percentageValue < 0 ? '#ff4d4f' : '#52c41a'
+                                  }}>
+                                    {percentageValue.toFixed(0)}%
+                                  </Text>
+                                );
+                              }
                             },
                             {
                               title: '# Daily Tickets',
