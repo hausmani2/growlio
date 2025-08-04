@@ -8,7 +8,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
     // Generate percentage options from 15% to 40% with color coding
     const generateLaborPercentageOptions = () => {
         const options = [];
-        for (let i = 15; i <= 40; i++) {
+        for (let i = 1; i <= 40; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             

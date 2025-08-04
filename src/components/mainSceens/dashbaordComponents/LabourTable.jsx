@@ -505,24 +505,24 @@ const LabourTable = ({ selectedDate, weekDays = [] }) => {
                   <Table.Summary.Cell index={0}>
                     <Text strong>Totals:</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
+                  {/* <Table.Summary.Cell index={1}>
                     <Text strong>{totals.laborHoursBudget.toFixed(1)} hrs</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                   <Table.Summary.Cell index={2}>
                     <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3}>
+                  {/* <Table.Summary.Cell index={3}>
                     <Text strong>${totals.budgetedLaborDollars.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                   <Table.Summary.Cell index={4}>
                     <Text strong>${totals.actualLaborDollars.toFixed(2)}</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5}>
+                  {/* <Table.Summary.Cell index={5}>
                     <Text strong>{(totals.actualLaborDollars / hourlyRate).toFixed(1)}%</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={6}>
                     <Text strong>{(totals.actualLaborDollars / (totals.actualLaborDollars + 5000) * 100).toFixed(1)}%</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                 </Table.Summary.Row>
               );
             }}
@@ -541,20 +541,20 @@ const LabourTable = ({ selectedDate, weekDays = [] }) => {
                   </div>
                 )
               },
-              {
-                title: 'Labor Hours - Budget',
-                dataIndex: 'laborHoursBudget',
-                key: 'laborHoursBudget',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'laborHoursBudget', parseFloat(e.target.value) || 0)}
-                    suffix="hrs"
-                  />
-                )
-              },
+              // {
+              //   title: 'Labor Hours - Budget',
+              //   dataIndex: 'laborHoursBudget',
+              //   key: 'laborHoursBudget',
+              //   width: 150,
+              //   render: (value, record, index) => (
+              //     <Input
+              //       type="number"
+              //       value={value}
+              //       onChange={(e) => handleDailyDataChange(index, 'laborHoursBudget', parseFloat(e.target.value) || 0)}
+              //       suffix="hrs"
+              //     />
+              //   )
+              // },
               {
                 title: 'Labor Hours - Actual',
                 dataIndex: 'laborHoursActual',
@@ -569,20 +569,20 @@ const LabourTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              {
-                title: 'Budgeted Labor $',
-                dataIndex: 'budgetedLaborDollars',
-                key: 'budgetedLaborDollars',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'budgetedLaborDollars', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
+              // {
+              //   title: 'Budgeted Labor $',
+              //   dataIndex: 'budgetedLaborDollars',
+              //   key: 'budgetedLaborDollars',
+              //   width: 150,
+              //   render: (value, record, index) => (
+              //     <Input
+              //       type="number"
+              //       value={value}
+              //       onChange={(e) => handleDailyDataChange(index, 'budgetedLaborDollars', parseFloat(e.target.value) || 0)}
+              //       prefix="$"
+              //     />
+              //   )
+              // },
               {
                 title: 'Actual Labor $',
                 dataIndex: 'actualLaborDollars',
@@ -597,44 +597,44 @@ const LabourTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              {
-                title: 'Daily Labor %',
-                dataIndex: 'dailyLaborPercentage',
-                key: 'dailyLaborPercentage',
-                width: 150,
-                render: (value, record) => {
-                  const actualLabor = parseFloat(record.actualLaborDollars) || 0;
-                  const dailyPercentage = actualLabor > 0 ? (actualLabor / hourlyRate) : 0;
-                  return (
-                    <Input
-                      type="number"
-                      value={dailyPercentage.toFixed(1)}
-                      suffix="%"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  );
-                }
-              },
-              {
-                title: 'Weekly Labor %',
-                dataIndex: 'weeklyLaborPercentage',
-                key: 'weeklyLaborPercentage',
-                width: 150,
-                render: (value, record) => {
-                  const actualLabor = parseFloat(record.actualLaborDollars) || 0;
-                  const weeklyPercentage = actualLabor > 0 ? (actualLabor / (actualLabor + 5000) * 100) : 0;
-                  return (
-                    <Input
-                      type="number"
-                      value={weeklyPercentage.toFixed(1)}
-                      suffix="%"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  );
-                }
-              }
+              // {
+              //   title: 'Daily Labor %',
+              //   dataIndex: 'dailyLaborPercentage',
+              //   key: 'dailyLaborPercentage',
+              //   width: 150,
+              //   render: (value, record) => {
+              //     const actualLabor = parseFloat(record.actualLaborDollars) || 0;
+              //     const dailyPercentage = actualLabor > 0 ? (actualLabor / hourlyRate) : 0;
+              //     return (
+              //       <Input
+              //         type="number"
+              //         value={dailyPercentage.toFixed(1)}
+              //         suffix="%"
+              //         disabled
+              //         style={{ backgroundColor: '#f5f5f5' }}
+              //       />
+              //     );
+              //   }
+              // },
+              // {
+              //   title: 'Weekly Labor %',
+              //   dataIndex: 'weeklyLaborPercentage',
+              //   key: 'weeklyLaborPercentage',
+              //   width: 150,
+              //   render: (value, record) => {
+              //     const actualLabor = parseFloat(record.actualLaborDollars) || 0;
+              //     const weeklyPercentage = actualLabor > 0 ? (actualLabor / (actualLabor + 5000) * 100) : 0;
+              //     return (
+              //       <Input
+              //         type="number"
+              //         value={weeklyPercentage.toFixed(1)}
+              //         suffix="%"
+              //         disabled
+              //         style={{ backgroundColor: '#f5f5f5' }}
+              //       />
+              //     );
+              //   }
+              // }
             ]}
           />
         </Space>

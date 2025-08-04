@@ -485,18 +485,18 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                   <Table.Summary.Cell index={0}>
                     <Text strong>Totals:</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
+                  {/* <Table.Summary.Cell index={1}>
                     <Text strong>${totals.budget.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                   <Table.Summary.Cell index={2}>
                     <Text strong>${totals.actual.toFixed(2)}</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3}>
+                  {/* <Table.Summary.Cell index={3}>
                     <Text strong>{percentage.toFixed(1)}%</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={4}>
                     <Text strong>${remaining.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                 </Table.Summary.Row>
               );
             }}
@@ -515,20 +515,20 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                   </div>
                 )
               },
-              {
-                title: 'Budget',
-                dataIndex: 'budget',
-                key: 'budget',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'budget', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
+              // {
+              //   title: 'Budget',
+              //   dataIndex: 'budget',
+              //   key: 'budget',
+              //   width: 150,
+              //   render: (value, record, index) => (
+              //     <Input
+              //       type="number"
+              //       value={value}
+              //       onChange={(e) => handleDailyDataChange(index, 'budget', parseFloat(e.target.value) || 0)}
+              //       prefix="$"
+              //     />
+              //   )
+              // },
               {
                 title: 'Actual',
                 dataIndex: 'actual',
@@ -543,32 +543,32 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              {
-                title: 'Percentage',
-                key: 'percentage',
-                width: 120,
-                render: (_, record, index) => {
-                  const budget = parseFloat(record.budget) || 0;
-                  const actual = parseFloat(record.actual) || 0;
-                  const percentage = budget > 0 ? (actual / budget) * 100 : 0;
-                  return (
-                    <Text>{percentage.toFixed(1)}%</Text>
-                  );
-                }
-              },
-              {
-                title: 'Remaining',
-                key: 'remaining',
-                width: 120,
-                render: (_, record, index) => {
-                  const budget = parseFloat(record.budget) || 0;
-                  const actual = parseFloat(record.actual) || 0;
-                  const remaining = budget - actual;
-                  return (
-                    <Text>${remaining.toFixed(2)}</Text>
-                  );
-                }
-              }
+              // {
+              //   title: 'Percentage',
+              //   key: 'percentage',
+              //   width: 120,
+              //   render: (_, record, index) => {
+              //     const budget = parseFloat(record.budget) || 0;
+              //     const actual = parseFloat(record.actual) || 0;
+              //     const percentage = budget > 0 ? (actual / budget) * 100 : 0;
+              //     return (
+              //       <Text>{percentage.toFixed(1)}%</Text>
+              //     );
+              //   }
+              // },
+              // {
+              //   title: 'Remaining',
+              //   key: 'remaining',
+              //   width: 120,
+              //   render: (_, record, index) => {
+              //     const budget = parseFloat(record.budget) || 0;
+              //     const actual = parseFloat(record.actual) || 0;
+              //     const remaining = budget - actual;
+              //     return (
+              //       <Text>${remaining.toFixed(2)}</Text>
+              //     );
+              //   }
+              // }
             ]}
           />
         </Space>
@@ -755,21 +755,21 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                                 )
                               },
                               {
-                                title: 'Budget',
+                                title: 'COGS Budget',
                                 dataIndex: 'budget',
                                 key: 'budget',
                                 width: 140,
                                 render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
                               },
                               {
-                                title: 'Actual',
+                                title: 'COGS Actual',
                                 dataIndex: 'actual',
                                 key: 'actual',
                                 width: 140,
                                 render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
                               },
                               {
-                                title: 'Percentage',
+                                title: 'COGS %',
                                 key: 'percentage',
                                 width: 120,
                                 render: (_, record) => {
@@ -782,7 +782,7 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                                 }
                               },
                               {
-                                title: 'Remaining',
+                                title: 'Weekly Remaining COGS',
                                 key: 'remaining',
                                 width: 120,
                                 render: (_, record) => {

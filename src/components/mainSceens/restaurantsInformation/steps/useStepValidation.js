@@ -177,20 +177,16 @@ const useStepValidation = () => {
                 });
             }
         } else {
-            console.log("✅ Third party delivery validation passed (not enabled)");
             
             // For regular delivery, validate that at least one delivery day is selected
             if (!data.delivery_days || data.delivery_days.length === 0) {
                 errors.delivery_days = "Please select at least one delivery day";
-                console.log("❌ Delivery days validation failed: no delivery days selected for regular delivery");
-            } else {
-                console.log("✅ Delivery days validation passed for regular delivery");
-            }
+            } 
         }
 
         // 3. Validate delivery days format and content
         if (data.delivery_days && Array.isArray(data.delivery_days)) {
-            const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             const invalidDays = data.delivery_days.filter(day => !validDays.includes(day.toLowerCase()));
             
             if (invalidDays.length > 0) {
@@ -212,8 +208,6 @@ const useStepValidation = () => {
             }
         }
 
-        console.log("Final validation errors:", errors);
-        console.log("Validation result:", Object.keys(errors).length === 0 ? "PASSED" : "FAILED");
         
         return errors;
     }, []);
@@ -232,8 +226,7 @@ const useStepValidation = () => {
 
     // Expense Validation
     const validateExpense = useCallback((data) => {
-        console.log("=== Expense Validation ===");
-        console.log("Validating data:", data);
+
         
         const errors = {};
 

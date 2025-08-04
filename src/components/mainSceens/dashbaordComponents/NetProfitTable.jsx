@@ -280,195 +280,195 @@ const NetProfitTable = ({ selectedDate, weekDays = [] }) => {
     // Calculate totals for the current week form from daily entries
     const weekTotals = calculateWeeklyTotals(weekFormData);
 
-    return (
-      <Modal
-        title={isEditMode ? "Edit Weekly Net Profit Data" : "Add Weekly Net Profit Data"}
-        open={isModalVisible}
-        onCancel={() => {
-          setIsModalVisible(false);
-          setEditingWeek(null);
-          setIsEditMode(false);
-        }}
-        footer={[
-          <Button key="cancel" onClick={() => {
-            setIsModalVisible(false);
-            setEditingWeek(null);
-            setIsEditMode(false);
-          }}>
-            Cancel
-          </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
-          </Button>
-        ]}
-        width={1200}
-      >
-        {(isSubmitting || storeLoading) && (
-          <LoadingSpinner 
-            spinning={true} 
-            tip="Saving data..." 
-            fullScreen={false}
-          />
-        )}
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+    // return (
+    //   <Modal
+    //     title={isEditMode ? "Edit Weekly Net Profit Data" : "Add Weekly Net Profit Data"}
+    //     open={isModalVisible}
+    //     onCancel={() => {
+    //       setIsModalVisible(false);
+    //       setEditingWeek(null);
+    //       setIsEditMode(false);
+    //     }}
+    //     footer={[
+    //       <Button key="cancel" onClick={() => {
+    //         setIsModalVisible(false);
+    //         setEditingWeek(null);
+    //         setIsEditMode(false);
+    //       }}>
+    //         Cancel
+    //       </Button>,
+    //       <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
+    //         {isEditMode ? 'Update' : 'Add'} Week
+    //       </Button>
+    //     ]}
+    //     width={1200}
+    //   >
+    //     {(isSubmitting || storeLoading) && (
+    //       <LoadingSpinner 
+    //         spinning={true} 
+    //         tip="Saving data..." 
+    //         fullScreen={false}
+    //       />
+    //     )}
+    //     <Space direction="vertical" style={{ width: '100%' }} size="large">
 
-          {/* Weekly Goals Input Section */}
-          <Card title="Weekly Net Profit Goals" size="small">
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Net Profit:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.netProfit}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        netProfit: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  style={{ 
-                    color: weekFormData.weeklyTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a',
-                    borderColor: weekFormData.weeklyTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a'
-                  }}
-                />
-              </Col>
-              <Col span={12}>
-                <Text strong>Net Profit Margin %:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.netProfitMargin}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        netProfitMargin: value
-                      }
-                    }));
-                  }}
-                  suffix="%"
-                  placeholder="0.0"
-                  style={{ 
-                    color: weekFormData.weeklyTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a',
-                    borderColor: weekFormData.weeklyTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
-                  }}
-                />
-              </Col>
-            </Row>
-          </Card>
+    //       {/* Weekly Goals Input Section */}
+    //       <Card title="Weekly Net Profit Goals" size="small">
+    //         <Row gutter={16}>
+    //           <Col span={12}>
+    //             <Text strong>Net Profit:</Text>
+    //             <Input
+    //               type="number"
+    //               value={weekFormData.weeklyTotals.netProfit}
+    //               onChange={(e) => {
+    //                 const value = parseFloat(e.target.value) || 0;
+    //                 setWeekFormData(prev => ({
+    //                   ...prev,
+    //                   weeklyTotals: {
+    //                     ...prev.weeklyTotals,
+    //                     netProfit: value
+    //                   }
+    //                 }));
+    //               }}
+    //               prefix="$"
+    //               placeholder="0.00"
+    //               style={{ 
+    //                 color: weekFormData.weeklyTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a',
+    //                 borderColor: weekFormData.weeklyTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a'
+    //               }}
+    //             />
+    //           </Col>
+    //           <Col span={12}>
+    //             <Text strong>Net Profit Margin %:</Text>
+    //             <Input
+    //               type="number"
+    //               value={weekFormData.weeklyTotals.netProfitMargin}
+    //               onChange={(e) => {
+    //                 const value = parseFloat(e.target.value) || 0;
+    //                 setWeekFormData(prev => ({
+    //                   ...prev,
+    //                   weeklyTotals: {
+    //                     ...prev.weeklyTotals,
+    //                     netProfitMargin: value
+    //                   }
+    //                 }));
+    //               }}
+    //               suffix="%"
+    //               placeholder="0.0"
+    //               style={{ 
+    //                 color: weekFormData.weeklyTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a',
+    //                 borderColor: weekFormData.weeklyTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
+    //               }}
+    //             />
+    //           </Col>
+    //         </Row>
+    //       </Card>
 
-          {/* Weekly Totals Summary */}
-          <Card size="small" title="Weekly Totals (Auto-calculated from daily entries)" style={{ backgroundColor: '#f8f9fa' }}>
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Total Net Profit:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: weekTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a' }}>
-                  ${weekTotals.netProfit.toFixed(2)}
-                </div>
-              </Col>
-              <Col span={12}>
-                <Text strong>Total Net Profit Margin %:</Text>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: weekTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a' }}>
-                  {weekTotals.netProfitMargin.toFixed(1)}%
-                </div>
-              </Col>
-            </Row>
-          </Card>
+    //       {/* Weekly Totals Summary */}
+    //       <Card size="small" title="Weekly Totals (Auto-calculated from daily entries)" style={{ backgroundColor: '#f8f9fa' }}>
+    //         <Row gutter={16}>
+    //           <Col span={12}>
+    //             <Text strong>Total Net Profit:</Text>
+    //             <div style={{ fontSize: '16px', fontWeight: 'bold', color: weekTotals.netProfit < 0 ? '#ff4d4f' : '#52c41a' }}>
+    //               ${weekTotals.netProfit.toFixed(2)}
+    //             </div>
+    //           </Col>
+    //           <Col span={12}>
+    //             <Text strong>Total Net Profit Margin %:</Text>
+    //             <div style={{ fontSize: '16px', fontWeight: 'bold', color: weekTotals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a' }}>
+    //               {weekTotals.netProfitMargin.toFixed(1)}%
+    //             </div>
+    //           </Col>
+    //         </Row>
+    //       </Card>
 
-          <Table
-            dataSource={weekFormData.dailyData}
-            pagination={false}
-            size="small"
-            summary={(pageData) => {
-              const totals = pageData.reduce((acc, record) => ({
-                netProfit: acc.netProfit + (parseFloat(record.netProfit) || 0),
-                netProfitMargin: acc.netProfitMargin + (parseFloat(record.netProfitMargin) || 0)
-              }), {
-                netProfit: 0,
-                netProfitMargin: 0
-              });
+    //       <Table
+    //         dataSource={weekFormData.dailyData}
+    //         pagination={false}
+    //         size="small"
+    //         summary={(pageData) => {
+    //           const totals = pageData.reduce((acc, record) => ({
+    //             netProfit: acc.netProfit + (parseFloat(record.netProfit) || 0),
+    //             netProfitMargin: acc.netProfitMargin + (parseFloat(record.netProfitMargin) || 0)
+    //           }), {
+    //             netProfit: 0,
+    //             netProfitMargin: 0
+    //           });
 
-              return (
-                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong>Totals:</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
-                    <Text strong style={{ color: totals.netProfit < 0 ? '#ff4d4f' : '#52c41a' }}>
-                      ${totals.netProfit.toFixed(2)}
-                    </Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2}>
-                    <Text strong style={{ color: totals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a' }}>
-                      {totals.netProfitMargin.toFixed(1)}%
-                    </Text>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
-              );
-            }}
-            columns={[
-              {
-                title: 'Day',
-                dataIndex: 'dayName',
-                key: 'dayName',
-                width: 120,
-                render: (text, record) => (
-                  <div>
-                    <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
-                    </div>
-                  </div>
-                )
-              },
-              {
-                title: 'Net Profit',
-                dataIndex: 'netProfit',
-                key: 'netProfit',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'netProfit', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                    style={{ 
-                      color: value < 0 ? '#ff4d4f' : '#52c41a',
-                      borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                )
-              },
-              {
-                title: 'Net Profit Margin %',
-                dataIndex: 'netProfitMargin',
-                key: 'netProfitMargin',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'netProfitMargin', parseFloat(e.target.value) || 0)}
-                    suffix="%"
-                    style={{ 
-                      color: value < 0 ? '#ff4d4f' : '#52c41a',
-                      borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                )
-              }
-            ]}
-          />
-        </Space>
-      </Modal>
-    );
+    //           return (
+    //             <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+    //               <Table.Summary.Cell index={0}>
+    //                 <Text strong>Totals:</Text>
+    //               </Table.Summary.Cell>
+    //               <Table.Summary.Cell index={1}>
+    //                 <Text strong style={{ color: totals.netProfit < 0 ? '#ff4d4f' : '#52c41a' }}>
+    //                   ${totals.netProfit.toFixed(2)}
+    //                 </Text>
+    //               </Table.Summary.Cell>
+    //               <Table.Summary.Cell index={2}>
+    //                 <Text strong style={{ color: totals.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a' }}>
+    //                   {totals.netProfitMargin.toFixed(1)}%
+    //                 </Text>
+    //               </Table.Summary.Cell>
+    //             </Table.Summary.Row>
+    //           );
+    //         }}
+    //         columns={[
+    //           {
+    //             title: 'Day',
+    //             dataIndex: 'dayName',
+    //             key: 'dayName',
+    //             width: 120,
+    //             render: (text, record) => (
+    //               <div>
+    //                 <div>{text}</div>
+    //                 <div style={{ fontSize: '12px', color: '#666' }}>
+    //                   {record.date.format('MMM DD, YYYY')}
+    //                 </div>
+    //               </div>
+    //             )
+    //           },
+    //           {
+    //             title: 'Net Profit',
+    //             dataIndex: 'netProfit',
+    //             key: 'netProfit',
+    //             width: 150,
+    //             render: (value, record, index) => (
+    //               <Input
+    //                 type="number"
+    //                 value={value}
+    //                 onChange={(e) => handleDailyDataChange(index, 'netProfit', parseFloat(e.target.value) || 0)}
+    //                 prefix="$"
+    //                 style={{ 
+    //                   color: value < 0 ? '#ff4d4f' : '#52c41a',
+    //                   borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
+    //                 }}
+    //               />
+    //             )
+    //           },
+    //           {
+    //             title: 'Net Profit Margin %',
+    //             dataIndex: 'netProfitMargin',
+    //             key: 'netProfitMargin',
+    //             width: 180,
+    //             render: (value, record, index) => (
+    //               <Input
+    //                 type="number"
+    //                 value={value}
+    //                 onChange={(e) => handleDailyDataChange(index, 'netProfitMargin', parseFloat(e.target.value) || 0)}
+    //                 suffix="%"
+    //                 style={{ 
+    //                   color: value < 0 ? '#ff4d4f' : '#52c41a',
+    //                   borderColor: value < 0 ? '#ff4d4f' : '#52c41a'
+    //                 }}
+    //               />
+    //             )
+    //           }
+    //         ]}
+    //       />
+    //     </Space>
+    //   </Modal>
+    // );
   };
 
   // Get weekly response values from API
@@ -541,14 +541,14 @@ const NetProfitTable = ({ selectedDate, weekDays = [] }) => {
                   >
                     Refresh
                   </Button>
-                  <Button 
+                  {/* <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
                     disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
                   >
                     Add Weekly Net Profit
-                  </Button>
+                  </Button> */}
                 </Space>
               }
             >

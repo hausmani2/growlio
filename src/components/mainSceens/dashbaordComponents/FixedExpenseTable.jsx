@@ -262,119 +262,119 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
       handleWeeklySubmit(weekFormData);
     };
 
-    return (
-      <Modal
-        title={isEditMode ? "Edit Weekly Fixed Expenses Data" : "Add Weekly Fixed Expenses Data"}
-        open={isModalVisible}
-        onCancel={() => {
-          setIsModalVisible(false);
-          setEditingWeek(null);
-          setIsEditMode(false);
-        }}
-        footer={[
-          <Button key="cancel" onClick={() => {
-            setIsModalVisible(false);
-            setEditingWeek(null);
-            setIsEditMode(false);
-          }}>
-            Cancel
-          </Button>,
-          <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
-          </Button>
-        ]}
-        width={1200}
-      >
-        {(isSubmitting || storeLoading) && (
-          <LoadingSpinner 
-            spinning={true} 
-            tip="Saving data..." 
-            fullScreen={false}
-          />
-        )}
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+    // return (
+    //   <Modal
+    //     title={isEditMode ? "Edit Weekly Fixed Expenses Data" : "Add Weekly Fixed Expenses Data"}
+    //     open={isModalVisible}
+    //     onCancel={() => {
+    //       setIsModalVisible(false);
+    //       setEditingWeek(null);
+    //       setIsEditMode(false);
+    //     }}
+    //     footer={[
+    //       <Button key="cancel" onClick={() => {
+    //         setIsModalVisible(false);
+    //         setEditingWeek(null);
+    //         setIsEditMode(false);
+    //       }}>
+    //         Cancel
+    //       </Button>,
+    //       <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
+    //         {isEditMode ? 'Update' : 'Add'} Week
+    //       </Button>
+    //     ]}
+    //     width={1200}
+    //   >
+    //     {(isSubmitting || storeLoading) && (
+    //       <LoadingSpinner 
+    //         spinning={true} 
+    //         tip="Saving data..." 
+    //         fullScreen={false}
+    //       />
+    //     )}
+    //     <Space direction="vertical" style={{ width: '100%' }} size="large">
 
-          {/* Weekly Goals Input Section */}
-          <Card title="Weekly Fixed Expenses Goals" size="small">
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text strong>Fixed Weekly Expenses:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.fixedWeeklyExpenses}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        fixedWeeklyExpenses: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                />
-              </Col>
-            </Row>
-          </Card>
+    //       {/* Weekly Goals Input Section */}
+    //       <Card title="Weekly Fixed Expenses Goals" size="small">
+    //         <Row gutter={16}>
+    //           <Col span={6}>
+    //             <Text strong>Fixed Weekly Expenses:</Text>
+    //             <Input
+    //               type="number"
+    //               value={weekFormData.weeklyTotals.fixedWeeklyExpenses}
+    //               onChange={(e) => {
+    //                 const value = parseFloat(e.target.value) || 0;
+    //                 setWeekFormData(prev => ({
+    //                   ...prev,
+    //                   weeklyTotals: {
+    //                     ...prev.weeklyTotals,
+    //                     fixedWeeklyExpenses: value
+    //                   }
+    //                 }));
+    //               }}
+    //               prefix="$"
+    //               placeholder="0.00"
+    //             />
+    //           </Col>
+    //         </Row>
+    //       </Card>
 
-          <Table
-            dataSource={weekFormData.dailyData}
-            pagination={false}
-            size="small"
-            summary={(pageData) => {
-              const totals = pageData.reduce((acc, record) => ({
-                fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(record.fixedWeeklyExpenses) || 0)
-              }), {
-                fixedWeeklyExpenses: 0
-              });
+    //       <Table
+    //         dataSource={weekFormData.dailyData}
+    //         pagination={false}
+    //         size="small"
+    //         summary={(pageData) => {
+    //           const totals = pageData.reduce((acc, record) => ({
+    //             fixedWeeklyExpenses: acc.fixedWeeklyExpenses + (parseFloat(record.fixedWeeklyExpenses) || 0)
+    //           }), {
+    //             fixedWeeklyExpenses: 0
+    //           });
 
-              return (
-                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong>Totals:</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
-                    <Text strong>${totals.fixedWeeklyExpenses.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
-              );
-            }}
-            columns={[
-              {
-                title: 'Day',
-                dataIndex: 'dayName',
-                key: 'dayName',
-                width: 120,
-                render: (text, record) => (
-                  <div>
-                    <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
-                    </div>
-                  </div>
-                )
-              },
-              {
-                title: 'Fixed Weekly Expenses',
-                dataIndex: 'fixedWeeklyExpenses',
-                key: 'fixedWeeklyExpenses',
-                width: 200,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'fixedWeeklyExpenses', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              }
-            ]}
-          />
-        </Space>
-      </Modal>
-    );
+    //           return (
+    //             <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+    //               <Table.Summary.Cell index={0}>
+    //                 <Text strong>Totals:</Text>
+    //               </Table.Summary.Cell>
+    //               <Table.Summary.Cell index={1}>
+    //                 <Text strong>${totals.fixedWeeklyExpenses.toFixed(2)}</Text>
+    //               </Table.Summary.Cell>
+    //             </Table.Summary.Row>
+    //           );
+    //         }}
+    //         columns={[
+    //           {
+    //             title: 'Day',
+    //             dataIndex: 'dayName',
+    //             key: 'dayName',
+    //             width: 120,
+    //             render: (text, record) => (
+    //               <div>
+    //                 <div>{text}</div>
+    //                 <div style={{ fontSize: '12px', color: '#666' }}>
+    //                   {record.date.format('MMM DD, YYYY')}
+    //                 </div>
+    //               </div>
+    //             )
+    //           },
+    //           {
+    //             title: 'Fixed Weekly Expenses',
+    //             dataIndex: 'fixedWeeklyExpenses',
+    //             key: 'fixedWeeklyExpenses',
+    //             width: 200,
+    //             render: (value, record, index) => (
+    //               <Input
+    //                 type="number"
+    //                 value={value}
+    //                 onChange={(e) => handleDailyDataChange(index, 'fixedWeeklyExpenses', parseFloat(e.target.value) || 0)}
+    //                 prefix="$"
+    //               />
+    //             )
+    //           }
+    //         ]}
+    //       />
+    //     </Space>
+    //   </Modal>
+    // );
   };
 
   // Get weekly response values from API
@@ -430,14 +430,14 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
                   >
                     Refresh
                   </Button>
-                  <Button 
+                  {/* <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
                     onClick={showAddWeeklyModal}
                     disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
                   >
                     Add Weekly Fixed Expenses
-                  </Button>
+                  </Button> */}
                 </Space>
               }
             >

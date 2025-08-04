@@ -13,13 +13,13 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
     const isUpdateMode = !location.pathname.includes('/onboarding');
     
     const days = [
-        { name: 'Sunday', disabled: true },
+        { name: 'Sunday', disabled: false },
         { name: 'Monday', disabled: false },
         { name: 'Tuesday', disabled: false },
         { name: 'Wednesday', disabled: false },
         { name: 'Thursday', disabled: false },
         { name: 'Friday', disabled: false },
-        { name: 'Saturday', disabled: true },
+        { name: 'Saturday', disabled: false },
     ];
 
     const handleDayToggle = (day) => {

@@ -613,7 +613,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                 placeholder="0"
               />
             </Col>
-            <Col span={6}>
+            {/* <Col span={6}>
               <Text strong>Average Daily Ticket:</Text>
               <Input
                 type='number'
@@ -631,7 +631,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                 prefix="$"
                 placeholder="0.00"
               />
-            </Col>
+            </Col> */}
           </Row>
 
 
@@ -692,9 +692,9 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   <Table.Summary.Cell index={7}>
                     <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={8}>
+                  {/* <Table.Summary.Cell index={8}>
                     <Text strong style={{ color: '#1890ff' }}>${totals.averageDailyTicket.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                 </Table.Summary.Row>
               );
             }}
@@ -821,20 +821,20 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              {
-                title: 'Average Daily Ticket',
-                dataIndex: 'averageDailyTicket',
-                key: 'averageDailyTicket',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'averageDailyTicket', parseFloat(e.target.value) || 0)}
-                    prefix=""
-                  />
-                )
-              }
+              // {
+              //   title: 'Average Daily Ticket',
+              //   dataIndex: 'averageDailyTicket',
+              //   key: 'averageDailyTicket',
+              //   width: 180,
+              //   render: (value, record, index) => (
+              //     <Input
+              //       type="number"
+              //       value={value}
+              //       onChange={(e) => handleDailyDataChange(index, 'averageDailyTicket', parseFloat(e.target.value) || 0)}
+              //       prefix=""
+              //     />
+              //   )
+              // }
               
             ]}
           />
@@ -1058,14 +1058,14 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                                 <Table.Summary.Cell index={4}>
                                   <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesDoorDash.toFixed(2)}</Text>
                                 </Table.Summary.Cell>
-                                {/* <Table.Summary.Cell index={5}>
+                                <Table.Summary.Cell index={5}>
                                   <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={6}>
                                   <Text strong style={{ color: percentageTotal < 0 ? '#ff4d4f' : '#52c41a' }}>
                                     {percentageTotal.toFixed(0)}%
                                   </Text>
-                                </Table.Summary.Cell> */}
+                                </Table.Summary.Cell>
                                 <Table.Summary.Cell index={7}>
                                   <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                                 </Table.Summary.Cell>
