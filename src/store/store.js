@@ -14,7 +14,6 @@ const useStore = create(
         
         // Function to completely clear all persisted state
         clearPersistedState: () => {
-          console.log('🧹 Clearing all persisted state...');
           
           // Clear localStorage
           localStorage.removeItem('growlio-store');

@@ -12,17 +12,9 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
         completeOnboardingData
     } = useStore();
     
-    // Debug: Log the data being passed to the component
-    console.log("=== RestaurantInformation Component Debug ===");
-    console.log("data:", data);
-    console.log("errors:", errors);
-    console.log("restaurantNameCheckLoading:", restaurantNameCheckLoading);
-    console.log("restaurantNameCheckError:", restaurantNameCheckError);
-    console.log("restaurantNameExists:", restaurantNameExists);
     
     // Check if Basic Information step is completed
     const isBasicInfoCompleted = completeOnboardingData["Basic Information"]?.status === true;
-    console.log("isBasicInfoCompleted:", isBasicInfoCompleted);
     
     const [localRestaurantName, setLocalRestaurantName] = useState(data.restaurantName || "");
     const [debounceTimer, setDebounceTimer] = useState(null);
@@ -156,7 +148,6 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
                                 }`}
                                 value={data.locationName || ""}
                                 onChange={(e) => {
-                                    console.log('Location name changed to:', e.target.value);
                                     updateData('locationName', e.target.value);
                                 }}
                                 status={errors.locationName ? 'error' : ''}

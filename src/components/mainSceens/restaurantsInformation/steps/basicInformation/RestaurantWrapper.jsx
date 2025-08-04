@@ -8,10 +8,9 @@ import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useFormValidation from "./useFormValidation";
 import StepDataManager from "../../StepDataManager";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const RestaurantWrapperContent = () => {
-    const navigate = useNavigate();
     const location = useLocation();
     const { 
         submitStepData, 
@@ -67,17 +66,12 @@ const RestaurantWrapperContent = () => {
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
         const basicInfoData = completeOnboardingData["Basic Information"];
-        console.log("=== Loading Basic Information Data ===");
-        console.log("completeOnboardingData:", completeOnboardingData);
-        console.log("basicInfoData:", basicInfoData);
         
         if (basicInfoData && basicInfoData.data) {
             const data = basicInfoData.data;
-            console.log("Basic Information data from API:", data);
             
             // Load restaurant data
             if (data.restaurant_name) {
-                console.log("Loading restaurant_name:", data.restaurant_name);
                 setRestaurantData(prev => ({
                     ...prev,
                     restaurantName: data.restaurant_name
@@ -85,7 +79,6 @@ const RestaurantWrapperContent = () => {
             }
             
             if (data.number_of_locations) {
-                console.log("Loading number_of_locations:", data.number_of_locations);
                 setRestaurantData(prev => ({
                     ...prev,
                     numberOfLocations: data.number_of_locations
@@ -95,9 +88,6 @@ const RestaurantWrapperContent = () => {
             // Load location data
             if (data.locations && data.locations.length > 0) {
                 const location = data.locations[0];
-                console.log("Loading location data:", location);
-                
-                console.log("Loading location name from:", location.location_name || location.name || "");
                 setRestaurantData(prev => ({
                     ...prev,
                     locationName: location.location_name || location.name || ""
@@ -119,11 +109,7 @@ const RestaurantWrapperContent = () => {
             }
             
             // Load restaurant type and menu type
-            console.log("Checking for restaurant_type:", data.restaurant_type);
-            console.log("Checking for menu_type:", data.menu_type);
-            
             if (data.restaurant_type) {
-                console.log("Loading restaurant_type:", data.restaurant_type);
                 setAddressTypeData(prev => ({
                     ...prev,
                     restaurantType: data.restaurant_type
@@ -133,7 +119,6 @@ const RestaurantWrapperContent = () => {
             }
             
             if (data.menu_type) {
-                console.log("Loading menu_type:", data.menu_type);
                 setAddressTypeData(prev => ({
                     ...prev,
                     menuType: data.menu_type
@@ -194,30 +179,27 @@ const RestaurantWrapperContent = () => {
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
-            console.log("=== Basic Information Save & Continue ===");
-            console.log("restaurantData:", restaurantData);
-            console.log("addressData:", addressData);
-            console.log("addressTypeData:", addressTypeData);
-            
             // Step 1: Validate all forms
             const validationResult = validateAllForms(restaurantData, addressData, addressTypeData);
-            console.log("Validation result:", validationResult);
-            console.log("Validation passed:", Object.keys(validationResult).length === 0);
             
             if (!validationResult || Object.keys(validationResult).length > 0) {
-                console.log("Validation failed with errors:", validationResult);
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
 
             // Step 1.5: Save temporary form data to store
-            const { saveTempFormData } = useStore.getState();
+            const { saveTempFormData, updateTempFormDataMultiple } = useStore.getState();
+            
+            // Update tempFormData with current state before saving
+            updateTempFormDataMultiple("Basic Information", "restaurantData", restaurantData);
+            updateTempFormDataMultiple("Basic Information", "addressData", addressData);
+            updateTempFormDataMultiple("Basic Information", "addressTypeData", addressTypeData);
+            
             saveTempFormData("Basic Information");
 
             // Step 2: Prepare data for API
             // Get existing restaurant_id if available (for updates)
             const existingRestaurantId = useStore.getState().getRestaurantId();
-            console.log("🔍 Existing restaurant_id:", existingRestaurantId);
             
             const stepData = {
                 restaurant_name: restaurantData.restaurantName,
@@ -240,55 +222,39 @@ const RestaurantWrapperContent = () => {
             // Add restaurant_id to payload if it exists (for updates)
             if (existingRestaurantId) {
                 stepData.restaurant_id = existingRestaurantId;
-                console.log("✅ Including existing restaurant_id in API payload:", existingRestaurantId);
             }
-            
-            console.log("Prepared stepData for API:", stepData);
-            console.log("restaurant_type value:", stepData.restaurant_type);
-            console.log("menu_type value:", stepData.menu_type);
-            console.log("location name value:", stepData.locations[0].location_name);
-            console.log("restaurantData.locationName:", restaurantData.locationName);
             
             // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
             const result = await submitStepData("Basic Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
-                console.log("✅ Basic Information saved successfully");
                 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
                 
                 // Ensure step is marked as completed
                 const { markStepCompleted } = useStore.getState();
                 markStepCompleted("Basic Information");
-                console.log("✅ Marked Basic Information as completed");
                 
                 // Step 4: Handle navigation based on mode
                 if (isUpdateMode) {
                     // In update mode, stay on the same page or go to dashboard
-                    console.log("🔄 Update mode - staying on current page");
                     message.success("Basic information updated successfully!");
                 } else {
                     // In onboarding mode, navigate to next step
-                    console.log("🔄 Onboarding mode - navigating to next step");
                     message.success("Basic information saved successfully!");
                     
                     // Add a small delay to ensure state is updated before navigation
                     setTimeout(() => {
-                        console.log("🔄 Navigating to next step after state update...");
                         
                         // Debug: Check current state
                         const currentState = useStore.getState();
-                        console.log("Current completeOnboardingData:", currentState.completeOnboardingData);
-                        console.log("Basic Information status:", currentState.completeOnboardingData["Basic Information"]?.status);
                         
                         navigateToNextStep();
                     }, 200); // Increased delay to ensure state update
                 }
             });
-            console.log("submitStepData result:", result);
             
             // Step 4: Handle success
             if (result.success) {
@@ -298,8 +264,6 @@ const RestaurantWrapperContent = () => {
                 return { success: false, error: "API call failed" };
             }
         } catch (error) {
-            console.error("Error saving basic information:", error);
-            
             // Show user-friendly error message
             const errorMessage = error.message || "An unexpected error occurred. Please try again.";
             message.error(errorMessage);
@@ -342,17 +306,10 @@ const RestaurantWrapperContent = () => {
                 <div className="flex justify-between mt-6">
                     {isUpdateMode && (
                         <>
-
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                        >
-                            Back to Dashboard
-                        </button>
                     <div className="ml-auto">
                         <button
                             onClick={handleSaveAndContinue}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
                             >
                             {isUpdateMode ? "Save Changes" : "Save & Continue"}
                         </button>

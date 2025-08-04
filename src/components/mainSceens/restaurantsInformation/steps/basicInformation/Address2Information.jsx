@@ -93,17 +93,26 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                         <label htmlFor="restaurantType" className="text-base !font-bold text-neutral-600">
                             Restaurant Type <span className="text-red-500">*</span>
                         </label>
-                        <Input 
-                            type="text" 
+                        <Select 
                             id="restaurantType" 
-                            placeholder="Enter Restaurant Type" 
-                            className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
-                                errors.restaurantType ? 'border-red-500' : 'border-gray-300'
+                            placeholder="Select Restaurant Type" 
+                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                                errors.restaurantType ? 'border-red-500' : ''
                             }`}
-                            value={data.restaurantType}
-                            onChange={(e) => updateData('restaurantType', e.target.value)}
+                            value={data.restaurantType || undefined}
+                            onChange={(value) => updateData('restaurantType', value)}
                             status={errors.restaurantType ? 'error' : ''}
-                        />
+                        >
+                            <Select.Option value="Buffet">Buffet</Select.Option>
+                            <Select.Option value="Café / Coffee Shop">Café / Coffee Shop</Select.Option>
+                            <Select.Option value="Fast Casual">Fast Casual</Select.Option>
+                            <Select.Option value="Fast Food">Fast Food</Select.Option>
+                            <Select.Option value="Fine Dining">Fine Dining</Select.Option>
+                            <Select.Option value="Food Truck">Food Truck</Select.Option>
+                            <Select.Option value="Full Service">Full Service</Select.Option>
+                            <Select.Option value="Ghost Kitchen / Virtual Brand">Ghost Kitchen / Virtual Brand</Select.Option>
+                            <Select.Option value="Pop-Up Restaurant">Pop-Up Restaurant</Select.Option>
+                        </Select>
                         {errors.restaurantType && (
                             <span className="text-red-500 text-sm">{errors.restaurantType}</span>
                         )}
@@ -113,17 +122,26 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                         <label htmlFor="menuType" className="text-base !font-bold text-neutral-600">
                             Menu Type <span className="text-red-500">*</span>
                         </label>
-                        <Input 
-                            type="text" 
+                        <Select 
                             id="menuType" 
-                            placeholder="Enter Menu Type" 
-                            className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
-                                errors.menuType ? 'border-red-500' : 'border-gray-300'
+                            placeholder="Select Menu Type" 
+                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                                errors.menuType ? 'border-red-500' : ''
                             }`}
-                            value={data.menuType}
-                            onChange={(e) => updateData('menuType', e.target.value)}
+                            value={data.menuType || undefined}
+                            onChange={(value) => updateData('menuType', value)}
                             status={errors.menuType ? 'error' : ''}
-                        />
+                        >
+                            <Select.Option value="American (Traditional)">American (Traditional)</Select.Option>
+                            <Select.Option value="BBQ">BBQ</Select.Option>
+                            <Select.Option value="Bowls">Bowls</Select.Option>
+                            <Select.Option value="Breakfast / Brunch">Breakfast / Brunch</Select.Option>
+                            <Select.Option value="Burgers">Burgers</Select.Option>
+                            <Select.Option value="Coffee / Tea">Coffee / Tea</Select.Option>
+                            <Select.Option value="Chinese">Chinese</Select.Option>
+                            <Select.Option value="Desserts / Ice Cream">Desserts / Ice Cream</Select.Option>
+                            <Select.Option value="Indian">Indian</Select.Option>
+                        </Select>
                         {errors.menuType && (
                             <span className="text-red-500 text-sm">{errors.menuType}</span>
                         )}

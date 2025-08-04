@@ -48,7 +48,8 @@ const createOnBoardingSlice = (set, get) => ({
             data: {
                 cogs_goal: "",
                 use_third_party_delivery: false,
-                delivery_days: []
+                delivery_days: [],
+                providers: []
             }
         },
         "Sales Channels": {
@@ -213,7 +214,8 @@ const createOnBoardingSlice = (set, get) => ({
                 apiData = {
                     cogs_goal: parseFloat(foodCostData.cogs_goal) || 0,
                     uses_third_party_delivery: foodCostData.use_third_party_delivery || false, // API expects 'uses_third_party_delivery'
-                    delivery_days: foodCostData.delivery_days || []
+                    delivery_days: foodCostData.delivery_days || [],
+                    providers: foodCostData.providers || [] // Include providers array in API payload
                 };
                 break;
             }
@@ -320,7 +322,8 @@ const createOnBoardingSlice = (set, get) => ({
                     foodCostData: {
                         cogs_goal: savedData.cogs_goal?.toString() || "",
                         use_third_party_delivery: savedData.use_third_party_delivery || savedData.uses_third_party_delivery || false,
-                        delivery_days: savedData.delivery_days || []
+                        delivery_days: savedData.delivery_days || [],
+                        providers: savedData.providers || []
                     }
                 };
                 
@@ -435,8 +438,6 @@ const createOnBoardingSlice = (set, get) => ({
             const currentData = get().completeOnboardingData;
             const response = await apiPost('/restaurant/onboarding/', currentData);
             
-            console.log('Complete onboarding API response:', response);
-            console.log('Response status:', response.status);
             
             // Check if the response status is 200 (success)
             if (response.status !== 200) {
@@ -450,8 +451,6 @@ const createOnBoardingSlice = (set, get) => ({
                 
                 throw new Error(errorMessage);
             }
-            
-            console.log('✅ Complete onboarding API request successful with status 200');
             
             set(() => ({ 
                 isOnBoardingCompleted: true,
@@ -482,7 +481,6 @@ const createOnBoardingSlice = (set, get) => ({
         
         try {
             const currentState = get().completeOnboardingData;
-            console.log('Submitting step:', stepName, 'with data:', stepData);
             
             // Get restaurant ID based on step type
             const restaurantId = get().getRestaurantIdForStep(stepName);
@@ -517,23 +515,16 @@ const createOnBoardingSlice = (set, get) => ({
                 }
             });
             
-            console.log('Sending payload with only active step having status: true');
-            
             // Check if we have an existing restaurant_id and add it to payload if it exists
             const existingRestaurantId = get().getRestaurantId();
-            console.log('🔍 Existing restaurant_id for API call:', existingRestaurantId);
             
             // Add restaurant_id to payload if it exists (for updates)
             if (existingRestaurantId) {
                 payload.restaurant_id = existingRestaurantId;
-                console.log('🔄 Adding restaurant_id to payload for update:', existingRestaurantId);
             }
             
             // Always use POST endpoint, restaurant_id in payload determines create vs update
-            console.log('📤 Sending payload to API:', payload);
             const response = await apiPost('/restaurant/onboarding/', payload);
-            console.log('API response:', response);
-            console.log('Response status:', response.status);
             
             // Check if the response status is 200 (success)
             if (response.status !== 200) {
@@ -548,51 +539,38 @@ const createOnBoardingSlice = (set, get) => ({
                 throw new Error(errorMessage);
             }
             
-            console.log('✅ API request successful with status 200');
-            console.log('🔍 Full API response data:', response.data);
-            
             // Update the store with the response data (which includes restaurant_id)
             let foundRestaurantId = null;
             
             if (response.data) {
-                console.log('🔍 Checking response.data for restaurant_id...');
                 
                 // Check direct property (most common case)
                 if (response.data.restaurant_id) {
                     foundRestaurantId = response.data.restaurant_id;
-                    console.log('✅ Found restaurant_id at top level:', foundRestaurantId);
                 }
                 // Check if it's nested in the first step data
                 else if (response.data["Basic Information"] && response.data["Basic Information"].data && response.data["Basic Information"].data.restaurant_id) {
                     foundRestaurantId = response.data["Basic Information"].data.restaurant_id;
-                    console.log('✅ Found restaurant_id in Basic Information data:', foundRestaurantId);
                 }
                 // Check if it's in the locations array
                 else if (response.data["Basic Information"] && response.data["Basic Information"].data && response.data["Basic Information"].data.locations && response.data["Basic Information"].data.locations[0] && response.data["Basic Information"].data.locations[0].restaurant_id) {
                     foundRestaurantId = response.data["Basic Information"].data.locations[0].restaurant_id;
-                    console.log('✅ Found restaurant_id in locations array:', foundRestaurantId);
                 }
                 // Check if response is an array and look for restaurant_id in any step
                 else if (Array.isArray(response.data)) {
-                    console.log('🔍 Response is an array, checking each step...');
                     for (const step of response.data) {
                         if (step.data && step.data.restaurant_id) {
                             foundRestaurantId = step.data.restaurant_id;
-                            console.log('✅ Found restaurant_id in array step:', foundRestaurantId);
                             break;
                         }
                     }
                 } else {
-                    console.log('❌ No restaurant_id found in response.data');
                 }
             }
-            
-            console.log('🔍 Found restaurant_id:', foundRestaurantId);
             
             if (foundRestaurantId) {
                 // Save restaurant_id to localStorage for persistence
                 localStorage.setItem('restaurant_id', foundRestaurantId);
-                console.log('✅ Saved restaurant_id to localStorage:', foundRestaurantId);
                 
                 // Preserve existing step statuses and only update the current step
                 const updatedData = {
@@ -628,7 +606,6 @@ const createOnBoardingSlice = (set, get) => ({
             
             // Call success callback if provided (for navigation to next step) - ONLY if status is 200
             if (onSuccess && typeof onSuccess === 'function') {
-                console.log('✅ Step saved successfully with status 200, calling success callback for navigation');
                 onSuccess(response.data);
             }
             
@@ -715,7 +692,6 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
-            console.log('🔄 Loading existing onboarding data from API...');
             
             // Add timeout to prevent infinite loading
             const timeoutPromise = new Promise((_, reject) => 
@@ -726,10 +702,7 @@ const createOnBoardingSlice = (set, get) => ({
             const response = await Promise.race([apiPromise, timeoutPromise]);
             const apiData = response.data;
             
-            console.log('📥 API Response:', apiData);
-            
             if (!apiData) {
-                console.log('❌ No data received from API');
                 set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { success: false, message: 'No onboarding data found' };
             }
@@ -774,7 +747,8 @@ const createOnBoardingSlice = (set, get) => ({
                     data: {
                         cogs_goal: "",
                         use_third_party_delivery: false,
-                        delivery_days: []
+                        delivery_days: [],
+                        providers: []
                     }
                 },
                 "Sales Channels": {
@@ -806,7 +780,6 @@ const createOnBoardingSlice = (set, get) => ({
                 }
             } else {
                 // Handle object format (fallback)
-                console.log('⚠️ API response is not in array format, treating as object');
                 stepsData = Object.entries(apiData).map(([step, data]) => ({
                     step,
                     status: data.status,
@@ -814,18 +787,14 @@ const createOnBoardingSlice = (set, get) => ({
                 }));
             }
             
-            console.log('📋 Processing steps data:', stepsData);
-            
             // Process each step from the API response
             stepsData.forEach(stepInfo => {
                 const { step: stepName, status, data, restaurant_id } = stepInfo;
-                console.log(`📋 Processing step "${stepName}":`, { status, data, restaurant_id });
                 
                 // Extract restaurant_id from first step if available
                 if (restaurant_id && !updatedOnboardingData.restaurant_id) {
                     updatedOnboardingData.restaurant_id = restaurant_id;
                     localStorage.setItem('restaurant_id', restaurant_id);
-                    console.log('✅ Found restaurant_id:', restaurant_id);
                 }
                 
                 // Map API field names to our expected format
@@ -840,7 +809,6 @@ const createOnBoardingSlice = (set, get) => ({
                         menu_type: data.menu_type || "",
                         locations: data.locations || []
                     };
-                    console.log(`📋 Basic Information processed data:`, processedData);
                 } else if (stepName === "Labour Information" && data) {
                     // Handle Labour Information data mapping
                     processedData = {
@@ -852,18 +820,14 @@ const createOnBoardingSlice = (set, get) => ({
                         daily_ticket_count: data.daily_ticket_count || false,
                         forward_prev_week_rate: data.forward_previous_week_rate || false // API uses 'forward_previous_week_rate'
                     };
-                    console.log(`📋 Labour Information processed data:`, processedData);
-                    console.log(`📋 Field mappings - API attention: ${data.attention} → Frontend needs_attention: ${processedData.needs_attention}`);
-                    console.log(`📋 Field mappings - API forward_previous_week_rate: ${data.forward_previous_week_rate} → Frontend forward_prev_week_rate: ${processedData.forward_prev_week_rate}`);
                 } else if (stepName === "Food Cost Details" && data) {
                     // Handle Food Cost Details data mapping
                     processedData = {
                         cogs_goal: data.cogs_goal || "",
                         use_third_party_delivery: data.uses_third_party_delivery || false, // API uses 'uses_third_party_delivery'
-                        delivery_days: data.delivery_days || []
+                        delivery_days: data.delivery_days || [],
+                        providers: data.providers || []
                     };
-                    console.log(`📋 Food Cost Details processed data:`, processedData);
-                    console.log(`📋 Field mappings - API uses_third_party_delivery: ${data.uses_third_party_delivery} → Frontend use_third_party_delivery: ${processedData.use_third_party_delivery}`);
                 } else if (stepName === "Sales Channels" && data) {
                     // Handle Sales Channels data mapping
                     processedData = {
@@ -872,14 +836,12 @@ const createOnBoardingSlice = (set, get) => ({
                         from_app: data.from_app || false,
                         third_party: data.third_party || false
                     };
-                    console.log(`📋 Sales Channels processed data:`, processedData);
                 } else if (stepName === "Expense" && data) {
                     // Handle Expense data mapping
                     processedData = {
                         fixed_costs: data.fixed_costs || [],
                         variable_costs: data.variable_costs || []
                     };
-                    console.log(`📋 Expense processed data:`, processedData);
                 }
                 
                 // Update the step data and status
@@ -888,7 +850,6 @@ const createOnBoardingSlice = (set, get) => ({
                     data: processedData
                 };
                 
-                console.log(`✅ ${stepName} - Status: ${status}, Has Data: ${!!data}`);
             });
             
             // Update the store with the loaded data
@@ -897,8 +858,6 @@ const createOnBoardingSlice = (set, get) => ({
                 onboardingLoading: false,
                 onboardingError: null
             }));
-            
-            console.log('✅ Successfully loaded existing onboarding data');
             
             // Return information about completed and incomplete steps
             const steps = ["Basic Information", "Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
@@ -909,12 +868,6 @@ const createOnBoardingSlice = (set, get) => ({
             const incompleteSteps = steps.filter(stepName => 
                 updatedOnboardingData[stepName]?.status === false
             );
-            
-            console.log('📊 Step Summary:', {
-                completed: completedSteps,
-                incomplete: incompleteSteps,
-                total: steps.length
-            });
             
             return { 
                 success: true, 
@@ -964,9 +917,6 @@ const createOnBoardingSlice = (set, get) => ({
         try {
             const response = await apiPut('/onboarding/update', onboardingData);
             
-            console.log('Update onboarding API response:', response);
-            console.log('Response status:', response.status);
-            
             // Check if the response status is 200 (success)
             if (response.status !== 200) {
                 console.error('❌ Update onboarding API request failed with status:', response.status);
@@ -979,9 +929,7 @@ const createOnBoardingSlice = (set, get) => ({
                 
                 throw new Error(errorMessage);
             }
-            
-            console.log('✅ Update onboarding API request successful with status 200');
-            
+
             set(() => ({ 
                 onboardingData: response.data,
                 onboardingLoading: false, 
@@ -1008,7 +956,6 @@ const createOnBoardingSlice = (set, get) => ({
     resetOnboarding: () => {
         // Clear restaurant_id from localStorage
         localStorage.removeItem('restaurant_id');
-        console.log('🗑️ Cleared restaurant_id from localStorage');
         
         // Reset to initial state
         set(() => ({ 
@@ -1056,7 +1003,8 @@ const createOnBoardingSlice = (set, get) => ({
                     data: {
                         cogs_goal: "",
                         use_third_party_delivery: false,
-                        delivery_days: []
+                        delivery_days: [],
+                        providers: []
                     }
                 },
                 "Sales Channels": {
@@ -1135,7 +1083,6 @@ const createOnBoardingSlice = (set, get) => ({
             }
         }));
         
-        console.log('🗑️ All onboarding state reset to initial values');
     },
     
     clearError: () => set(() => ({ error: null })),
@@ -1176,11 +1123,9 @@ const createOnBoardingSlice = (set, get) => ({
             // If we have a restaurant_id in store or localStorage, this is an update
             if (storeRestaurantId || localRestaurantId) {
                 const existingId = storeRestaurantId || localRestaurantId;
-                console.log(`🔄 Basic Information update detected, using existing restaurant_id: ${existingId}`);
                 return existingId;
             }
             // If no restaurant_id exists, this is a new user
-            console.log(`🆕 New user detected for Basic Information, returning null`);
             return null;
         }
         
@@ -1256,7 +1201,8 @@ const createOnBoardingSlice = (set, get) => ({
                             data: {
                                 cogs_goal: "",
                                 use_third_party_delivery: false,
-                                delivery_days: []
+                                delivery_days: [],
+                                providers: []
                             }
                         };
                         break;
@@ -1300,7 +1246,7 @@ const createOnBoardingSlice = (set, get) => ({
             set(() => ({
                 completeOnboardingData: updatedData
             }));
-            console.log('✅ All onboarding steps initialized');
+            
         }
     },
     
@@ -1309,16 +1255,11 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ loading: true, error: null }));
         
         try {
-            console.log('🔄 Checking if onboarding is complete...');
             const response = await apiGet('/restaurant/restaurants-onboarding/');
             const onboardingData = response.data;
 
-            console.log("onboardingData----------------", onboardingData);
-            
-            console.log('📥 Restaurants Onboarding API Response:', onboardingData);
             
             if (!onboardingData) {
-                console.log('❌ No data received from restaurants-onboarding API');
                 set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { success: false, message: 'No onboarding data found' };
             }
@@ -1330,7 +1271,6 @@ const createOnBoardingSlice = (set, get) => ({
                 );
                 
                 if (hasCompletedOnboarding) {
-                    console.log('✅ Onboarding is complete!');
                     set(() => ({ 
                         isOnBoardingCompleted: true,
                         onboardingLoading: false, 
@@ -1343,7 +1283,6 @@ const createOnBoardingSlice = (set, get) => ({
                         message: 'Onboarding completed successfully!'
                     };
                 } else {
-                    console.log('⚠️ Onboarding is not yet complete');
                     set(() => ({ 
                         isOnBoardingCompleted: false,
                         onboardingLoading: false, 
@@ -1357,7 +1296,6 @@ const createOnBoardingSlice = (set, get) => ({
                     };
                 }
             } else {
-                console.log('⚠️ No restaurants found in response');
                 set(() => ({ 
                     isOnBoardingCompleted: false,
                     onboardingLoading: false, 
@@ -1390,7 +1328,6 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Manually refresh existing onboarding data (useful for debugging or manual refresh)
     refreshExistingOnboardingData: async () => {
-        console.log('🔄 Manually refreshing existing onboarding data...');
         return await get().loadExistingOnboardingData();
     },
     
@@ -1474,8 +1411,6 @@ const createOnBoardingSlice = (set, get) => ({
                 finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             }
 
-            console.log('🔍 Checking restaurant name:', restaurantName, 'with restaurant_id:', finalRestaurantId);
-            
             // Build the API URL with both parameters
             let apiUrl = `/restaurant/check-restaurant/?restaurant_name=${encodeURIComponent(restaurantName.trim())}`;
             if (finalRestaurantId) {
@@ -1483,9 +1418,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             const response = await apiGet(apiUrl);
-            
-            console.log('✅ Restaurant name check response:', response);
-            
+                        
             // Check if restaurant exists (API should return true if exists, false if not)
             const exists = response.data?.exists || response.data?.restaurant_exists || false;
             

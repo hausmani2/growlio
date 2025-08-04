@@ -10,11 +10,6 @@ const createAuthSlice = (set, get) => {
   const storedToken = localStorage.getItem('token');
   const hasStoredToken = hasToken(storedToken);
   
-  console.log('Creating auth slice with stored token:', {
-    storedToken: storedToken ? 'TOKEN_EXISTS' : 'UNDEFINED',
-    hasStoredToken,
-    tokenType: typeof storedToken
-  });
   
   return {
     name: 'auth',
@@ -28,10 +23,10 @@ const createAuthSlice = (set, get) => {
     
     // Check onboarding status using /restaurant/restaurants-onboarding/ API
     checkOnboardingStatus: async () => {
-      set(() => ({ onboardingStatus: 'loading', onboardingLoading: true }));
+      // Clear any cached onboarding status first
+      set(() => ({ onboardingStatus: null, onboardingLoading: true }));
       
       try {
-        console.log('🔄 Checking onboarding status...');
         
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) => 
@@ -41,8 +36,6 @@ const createAuthSlice = (set, get) => {
         const apiPromise = apiGet('/restaurant/restaurants-onboarding/');
         const response = await Promise.race([apiPromise, timeoutPromise]);
         const onboardingData = response.data;
-        
-        console.log('Onboarding Status Check - Raw data:', onboardingData);
         
         // Safely get restaurant_id if available
         let restaurantId = null;
@@ -54,7 +47,6 @@ const createAuthSlice = (set, get) => {
         // Check if user has no restaurants (new user)
         if (onboardingData && onboardingData.message === "No restaurants found for this user." && 
             (!onboardingData.restaurants || onboardingData.restaurants.length === 0)) {
-          console.log('✅ New user with no restaurants - onboarding incomplete');
           set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
           
           return {
@@ -73,7 +65,6 @@ const createAuthSlice = (set, get) => {
           );
           
           if (hasCompletedOnboarding) {
-            console.log('✅ User has restaurants with completed onboarding - onboarding complete');
             set(() => ({ onboardingStatus: 'complete', onboardingLoading: false }));
             
             return {
@@ -84,7 +75,6 @@ const createAuthSlice = (set, get) => {
               restaurants: onboardingData.restaurants
             };
           } else {
-            console.log('⚠️ User has restaurants but onboarding is not complete - onboarding incomplete');
             set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
             
             return {
@@ -98,7 +88,6 @@ const createAuthSlice = (set, get) => {
         }
         
         // Fallback case
-        console.log('⚠️ Unexpected response format - assuming onboarding incomplete');
         set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
         
         return {
@@ -138,12 +127,6 @@ const createAuthSlice = (set, get) => {
         const response = await apiPost('/authentication/login/', credentials);
         const { access, ...userData } = response.data;
         
-        console.log('Login Response:', { 
-          userData, 
-          access: access ? 'TOKEN_EXISTS' : 'UNDEFINED', 
-          tokenType: typeof access 
-        });
-        
         // Check if access token exists
         if (!hasToken(access)) {
           console.error('No access token received from server');
@@ -162,13 +145,10 @@ const createAuthSlice = (set, get) => {
           error: null 
         }));
         
-        console.log('Login successful - Token stored and state updated');
-        
         // Check onboarding status after successful login
         try {
           // We'll check onboarding status separately after login
           // This will be handled by the component that calls login
-          console.log('Login successful - onboarding status will be checked by component');
         } catch (onboardingError) {
           console.error('Failed to check onboarding status after login:', onboardingError);
         }
@@ -218,7 +198,6 @@ const createAuthSlice = (set, get) => {
     
     // Logout function - clears all state and redirects to login
     logout: () => {
-      console.log('🚪 Starting logout process...');
       
       // Clear all localStorage items related to the app
       const keysToRemove = [
@@ -229,24 +208,20 @@ const createAuthSlice = (set, get) => {
       
       keysToRemove.forEach(key => {
         localStorage.removeItem(key);
-        console.log(`🗑️ Removed ${key} from localStorage`);
       });
       
       // Clear sessionStorage as well
-      sessionStorage.clear();
-      console.log('🗑️ Cleared sessionStorage');
+      sessionStorage.clear(); 
       
       // Reset onboarding state first
       const currentState = get();
       if (currentState.resetOnboarding) {
         currentState.resetOnboarding();
-        console.log('🗑️ Reset onboarding state');
       }
       
       // Clear dashboard state
       if (currentState.resetDashboard) {
         currentState.resetDashboard();
-        console.log('🗑️ Cleared dashboard state');
       }
       
       // Clear all auth state
@@ -259,15 +234,12 @@ const createAuthSlice = (set, get) => {
         loading: false,
         onboardingLoading: false
       }));
-      console.log('🗑️ Cleared auth state');
       
       // Use the store's clearPersistedState function to completely reset all state
       if (currentState.clearPersistedState) {
         currentState.clearPersistedState();
-        console.log('🗑️ Cleared all persisted state using store function');
       }
       
-      console.log('🚪 Logout completed - all state and localStorage cleared');
     },
     
     register: async (formData) => {
@@ -275,13 +247,6 @@ const createAuthSlice = (set, get) => {
       
       try {
         const response = await apiPost('/authentication/register/', formData);
-        const userData = response.data;
-        
-        console.log('Register Response:', { 
-          userData, 
-          hasAccessToken: false,
-          message: 'User created successfully, redirecting to login'
-        });
         
         // Registration successful but no token - user needs to login
         set(() => ({ 
@@ -292,7 +257,6 @@ const createAuthSlice = (set, get) => {
           error: null 
         }));
         
-        console.log('Registration successful - User created, redirecting to login');
         return { success: true, data: response.data, needsLogin: true };
       } catch (error) {
         console.error('Registration error response:', error.response?.data);
@@ -338,6 +302,20 @@ const createAuthSlice = (set, get) => {
     
     clearError: () => set(() => ({ error: null })),
     
+    // Clear onboarding status cache and force fresh check
+    clearOnboardingStatus: () => {
+      set(() => ({ 
+        onboardingStatus: null, 
+        onboardingLoading: false 
+      }));
+    },
+    
+    // Force refresh onboarding status
+    refreshOnboardingStatus: async () => {
+      set(() => ({ onboardingStatus: null, onboardingLoading: true }));
+      return await get().checkOnboardingStatus();
+    },
+    
     // Clear all application state (for logout or reset)
     // This function clears:
     // - All localStorage items (token, restaurant_id, growlio-store)
@@ -346,19 +324,16 @@ const createAuthSlice = (set, get) => {
     // - All onboarding state (completeOnboardingData, tempFormData, etc.)
     // - All dashboard state (dashboardData, loading, error, etc.)
     clearAllState: () => {
-      console.log('🧹 Starting comprehensive state clear...');
       
       // Reset onboarding state first
       const currentState = get();
       if (currentState.resetOnboarding) {
         currentState.resetOnboarding();
-        console.log('🗑️ Reset onboarding state');
       }
       
       // Clear dashboard state
       if (currentState.resetDashboard) {
         currentState.resetDashboard();
-        console.log('🗑️ Cleared dashboard state');
       }
       
       // Clear all auth state
@@ -371,34 +346,24 @@ const createAuthSlice = (set, get) => {
         loading: false,
         onboardingLoading: false
       }));
-      console.log('🗑️ Cleared auth state');
       
       // Use the store's clearPersistedState function to completely reset all state
       if (currentState.clearPersistedState) {
         currentState.clearPersistedState();
-        console.log('🗑️ Cleared all persisted state using store function');
       }
       
-      console.log('🧹 All application state cleared');
     },
     
     // Initialize authentication state from localStorage
     initializeAuth: () => {
       const token = localStorage.getItem('token');
-      console.log('Initializing auth from localStorage:', { 
-        token: token ? 'TOKEN_EXISTS' : 'UNDEFINED', 
-        tokenType: typeof token,
-        hasToken: !!token 
-      });
       
       if (hasToken(token)) {
         set(() => ({ 
           token, 
           isAuthenticated: true 
         }));
-        console.log('Auth initialized successfully');
       } else {
-        console.log('No token found in localStorage, clearing auth state');
         // Clear invalid token
         localStorage.removeItem('token');
         set(() => ({ 

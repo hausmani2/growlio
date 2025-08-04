@@ -5,7 +5,7 @@ import PrimaryButton from '../../../../buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
 import { useLocation } from 'react-router-dom';
 
-const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = false, errors = {} }) => {
     const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
     
@@ -35,30 +35,19 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
     };
 
     const handleSaveAndContinueClick = async () => {
-        console.log("=== DeliveryFrequency Save & Continue Click ===");
-        console.log("onSaveAndContinue prop:", onSaveAndContinue);
-        console.log("loading prop:", loading);
-        console.log("Current data:", data);
-        console.log("Current selectedDays:", data.selectedDays);
+
         
         if (onSaveAndContinue) {
             try {
-                console.log("Calling onSaveAndContinue...");
                 const result = await onSaveAndContinue();
-                console.log("onSaveAndContinue result:", result);
                 
                 if (result?.success) {
-                    console.log("Success! Navigating to next step...");
                     // Navigate to next step after successful save
                     navigateToNextStep();
-                } else {
-                    console.log("Save failed:", result);
-                }
+                    } 
             } catch (error) {
                 console.error('Error in handleSaveAndContinueClick:', error);
             }
-        } else {
-            console.log("❌ onSaveAndContinue prop is not provided!");
         }
     };
 
@@ -73,7 +62,10 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
             <div className="w-[60%]">
                 <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                     <div className="flex flex-col gap-4">
-                        <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2 mb-2">Select your delivery days</label>
+                        <label htmlFor="cogs" className="text-base !font-bold text-neutral-600 flex items-center gap-2 mb-2">
+                            Select your delivery days
+                            <span className="text-red-500">*</span>
+                        </label>
                         {days.map((day, index) => (
                             <div
                                 key={index}
@@ -87,6 +79,9 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                                 />
                             </div>
                         ))}
+                        {errors.delivery_days && (
+                            <span className="text-red-500 text-sm">{errors.delivery_days}</span>
+                        )}
                     </div>
                 </div>
                 {!isUpdateMode && (
@@ -96,7 +91,7 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                             title={loading ? "Saving..." : "Save & Continue"} 
                             className="btn-brand"
                             onClick={() => {
-                                console.log("Save & Continue button clicked!");
+                                
                                 handleSaveAndContinueClick();
                             }}
                             disabled={loading}

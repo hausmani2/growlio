@@ -270,9 +270,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
   const handleWeeklySubmit = async (weekData) => {
     try {
       setIsSubmitting(true);
-      
-      console.log('handleWeeklySubmit called with:', { weekData, isEditMode, editingWeek });
-      
+            
       if (editingWeek) {
         // Edit existing week
         setWeeklyData(prev => prev.map(week => 
@@ -304,12 +302,9 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
       // Save data to API when modal is submitted
       // Use the weekData from the modal instead of checking weeklyData state
       if (!weekData || !weekData.dailyData) {
-        console.log('Early return: No weekData or dailyData');
         message.warning('No weekly data to save. Please add weekly Sales data first.');
         return;
       }
-
-      console.log('Proceeding with API call...');
 
       // Use the weekly totals from the modal data
       const weeklyTotals = weekData.weeklyTotals || {
@@ -363,9 +358,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
         }
       };
 
-      console.log('Calling saveDashboardData with:', transformedData);
       await saveDashboardData(transformedData);
-      console.log('saveDashboardData completed successfully');
       message.success(isEditMode ? 'Sales data updated successfully!' : 'Sales data saved successfully!');
       await loadDashboardData();
       
@@ -488,7 +481,6 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
 
 
     const handleSubmit = () => {
-      console.log('handleSubmit called with weekFormData:', weekFormData);
       handleWeeklySubmit(weekFormData);
     };
 
@@ -602,29 +594,7 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
             </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={6}>
-              <Text strong>Net Sales - Actual (Auto-calculated):</Text>
-              <Input
-                type='number'
-                value={weekFormData.weeklyTotals.actualSalesInStore + weekFormData.weeklyTotals.actualSalesAppOnline + weekFormData.weeklyTotals.actualSalesDoorDash}
-                disabled
-                style={{ backgroundColor: '#f5f5f5' }}
-                prefix="$"
-                placeholder="0.00"
-              />
-            </Col>
-            <Col span={6}>
-              <Text strong>% Actual vs Budgeted Sales:</Text>
-              <Input
-                type='number'
-                value={weekFormData.weeklyTotals.salesBudget > 0 ? 
-                  (((weekFormData.weeklyTotals.actualSalesInStore + weekFormData.weeklyTotals.actualSalesAppOnline + weekFormData.weeklyTotals.actualSalesDoorDash) - weekFormData.weeklyTotals.salesBudget) / weekFormData.weeklyTotals.salesBudget * 100) : 0}
-                disabled
-                style={{ backgroundColor: '#f5f5f5' }}
-                prefix="%"
-                placeholder="0%"
-              />
-            </Col>
+
             <Col span={6}>
               <Text strong># Daily Tickets:</Text>
               <Input
@@ -711,14 +681,14 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   <Table.Summary.Cell index={4}>
                     <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesDoorDash.toFixed(2)}</Text>
                   </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5}>
+                  {/* <Table.Summary.Cell index={5}>
                     <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={6}>
                     <Text strong style={{ color: percentageTotal < 0 ? '#ff4d4f' : '#52c41a' }}>
                       {percentageTotal.toFixed(0)}%
                     </Text>
-                  </Table.Summary.Cell>
+                  </Table.Summary.Cell> */}
                   <Table.Summary.Cell index={7}>
                     <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                   </Table.Summary.Cell>
@@ -799,43 +769,44 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                   />
                 )
               },
-              {
-                title: 'Net Sales - Actual (Auto-calculated)',
-                dataIndex: 'netSalesActual',
-                key: 'netSalesActual',
-                width: 180,
-                render: (value, record) => {
-                  // Calculate the sum of actual sales for this day
-                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                  const actualSalesDoorDash = parseFloat(record.actualSalesDoorDash) || 0;
-                  const calculatedNetSales = actualSalesInStore + actualSalesAppOnline + actualSalesDoorDash;
+              // {
+              //   title: 'Net Sales - Actual (Auto-calculated)',
+              //   dataIndex: 'netSalesActual',
+              //   key: 'netSalesActual',
+              //   width: 180,
+              //   render: (value, record) => {
+              //     // Calculate the sum of actual sales for this day
+              //     const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+              //     const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+              //     const actualSalesDoorDash = parseFloat(record.actualSalesDoorDash) || 0;
+              //     const calculatedNetSales = actualSalesInStore + actualSalesAppOnline + actualSalesDoorDash;
                   
-                  return (
-                    <Input
-                      type="number"
-                      value={calculatedNetSales.toFixed(2)}
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                      prefix="$"
-                    />
-                  );
-                }
-              },
-              {
-                title: '% Actual vs Budgeted Sales',
-                dataIndex: 'percentageActualVsBudget',
-                key: 'percentageActualVsBudget',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'percentageActualVsBudget', parseFloat(e.target.value) || 0)}
-                    prefix="%"
-                  />
-                )
-              },
+              //     return (
+              //       <Input
+              //         type="number"
+              //         value={calculatedNetSales.toFixed(2)}
+              //         disabled
+              //         style={{ backgroundColor: '#f5f5f5' }}
+              //         prefix="$"
+              //       />
+              //     );
+              //   }
+              // },
+              // {
+              //   title: '% Actual vs Budgeted Sales',
+              //   dataIndex: 'percentageActualVsBudget',
+              //   key: 'percentageActualVsBudget',
+              //   width: 180,
+              //   render: (value, record, index) => (
+              //     <Input
+              //       type="number"
+              //       value={value}
+              //       onChange={(e) => handleDailyDataChange(index, 'percentageActualVsBudget', parseFloat(e.target.value) || 0)}
+              //       prefix="%"
+              //       disabled
+              //     />
+              //   )
+              // },
               {
                 title: '# Daily Tickets',
                 dataIndex: 'dailyTickets',
@@ -1087,14 +1058,14 @@ const SalesTable = ({ selectedDate, weekDays = [] }) => {
                                 <Table.Summary.Cell index={4}>
                                   <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesDoorDash.toFixed(2)}</Text>
                                 </Table.Summary.Cell>
-                                <Table.Summary.Cell index={5}>
+                                {/* <Table.Summary.Cell index={5}>
                                   <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={6}>
                                   <Text strong style={{ color: percentageTotal < 0 ? '#ff4d4f' : '#52c41a' }}>
                                     {percentageTotal.toFixed(0)}%
                                   </Text>
-                                </Table.Summary.Cell>
+                                </Table.Summary.Cell> */}
                                 <Table.Summary.Cell index={7}>
                                   <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                                 </Table.Summary.Cell>

@@ -13,7 +13,6 @@ export const resetAllLoadingStates = () => {
     onboardingStatus: null
   });
   
-  console.log('🔄 All loading states reset');
   return true;
 };
 
@@ -33,7 +32,6 @@ export const checkLoadingStates = () => {
     }
   };
   
-  console.log('📊 Current Loading States:', loadingStates);
   return loadingStates;
 };
 
@@ -44,6 +42,5 @@ export const forceResetOnboardingLoading = () => {
     onboardingError: null
   });
   
-  console.log('🔄 Onboarding loading state force reset');
   return true;
 }; 

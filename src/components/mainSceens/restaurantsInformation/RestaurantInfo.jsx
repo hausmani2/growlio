@@ -13,21 +13,17 @@ const RestaurantContent = () => {
 
     // Check authentication before rendering content
     useEffect(() => {
-        console.log("=== Authentication Check ===");
-        console.log("isAuthenticated:", isAuthenticated);
-        console.log("token exists:", !!token);
-        console.log("localStorage token:", !!localStorage.getItem('token'));
+        
         
         // Check if user is authenticated
         const isUserAuthenticated = isAuthenticated || !!localStorage.getItem('token');
         
         if (!isUserAuthenticated) {
-            console.log("❌ User not authenticated - redirecting to login");
             navigate('/login', { replace: true });
             return;
         }
         
-        console.log("✅ User authenticated - proceeding with content");
+        
     }, [isAuthenticated, token, navigate]);
 
 

@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
-const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false }) => {
+const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false, errors = {} }) => {
     const location = useLocation();
     const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
     
@@ -159,15 +159,21 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
             <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
 
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600 flex items-center gap-2">What is your average hourly rate for all staff roles?<Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count"><img src={SubTrack} alt="SubTrack" /></Tooltip></label>
+                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600 flex items-center gap-2">
+                        What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
+                        <Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count"><img src={SubTrack} alt="SubTrack" /></Tooltip>
+                    </label>
                    <div className="relative">
                         <Input 
                             type="number" 
                             id="avg_hourly_rate" 
                             placeholder="Enter Hourly Wage" 
-                            className="w-full p-2 border border-gray-300 !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6" 
+                            className={`w-full p-2 border !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6 ${
+                                errors.avg_hourly_rate ? 'border-red-500' : 'border-gray-300'
+                            }`}
                             value={data.avg_hourly_rate}
                             onChange={(e) => updateData('avg_hourly_rate', e.target.value)}
+                            status={errors.avg_hourly_rate ? 'error' : ''}
                         />
                         {data.avg_hourly_rate && (
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">
@@ -175,6 +181,9 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             </span>
                         )}
                     </div>
+                    {errors.avg_hourly_rate && (
+                        <span className="text-red-500 text-sm">{errors.avg_hourly_rate}</span>
+                    )}
                 </div>
                 <div className="flex flex-col gap-4">
                     <div className='flex flex-col gap-2'>

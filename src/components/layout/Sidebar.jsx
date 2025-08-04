@@ -18,12 +18,12 @@ const Sidebar = ({ menuItems = [] }) => {
   // Map pathname to menu key
   const pathKeyMap = {
     '/dashboard': 'dashboard',
-    '/onboarding': 'onboarding',
-    '/basic-information': 'basic-information',
-    '/labour-information': 'labour-information',
-    '/food-cost-details': 'food-cost-details',
-    '/sales-channels': 'sales-channels',
-    '/expense': 'expense',
+    '/dashboard/onboarding': 'onboarding',
+    '/dashboard/basic-information': 'basic-information',
+    '/dashboard/labour-information': 'labour-information',
+    '/dashboard/food-cost-details': 'food-cost-details',
+    '/dashboard/sales-channels': 'sales-channels',
+    '/dashboard/expense': 'expense',
   };
   const selectedKey = pathKeyMap[location.pathname] || 'dashboard';
 

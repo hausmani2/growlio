@@ -1,14 +1,39 @@
 import { Select } from 'antd';
 
-const LaborInformation = ({ data, updateData }) => {
-    // Create percentage options from 1 to 50
-    const percentageOptions = Array.from({ length: 50 }, (_, index) => {
-        const percentage = index + 1;
-        return {
-            value: percentage.toString(),
-            label: `${percentage}%`
-        };
-    });
+const LaborInformation = ({ data, updateData, errors = {} }) => {
+    const handleLaborGoalChange = (value) => {
+        updateData('labor_goal', value);
+    };
+
+    // Generate percentage options from 15% to 40% with color coding
+    const generateLaborPercentageOptions = () => {
+        const options = [];
+        for (let i = 15; i <= 40; i++) {
+            let zoneColor = '';
+            let zoneLabel = '';
+            
+            if (i <= 25) {
+                zoneColor = '#52c41a'; // Green zone (Goal)
+                zoneLabel = '✅ Goal';
+            } else if (i <= 27) {
+                zoneColor = '#faad14'; // Yellow zone (Needs Attention)
+                zoneLabel = '⚠️ Needs Attention';
+            } else {
+                zoneColor = '#ff4d4f'; // Red zone (Danger)
+                zoneLabel = '🔴 Danger';
+            }
+            
+            options.push({
+                value: `${i}%`,
+                label: (
+                    <span style={{ color: zoneColor }}>
+                        {i}% - {zoneLabel}
+                    </span>
+                )
+            });
+        }
+        return options;
+    };
 
     return (
         <div className="flex mt-5">
@@ -25,45 +50,31 @@ const LaborInformation = ({ data, updateData }) => {
                     Labor Goals
                     </h4>
                     <span className='text-base text-neutral font-regular mb-0'>
-                    What is your labor goal as a percentage of sales?
+                    What are your Labor Goals as a Percentage of Sales?
                     </span>
 
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="goal" className="text-base !font-bold text-neutral-600">Goal ✅</label>
-                    <Select 
-                        type="text" 
-                        id="goal" 
-                        placeholder="Select percentage" 
-                        className="w-full p-2  !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                        value={data.goal || undefined}
-                        onChange={(value) => updateData('goal', value)}
-                        options={percentageOptions}
+                    <label htmlFor="labor_goal" className="text-base !font-bold text-neutral-600">
+                        Labor Goal as Percentage of Sales <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                        id="labor_goal"
+                        placeholder="Select Percentage"
+                        value={data.labor_goal || undefined}
+                        onChange={handleLaborGoalChange}
+                        options={generateLaborPercentageOptions()}
+                        style={{
+                            height: '40px',
+                            fontSize: '16px'
+                        }}
+                        className={`w-full ${errors.labor_goal ? 'border-red-500' : ''}`}
+                        status={errors.labor_goal ? 'error' : ''}
                     />
-                </div>
-                <div className="flex flex-col gap-2">
-                    <label htmlFor="needs_attention" className="text-base !font-bold text-neutral-600">Needs Attention ⚠️</label>
-                    <Select 
-                        type="text" 
-                        id="needs_attention" 
-                        placeholder="Select percentage" 
-                        className="w-full p-2  !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                        value={data.needs_attention || undefined}
-                        onChange={(value) => updateData('needs_attention', value)}
-                        options={percentageOptions}
-                    />
-                </div>
-                <div className="flex flex-col gap-2">
-                    <label htmlFor="danger" className="text-base !font-bold text-neutral-600">Danger 🔴</label>
-                    <Select 
-                        type="text" 
-                        id="danger" 
-                        placeholder="Select percentage" 
-                        className="w-full p-2  !h-[40px] rounded-md text-base font-normal text-neutral-700"
-                        value={data.danger || undefined}
-                        onChange={(value) => updateData('danger', value)}
-                        options={percentageOptions}
-                    />
+                    {errors.labor_goal && (
+                        <span className="text-red-500 text-sm">{errors.labor_goal}</span>
+                    )}
+                    <span className='text-base font-regular text-neutral-600'>Green Zone (Goal): 25% | Yellow Zone (Needs Attention): 27% | Red Zone (Danger): 30%</span>
                 </div>
 
             </div>

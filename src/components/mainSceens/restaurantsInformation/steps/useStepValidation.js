@@ -65,34 +65,21 @@ const useStepValidation = () => {
         
         const errors = {};
 
-        if (!data.goal?.trim()) {
-            errors.goal = "Labor goal is required";
-            console.log("❌ Goal validation failed: missing or empty");
-        } else if (isNaN(data.goal) || parseFloat(data.goal) < 0 || parseFloat(data.goal) > 100) {
-            errors.goal = "Labor goal must be between 0 and 100";
-            console.log("❌ Goal validation failed: invalid range");
+        // Handle both string and numeric labor_goal, remove % symbol if present
+        const laborGoal = data.labor_goal?.toString() || data.labor_goal;
+        const laborGoalClean = laborGoal ? laborGoal.toString().replace('%', '') : '';
+        
+        console.log("Original labor_goal:", laborGoal);
+        console.log("Cleaned labor_goal:", laborGoalClean);
+        
+        if (!laborGoalClean || laborGoalClean.trim() === '') {
+            errors.labor_goal = "Labor goal is required";
+            console.log("❌ Labor goal validation failed: missing or empty");
+        } else if (isNaN(laborGoalClean) || parseFloat(laborGoalClean) < 0 || parseFloat(laborGoalClean) > 100) {
+            errors.labor_goal = "Labor goal must be between 0 and 100";
+            console.log("❌ Labor goal validation failed: invalid range - value:", parseFloat(laborGoalClean));
         } else {
-            console.log("✅ Goal validation passed:", data.goal);
-        }
-
-        if (!data.needs_attention?.trim()) {
-            errors.needs_attention = "Needs attention threshold is required";
-            console.log("❌ Needs attention validation failed: missing or empty");
-        } else if (isNaN(data.needs_attention) || parseFloat(data.needs_attention) < 0 || parseFloat(data.needs_attention) > 100) {
-            errors.needs_attention = "Needs attention threshold must be between 0 and 100";
-            console.log("❌ Needs attention validation failed: invalid range");
-        } else {
-            console.log("✅ Needs attention validation passed:", data.needs_attention);
-        }
-
-        if (!data.danger?.trim()) {
-            errors.danger = "Danger threshold is required";
-            console.log("❌ Danger validation failed: missing or empty");
-        } else if (isNaN(data.danger) || parseFloat(data.danger) < 0 || parseFloat(data.danger) > 100) {
-            errors.danger = "Danger threshold must be between 0 and 100";
-            console.log("❌ Danger validation failed: invalid range");
-        } else {
-            console.log("✅ Danger validation passed:", data.danger);
+            console.log("✅ Labor goal validation passed:", laborGoalClean, "parsed as:", parseFloat(laborGoalClean));
         }
 
         if (!data.avg_hourly_rate || isNaN(data.avg_hourly_rate) || parseFloat(data.avg_hourly_rate) <= 0) {
@@ -122,7 +109,7 @@ const useStepValidation = () => {
         
         const errors = {};
 
-        // Handle both string and numeric cogs_goal, remove % symbol if present
+        // 1. COGS Goal Validation
         const cogsGoal = data.cogs_goal?.toString() || data.cogs_goal;
         const cogsGoalClean = cogsGoal ? cogsGoal.toString().replace('%', '') : '';
         
@@ -132,18 +119,97 @@ const useStepValidation = () => {
         if (!cogsGoalClean || cogsGoalClean.trim() === '') {
             errors.cogs_goal = "COGS goal is required";
             console.log("❌ COGS goal validation failed: missing or empty");
-        } else if (isNaN(cogsGoalClean) || parseFloat(cogsGoalClean) < 0 || parseFloat(cogsGoalClean) > 100) {
-            errors.cogs_goal = "COGS goal must be between 0 and 100";
+        } else if (isNaN(cogsGoalClean) || parseFloat(cogsGoalClean) < 15 || parseFloat(cogsGoalClean) > 50) {
+            errors.cogs_goal = "COGS goal must be between 15% and 50%";
             console.log("❌ COGS goal validation failed: invalid range - value:", parseFloat(cogsGoalClean));
         } else {
-            console.log("✅ COGS goal validation passed:", cogsGoalClean, "parsed as:", parseFloat(cogsGoalClean));
+            const goalValue = parseFloat(cogsGoalClean);
+            let zoneMessage = "";
+            
+            if (goalValue <= 31) {
+                zoneMessage = " (Green Zone - Goal)";
+            } else if (goalValue <= 33) {
+                zoneMessage = " (Yellow Zone - Needs Attention)";
+            } else {
+                zoneMessage = " (Red Zone - Danger)";
+            }
+            
+            console.log("✅ COGS goal validation passed:", cogsGoalClean, "parsed as:", goalValue, zoneMessage);
         }
 
-        if (data.use_third_party_delivery && (!data.delivery_days || data.delivery_days.length === 0)) {
-            errors.delivery_days = "Please select at least one delivery day";
-            console.log("❌ Delivery days validation failed: third party delivery enabled but no days selected");
+        // 2. Third Party Delivery Validation
+        const useThirdPartyDelivery = data.use_third_party_delivery === true || data.use_third_party_delivery === 'true' || 
+                                    data.useHiredPartyDelivery === true || data.useHiredPartyDelivery === 'true';
+        
+        // Validate third party delivery selection
+        if (data.useHiredPartyDelivery === undefined || data.useHiredPartyDelivery === '') {
+            errors.useHiredPartyDelivery = "Please select whether you use third party delivery";
+            console.log("❌ Third party delivery selection validation failed");
         } else {
-            console.log("✅ Delivery days validation passed");
+            console.log("✅ Third party delivery selection validation passed");
+        }
+        
+        if (useThirdPartyDelivery) {
+            console.log("✅ Third party delivery is enabled");
+            
+            // Validate delivery days for third party delivery
+            if (!data.delivery_days || data.delivery_days.length === 0) {
+                errors.delivery_days = "Please select at least one delivery day";
+                console.log("❌ Delivery days validation failed: third party delivery enabled but no days selected");
+            } else {
+                console.log("✅ Delivery days validation passed for third party delivery");
+            }
+
+            // Validate third party providers if they exist
+            if (data.providers && data.providers.length > 0) {
+                data.providers.forEach((provider, index) => {
+                    if (!provider.providerName?.trim()) {
+                        errors[`provider_${index}_name`] = "Provider name is required";
+                        console.log(`❌ Provider ${index + 1} name validation failed`);
+                    }
+                    if (!provider.providerFee || provider.providerFee === '') {
+                        errors[`provider_${index}_fee`] = "Provider fee is required";
+                        console.log(`❌ Provider ${index + 1} fee validation failed`);
+                    } else if (isNaN(provider.providerFee) || parseFloat(provider.providerFee) < 1 || parseFloat(provider.providerFee) > 50) {
+                        errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
+                        console.log(`❌ Provider ${index + 1} fee validation failed: invalid range`);
+                    }
+                });
+            }
+        } else {
+            console.log("✅ Third party delivery validation passed (not enabled)");
+            
+            // For regular delivery, validate that at least one delivery day is selected
+            if (!data.delivery_days || data.delivery_days.length === 0) {
+                errors.delivery_days = "Please select at least one delivery day";
+                console.log("❌ Delivery days validation failed: no delivery days selected for regular delivery");
+            } else {
+                console.log("✅ Delivery days validation passed for regular delivery");
+            }
+        }
+
+        // 3. Validate delivery days format and content
+        if (data.delivery_days && Array.isArray(data.delivery_days)) {
+            const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            const invalidDays = data.delivery_days.filter(day => !validDays.includes(day.toLowerCase()));
+            
+            if (invalidDays.length > 0) {
+                errors.delivery_days = "Invalid delivery days selected. Only weekdays (Monday-Friday) are allowed.";
+                console.log("❌ Delivery days validation failed: invalid days selected:", invalidDays);
+            } else {
+                console.log("✅ Delivery days format validation passed");
+            }
+        }
+
+        // 4. Validate selectedDays object format (for DeliveryFrequency component)
+        if (data.selectedDays && typeof data.selectedDays === 'object') {
+            const selectedDaysArray = Object.keys(data.selectedDays).filter(day => data.selectedDays[day]);
+            if (selectedDaysArray.length === 0) {
+                errors.delivery_days = "Please select at least one delivery day";
+                console.log("❌ Delivery days validation failed: no days selected in selectedDays object");
+            } else {
+                console.log("✅ SelectedDays validation passed:", selectedDaysArray);
+            }
         }
 
         console.log("Final validation errors:", errors);
@@ -166,32 +232,137 @@ const useStepValidation = () => {
 
     // Expense Validation
     const validateExpense = useCallback((data) => {
+        console.log("=== Expense Validation ===");
+        console.log("Validating data:", data);
+        
         const errors = {};
 
-        // Validate fixed costs
+        // 1. Check if at least one expense category has data
+        const hasFixedCosts = data.fixed_costs && data.fixed_costs.length > 0;
+        const hasVariableCosts = data.variable_costs && data.variable_costs.length > 0;
+        
+        if (!hasFixedCosts && !hasVariableCosts) {
+            errors.no_expenses = "Please add at least one expense (fixed or variable cost)";
+            console.log("❌ Expense validation failed: no expenses added");
+        } else {
+            // Check for specific missing categories
+            if (!hasFixedCosts) {
+                errors.no_fixed_costs = "Please add at least one fixed cost";
+                console.log("❌ Expense validation failed: no fixed costs added");
+            }
+            if (!hasVariableCosts) {
+                errors.no_variable_costs = "Please add at least one variable cost";
+                console.log("❌ Expense validation failed: no variable costs added");
+            }
+            console.log("✅ Expense validation passed: at least one expense category has data");
+        }
+
+        // 2. Validate fixed costs
         if (data.fixed_costs && data.fixed_costs.length > 0) {
             data.fixed_costs.forEach((cost, index) => {
+                // Validate cost name
                 if (!cost.name?.trim()) {
-                    errors[`fixed_cost_${index}_name`] = "Cost name is required";
+                    errors[`fixed_cost_${index}_name`] = "Fixed cost name is required";
+                    console.log(`❌ Fixed cost ${index + 1} name validation failed`);
+                } else if (cost.name.trim().length < 2) {
+                    errors[`fixed_cost_${index}_name`] = "Fixed cost name must be at least 2 characters";
+                    console.log(`❌ Fixed cost ${index + 1} name validation failed: too short`);
+                } else {
+                    console.log(`✅ Fixed cost ${index + 1} name validation passed: "${cost.name}"`);
                 }
-                if (!cost.amount || isNaN(cost.amount) || parseFloat(cost.amount) < 0) {
-                    errors[`fixed_cost_${index}_amount`] = "Please enter a valid amount";
+
+                // Validate cost amount
+                if (!cost.amount || cost.amount === '') {
+                    errors[`fixed_cost_${index}_amount`] = "Fixed cost amount is required";
+                    console.log(`❌ Fixed cost ${index + 1} amount validation failed: missing`);
+                } else if (isNaN(cost.amount) || parseFloat(cost.amount) <= 0) {
+                    errors[`fixed_cost_${index}_amount`] = "Fixed cost amount must be greater than 0";
+                    console.log(`❌ Fixed cost ${index + 1} amount validation failed: invalid amount`);
+                } else if (parseFloat(cost.amount) > 999999) {
+                    errors[`fixed_cost_${index}_amount`] = "Fixed cost amount cannot exceed $999,999";
+                    console.log(`❌ Fixed cost ${index + 1} amount validation failed: too high`);
+                } else {
+                    console.log(`✅ Fixed cost ${index + 1} amount validation passed: $${cost.amount}`);
                 }
             });
         }
 
-        // Validate variable costs
+        // 3. Validate variable costs
         if (data.variable_costs && data.variable_costs.length > 0) {
             data.variable_costs.forEach((cost, index) => {
+                // Validate cost name
                 if (!cost.name?.trim()) {
-                    errors[`variable_cost_${index}_name`] = "Cost name is required";
+                    errors[`variable_cost_${index}_name`] = "Variable cost name is required";
+                    console.log(`❌ Variable cost ${index + 1} name validation failed`);
+                } else if (cost.name.trim().length < 2) {
+                    errors[`variable_cost_${index}_name`] = "Variable cost name must be at least 2 characters";
+                    console.log(`❌ Variable cost ${index + 1} name validation failed: too short`);
+                } else {
+                    console.log(`✅ Variable cost ${index + 1} name validation passed: "${cost.name}"`);
                 }
-                if (!cost.amount || isNaN(cost.amount) || parseFloat(cost.amount) < 0) {
-                    errors[`variable_cost_${index}_amount`] = "Please enter a valid amount";
+
+                // Validate cost amount
+                if (!cost.amount || cost.amount === '') {
+                    errors[`variable_cost_${index}_amount`] = "Variable cost amount is required";
+                    console.log(`❌ Variable cost ${index + 1} amount validation failed: missing`);
+                } else if (isNaN(cost.amount) || parseFloat(cost.amount) <= 0) {
+                    errors[`variable_cost_${index}_amount`] = "Variable cost amount must be greater than 0";
+                    console.log(`❌ Variable cost ${index + 1} amount validation failed: invalid amount`);
+                } else if (parseFloat(cost.amount) > 999999) {
+                    errors[`variable_cost_${index}_amount`] = "Variable cost amount cannot exceed $999,999";
+                    console.log(`❌ Variable cost ${index + 1} amount validation failed: too high`);
+                } else {
+                    console.log(`✅ Variable cost ${index + 1} amount validation passed: $${cost.amount}`);
                 }
             });
         }
 
+        // 4. Validate dynamic fields (for UI components)
+        if (data.dynamicFixedFields && data.dynamicFixedFields.length > 0) {
+            data.dynamicFixedFields.forEach((field, index) => {
+                if (field.value && field.value !== '') {
+                    // Only validate if field has a value
+                    if (isNaN(field.value) || parseFloat(field.value) < 0) {
+                        errors[`dynamic_fixed_${index}_amount`] = "Please enter a valid amount";
+                        console.log(`❌ Dynamic fixed cost ${index + 1} amount validation failed`);
+                    } else if (parseFloat(field.value) > 999999) {
+                        errors[`dynamic_fixed_${index}_amount`] = "Amount cannot exceed $999,999";
+                        console.log(`❌ Dynamic fixed cost ${index + 1} amount validation failed: too high`);
+                    }
+                }
+            });
+        }
+
+        if (data.dynamicVariableFields && data.dynamicVariableFields.length > 0) {
+            data.dynamicVariableFields.forEach((field, index) => {
+                if (field.value && field.value !== '') {
+                    // Only validate if field has a value
+                    if (isNaN(field.value) || parseFloat(field.value) < 0) {
+                        errors[`dynamic_variable_${index}_amount`] = "Please enter a valid amount";
+                        console.log(`❌ Dynamic variable cost ${index + 1} amount validation failed`);
+                    } else if (parseFloat(field.value) > 999999) {
+                        errors[`dynamic_variable_${index}_amount`] = "Amount cannot exceed $999,999";
+                        console.log(`❌ Dynamic variable cost ${index + 1} amount validation failed: too high`);
+                    }
+                }
+            });
+        }
+
+        // 5. Validate total amounts
+        const totalFixed = data.fixed_costs ? data.fixed_costs.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0) : 0;
+        const totalVariable = data.variable_costs ? data.variable_costs.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0) : 0;
+        const grandTotal = totalFixed + totalVariable;
+
+        if (grandTotal > 999999) {
+            errors.total_amount = "Total expenses cannot exceed $999,999";
+            console.log("❌ Total amount validation failed: too high");
+        } else {
+            console.log("✅ Total amount validation passed:", grandTotal);
+        }
+
+        console.log("Final validation errors:", errors);
+        console.log("Validation result:", Object.keys(errors).length === 0 ? "PASSED" : "FAILED");
+        
         return errors;
     }, []);
 
@@ -246,6 +417,7 @@ const useStepValidation = () => {
 
     return {
         validationErrors,
+        setValidationErrors,
         clearFieldError,
         validateBasicInformation,
         validateLabourInformation,

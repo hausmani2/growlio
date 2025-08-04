@@ -45,11 +45,11 @@ function App() {
           <Route path="/onboarding/complete" element={<CompleteSteps />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
-          <Route path="/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
-          <Route path="/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
-          <Route path="/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
-          <Route path="/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
-          <Route path="/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
+          <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
+          <Route path="/dashboard/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
+          <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
+          <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
+          <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

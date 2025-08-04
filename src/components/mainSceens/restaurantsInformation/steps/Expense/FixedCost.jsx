@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 
-const FixedCost = ({ data, updateData }) => {
+const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicFixedFields || []);
@@ -14,19 +14,10 @@ const FixedCost = ({ data, updateData }) => {
         }
     }, [data.dynamicFixedFields]);
 
-    // Update parent component when dynamic fields change
-    useEffect(() => {
-        updateData('dynamicFixedFields', dynamicFields);
-    }, [dynamicFields, updateData]);
-
-    // Calculate total fixed cost from dynamic fields only
-    useEffect(() => {
-        const dynamicTotal = dynamicFields.reduce((sum, field) => {
-            return sum + parseFloat(field.value || 0);
-        }, 0);
-        
-        updateData('totalFixedCost', dynamicTotal.toFixed(2));
-    }, [dynamicFields, updateData]);
+    // Memoize the updateData callback to prevent unnecessary re-renders
+    const memoizedUpdateData = useCallback((field, value) => {
+        updateData(field, value);
+    }, [updateData]);
 
     const showModal = () => {
         setIsModalVisible(true);
@@ -34,13 +25,19 @@ const FixedCost = ({ data, updateData }) => {
 
     const handleOk = () => {
         if (newFieldLabel.trim()) {
+            if (newFieldLabel.trim().length < 2) {
+                // Show error for short field names
+                return;
+            }
             const newField = {
                 id: Date.now() + Math.random(),
                 label: newFieldLabel.trim(),
                 value: "",
                 key: `dynamic_fixed_${Date.now()}_${Math.random()}`
             };
-            setDynamicFields([...dynamicFields, newField]);
+            const updatedFields = [...dynamicFields, newField];
+            setDynamicFields(updatedFields);
+            memoizedUpdateData('dynamicFixedFields', updatedFields);
             setNewFieldLabel("");
             setIsModalVisible(false);
         }
@@ -53,16 +50,34 @@ const FixedCost = ({ data, updateData }) => {
 
     const handleDynamicFieldChange = (id, value) => {
         if (value === '' || parseFloat(value) >= 0) {
-            setDynamicFields(prev => 
-                prev.map(field => 
-                    field.id === id ? { ...field, value } : field
-                )
+            const updatedFields = dynamicFields.map(field => 
+                field.id === id ? { ...field, value } : field
             );
+            setDynamicFields(updatedFields);
+            
+            // Update parent with new fields
+            memoizedUpdateData('dynamicFixedFields', updatedFields);
+            
+            // Calculate and update total
+            const dynamicTotal = updatedFields.reduce((sum, field) => {
+                return sum + parseFloat(field.value || 0);
+            }, 0);
+            memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
         }
     };
 
     const handleDeleteField = (id) => {
-        setDynamicFields(prev => prev.filter(field => field.id !== id));
+        const updatedFields = dynamicFields.filter(field => field.id !== id);
+        setDynamicFields(updatedFields);
+        
+        // Update parent with new fields
+        memoizedUpdateData('dynamicFixedFields', updatedFields);
+        
+        // Calculate and update total
+        const dynamicTotal = updatedFields.reduce((sum, field) => {
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+        memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
     };
 
     return (
@@ -81,7 +96,7 @@ const FixedCost = ({ data, updateData }) => {
                     <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
                         
                         {/* Dynamic Fields */}
-                        {dynamicFields.map((field) => (
+                        {dynamicFields.map((field, index) => (
                             <div key={field.id} className="flex items-center justify-between gap-2">
                                 <label htmlFor={field.key} className="w-1/4 text-base !font-bold text-neutral-600">
                                     {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
@@ -93,7 +108,7 @@ const FixedCost = ({ data, updateData }) => {
                                             type="number" 
                                             id={field.key} 
                                             placeholder={`Enter ${field.label}`} 
-                                            className="w-full p-2 pl-8 border border-gray-300 h-[40px] rounded-md text-[18px] font-normal text-neutral-700"
+                                            className={`w-full p-2 pl-8 border h-[40px] rounded-md text-[18px] font-normal text-neutral-700 ${errors[`dynamic_fixed_${index}_amount`] ? 'border-red-500' : 'border-gray-300'}`}
                                             value={field.value}
                                             onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
                                             min="0"
@@ -102,6 +117,7 @@ const FixedCost = ({ data, updateData }) => {
                                                     e.preventDefault();
                                                 }
                                             }}
+                                            status={errors[`dynamic_fixed_${index}_amount`] ? 'error' : ''}
                                         />
                                     </div>
                                     <button 
@@ -111,6 +127,11 @@ const FixedCost = ({ data, updateData }) => {
                                         Delete
                                     </button>
                                 </div>
+                                {errors[`dynamic_fixed_${index}_amount`] && (
+                                    <div className="w-full mt-1">
+                                        <span className="text-red-500 text-sm">{errors[`dynamic_fixed_${index}_amount`]}</span>
+                                    </div>
+                                )}
                             </div>
                         ))}
 
@@ -118,6 +139,20 @@ const FixedCost = ({ data, updateData }) => {
                         {dynamicFields.length === 0 && (
                             <div className="text-center py-4 text-gray-500">
                                 <p className="text-sm">No fixed costs added yet. Click the + button to add your first expense.</p>
+                            </div>
+                        )}
+
+                        {/* Show specific error message for missing fixed costs */}
+                        {errors.no_fixed_costs && (
+                            <div className="text-center py-2">
+                                <span className="text-red-500 text-sm font-semibold">{errors.no_fixed_costs}</span>
+                            </div>
+                        )}
+
+                        {/* Show general error message */}
+                        {errors.no_expenses && !errors.no_fixed_costs && (
+                            <div className="text-center py-2">
+                                <span className="text-red-500 text-sm">{errors.no_expenses}</span>
                             </div>
                         )}
 
@@ -145,6 +180,7 @@ const FixedCost = ({ data, updateData }) => {
                 <div className="flex flex-col gap-4">
                     <label htmlFor="fieldLabel" className="text-base font-semibold text-neutral-600">
                         Add Fixed Cost
+                        <span className="text-red-500">*</span>
                     </label>
                     <Input
                         id="fieldLabel"
@@ -152,7 +188,12 @@ const FixedCost = ({ data, updateData }) => {
                         value={newFieldLabel}
                         onChange={(e) => setNewFieldLabel(e.target.value)}
                         onPressEnter={handleOk}
+                        className={newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 ? 'border-red-500' : ''}
+                        status={newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 ? 'error' : ''}
                     />
+                    {newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 && (
+                        <span className="text-red-500 text-sm">Field name must be at least 2 characters</span>
+                    )}
                 </div>
             </Modal>
         </div>

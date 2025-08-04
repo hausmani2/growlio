@@ -23,10 +23,8 @@ const RestaurantInfoCard = () => {
         setError(null);
         
         try {
-            console.log('🔄 Fetching restaurant data...');
             
             await loadExistingOnboardingData();
-            console.log('📥 Restaurant data loaded successfully');
             
         } catch (error) {
             console.error('❌ Error fetching restaurant data:', error);

@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import { message } from "antd";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
 import TotalExpense from "./TotalExpense";
@@ -11,10 +11,9 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 
 const ExpenseWrapperContent = () => {
-    const navigate = useNavigate();
     const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
-    const { validationErrors, clearFieldError, validateExpense } = useStepValidation();
+    const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -38,19 +37,13 @@ const ExpenseWrapperContent = () => {
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
-        console.log("=== LOADING EXPENSE DATA ===");
-        console.log("completeOnboardingData:", completeOnboardingData);
-        
         const expenseInfoData = completeOnboardingData["Expense"];
-        console.log("expenseInfoData:", expenseInfoData);
         
         if (expenseInfoData && expenseInfoData.data) {
             const data = expenseInfoData.data;
-            console.log("Expense data from API:", data);
             
             // Load fixed costs
             if (data.fixed_costs && Array.isArray(data.fixed_costs)) {
-                console.log("Loading fixed_costs:", data.fixed_costs);
                 const dynamicFixedCosts = data.fixed_costs.map(cost => ({
                     id: Date.now() + Math.random(),
                     label: cost.name,
@@ -59,14 +52,12 @@ const ExpenseWrapperContent = () => {
                 }));
                 
                 if (dynamicFixedCosts.length > 0) {
-                    console.log("Setting dynamicFixedFields:", dynamicFixedCosts);
                     setExpenseData(prev => ({ ...prev, dynamicFixedFields: dynamicFixedCosts }));
                 }
             }
             
             // Load variable costs
             if (data.variable_costs && Array.isArray(data.variable_costs)) {
-                console.log("Loading variable_costs:", data.variable_costs);
                 const dynamicVariableCosts = data.variable_costs.map(cost => ({
                     id: Date.now() + Math.random(),
                     label: cost.name,
@@ -75,7 +66,6 @@ const ExpenseWrapperContent = () => {
                 }));
                 
                 if (dynamicVariableCosts.length > 0) {
-                    console.log("Setting dynamicVariableFields:", dynamicVariableCosts);
                     setExpenseData(prev => ({ ...prev, dynamicVariableFields: dynamicVariableCosts }));
                 }
             }
@@ -83,7 +73,6 @@ const ExpenseWrapperContent = () => {
             console.log("No expense data found in completeOnboardingData");
             console.log("Available keys:", Object.keys(completeOnboardingData));
         }
-        console.log("=============================");
     }, [completeOnboardingData]);
 
     // Clear error when component mounts
@@ -116,11 +105,19 @@ const ExpenseWrapperContent = () => {
                 amount: parseFloat(field.value)
             }));
 
-        setApiExpenseData({
+        const newApiData = {
             fixed_costs: dynamicFixedCosts,
             variable_costs: dynamicVariableCosts
-        });
-    }, [expenseData]);
+        };
+
+        // Only update if the data has actually changed
+        const currentDataString = JSON.stringify(apiExpenseData);
+        const newDataString = JSON.stringify(newApiData);
+        
+        if (currentDataString !== newDataString) {
+            setApiExpenseData(newApiData);
+        }
+    }, [expenseData, apiExpenseData]);
 
     const updateExpenseData = useCallback((field, value) => {
         setExpenseData(prev => {
@@ -133,8 +130,11 @@ const ExpenseWrapperContent = () => {
                 [field]: value
             };
         });
-        clearFieldError(field);
-    }, [clearFieldError]);
+        // Clear validation error for this field when user starts typing
+        if (validationErrors[field]) {
+            clearFieldError(field);
+        }
+    }, [clearFieldError, validationErrors]);
 
     // Custom validation for expense data
     const validateExpenseData = (data) => {
@@ -178,7 +178,16 @@ const ExpenseWrapperContent = () => {
     // Handle save functionality
     const handleSave = async () => {
         try {
-            // Step 1: Custom validation
+            // Step 1: Prepare comprehensive data for validation
+            const validationData = {
+                ...apiExpenseData,
+                dynamicFixedFields: expenseData.dynamicFixedFields,
+                dynamicVariableFields: expenseData.dynamicVariableFields,
+                totalFixedCost: expenseData.totalFixedCost,
+                totalVariableCost: expenseData.totalVariableCost
+            };
+            
+            // Step 2: Custom validation
             const customErrors = validateExpenseData(apiExpenseData);
             if (Object.keys(customErrors).length > 0) {
                 if (customErrors.no_fields) {
@@ -189,73 +198,54 @@ const ExpenseWrapperContent = () => {
                 return { success: false, error: "Validation failed" };
             }
 
-            // Step 2: Standard validation
-            if (!validateExpense(apiExpenseData)) {
+            // Step 3: Standard validation
+            const validationResult = validateExpense(validationData);
+            
+            if (!validationResult || Object.keys(validationResult).length > 0) {
+                // Set validation errors in state so they display in UI
+                setValidationErrors(validationResult);
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
 
-            // Step 3: Prepare data for API
+            // Step 4: Prepare data for API
             const stepData = {
                 fixed_costs: apiExpenseData.fixed_costs,
                 variable_costs: apiExpenseData.variable_costs
             };
             
-            console.log("Submitting Expense data:", stepData);
-            
-            // Step 4: Call API through Zustand store with success callback
+            // Step 5: Call API through Zustand store with success callback
             const result = await submitStepData("Expense", stepData, async (responseData) => {
                 // Success callback - handle navigation based on mode
-                console.log("✅ Expense saved successfully");
                 
-                // Log detailed expense summary
-                console.log("=== EXPENSE DATA SAVED ===");
-                console.log("📊 Fixed Costs:");
-                apiExpenseData.fixed_costs.forEach(cost => {
-                    console.log(`  • ${cost.name}: $${cost.amount.toFixed(2)}`);
-                });
-                
-                console.log("\n📈 Variable Costs:");
-                apiExpenseData.variable_costs.forEach(cost => {
-                    console.log(`  • ${cost.name}: $${cost.amount.toFixed(2)}`);
-                });
-                
+                // Clear all validation errors on successful save
+                clearAllErrors();
+
                 const totalFixed = apiExpenseData.fixed_costs.reduce((sum, cost) => sum + cost.amount, 0);
                 const totalVariable = apiExpenseData.variable_costs.reduce((sum, cost) => sum + cost.amount, 0);
                 const grandTotal = totalFixed + totalVariable;
                 
-                console.log(`\n💰 Total Fixed: $${totalFixed.toFixed(2)}`);
-                console.log(`💰 Total Variable: $${totalVariable.toFixed(2)}`);
-                console.log(`💰 Grand Total: $${grandTotal.toFixed(2)}`);
-                console.log("================================");
-                
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
                 }
 
-                // Step 5: Handle navigation based on mode
+                // Step 6: Handle navigation based on mode
                 if (isUpdateMode) {
                     // In update mode, stay on the same page or go to dashboard
-                    console.log("🔄 Update mode - staying on current page");
                     message.success("Expense information updated successfully!");
                 } else {
                     // In onboarding mode, check if onboarding is complete
-                    console.log("🔄 Onboarding mode - checking completion status");
                     message.success("Expense information saved successfully!");
                     
                     try {
-                        console.log("🔄 Checking if onboarding is complete...");
                         const completionResult = await checkOnboardingCompletion();
                         
                         if (completionResult.success && completionResult.isComplete) {
-                            console.log("🎉 Onboarding is complete! Navigating to completion page...");
                             message.success("Congratulations! Your onboarding is complete!");
                             
                             // Navigate to completion page
                             completeOnboarding();
                         } else {
-                            console.log("⚠️ Onboarding not yet complete, staying on current step");
                             message.info("Expense saved! Please complete remaining steps.");
                             
                             // Stay on current step or navigate to next incomplete step
@@ -271,7 +261,7 @@ const ExpenseWrapperContent = () => {
                 }
             });
             
-            // Step 5: Handle success
+            // Step 7: Handle success
             if (result.success) {
                 return { success: true };
             } else {
@@ -295,6 +285,16 @@ const ExpenseWrapperContent = () => {
                     </p>
                 </div>
             )}
+
+            {/* Show prominent error message when no expenses are added */}
+            {validationErrors.no_expenses && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Expense Required</h3>
+                    <p className="text-red-700">
+                        {validationErrors.no_expenses}
+                    </p>
+                </div>
+            )}
             
             <FixedCost 
                 data={expenseData} 
@@ -312,19 +312,12 @@ const ExpenseWrapperContent = () => {
                 loading={loading}
             />
             
-            <div className="flex justify-between mt-6">
-                {isUpdateMode && (
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                        Back to Dashboard
-                    </button>
-                )}
+            <div className="flex justify-end mt-6">
+
                 {isUpdateMode && (
                     <button
                         onClick={handleSave}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
                         disabled={loading}
                     >
                         {loading ? "Saving..." : "Save Changes"}

@@ -5,19 +5,17 @@ const useStepNavigation = () => {
     const { 
         saveTempFormData, 
         loadDataToTempForm, 
-        resetStepStatus,
+        // resetStepStatus,
         getTempFormData 
     } = useStore();
 
     // Save current step data before navigating
     const saveCurrentStepData = useCallback((stepName) => {
-        console.log(`💾 Saving temporary form data for ${stepName}`);
         saveTempFormData(stepName);
     }, [saveTempFormData]);
 
     // Load step data when navigating to a step
     const loadStepData = useCallback((stepName) => {
-        console.log(`📂 Loading saved data for ${stepName}`);
         loadDataToTempForm(stepName);
     }, [loadDataToTempForm]);
 
@@ -29,7 +27,6 @@ const useStepNavigation = () => {
         // Load next step data
         loadStepData(nextStepName);
         
-        console.log(`➡️ Navigated from ${currentStepName} to ${nextStepName}`);
     }, [saveCurrentStepData, loadStepData]);
 
     // Navigate to previous step with data saving
@@ -43,7 +40,6 @@ const useStepNavigation = () => {
         // Load previous step data
         loadStepData(previousStepName);
         
-        console.log(`⬅️ Navigated from ${currentStepName} to ${previousStepName}`);
     }, [saveCurrentStepData, loadStepData]);
 
     // Get current step data

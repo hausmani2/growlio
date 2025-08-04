@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useStore from '../store/store';
 import LoadingSpinner from '../components/layout/LoadingSpinner';
 
 const ProtectedRoutes = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
+  const [redirectPath, setRedirectPath] = useState(null);
+  const hasCheckedForPath = useRef(new Set());
   
   // Check authentication from store and fallback to localStorage
   const isAuthenticated = useStore((state) => state.isAuthenticated);
@@ -14,59 +17,37 @@ const ProtectedRoutes = () => {
   const token = storeToken || localStorageToken;
   
   // Get onboarding status and check function
-  const onboardingStatus = useStore((state) => state.onboardingStatus);
-  const checkOnboardingStatus = useStore((state) => state.checkOnboardingStatus);
-  const onboardingLoading = useStore((state) => state.onboardingLoading);
+  const refreshOnboardingStatus = useStore((state) => state.refreshOnboardingStatus);
 
-  // Simple token check - just undefined vs token
-  console.log('ProtectedRoutes - Token Check:', {
-    isAuthenticated,
-    token: token ? 'TOKEN_EXISTS' : 'UNDEFINED',
-    tokenType: typeof token,
-    onboardingStatus,
-    currentPath: location.pathname
-  });
 
   // Check onboarding status for authenticated users
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
-        console.log('ProtectedRoutes - Checking onboarding status...');
-        const result = await checkOnboardingStatus();
-        
-        console.log('ProtectedRoutes - Onboarding check result:', result);
+        const result = await refreshOnboardingStatus();
         
         if (result.success) {
           const isComplete = result.onboarding_complete;
           
-          // Only redirect if user is trying to access dashboard but onboarding is incomplete
-          if (!isComplete && location.pathname === '/dashboard') {
-            console.log('Onboarding incomplete - redirecting to onboarding');
-            window.location.href = '/onboarding';
+          if (!isComplete && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) {
+            setRedirectPath('/onboarding');
             return;
           }
           
-          // Only redirect if user is on onboarding pages but onboarding is complete
           if (isComplete && (location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/'))) {
-            console.log('Onboarding complete - redirecting to dashboard');
-            window.location.href = '/dashboard';
+            setRedirectPath('/dashboard');
             return;
           }
         } else {
-          // Handle API failure gracefully
-          console.log('Onboarding check failed - allowing access to onboarding pages');
-          if (location.pathname === '/dashboard') {
-            console.log('Redirecting to onboarding as fallback');
-            window.location.href = '/onboarding';
+          if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
+            setRedirectPath('/onboarding');
             return;
           }
         }
       } catch (error) {
         console.error('ProtectedRoutes - Error checking onboarding status:', error);
-        // On error, only redirect if user is trying to access dashboard
-        if (location.pathname === '/dashboard') {
-          console.log('Onboarding check failed - redirecting to onboarding as fallback');
-          window.location.href = '/onboarding';
+        if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
+          setRedirectPath('/onboarding');
           return;
         }
       } finally {
@@ -74,27 +55,41 @@ const ProtectedRoutes = () => {
       }
     };
 
-    // Only check onboarding if we haven't checked yet and user is authenticated
-    if (isCheckingOnboarding && isAuthenticated && token) {
+    if ((location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) && isAuthenticated && token) {
+      if (!hasCheckedForPath.current.has(location.pathname)) {
+        hasCheckedForPath.current.add(location.pathname);
+        setIsCheckingOnboarding(true);
+        checkOnboarding();
+      }
+    } else if (isCheckingOnboarding && isAuthenticated && token) {
       checkOnboarding();
     } else if (!isAuthenticated || !token) {
-      // If not authenticated, stop checking
       setIsCheckingOnboarding(false);
     }
-  }, [checkOnboardingStatus, location.pathname, isCheckingOnboarding, isAuthenticated, token]);
+  }, [refreshOnboardingStatus, location.pathname, isCheckingOnboarding, isAuthenticated, token, navigate]);
 
-  // Check authentication first
+  useEffect(() => {
+    return () => {
+      hasCheckedForPath.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (redirectPath && !isCheckingOnboarding) {
+      navigate(redirectPath, { replace: true });
+      setRedirectPath(null);
+    }
+  }, [redirectPath, isCheckingOnboarding, navigate]);
+
   if (!isAuthenticated || !token) {
-    console.log('Access denied - redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  // Show loading while checking onboarding status
   if (isCheckingOnboarding) {
     return <LoadingSpinner message="Checking your setup..." />;
   }
 
-  console.log('Access granted - token is valid and onboarding status checked');
+  
   return <Outlet />;
 };
 

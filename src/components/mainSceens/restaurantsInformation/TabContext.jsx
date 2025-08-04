@@ -44,14 +44,11 @@ export const TabProvider = ({ children }) => {
     // Load existing onboarding data if needed
     const loadExistingDataIfNeeded = async () => {
         if (shouldLoadExistingData()) {
-            console.log('🔄 Detected existing restaurant_id but no completed steps - loading existing data...');
             try {
                 const result = await loadExistingOnboardingData();
                 if (result.success) {
-                    console.log('✅ Successfully loaded existing onboarding data');
                     message.success('Loaded your existing setup data');
                 } else {
-                    console.log('❌ Failed to load existing data');
                 }
             } catch (error) {
                 console.error('❌ Error loading existing data:', error);
@@ -87,18 +84,9 @@ export const TabProvider = ({ children }) => {
         const stepData = completeOnboardingData[stepName];
         const completed = stepData?.status === true;
         
-        console.log(`🔍 Checking step "${stepName}":`, {
-            stepData,
-            status: stepData?.status,
-            statusType: typeof stepData?.status,
-            completed,
-            hasData: !!stepData
-        });
         
         if (completed) {
-            console.log(`✅ Step "${stepName}" is completed. Restaurant ID: ${getRestaurantId()}`);
         } else {
-            console.log(`❌ Step "${stepName}" is NOT completed`);
         }
         
         return completed;
@@ -106,41 +94,33 @@ export const TabProvider = ({ children }) => {
 
     // Check if user can navigate to a specific tab
     const canNavigateToTab = (targetTabId) => {
-        console.log(`🔍 canNavigateToTab called with targetTabId: ${targetTabId}`);
         
         // Always allow navigation to Basic Information (tab 0)
-        if (targetTabId === 0) {
-            console.log(`✅ Always allowing navigation to Basic Information (tab 0)`);
+        if (targetTabId === 0) { 
             return true;
         }
 
         // Check if Basic Information is completed
         const basicInfoCompleted = isStepCompleted('Basic Information');
-        console.log(`🔍 Basic Information completed: ${basicInfoCompleted}`);
         
         if (!basicInfoCompleted) {
-            console.log(`❌ Basic Information not completed - blocking navigation`);
             message.error('Please complete Basic Information before proceeding to other steps.');
             return false;
         }
 
         // For other steps, check if ALL previous steps are completed (not including the target step)
         const requiredSteps = tabs.slice(0, targetTabId).filter(tab => tab.required);
-        console.log(`🔍 Required steps for tab ${targetTabId}:`, requiredSteps.map(s => s.title));
         
         for (const step of requiredSteps) {
             const stepName = step.title;
             const stepCompleted = isStepCompleted(stepName);
-            console.log(`🔍 Checking step "${stepName}": ${stepCompleted}`);
             
             if (!stepCompleted) {
-                console.log(`❌ Step "${stepName}" not completed - blocking navigation`);
                 message.error(`Please complete ${stepName} before proceeding.`);
                 return false;
             }
         }
 
-        console.log(`✅ All required steps completed - allowing navigation to tab ${targetTabId}`);
         return true;
     };
 
@@ -162,28 +142,21 @@ export const TabProvider = ({ children }) => {
             step && typeof step === 'object' && step.status !== undefined
         );
         
-        console.log('🔍 Finding next incomplete step...');
-        console.log('completeOnboardingData:', completeOnboardingData);
-        console.log('hasAnyStepData:', hasAnyStepData);
         
         if (!hasAnyStepData) {
-            console.log('📭 No onboarding data found - user should start with Basic Information');
             return 0; // Return 0 to start with Basic Information step
         }
         
         for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i];
             const isCompleted = isStepCompleted(tab.title);
-            console.log(`🔍 Step ${i}: ${tab.title} - Completed: ${isCompleted}`);
-            
+
             if (!isCompleted) {
-                console.log(`✅ Found next incomplete step: ${tab.title} (index: ${i})`);
                 return i;
             }
         }
         
         // If all steps are completed locally, return the last step index
-        console.log('🎉 All local steps are completed!');
         return tabs.length - 1; // Return last step index instead of navigating
     };
 
@@ -237,25 +210,20 @@ export const TabProvider = ({ children }) => {
     }, [location.pathname, navigate, completeOnboardingData]);
 
     const handleTabClick = (tabId) => {
-        console.log(`🔄 handleTabClick called with tabId: ${tabId}`);
         
         // SIMPLIFIED: Allow navigation to any tab without checking completion status
-        console.log(`✅ Navigation allowed to tab ${tabId}`);
 
         // Load saved data into temporary form data for the target step
         const targetTab = tabs.find(t => t.id === tabId);
         if (targetTab) {
-            console.log(`📂 Loading data for step: ${targetTab.title}`);
             loadStepData(targetTab.title);
         }
 
-        console.log(`🔄 Setting activeTab from ${activeTab} to ${tabId}`);
         setActiveTab(tabId);
         
         const tab = tabs.find(t => t.id === tabId);
         if (tab) {
             const targetPath = `/onboarding/${tab.path}`;
-            console.log(`🧭 Navigating to: ${targetPath}`);
             navigate(targetPath);
         } else {
             console.error(`❌ Tab not found for id: ${tabId}`);
@@ -264,36 +232,25 @@ export const TabProvider = ({ children }) => {
 
     // Navigate to next step (used by Save & Continue buttons)
     const navigateToNextStep = async () => {
-        console.log(`🔄 navigateToNextStep called from activeTab: ${activeTab}`);
-        console.log(`📋 Current tab name: ${tabs[activeTab]?.title}`);
         const nextTabId = activeTab + 1;
-        console.log(`📋 Next tab ID would be: ${nextTabId}, total tabs: ${tabs.length}`);
-        console.log(`📋 Next tab name: ${tabs[nextTabId]?.title}`);
         
         // Debug: Check current state before navigation
-        console.log("Current completeOnboardingData:", completeOnboardingData);
-        console.log("Basic Information status:", completeOnboardingData["Basic Information"]?.status);
         
         if (nextTabId < tabs.length) {
-            console.log(`✅ Next tab exists, navigating directly to next step`);
             
             // SIMPLIFIED LOGIC: Just navigate to the next step if we have a next step
             // Don't check completion status of other steps - just go to the next one
-            console.log(`✅ Navigating to next tab ${nextTabId} (${tabs[nextTabId]?.title})`);
             handleTabClick(nextTabId);
         } else {
             // All local steps completed - check if onboarding is actually complete
-            console.log('🎉 All local steps completed! Checking if onboarding is complete...');
             
             try {
                 const completionResult = await checkOnboardingCompletion();
                 
                 if (completionResult.success && completionResult.isComplete) {
-                    console.log('✅ Onboarding is complete! Navigating to completion page...');
                     message.success('Congratulations! Your onboarding is complete!');
                     completeOnboarding();
                 } else {
-                    console.log('⚠️ Onboarding not yet complete, staying on current step');
                     message.info('All steps completed! Please wait for final confirmation.');
                 }
             } catch (error) {

@@ -6,13 +6,12 @@ import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 const LaborInformationWrapperContent = () => {
-    const navigate = useNavigate();
     const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
-    const { validationErrors, clearFieldError, validateLabourInformation } = useStepValidation();
+    const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -20,9 +19,7 @@ const LaborInformationWrapperContent = () => {
 
     // State for labor data
     const [laborData, setLaborData] = useState({
-        goal: '',
-        needs_attention: '',
-        danger: '',
+        labor_goal: '',
         avg_hourly_rate: '',
         labor_record_method: 'daily_hours_costs',
         daily_ticket_count: '',
@@ -37,9 +34,7 @@ const LaborInformationWrapperContent = () => {
 
             setLaborData(prev => ({
                 ...prev,
-                goal: data.goal?.toString() || '',
-                needs_attention: data.needs_attention?.toString() || '',
-                danger: data.danger?.toString() || '',
+                labor_goal: data.labor_goal?.toString() || '',
                 avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                 labor_record_method: data.labor_record_method || 'daily_hours_costs',
                 daily_ticket_count: data.daily_ticket_count ? "2" : "1",
@@ -75,21 +70,22 @@ const LaborInformationWrapperContent = () => {
             console.log("Current laborData:", laborData);
 
             // Step 1: Validate form
-            const validationResult = validateLabourInformation(laborData);
+            const validationResult = validateStep('Labour Information', laborData);
             console.log("Validation result:", validationResult);
-            console.log("Validation passed:", Object.keys(validationResult).length === 0);
+            console.log("Validation passed:", validationResult);
 
-            if (!validationResult || Object.keys(validationResult).length > 0) {
-                console.log("Validation failed with errors:", validationResult);
+            if (!validationResult) {
+                console.log("Validation failed with errors:", validationErrors);
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
 
             // Step 2: Prepare data for API
             const stepData = {
-                goal: laborData.goal,
-                needs_attention: laborData.needs_attention,
-                danger: laborData.danger,
+                goal:"0",
+                needs_attention:"0",
+                danger:"0",
+                labor_goal: laborData.labor_goal,
                 avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                 labor_record_method: laborData.labor_record_method,
                 daily_ticket_count: laborData.daily_ticket_count === "2",
@@ -168,16 +164,10 @@ const LaborInformationWrapperContent = () => {
             <div className="flex justify-between mt-6">
                 {isUpdateMode && (
                     <>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                        >
-                            Back to Dashboard
-                        </button>
                         <div className="ml-auto">
                             <button
                                 onClick={handleSaveAndContinue}
-                                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
                             >
                                 {isUpdateMode ? "Save Changes" : "Save & Continue"}
                             </button>
