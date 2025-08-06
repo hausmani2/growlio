@@ -3,6 +3,7 @@ import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin } from 'ant
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
+import useStore from '../../../store/store';
 import SalesTable from './SalesTable';
 import CogsTable from './CogsTable';
 import LabourTable from './LabourTable';
@@ -28,6 +29,19 @@ const Dashboard = () => {
   const [availableYears, setAvailableYears] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [availableWeeks, setAvailableWeeks] = useState([]);
+
+  // Dashboard data state
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(null);
+
+  // Store integration
+  const { 
+    fetchDashboardDataIfNeeded, 
+    getAllDashboardData,
+    loading: storeLoading, 
+    error: storeError 
+  } = useStore();
 
   // Fetch calendar data
   const fetchCalendarData = async (year) => {
@@ -56,6 +70,32 @@ const Dashboard = () => {
       console.error('Error fetching calendar data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch dashboard data for the selected week
+  const fetchDashboardData = async (weekStartDate) => {
+    if (!weekStartDate) return;
+    
+    setDashboardLoading(true);
+    setDashboardError(null);
+    
+    try {
+      const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
+      setDashboardData(data);
+    } catch (error) {
+      setDashboardError(error.message);
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  // Callback function to refresh dashboard data after any component saves data
+  const refreshDashboardData = async () => {
+    const weekStartDate = getSelectedWeekStartDate();
+    if (weekStartDate) {
+      await fetchDashboardData(weekStartDate);
     }
   };
 
@@ -94,7 +134,10 @@ const Dashboard = () => {
     if (availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === weekKey);
       if (selectedWeekData) {
-        setSelectedDate(dayjs(selectedWeekData.startDate));
+        const weekStartDate = dayjs(selectedWeekData.startDate);
+        setSelectedDate(weekStartDate);
+        // Fetch dashboard data for the selected week
+        fetchDashboardData(weekStartDate);
       }
     }
   };
@@ -158,6 +201,15 @@ const Dashboard = () => {
     const currentYear = dayjs().year();
     fetchCalendarData(currentYear);
   }, []);
+
+  // Show loading spinner when fetching dashboard data
+  if (dashboardLoading) {
+    return (
+      <div className="w-full flex justify-center items-center min-h-screen">
+        <Spin size="large" tip="Loading dashboard data..." />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -240,21 +292,6 @@ const Dashboard = () => {
                     </Select>
                   </div>
                 </div>
-
-                {/* Original Date Picker
-                <div style={{ maxWidth: '300px' }}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Or Select Specific Date
-                  </label>
-                  <DatePicker
-                    picker="date"
-                    value={selectedDate}
-                    onChange={setSelectedDate}
-                    style={{ width: '100%' }}
-                    placeholder="Select date"
-                    format="YYYY-MM-DD"
-                  />
-                </div> */}
               </div>
             </Space>
           </Card>
@@ -264,16 +301,43 @@ const Dashboard = () => {
           {/* Restaurant Information Card */}
           <RestaurantInfoCard />
           
-          {/* Data Tables */}
+          {/* Data Tables - Pass dashboard data to all components */}
           <SalesTable
             selectedDate={getSelectedWeekStartDate()}
             weekDays={getWeekDays()}
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
           />
-          <CogsTable selectedDate={getSelectedWeekStartDate()} weekDays={getWeekDays()} />
-          <LabourTable selectedDate={getSelectedWeekStartDate()} weekDays={getWeekDays()} />
-          <ProfitCogsTable selectedDate={getSelectedWeekStartDate()} weekDays={getWeekDays()} />
-          <FixedExpensesTable selectedDate={getSelectedWeekStartDate()} weekDays={getWeekDays()} />
-          <NetProfitTable selectedDate={getSelectedWeekStartDate()} weekDays={getWeekDays()} />
+          <CogsTable 
+            selectedDate={getSelectedWeekStartDate()} 
+            weekDays={getWeekDays()} 
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
+          />
+          <LabourTable 
+            selectedDate={getSelectedWeekStartDate()} 
+            weekDays={getWeekDays()} 
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
+          />
+          <ProfitCogsTable 
+            selectedDate={getSelectedWeekStartDate()} 
+            weekDays={getWeekDays()} 
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
+          />
+          <FixedExpensesTable 
+            selectedDate={getSelectedWeekStartDate()} 
+            weekDays={getWeekDays()} 
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
+          />
+          <NetProfitTable 
+            selectedDate={getSelectedWeekStartDate()} 
+            weekDays={getWeekDays()} 
+            dashboardData={dashboardData}
+            refreshDashboardData={refreshDashboardData}
+          />
         </Space>
       </div>
     </div>

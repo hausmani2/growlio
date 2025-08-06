@@ -10,8 +10,13 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
         { id: 1, providerName: '', providerFee: '' }
     ]);
 
-    // State to manage if location uses hired party delivery
-    const [useHiredPartyDelivery, setUseHiredPartyDelivery] = useState(data.useHiredPartyDelivery || '');
+    // State to manage if location uses hired party delivery - default to 'false' if not provided
+    const [useHiredPartyDelivery, setUseHiredPartyDelivery] = useState(
+        data.useHiredPartyDelivery !== undefined ? data.useHiredPartyDelivery : 'false'
+    );
+
+    console.log('🔍 Debug - ThirdPartyProviders - Initial data:', data);
+    console.log('🔍 Debug - ThirdPartyProviders - useHiredPartyDelivery state:', useHiredPartyDelivery);
 
     // Create percentage options from 1 to 50
     const percentageOptions = Array.from({ length: 50 }, (_, index) => {
@@ -35,8 +40,16 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
         }
     }, [data.providers]);
 
+    // Initialize useHiredPartyDelivery when data changes
+    useEffect(() => {
+        if (data.useHiredPartyDelivery !== undefined) {
+            setUseHiredPartyDelivery(data.useHiredPartyDelivery);
+        }
+    }, [data.useHiredPartyDelivery]);
+
     // Handle hired party delivery change
     const handleHiredPartyDeliveryChange = (value) => {
+        console.log('🔍 Debug - ThirdPartyProviders - handleHiredPartyDeliveryChange called with value:', value);
         setUseHiredPartyDelivery(value);
         updateData('useHiredPartyDelivery', value);
         

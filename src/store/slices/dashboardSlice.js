@@ -1,19 +1,23 @@
 import { apiGet, apiPost } from "../../utils/axiosInterceptors";
+import dayjs from 'dayjs';
 
 const createDashboardSlice = (set, get) => {
     return {
         name: 'dashboard',
         dashboardData: null,
+        goalsData: null,
         loading: false,
         error: null,
         restaurantId: null,
+        lastFetchedDate: null, // Track when data was last fetched
 
         // Actions
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
         setDashboardData: (data) => set({ dashboardData: data }),
+        setGoalsData: (data) => set({ goalsData: data }),
 
-        // Fetch dashboard data
+        // Fetch dashboard data with caching
         fetchDashboardData: async (weekStart = null) => {
             try {
                 set({ loading: true, error: null });
@@ -38,12 +42,89 @@ const createDashboardSlice = (set, get) => {
                 }
                 
                 const response = await apiGet(url);
-                set({ dashboardData: response.data, loading: false });
+                set({ 
+                    dashboardData: response.data, 
+                    loading: false,
+                    lastFetchedDate: weekStart || new Date().toISOString()
+                });
+                
+                // Fetch goals data after dashboard data is loaded
+                await get().fetchGoalsData(restaurantId);
+                
                 return response.data;
             } catch (error) {
                 set({ error: error.message, loading: false });
                 throw error;
             }
+        },
+
+        // Check if data needs to be refreshed
+        shouldRefreshData: (weekStart) => {
+            const { lastFetchedDate, dashboardData } = get();
+            if (!dashboardData || !lastFetchedDate) return true;
+            
+            // If weekStart is provided, check if it matches the last fetched date
+            if (weekStart) {
+                const lastFetchedWeek = dayjs(lastFetchedDate).startOf('week').format('YYYY-MM-DD');
+                const requestedWeek = dayjs(weekStart).startOf('week').format('YYYY-MM-DD');
+                return lastFetchedWeek !== requestedWeek;
+            }
+            
+            return false;
+        },
+
+        // Fetch data only if needed
+        fetchDashboardDataIfNeeded: async (weekStart = null) => {
+            const shouldRefresh = get().shouldRefreshData(weekStart);
+            if (shouldRefresh) {
+                return await get().fetchDashboardData(weekStart);
+            }
+            return get().dashboardData;
+        },
+
+        // Fetch goals data
+        fetchGoalsData: async (restaurantId = null) => {
+            try {
+                set({ loading: true, error: null });
+                
+                // Get restaurant ID if not provided
+                const targetRestaurantId = restaurantId || await get().fetchRestaurantId();
+                if (!targetRestaurantId) {
+                    throw new Error('Restaurant ID not found');
+                }
+                
+                const url = `/restaurant/goals/?restaurant_id=${targetRestaurantId}`;
+                const response = await apiGet(url);
+                set({ goalsData: response.data, loading: false });
+                return response.data;
+            } catch (error) {
+                set({ error: error.message, loading: false });
+                throw error;
+            }
+        },
+
+        // Get goals data
+        getGoalsData: () => {
+            const { goalsData } = get();
+            return goalsData || null;
+        },
+
+        // Get labour goal
+        getLabourGoal: () => {
+            const { goalsData } = get();
+            return goalsData?.labour_goal || null;
+        },
+
+        // Get COGS goal
+        getCogsGoal: () => {
+            const { goalsData } = get();
+            return goalsData?.cogs_goal || null;
+        },
+
+        // Get delivery days
+        getDeliveryDays: () => {
+            const { goalsData } = get();
+            return goalsData?.delivery_days || [];
         },
 
         // Get sales performance data
@@ -88,6 +169,59 @@ const createDashboardSlice = (set, get) => {
             return dashboardData?.daily_entries || [];
         },
 
+        // Get all dashboard data
+        getAllDashboardData: () => {
+            const { dashboardData } = get();
+            return dashboardData || null;
+        },
+
+        // Get specific daily entry by date
+        getDailyEntryByDate: (date) => {
+            const { dashboardData } = get();
+            if (!dashboardData?.daily_entries) return null;
+            
+            const targetDate = dayjs(date).format('YYYY-MM-DD');
+            return dashboardData.daily_entries.find(entry => 
+                dayjs(entry.date).format('YYYY-MM-DD') === targetDate
+            ) || null;
+        },
+
+        // Get sales data for a specific date
+        getSalesDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["Sales Performance"] || null;
+        },
+
+        // Get COGS data for a specific date
+        getCogsDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["COGS Performance"] || null;
+        },
+
+        // Get labor data for a specific date
+        getLaborDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["Labor Performance"] || null;
+        },
+
+        // Get profit data for a specific date
+        getProfitDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["Profit After COGS & Labor"] || null;
+        },
+
+        // Get fixed expenses data for a specific date
+        getFixedExpensesDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["Fixed Expenses"] || null;
+        },
+
+        // Get net profit data for a specific date
+        getNetProfitDataForDate: (date) => {
+            const dailyEntry = get().getDailyEntryByDate(date);
+            return dailyEntry?.["Net Profit"] || null;
+        },
+
 
         // Save dashboard data
         saveDashboardData: async (dashboardData) => {
@@ -114,7 +248,14 @@ const createDashboardSlice = (set, get) => {
                     };
                     
                     const response = await apiPost('/restaurant/dashboard/', payloadWithRestaurantId);
-                    set({ loading: false });
+                    
+                    // Invalidate cache after successful save to ensure fresh data is fetched
+                    set({ 
+                        loading: false, 
+                        dashboardData: null, 
+                        lastFetchedDate: null 
+                    });
+                    
                     return response.data;
                 }
                 
@@ -345,7 +486,14 @@ const createDashboardSlice = (set, get) => {
                 }
 
                 const response = await apiPost('/restaurant/dashboard/', mergedData);
-                set({ loading: false });
+                
+                // Invalidate cache after successful save to ensure fresh data is fetched
+                set({ 
+                    loading: false, 
+                    dashboardData: null, 
+                    lastFetchedDate: null 
+                });
+                
                 return response.data;
             } catch (error) {
                 set({ error: error.message, loading: false });
@@ -392,6 +540,7 @@ const createDashboardSlice = (set, get) => {
         resetDashboard: () => {
             set(() => ({
                 dashboardData: null,
+                goalsData: null,
                 loading: false,
                 error: null,
                 restaurantId: null
@@ -401,4 +550,4 @@ const createDashboardSlice = (set, get) => {
     }
 }
 
-export default createDashboardSlice;``
+export default createDashboardSlice;

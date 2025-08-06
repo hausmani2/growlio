@@ -7,7 +7,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
+const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -17,18 +17,21 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
 
   // Store integration
   const { 
-    fetchDashboardData, 
     saveDashboardData, 
     loading: storeLoading, 
     error: storeError 
   } = useStore();
 
-  // Load data when selectedDate or weekDays changes
+  // Process dashboard data when it changes
   useEffect(() => {
-    if (selectedDate) {
-      loadDashboardData();
+    if (dashboardData) {
+      processProfitData();
+    } else {
+      // Reset data when no dashboard data is available
+      setWeeklyData([]);
+      setDataNotFound(true);
     }
-  }, [selectedDate, weekDays]);
+  }, [dashboardData, weekDays]);
 
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
@@ -51,76 +54,63 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
     });
   };
 
-  // Load dashboard data
-  const loadDashboardData = async () => {
-    try {
-      setDataNotFound(false);
+  // Process profit data from dashboard data
+  const processProfitData = () => {
+    if (!dashboardData) {
+      setDataNotFound(true);
+      return;
+    }
+
+    setDataNotFound(false);
+
+    if (dashboardData['Profit']) {
+      // Extract all daily entries into one consolidated table
+      const allDailyEntries = dashboardData.daily_entries?.map((entry) => ({
+        key: `day-${entry.date}`,
+        date: dayjs(entry.date),
+        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+        thirdPartyFees: entry['Profit']?.third_party_fees || 0,
+        profitAfterCogsLabor: entry['Profit']?.profit_after_cogs_labor || 0,
+        dailyVariableProfitPercentage: entry['Profit']?.daily_variable_profit_percent || 0,
+        weeklyVariableProfitPercentage: entry['Profit']?.weekly_variable_profit_percent || 0
+      })) || [];
+
+      // If weekDays are provided, use them to create the daily data structure
+      let dailyData = allDailyEntries;
+      if (weekDays.length > 0) {
+        // Create daily data structure based on weekDays
+        dailyData = weekDays.map((day) => {
+          // Find existing entry for this day
+          const existingEntry = allDailyEntries.find(entry => 
+            entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+          );
+          
+          return existingEntry || {
+            key: `day-${day.date.format('YYYY-MM-DD')}`,
+            date: day.date,
+            dayName: day.dayName.toLowerCase(),
+            thirdPartyFees: 0,
+            profitAfterCogsLabor: 0,
+            dailyVariableProfitPercentage: 0,
+            weeklyVariableProfitPercentage: 0
+          };
+        });
+      } else {
+        // If no weekDays provided, use all daily entries or generate default structure
+        dailyData = allDailyEntries.length > 0 ? allDailyEntries : [];
+      }
       
-      // Use the first day of the week if weekDays are provided, otherwise use selectedDate
       const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
-      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
       
-      if (data && data['Profit']) {
-        // Extract all daily entries into one consolidated table
-        const allDailyEntries = data.daily_entries?.map((entry) => ({
-          key: `day-${entry.date}`,
-          date: dayjs(entry.date),
-          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-          thirdPartyFees: entry['Profit']?.third_party_fees || 0,
-          profitAfterCogsLabor: entry['Profit']?.profit_after_cogs_labor || 0,
-          dailyVariableProfitPercentage: entry['Profit']?.daily_variable_profit_percent || 0,
-          weeklyVariableProfitPercentage: entry['Profit']?.weekly_variable_profit_percent || 0
-        })) || [];
-
-        // If weekDays are provided, use them to create the daily data structure
-        let dailyData = allDailyEntries;
-        if (weekDays.length > 0) {
-          // Create daily data structure based on weekDays
-          dailyData = weekDays.map((day) => {
-            // Find existing entry for this day
-            const existingEntry = allDailyEntries.find(entry => 
-              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
-            );
-            
-            return existingEntry || {
-              key: `day-${day.date.format('YYYY-MM-DD')}`,
-              date: day.date,
-              dayName: day.dayName.toLowerCase(),
-              thirdPartyFees: 0,
-              profitAfterCogsLabor: 0,
-              dailyVariableProfitPercentage: 0,
-              weeklyVariableProfitPercentage: 0
-            };
-          });
-        }
-
-        const weeklyTableData = [{
-          id: 'consolidated-week',
-          weekTitle: 'Weekly Profit Data',
-          startDate: weekStartDate,
-          dailyData: dailyData,
-          // Load weekly goals from API response
-          weeklyTotals: {
-            thirdPartyFees: parseFloat(data['Profit']?.third_party_fees) || 0,
-            profitAfterCogsLabor: parseFloat(data['Profit']?.profit_after_cogs_labor) || 0,
-            dailyVariableProfitPercentage: parseFloat(data['Profit']?.daily_variable_profit_percent) || 0,
-            weeklyVariableProfitPercentage: parseFloat(data['Profit']?.weekly_variable_profit_percent) || 0
-          }
-        }];
-        setWeeklyData(weeklyTableData);
-      } else {
-        // No data found, reset to defaults
-        setWeeklyData([]);
-      }
-    } catch (error) {
-      // Check if it's a 404 error
-      if (error.response && error.response.status === 404) {
-        setDataNotFound(true);
-        setWeeklyData([]);
-        message.info('No profit data found for the selected period.');
-      } else {
-        message.error(`Failed to load profit data: ${error.message}`);
-      }
+      setWeeklyData([{
+        id: 'consolidated-week',
+        weekTitle: 'Weekly Profit Data',
+        startDate: weekStartDate,
+        dailyData: dailyData
+      }]);
+    } else {
+      // No data found, reset to defaults
+      setWeeklyData([]);
     }
   };
 
@@ -215,7 +205,14 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
 
       await saveDashboardData(transformedData);
       message.success(isEditMode ? 'Profit data updated successfully!' : 'Profit data saved successfully!');
-      await loadDashboardData();
+      
+      // Refresh all dashboard data to show updated data across all components
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      } else {
+        // Fallback: reload data to reflect changes
+        processProfitData();
+      }
       
       setIsModalVisible(false);
       setEditingWeek(null);
@@ -653,7 +650,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [] }) => {
               extra={
                 <Space>
                   <Button 
-                    onClick={loadDashboardData}
+                    onClick={processProfitData}
                     loading={storeLoading}
                   >
                     Refresh

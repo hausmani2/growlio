@@ -213,7 +213,7 @@ const createOnBoardingSlice = (set, get) => ({
                 const { foodCostData } = tempData;
                 apiData = {
                     cogs_goal: parseFloat(foodCostData.cogs_goal) || 0,
-                    uses_third_party_delivery: foodCostData.use_third_party_delivery || false, // API expects 'uses_third_party_delivery'
+                    uses_third_party_delivery: foodCostData.uses_third_party_delivery || false, // API expects 'uses_third_party_delivery'
                     delivery_days: foodCostData.delivery_days || [],
                     providers: foodCostData.providers || [] // Include providers array in API payload
                 };

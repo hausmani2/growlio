@@ -7,7 +7,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
+const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -17,18 +17,21 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
 
   // Store integration
   const { 
-    fetchDashboardData, 
     saveDashboardData, 
     loading: storeLoading, 
     error: storeError 
   } = useStore();
 
-  // Load data when selectedDate or weekDays changes
+  // Process dashboard data when it changes
   useEffect(() => {
-    if (selectedDate) {
-      loadDashboardData();
+    if (dashboardData) {
+      processFixedExpenseData();
+    } else {
+      // Reset data when no dashboard data is available
+      setWeeklyData([]);
+      setDataNotFound(true);
     }
-  }, [selectedDate, weekDays]);
+  }, [dashboardData, weekDays]);
 
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
@@ -45,67 +48,57 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
     });
   };
 
-  // Load dashboard data
-  const loadDashboardData = async () => {
-    try {
-      setDataNotFound(false);
+  // Process fixed expense data from dashboard data
+  const processFixedExpenseData = () => {
+    if (!dashboardData) {
+      setDataNotFound(true);
+      return;
+    }
+
+    setDataNotFound(false);
+
+    if (dashboardData['Expenses']) {
+      // Extract all daily entries into one consolidated table
+      const allDailyEntries = dashboardData.daily_entries?.map((entry) => ({
+        key: `day-${entry.date}`,
+        date: dayjs(entry.date),
+        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+        fixedWeeklyExpenses: entry['Expenses']?.fixed_weekly_expenses || 0
+      })) || [];
+
+      // If weekDays are provided, use them to create the daily data structure
+      let dailyData = allDailyEntries;
+      if (weekDays.length > 0) {
+        // Create daily data structure based on weekDays
+        dailyData = weekDays.map((day) => {
+          // Find existing entry for this day
+          const existingEntry = allDailyEntries.find(entry => 
+            entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+          );
+          
+          return existingEntry || {
+            key: `day-${day.date.format('YYYY-MM-DD')}`,
+            date: day.date,
+            dayName: day.dayName.toLowerCase(),
+            fixedWeeklyExpenses: 0
+          };
+        });
+      } else {
+        // If no weekDays provided, use all daily entries or generate default structure
+        dailyData = allDailyEntries.length > 0 ? allDailyEntries : [];
+      }
       
-      // Use the first day of the week if weekDays are provided, otherwise use selectedDate
       const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
-      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
       
-      if (data && data['Expenses']) {
-        // Extract all daily entries into one consolidated table
-        const allDailyEntries = data.daily_entries?.map((entry) => ({
-          key: `day-${entry.date}`,
-          date: dayjs(entry.date),
-          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-          fixedWeeklyExpenses: entry['Expenses']?.fixed_weekly_expenses || 0
-        })) || [];
-
-        // If weekDays are provided, use them to create the daily data structure
-        let dailyData = allDailyEntries;
-        if (weekDays.length > 0) {
-          // Create daily data structure based on weekDays
-          dailyData = weekDays.map((day) => {
-            // Find existing entry for this day
-            const existingEntry = allDailyEntries.find(entry => 
-              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
-            );
-            
-            return existingEntry || {
-              key: `day-${day.date.format('YYYY-MM-DD')}`,
-              date: day.date,
-              dayName: day.dayName.toLowerCase(),
-              fixedWeeklyExpenses: 0
-            };
-          });
-        }
-
-        const weeklyTableData = [{
-          id: 'consolidated-week',
-          weekTitle: 'Weekly Fixed Expenses Data',
-          startDate: weekStartDate,
-          dailyData: dailyData,
-          // Load weekly goals from API response
-          weeklyTotals: {
-            fixedWeeklyExpenses: parseFloat(data['Expenses']?.fixed_weekly_expenses) || 0
-          }
-        }];
-        setWeeklyData(weeklyTableData);
-      } else {
-        // No data found, reset to defaults
-        setWeeklyData([]);
-      }
-    } catch (error) {
-      // Check if it's a 404 error
-      if (error.response && error.response.status === 404) {
-        setDataNotFound(true);
-        setWeeklyData([]);
-        message.info('No fixed expenses data found for the selected period.');
-      } else {
-        message.error(`Failed to load fixed expenses data: ${error.message}`);
-      }
+      setWeeklyData([{
+        id: 'consolidated-week',
+        weekTitle: 'Weekly Fixed Expenses Data',
+        startDate: weekStartDate,
+        dailyData: dailyData
+      }]);
+    } else {
+      // No data found, reset to defaults
+      setWeeklyData([]);
     }
   };
 
@@ -188,7 +181,14 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
 
       await saveDashboardData(transformedData);
       message.success(isEditMode ? 'Fixed expenses data updated successfully!' : 'Fixed expenses data saved successfully!');
-      await loadDashboardData();
+      
+      // Refresh all dashboard data to show updated data across all components
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      } else {
+        // Fallback: reload data after saving
+        await processFixedExpenseData(); 
+      }
       
       setIsModalVisible(false);
       setEditingWeek(null);
@@ -425,7 +425,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [] }) => {
               extra={
                 <Space>
                   <Button 
-                    onClick={loadDashboardData}
+                    onClick={processFixedExpenseData}
                     loading={storeLoading}
                   >
                     Refresh

@@ -30,13 +30,14 @@ const FoodCostWrapperContent = () => {
 
     // State for Third Party Providers
     const [thirdPartyData, setThirdPartyData] = useState({
-        providers: []
+        providers: [],
+        useHiredPartyDelivery: 'false' // Default to false
     });
 
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
         cogs_goal: "",
-        use_third_party_delivery: false,
+        use_third_party_delivery: false, // Default to false
         delivery_days: []
     });
 
@@ -94,6 +95,12 @@ const FoodCostWrapperContent = () => {
                     useHiredPartyDelivery: data.use_third_party_delivery ? 'true' : 'false'
                 }));
             }
+            
+            // Update combined data with third party delivery status
+            setCombinedData(prev => ({
+                ...prev,
+                use_third_party_delivery: data.use_third_party_delivery || false
+            }));
         } else {
         }
     }, [completeOnboardingData]);
@@ -150,10 +157,21 @@ const FoodCostWrapperContent = () => {
 
     // Function to update third party data
     const updateThirdPartyData = (field, value) => {
+        console.log('🔍 Debug - updateThirdPartyData called with field:', field, 'value:', value);
         setThirdPartyData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Update combined data when useHiredPartyDelivery changes
+        if (field === 'useHiredPartyDelivery') {
+            console.log('🔍 Debug - Updating combined data with use_third_party_delivery:', value === 'true');
+            setCombinedData(prev => ({
+                ...prev,
+                use_third_party_delivery: value === 'true'
+            }));
+        }
+        
         // Clear validation error for this field when user starts typing
         if (validationErrors[field]) {
             clearFieldError(field);
@@ -199,11 +217,14 @@ const FoodCostWrapperContent = () => {
             
             const stepData = {
                 cogs_goal: parseFloat(cogsGoalClean) || 0,
-                use_third_party_delivery: combinedData.use_third_party_delivery || false,
+                uses_third_party_delivery: combinedData.use_third_party_delivery || false,
                 delivery_days: combinedData.delivery_days.map(day => day.toLowerCase()) || [],
                 providers: providersForAPI // Include providers array in API payload
             };
 
+            console.log('🔍 Debug - Step data being sent to API:', stepData);
+            console.log('🔍 Debug - Third party delivery value:', combinedData.use_third_party_delivery);
+            console.log('🔍 Debug - Third party data state:', thirdPartyData);
             
             // Step 4: Call API through Zustand store with success callback
             const result = await submitStepData("Food Cost Details", stepData, (responseData) => {

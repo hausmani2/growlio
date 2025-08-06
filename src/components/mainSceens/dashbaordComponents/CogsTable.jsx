@@ -21,7 +21,7 @@ const handleNumberInput = (value) => {
   return isNaN(num) ? 0 : num;
 };
 
-const CogsTable = ({ selectedDate, weekDays = [] }) => {
+const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyTotals, setWeeklyTotals] = useState({
     cogsBudget: 0,
     cogsActual: 0,
@@ -38,18 +38,27 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
 
   // Store integration
   const { 
-    fetchDashboardData, 
     saveDashboardData, 
     loading: storeLoading, 
     error: storeError 
   } = useStore();
 
-  // Load data when selectedDate or weekDays changes
+  // Process dashboard data when it changes
   useEffect(() => {
-    if (selectedDate) {
-      loadCogsData();
+    if (dashboardData) {
+      processCogsData();
+    } else {
+      // Reset data when no dashboard data is available
+      setWeeklyData([]);
+      setWeeklyTotals({
+        cogsBudget: 0,
+        cogsActual: 0,
+        cogsPercentage: 0,
+        weeklyRemainingCog: 0
+      });
+      setDataNotFound(true);
     }
-  }, [selectedDate, weekDays]);
+  }, [dashboardData, weekDays]);
 
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
@@ -67,99 +76,88 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
     });
   };
 
-  // Load COGS data
-  const loadCogsData = async () => {
-    try {
-      setDataNotFound(false);
+  // Process COGS data from dashboard data
+  const processCogsData = () => {
+    if (!dashboardData) {
+      setDataNotFound(true);
+      return;
+    }
+
+    setDataNotFound(false);
+
+    if (dashboardData["COGS Performance"]) {
+      // Extract weekly totals from the API response
+      const cogsPerformance = dashboardData["COGS Performance"];
       
-      // Use the first day of the week if weekDays are provided, otherwise use selectedDate
+      // Get weekly remaining COGS from daily entries if available
+      const firstDailyEntry = dashboardData.daily_entries?.[0];
+      const weeklyRemainingFromDaily = firstDailyEntry?.["COGS Performance"]?.weekly_remaining_cog;
+      
+      const weeklyTotals = {
+        cogsBudget: formatNumber(cogsPerformance?.cogs_budget || 0),
+        cogsActual: formatNumber(cogsPerformance?.cogs_actual || 0),
+        cogsPercentage: 0, // Will be calculated
+        weeklyRemainingCog: formatNumber(weeklyRemainingFromDaily || cogsPerformance?.weekly_remaining_cog || 0)
+      };
+
+      // Calculate percentage
+      weeklyTotals.cogsPercentage = weeklyTotals.cogsBudget > 0 ? 
+        (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
+
+      // Extract all daily entries into one consolidated table
+      const allDailyEntries = dashboardData.daily_entries?.map((entry) => ({
+        key: `day-${entry.date}`,
+        date: dayjs(entry.date),
+        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+        budget: entry['COGS Performance']?.cogs_budget || 0,
+        actual: entry['COGS Performance']?.cogs_actual || 0,
+        weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0
+      })) || [];
+
+      // If weekDays are provided, use them to create the daily data structure
+      let dailyData = allDailyEntries;
+      if (weekDays.length > 0) {
+        // Create daily data structure based on weekDays
+        dailyData = weekDays.map((day) => {
+          // Find existing entry for this day
+          const existingEntry = allDailyEntries.find(entry => 
+            entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
+          );
+          
+          return existingEntry || {
+            key: `day-${day.date.format('YYYY-MM-DD')}`,
+            date: day.date,
+            dayName: day.dayName.toLowerCase(),
+            budget: 0,
+            actual: 0,
+            weeklyRemainingCog: 0
+          };
+        });
+      } else {
+        // If no weekDays provided, use all daily entries or generate default structure
+        dailyData = allDailyEntries.length > 0 ? allDailyEntries : [];
+      }
+      
       const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
-      const data = await fetchDashboardData(weekStartDate.format('YYYY-MM-DD'));
       
-      if (data && data["COGS Performance"]) {
-        // Extract weekly totals from the API response
-        const cogsPerformance = data["COGS Performance"];
-        
-        const weeklyTotals = {
-          cogsBudget: formatNumber(cogsPerformance?.cogs_budget || 0),
-          cogsActual: formatNumber(cogsPerformance?.cogs_actual || 0),
-          cogsPercentage: 0, // Will be calculated
-          weeklyRemainingCog: formatNumber(cogsPerformance?.weekly_remaining_cog || 0)
-        };
-
-        // Calculate percentage
-        weeklyTotals.cogsPercentage = weeklyTotals.cogsBudget > 0 ? 
-          (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
-
-        // Extract all daily entries into one consolidated table
-        const allDailyEntries = data.daily_entries?.map((entry) => ({
-          key: `day-${entry.date}`,
-          date: dayjs(entry.date),
-          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-          budget: formatNumber(entry["COGS Performance"]?.cogs_budget || 0),
-          actual: formatNumber(entry["COGS Performance"]?.cogs_actual || 0)
-        })) || [];
-
-        // If weekDays are provided, use them to create the daily data structure
-        let dailyData = allDailyEntries;
-        if (weekDays.length > 0) {
-          // Create daily data structure based on weekDays
-          dailyData = weekDays.map((day) => {
-            // Find existing entry for this day
-            const existingEntry = allDailyEntries.find(entry => 
-              entry.date.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD')
-            );
-            
-            return existingEntry || {
-              key: `day-${day.date.format('YYYY-MM-DD')}`,
-              date: day.date,
-              dayName: day.dayName.toLowerCase(),
-              budget: 0,
-              actual: 0
-            };
-          });
-        }
-
-        const weeklyTableData = [{
-          id: 'consolidated-week',
-          weekTitle: 'Weekly COGS Performance Data',
-          startDate: weekStartDate,
-          dailyData: dailyData,
-          // Load weekly goals from API response
-          weeklyTotals: {
-            cogsBudget: weeklyTotals.cogsBudget,
-            cogsActual: weeklyTotals.cogsActual,
-            cogsPercentage: weeklyTotals.cogsPercentage,
-            weeklyRemainingCog: weeklyTotals.weeklyRemainingCog
-          }
-        }];
-        setWeeklyData(weeklyTableData);
-        setWeeklyTotals(weeklyTotals);
-      } else {
-        // No data found, reset to defaults
-        setWeeklyData([]);
-        setWeeklyTotals({
-          cogsBudget: 0,
-          cogsActual: 0,
-          cogsPercentage: 0,
-          weeklyRemainingCog: 0
-        });
-      }
-    } catch (error) {
-      // Check if it's a 404 error
-      if (error.response && error.response.status === 404) {
-        setDataNotFound(true);
-        setWeeklyData([]);
-        setWeeklyTotals({
-          cogsBudget: 0,
-          cogsActual: 0,
-          cogsPercentage: 0,
-          weeklyRemainingCog: 0
-        });
-        message.info('No COGS data found for the selected period.');
-      } else {
-        message.error(`Failed to load COGS data: ${error.message}`);
-      }
+      setWeeklyData([{
+        id: 'consolidated-week',
+        weekTitle: 'Weekly COGS Data',
+        startDate: weekStartDate,
+        dailyData: dailyData,
+        weeklyTotals: weeklyTotals
+      }]);
+      
+      setWeeklyTotals(weeklyTotals);
+    } else {
+      // No data found, reset to defaults
+      setWeeklyData([]);
+      setWeeklyTotals({
+        cogsBudget: 0,
+        cogsActual: 0,
+        cogsPercentage: 0,
+        weeklyRemainingCog: 0
+      });
     }
   };
 
@@ -245,14 +243,22 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
           daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
             cogs_budget: (day.budget || 0),
-            cogs_actual: (day.actual || 0)
+            cogs_actual: (day.actual || 0),
+            weekly_remaining_cog: finalTotals.weeklyRemainingCog // Add weekly remaining COGS to each day
           }))
         }
       };
 
-      await saveDashboardData(transformedData);
-      message.success(isEditMode ? 'COGS data updated successfully!' : 'COGS data saved successfully!');
-      await loadCogsData();
+             await saveDashboardData(transformedData);
+       message.success(isEditMode ? 'COGS data updated successfully!' : 'COGS data saved successfully!');
+       
+       // Refresh all dashboard data to show updated data across all components
+       if (refreshDashboardData) {
+         await refreshDashboardData();
+       } else {
+         // Fallback: reload data after saving to update totals and remaining COGS
+         processCogsData(); 
+       } 
       
       setIsModalVisible(false);
       setEditingWeek(null);
@@ -296,7 +302,17 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
 
     useEffect(() => {
       if (editingWeek) {
-        setWeekFormData(editingWeek);
+        // Ensure editingWeek has weeklyTotals property
+        const weekDataWithTotals = {
+          ...editingWeek,
+          weeklyTotals: editingWeek.weeklyTotals || {
+            cogsBudget: 0,
+            cogsActual: 0,
+            cogsPercentage: 0,
+            weeklyRemainingCog: 0
+          }
+        };
+        setWeekFormData(weekDataWithTotals);
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
@@ -478,7 +494,8 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
               });
 
               const percentage = totals.budget > 0 ? (totals.actual / totals.budget) * 100 : 0;
-              const remaining = totals.budget - totals.actual;
+              // Use the weekly remaining COGS from the form data
+              const remaining = weekFormData.weeklyTotals.weeklyRemainingCog || 0;
 
               return (
                 <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
@@ -642,7 +659,7 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
               extra={
                 <Space>
                   <Button 
-                    onClick={loadCogsData}
+                    onClick={processCogsData}
                     loading={storeLoading}
                   >
                     Refresh
@@ -716,8 +733,9 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                                 actual: 0
                               });
 
-                              const weekPercentage = weekTotals.budget > 0 ? (weekTotals.actual / weekTotals.budget) * 100 : 0;
-                              const weekRemaining = weekTotals.budget - weekTotals.actual;
+                                                             const weekPercentage = weekTotals.budget > 0 ? (weekTotals.actual / weekTotals.budget) * 100 : 0;
+                                                             // Use the weekly remaining COGS from the first daily entry
+                              const weekRemaining = pageData.length > 0 ? parseFloat(pageData[0].weeklyRemainingCog) || 0 : parseFloat(weeklyTotals.weeklyRemainingCog) || 0;
 
                               return (
                                 <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
@@ -733,9 +751,9 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                                   <Table.Summary.Cell index={3}>
                                     <Text strong>{weekPercentage.toFixed(1)}%</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={4}>
+                                  {/* <Table.Summary.Cell index={4}>
                                     <Text strong>${weekRemaining.toFixed(2)}</Text>
-                                  </Table.Summary.Cell>
+                                  </Table.Summary.Cell> */}
                                 </Table.Summary.Row>
                               );
                             }}
@@ -781,19 +799,18 @@ const CogsTable = ({ selectedDate, weekDays = [] }) => {
                                   );
                                 }
                               },
-                              {
-                                title: 'Weekly Remaining COGS',
-                                key: 'remaining',
-                                width: 120,
-                                render: (_, record) => {
-                                  const budget = parseFloat(record.budget) || 0;
-                                  const actual = parseFloat(record.actual) || 0;
-                                  const remaining = budget - actual;
-                                  return (
-                                    <Text>${remaining.toFixed(2)}</Text>
-                                  );
-                                }
-                              }
+                                                             {
+                                 title: 'Weekly Remaining COGS',
+                                 key: 'remaining',
+                                 width: 120,
+                                 render: (_, record) => {
+                                   // Use the weekly remaining COGS from the record data (prioritize record value)
+                                   const weeklyRemainingCog = parseFloat(record.weeklyRemainingCog) || 0;
+                                   return (
+                                     <Text>${weeklyRemainingCog.toFixed(2)}</Text>
+                                   );
+                                 }
+                               }
                             ]}
                           />
                         </Card>
