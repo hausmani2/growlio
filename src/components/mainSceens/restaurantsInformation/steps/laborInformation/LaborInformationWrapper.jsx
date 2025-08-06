@@ -28,20 +28,31 @@ const LaborInformationWrapperContent = () => {
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
+        console.log('LaborInformationWrapper - completeOnboardingData:', completeOnboardingData);
         const labourInfoData = completeOnboardingData["Labour Information"];
+        console.log('LaborInformationWrapper - labourInfoData:', labourInfoData);
+        
         if (labourInfoData && labourInfoData.data) {
             const data = labourInfoData.data;
+            console.log('LaborInformationWrapper - data:', data);
+            console.log('LaborInformationWrapper - data.goal:', data.goal);
+            console.log('LaborInformationWrapper - data.labour_goal:', data.labour_goal);
 
             setLaborData(prev => ({
                 ...prev,
-                labour_goal: data.labour_goal?.toString() || '',
+                labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : '',
                 avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                 labor_record_method: data.labor_record_method || 'daily_hours_costs',
                 daily_ticket_count: data.daily_ticket_count ? "2" : "1",
-                forward_prev_week_rate: data.forward_prev_week_rate ? "2" : "1"
+                forward_prev_week_rate: data.forward_previous_week_rate ? "2" : "1"
             }));
         }
     }, [completeOnboardingData]);
+
+    // Monitor laborData changes
+    useEffect(() => {
+        console.log('LaborInformationWrapper - laborData changed:', laborData);
+    }, [laborData]);
 
     // Clear error when component mounts
     useEffect(() => {
@@ -80,16 +91,25 @@ const LaborInformationWrapperContent = () => {
                 return { success: false, error: "Validation failed" };
             }
 
+            // Additional check for labour_goal
+            if (!laborData.labour_goal || laborData.labour_goal.trim() === '') {
+                console.log("❌ labour_goal is empty or missing");
+                message.error("Please select a labor goal percentage");
+                return { success: false, error: "Labour goal is required" };
+            }
+
             // Step 2: Prepare data for API
+            console.log("Current laborData.labour_goal:", laborData.labour_goal);
+            console.log("Current laborData.labour_goal type:", typeof laborData.labour_goal);
+            
             const stepData = {
-                goal:"0",
-                needs_attention:"0",
-                danger:"0",
                 labour_goal: laborData.labour_goal,
+                danger:"0",
+                needs_attention:"0",
                 avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                 labor_record_method: laborData.labor_record_method,
                 daily_ticket_count: laborData.daily_ticket_count === "2",
-                forward_prev_week_rate: laborData.forward_prev_week_rate === "2"
+                forward_previous_week_rate: laborData.forward_prev_week_rate === "2"
             };
 
             console.log("Prepared stepData for API:", stepData);

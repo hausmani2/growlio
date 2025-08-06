@@ -565,6 +565,8 @@ const createOnBoardingSlice = (set, get) => ({
                         }
                     }
                 } else {
+                    // No restaurant_id found in response data
+                    console.log('No restaurant_id found in response data');
                 }
             }
             
@@ -812,7 +814,7 @@ const createOnBoardingSlice = (set, get) => ({
                 } else if (stepName === "Labour Information" && data) {
                     // Handle Labour Information data mapping
                     processedData = {
-                        goal: data.goal || "",
+                        goal: data.labour_goal || data.goal || "",
                         needs_attention: data.attention || "", // API uses 'attention', we expect 'needs_attention'
                         danger: data.danger || "",
                         avg_hourly_rate: data.avg_hourly_rate || 0,

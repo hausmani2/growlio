@@ -1,9 +1,15 @@
 import { Select } from 'antd';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
+    console.log('LaborInformation - data:', data);
+    console.log('LaborInformation - labour_goal:', data.labour_goal);
+    console.log('LaborInformation - labour_goal type:', typeof data.labour_goal);
+    
     const handleLaborGoalChange = (value) => {
         // Convert the value to just the number if it contains percentage symbol
         const numericValue = value.toString().replace('%', '');
+        console.log('LaborInformation - handleLaborGoalChange - value:', value);
+        console.log('LaborInformation - handleLaborGoalChange - numericValue:', numericValue);
         updateData('labour_goal', numericValue);
     };
 
@@ -63,7 +69,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                     <Select
                         id="labour_goal"
                         placeholder="Select Percentage"
-                        value={data.labour_goal || undefined}
+                        value={data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : undefined}
                         onChange={handleLaborGoalChange}
                         options={generateLaborPercentageOptions()}
                         style={{
@@ -72,6 +78,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                         }}
                         className={`w-full ${errors.labour_goal ? 'border-red-500' : ''}`}
                         status={errors.labour_goal ? 'error' : ''}
+
                     />
                     {errors.labour_goal && (
                         <span className="text-red-500 text-sm">{errors.labour_goal}</span>
