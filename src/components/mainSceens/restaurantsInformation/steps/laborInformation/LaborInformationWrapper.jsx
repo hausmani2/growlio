@@ -19,7 +19,7 @@ const LaborInformationWrapperContent = () => {
 
     // State for labor data
     const [laborData, setLaborData] = useState({
-        labor_goal: '',
+        labour_goal: '',
         avg_hourly_rate: '',
         labor_record_method: 'daily_hours_costs',
         daily_ticket_count: '',
@@ -34,7 +34,7 @@ const LaborInformationWrapperContent = () => {
 
             setLaborData(prev => ({
                 ...prev,
-                labor_goal: data.labor_goal?.toString() || '',
+                labour_goal: data.labour_goal?.toString() || '',
                 avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                 labor_record_method: data.labor_record_method || 'daily_hours_costs',
                 daily_ticket_count: data.daily_ticket_count ? "2" : "1",
@@ -85,7 +85,7 @@ const LaborInformationWrapperContent = () => {
                 goal:"0",
                 needs_attention:"0",
                 danger:"0",
-                labor_goal: laborData.labor_goal,
+                labour_goal: laborData.labour_goal,
                 avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                 labor_record_method: laborData.labor_record_method,
                 daily_ticket_count: laborData.daily_ticket_count === "2",

@@ -2,7 +2,9 @@ import { Select } from 'antd';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
     const handleLaborGoalChange = (value) => {
-        updateData('labor_goal', value);
+        // Convert the value to just the number if it contains percentage symbol
+        const numericValue = value.toString().replace('%', '');
+        updateData('labour_goal', numericValue);
     };
 
     // Generate percentage options from 15% to 40% with color coding
@@ -24,7 +26,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
             }
             
             options.push({
-                value: `${i}%`,
+                value: i.toString(), // Use just the number as value
                 label: (
                     <span style={{ color: zoneColor }}>
                         {i}% - {zoneLabel}
@@ -55,24 +57,24 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
 
                 </div>
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="labor_goal" className="text-base !font-bold text-neutral-600">
+                    <label htmlFor="labour_goal" className="text-base !font-bold text-neutral-600">
                         Labor Goal as Percentage of Sales <span className="text-red-500">*</span>
                     </label>
                     <Select
-                        id="labor_goal"
+                        id="labour_goal"
                         placeholder="Select Percentage"
-                        value={data.labor_goal || undefined}
+                        value={data.labour_goal || undefined}
                         onChange={handleLaborGoalChange}
                         options={generateLaborPercentageOptions()}
                         style={{
                             height: '40px',
                             fontSize: '16px'
                         }}
-                        className={`w-full ${errors.labor_goal ? 'border-red-500' : ''}`}
-                        status={errors.labor_goal ? 'error' : ''}
+                        className={`w-full ${errors.labour_goal ? 'border-red-500' : ''}`}
+                        status={errors.labour_goal ? 'error' : ''}
                     />
-                    {errors.labor_goal && (
-                        <span className="text-red-500 text-sm">{errors.labor_goal}</span>
+                    {errors.labour_goal && (
+                        <span className="text-red-500 text-sm">{errors.labour_goal}</span>
                     )}
                     <span className='text-base font-regular text-neutral-600'>Green Zone (Goal): 25% | Yellow Zone (Needs Attention): 27% | Red Zone (Danger): 30%</span>
                 </div>

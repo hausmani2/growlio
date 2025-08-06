@@ -313,26 +313,39 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
       }
     });
 
-    useEffect(() => {
-      if (editingWeek) {
-        setWeekFormData(editingWeek);
-      } else {
-        setWeekFormData({
-          weekTitle: `Week ${weeklyData.length + 1}`,
-          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
-          weeklyTotals: {
-            laborHoursBudget: 0,
-            laborHoursActual: 0,
-            budgetedLaborDollars: 0,
-            actualLaborDollars: 0,
-            dailyLaborRate: hourlyRate,
-            dailyLaborPercentage: 0,
-            weeklyLaborPercentage: 0
-          }
-        });
-      }
-    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
+         useEffect(() => {
+       if (editingWeek) {
+         // Ensure editingWeek has the proper structure with weeklyTotals
+         const editingWeekWithDefaults = {
+           ...editingWeek,
+           weeklyTotals: editingWeek.weeklyTotals || {
+             laborHoursBudget: 0,
+             laborHoursActual: 0,
+             budgetedLaborDollars: 0,
+             actualLaborDollars: 0,
+             dailyLaborRate: hourlyRate,
+             dailyLaborPercentage: 0,
+             weeklyLaborPercentage: 0
+           }
+         };
+         setWeekFormData(editingWeekWithDefaults);
+       } else {
+         setWeekFormData({
+           weekTitle: `Week ${weeklyData.length + 1}`,
+           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+           dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
+           weeklyTotals: {
+             laborHoursBudget: 0,
+             laborHoursActual: 0,
+             budgetedLaborDollars: 0,
+             actualLaborDollars: 0,
+             dailyLaborRate: hourlyRate,
+             dailyLaborPercentage: 0,
+             weeklyLaborPercentage: 0
+           }
+         });
+       }
+     }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
@@ -382,122 +395,122 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
             <Row gutter={16}>
               <Col span={6}>
                 <Text strong>Labor Hours - Budget:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.laborHoursBudget}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        laborHoursBudget: value
-                      }
-                    }));
-                  }}
-                  suffix="hrs"
-                  placeholder="0.0"
-                />
+                                 <Input
+                   type="number"
+                   value={weekFormData.weeklyTotals?.laborHoursBudget || 0}
+                   onChange={(e) => {
+                     const value = parseFloat(e.target.value) || 0;
+                     setWeekFormData(prev => ({
+                       ...prev,
+                       weeklyTotals: {
+                         ...prev.weeklyTotals,
+                         laborHoursBudget: value
+                       }
+                     }));
+                   }}
+                   suffix="hrs"
+                   placeholder="0.0"
+                 />
               </Col>
               <Col span={6}>
                 <Text strong>Labor Hours - Actual:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.laborHoursActual}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        laborHoursActual: value
-                      }
-                    }));
-                  }}
-                  suffix="hrs"
-                  placeholder="0.0"
-                />
+                                 <Input
+                   type="number"
+                   value={weekFormData.weeklyTotals?.laborHoursActual || 0}
+                   onChange={(e) => {
+                     const value = parseFloat(e.target.value) || 0;
+                     setWeekFormData(prev => ({
+                       ...prev,
+                       weeklyTotals: {
+                         ...prev.weeklyTotals,
+                         laborHoursActual: value
+                       }
+                     }));
+                   }}
+                   suffix="hrs"
+                   placeholder="0.0"
+                 />
               </Col>
               <Col span={6}>
                 <Text strong>Budgeted Labor $:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.budgetedLaborDollars}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        budgetedLaborDollars: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                />
+                                 <Input
+                   type="number"
+                   value={weekFormData.weeklyTotals?.budgetedLaborDollars || 0}
+                   onChange={(e) => {
+                     const value = parseFloat(e.target.value) || 0;
+                     setWeekFormData(prev => ({
+                       ...prev,
+                       weeklyTotals: {
+                         ...prev.weeklyTotals,
+                         budgetedLaborDollars: value
+                       }
+                     }));
+                   }}
+                   prefix="$"
+                   placeholder="0.00"
+                 />
               </Col>
               <Col span={6}>
                 <Text strong>Actual Labor $:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.actualLaborDollars}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        actualLaborDollars: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                />
+                                 <Input
+                   type="number"
+                   value={weekFormData.weeklyTotals?.actualLaborDollars || 0}
+                   onChange={(e) => {
+                     const value = parseFloat(e.target.value) || 0;
+                     setWeekFormData(prev => ({
+                       ...prev,
+                       weeklyTotals: {
+                         ...prev.weeklyTotals,
+                         actualLaborDollars: value
+                       }
+                     }));
+                   }}
+                   prefix="$"
+                   placeholder="0.00"
+                 />
               </Col>
             </Row>
             <Row gutter={16} style={{ marginTop: 16 }}>
               <Col span={6}>
                 <Text strong>Daily Labor Rate:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.dailyLaborRate}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        dailyLaborRate: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                />
+                                 <Input
+                   type="number"
+                   value={weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate}
+                   onChange={(e) => {
+                     const value = parseFloat(e.target.value) || 0;
+                     setWeekFormData(prev => ({
+                       ...prev,
+                       weeklyTotals: {
+                         ...prev.weeklyTotals,
+                         dailyLaborRate: value
+                       }
+                     }));
+                   }}
+                   prefix="$"
+                   placeholder="0.00"
+                 />
               </Col>
               <Col span={6}>
                 <Text strong>Daily Labor %:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.actualLaborDollars > 0 ? 
-                    ((weekFormData.weeklyTotals.actualLaborDollars / weekFormData.weeklyTotals.dailyLaborRate)).toFixed(1) : 0}
-                  suffix="%"
-                  disabled
-                  style={{ backgroundColor: '#f5f5f5' }}
-                />
+                                 <Input
+                   type="number"
+                   value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
+                     (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / (weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate))).toFixed(1) : 0}
+                   suffix="%"
+                   disabled
+                   style={{ backgroundColor: '#f5f5f5' }}
+                 />
               </Col>
               <Col span={6}>
                 <Text strong>Weekly Labor %:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.actualLaborDollars > 0 ? 
-                    ((weekFormData.weeklyTotals.actualLaborDollars / (weekFormData.weeklyTotals.actualLaborDollars + 5000)) * 100).toFixed(1) : 0}
-                  suffix="%"
-                  disabled
-                  style={{ backgroundColor: '#f5f5f5' }}
-                />
+                                 <Input
+                   type="number"
+                   value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
+                     (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / ((weekFormData.weeklyTotals?.actualLaborDollars || 0) + 5000)) * 100).toFixed(1) : 0}
+                   suffix="%"
+                   disabled
+                   style={{ backgroundColor: '#f5f5f5' }}
+                 />
               </Col>
             </Row>
           </Card>
