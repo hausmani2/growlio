@@ -62,7 +62,12 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             const dynamicTotal = updatedFields.reduce((sum, field) => {
                 return sum + parseFloat(field.value || 0);
             }, 0);
-            memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+            
+            // Only update if the total has actually changed
+            const currentTotal = parseFloat(data.totalFixedCost || 0);
+            if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
+                memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+            }
         }
     };
 
@@ -77,7 +82,12 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             return sum + parseFloat(field.value || 0);
         }, 0);
-        memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+        
+        // Only update if the total has actually changed
+        const currentTotal = parseFloat(data.totalFixedCost || 0);
+        if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
+            memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+        }
     };
 
     return (

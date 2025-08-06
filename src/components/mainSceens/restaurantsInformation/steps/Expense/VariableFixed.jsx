@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Button, Modal, Input } from "antd";
+import React, { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 
-const VariableFixed = ({ data, updateData, errors = {} }) => {
+const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicVariableFields || []);
@@ -18,6 +18,27 @@ const VariableFixed = ({ data, updateData, errors = {} }) => {
     const memoizedUpdateData = useCallback((field, value) => {
         updateData(field, value);
     }, [updateData]);
+
+    // Helper function to check if field should show percentage dropdown
+    const shouldShowPercentageDropdown = (label) => {
+        const royaltyFields = ["royalty", "brand", "fund"];
+        const labelLower = label.toLowerCase();
+        return royaltyFields.some(field => labelLower.includes(field));
+    };
+
+    // Generate percentage options for dropdown
+    const percentageOptions = Array.from({ length: 10 }, (_, i) => ({
+        value: (i + 1).toString(),
+        label: `${i + 1}%`
+    }));
+
+    // Expose functions to parent component
+    useImperativeHandle(ref, () => ({
+        getFieldsForAPI: () => {
+            // Return all fields for API calls - percentage fields should be included in API
+            return dynamicFields;
+        }
+    }));
 
     const showModal = () => {
         setIsModalVisible(true);
@@ -49,19 +70,26 @@ const VariableFixed = ({ data, updateData, errors = {} }) => {
     };
 
     const handleDynamicFieldChange = (id, value) => {
-        if (value === '' || parseFloat(value) >= 0) {
-            const updatedFields = dynamicFields.map(field => 
-                field.id === id ? { ...field, value } : field
-            );
-            setDynamicFields(updatedFields);
-            
-            // Update parent with new fields
-            memoizedUpdateData('dynamicVariableFields', updatedFields);
-            
-            // Calculate and update total
-            const dynamicTotal = updatedFields.reduce((sum, field) => {
-                return sum + parseFloat(field.value || 0);
-            }, 0);
+        const updatedFields = dynamicFields.map(field => 
+            field.id === id ? { ...field, value } : field
+        );
+        setDynamicFields(updatedFields);
+        
+        // Update parent with new fields
+        memoizedUpdateData('dynamicVariableFields', updatedFields);
+        
+        // Calculate and update total - exclude percentage fields
+        const dynamicTotal = updatedFields.reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            if (shouldShowPercentageDropdown(field.label)) {
+                return sum;
+            }
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+        
+        // Only update if the total has actually changed
+        const currentTotal = parseFloat(data.totalVariableCost || 0);
+        if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
             memoizedUpdateData('totalVariableCost', dynamicTotal.toFixed(2));
         }
     };
@@ -73,11 +101,20 @@ const VariableFixed = ({ data, updateData, errors = {} }) => {
         // Update parent with new fields
         memoizedUpdateData('dynamicVariableFields', updatedFields);
         
-        // Calculate and update total
+        // Calculate and update total - exclude percentage fields
         const dynamicTotal = updatedFields.reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            if (shouldShowPercentageDropdown(field.label)) {
+                return sum;
+            }
             return sum + parseFloat(field.value || 0);
         }, 0);
-        memoizedUpdateData('totalVariableCost', dynamicTotal.toFixed(2));
+        
+        // Only update if the total has actually changed
+        const currentTotal = parseFloat(data.totalVariableCost || 0);
+        if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
+            memoizedUpdateData('totalVariableCost', dynamicTotal.toFixed(2));
+        }
     };
 
     return (
@@ -103,22 +140,38 @@ const VariableFixed = ({ data, updateData, errors = {} }) => {
                                 </label>
                                 <div className="flex items-center gap-2 w-full">
                                     <div className="relative w-full">
-                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                        <Input 
-                                            type="number" 
-                                            id={field.key} 
-                                            placeholder={`Enter ${field.label}`} 
-                                            className={`w-full p-2 pl-8 border h-[40px] rounded-md text-[18px] font-normal text-neutral-700 ${errors[`dynamic_variable_${index}_amount`] ? 'border-red-500' : 'border-gray-300'}`}
-                                            value={field.value}
-                                            onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
-                                            min="0"
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-') {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                            status={errors[`dynamic_variable_${index}_amount`] ? 'error' : ''}
-                                        />
+                                        {shouldShowPercentageDropdown(field.label) ? (
+                                            // Percentage dropdown for Royalty and Brand and fund with small/large
+                                            <Select
+                                                id={field.key}
+                                                placeholder={`Select ${field.label} percentage`}
+                                                className={`w-full h-[40px] text-[18px] font-normal text-neutral-700 ${errors[`dynamic_variable_${index}_amount`] ? 'border-red-500' : 'border-gray-300'}`}
+                                                value={field.value}
+                                                onChange={(value) => handleDynamicFieldChange(field.id, value)}
+                                                options={percentageOptions}
+                                                status={errors[`dynamic_variable_${index}_amount`] ? 'error' : ''}
+                                            />
+                                        ) : (
+                                            // Normal $ input for other fields
+                                            <>
+                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
+                                                <Input 
+                                                    type="number" 
+                                                    id={field.key} 
+                                                    placeholder={`Enter ${field.label}`} 
+                                                    className={`w-full p-2 pl-8 border h-[40px] rounded-md text-[18px] font-normal text-neutral-700 ${errors[`dynamic_variable_${index}_amount`] ? 'border-red-500' : 'border-gray-300'}`}
+                                                    value={field.value}
+                                                    onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
+                                                    min="0"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-') {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
+                                                    status={errors[`dynamic_variable_${index}_amount`] ? 'error' : ''}
+                                                />
+                                            </>
+                                        )}
                                     </div>
                                     <button 
                                         className="text-base !font-bold text-neutral-600 cursor-pointer !text-red-500"
@@ -198,6 +251,6 @@ const VariableFixed = ({ data, updateData, errors = {} }) => {
             </Modal>
         </div>
     )
-};
+});
 
 export default VariableFixed;

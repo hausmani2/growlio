@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { message } from "antd";
 import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
@@ -15,6 +15,9 @@ const ExpenseWrapperContent = () => {
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
+    
+    // Ref for VariableFixed component to access percentage field filtering
+    const variableFixedRef = useRef();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -52,7 +55,16 @@ const ExpenseWrapperContent = () => {
                 }));
                 
                 if (dynamicFixedCosts.length > 0) {
-                    setExpenseData(prev => ({ ...prev, dynamicFixedFields: dynamicFixedCosts }));
+                    // Calculate total fixed cost
+                    const totalFixed = dynamicFixedCosts.reduce((sum, field) => {
+                        return sum + parseFloat(field.value || 0);
+                    }, 0);
+                    
+                    setExpenseData(prev => ({ 
+                        ...prev, 
+                        dynamicFixedFields: dynamicFixedCosts,
+                        totalFixedCost: totalFixed.toFixed(2)
+                    }));
                 }
             }
             
@@ -66,7 +78,24 @@ const ExpenseWrapperContent = () => {
                 }));
                 
                 if (dynamicVariableCosts.length > 0) {
-                    setExpenseData(prev => ({ ...prev, dynamicVariableFields: dynamicVariableCosts }));
+                    // Calculate total variable cost (excluding percentage fields)
+                    const totalVariable = dynamicVariableCosts.reduce((sum, field) => {
+                        // Skip percentage fields (royalty/brand and fund) from total calculation
+                        const royaltyFields = ["royalty", "brand and fund"];
+                        const labelLower = field.label.toLowerCase();
+                        const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
+                        
+                        if (isPercentageField) {
+                            return sum;
+                        }
+                        return sum + parseFloat(field.value || 0);
+                    }, 0);
+                    
+                    setExpenseData(prev => ({ 
+                        ...prev, 
+                        dynamicVariableFields: dynamicVariableCosts,
+                        totalVariableCost: totalVariable.toFixed(2)
+                    }));
                 }
             }
         } else {
@@ -97,13 +126,26 @@ const ExpenseWrapperContent = () => {
                 amount: parseFloat(field.value)
             }));
 
-        // Dynamic variable costs
-        const dynamicVariableCosts = expenseData.dynamicVariableFields
-            .filter(field => parseFloat(field.value) > 0)
-            .map(field => ({
-                name: field.label,
-                amount: parseFloat(field.value)
-            }));
+        // Dynamic variable costs - include all fields in API
+        let dynamicVariableCosts = [];
+        if (variableFixedRef.current) {
+            // Use the ref to get all fields (including percentage fields)
+            const allFields = variableFixedRef.current.getFieldsForAPI();
+            dynamicVariableCosts = allFields
+                .filter(field => parseFloat(field.value) > 0)
+                .map(field => ({
+                    name: field.label,
+                    amount: parseFloat(field.value)
+                }));
+        } else {
+            // Fallback: include all fields
+            dynamicVariableCosts = expenseData.dynamicVariableFields
+                .filter(field => parseFloat(field.value) > 0)
+                .map(field => ({
+                    name: field.label,
+                    amount: parseFloat(field.value)
+                }));
+        }
 
         const newApiData = {
             fixed_costs: dynamicFixedCosts,
@@ -118,6 +160,46 @@ const ExpenseWrapperContent = () => {
             setApiExpenseData(newApiData);
         }
     }, [expenseData, apiExpenseData]);
+
+    // Recalculate totals whenever dynamic fields change
+    useEffect(() => {
+        // Calculate total fixed cost
+        const totalFixed = expenseData.dynamicFixedFields.reduce((sum, field) => {
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+
+        // Calculate total variable cost (excluding percentage fields)
+        const totalVariable = expenseData.dynamicVariableFields.reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            const royaltyFields = ["royalty", "brand and fund"];
+            const labelLower = field.label.toLowerCase();
+            const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
+            
+            if (isPercentageField) {
+                return sum;
+            }
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+
+        // Debug logging
+        console.log('ExpenseWrapper Debug:', {
+            dynamicFixedFields: expenseData.dynamicFixedFields,
+            dynamicVariableFields: expenseData.dynamicVariableFields,
+            currentTotalFixed: expenseData.totalFixedCost,
+            currentTotalVariable: expenseData.totalVariableCost,
+            calculatedTotalFixed: totalFixed,
+            calculatedTotalVariable: totalVariable
+        });
+
+        // Update totals if they've changed
+        if (parseFloat(expenseData.totalFixedCost) !== totalFixed) {
+            setExpenseData(prev => ({ ...prev, totalFixedCost: totalFixed.toFixed(2) }));
+        }
+        
+        if (parseFloat(expenseData.totalVariableCost) !== totalVariable) {
+            setExpenseData(prev => ({ ...prev, totalVariableCost: totalVariable.toFixed(2) }));
+        }
+    }, [expenseData.dynamicFixedFields, expenseData.dynamicVariableFields]);
 
     const updateExpenseData = useCallback((field, value) => {
         setExpenseData(prev => {
@@ -175,37 +257,33 @@ const ExpenseWrapperContent = () => {
         return errors;
     };
 
-    // Handle save functionality
     const handleSave = async () => {
         try {
-            // Step 1: Prepare comprehensive data for validation
-            const validationData = {
-                ...apiExpenseData,
-                dynamicFixedFields: expenseData.dynamicFixedFields,
-                dynamicVariableFields: expenseData.dynamicVariableFields,
-                totalFixedCost: expenseData.totalFixedCost,
-                totalVariableCost: expenseData.totalVariableCost
-            };
+            // Step 1: Validate the API-ready data
+            const validationErrors = validateExpenseData(apiExpenseData);
             
-            // Step 2: Custom validation
-            const customErrors = validateExpenseData(apiExpenseData);
-            if (Object.keys(customErrors).length > 0) {
-                if (customErrors.no_fields) {
-                    message.error(customErrors.no_fields);
-                } else {
-                    message.error("Please fill in all required fields correctly");
-                }
-                return { success: false, error: "Validation failed" };
+            if (Object.keys(validationErrors).length > 0) {
+                setValidationErrors(validationErrors);
+                message.error("Please fix the validation errors before saving");
+                return;
             }
 
-            // Step 3: Standard validation
-            const validationResult = validateExpense(validationData);
+            // Step 2: Validate using the step validation hook
+            const isValid = validateExpense(apiExpenseData);
             
-            if (!validationResult || Object.keys(validationResult).length > 0) {
-                // Set validation errors in state so they display in UI
-                setValidationErrors(validationResult);
-                message.error("Please fill in all required fields correctly");
-                return { success: false, error: "Validation failed" };
+            if (!isValid) {
+                message.error("Please fix the validation errors before saving");
+                return;
+            }
+
+            // Step 3: Check if we have any expenses to save
+            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
+            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
+            
+            if (!hasFixedCosts && !hasVariableCosts) {
+                setValidationErrors({ no_expenses: "Please add at least one expense before saving" });
+                message.error("Please add at least one expense before saving");
+                return;
             }
 
             // Step 4: Prepare data for API
@@ -229,63 +307,28 @@ const ExpenseWrapperContent = () => {
                 if (responseData && responseData.restaurant_id) {
                 }
 
-                // Step 6: Handle navigation based on mode
                 if (isUpdateMode) {
-                    // In update mode, stay on the same page or go to dashboard
+                    // Update mode: show success message and stay on current page
                     message.success("Expense information updated successfully!");
                 } else {
-                    // In onboarding mode, check if onboarding is complete
-                    message.success("Expense information saved successfully!");
-                    
-                    try {
-                        const completionResult = await checkOnboardingCompletion();
-                        
-                        if (completionResult.success && completionResult.isComplete) {
-                            message.success("Congratulations! Your onboarding is complete!");
-                            
-                            // Navigate to completion page
-                            completeOnboarding();
-                        } else {
-                            message.info("Expense saved! Please complete remaining steps.");
-                            
-                            // Stay on current step or navigate to next incomplete step
-                            navigateToNextStep();
-                        }
-                    } catch (error) {
-                        console.error("❌ Error checking onboarding completion:", error);
-                        message.warning("Expense saved! Please check your onboarding status.");
-                        
-                        // Fallback: navigate to completion page
-                        completeOnboarding();
-                    }
+                    // Onboarding mode: navigate to next step
+                    await navigateToNextStep();
                 }
             });
-            
-            // Step 7: Handle success
-            if (result.success) {
-                return { success: true };
-            } else {
-                message.error("Failed to save expense information. Please try again.");
-                return { success: false, error: "API call failed" };
+
+            if (!result.success) {
+                console.error("Failed to save expense data:", result.error);
+                message.error("Failed to save expense data. Please try again.");
             }
+
         } catch (error) {
             console.error("Error saving expense data:", error);
-            message.error("An error occurred while saving. Please try again.");
-            return { success: false, error: error.message };
+            message.error("An unexpected error occurred. Please try again.");
         }
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            {isUpdateMode && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                    <p className="text-blue-700">
-                        You are updating your expense information. Changes will be saved when you click "Save".
-                    </p>
-                </div>
-            )}
-
+        <div>
             {/* Show prominent error message when no expenses are added */}
             {validationErrors.no_expenses && (
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -302,6 +345,7 @@ const ExpenseWrapperContent = () => {
                 errors={validationErrors}
             />
             <VariableFixed 
+                ref={variableFixedRef}
                 data={expenseData} 
                 updateData={updateExpenseData}
                 errors={validationErrors}

@@ -16,7 +16,18 @@ const TotalExpense = ({ data,  onSave }) => {
     const calculateTotalExpenses = () => {
         const variableCost = parseFloat(data.totalVariableCost) || 0;
         const fixedCost = parseFloat(data.totalFixedCost) || 0;
-        return (variableCost + fixedCost).toFixed(2);
+        const total = (variableCost + fixedCost).toFixed(2);
+        
+        // Debug logging
+        console.log('TotalExpense Debug:', {
+            totalVariableCost: data.totalVariableCost,
+            totalFixedCost: data.totalFixedCost,
+            variableCost,
+            fixedCost,
+            total
+        });
+        
+        return total;
     };
     const handleBack = () => {
         handleTabClick(3);

@@ -33,6 +33,14 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
         { value: 'false', label: 'No' }
     ];
 
+    // Provider name options
+    const providerOptions = [
+        { value: 'Door Dash', label: 'Door Dash' },
+        { value: 'Skip/ Dishes', label: 'Skip/ Dishes' },
+        { value: 'Uber Eats', label: 'Uber Eats' },
+        { value: 'Other', label: 'Other' }
+    ];
+
     // Initialize providers from data if it exists
     useEffect(() => {
         if (data.providers && data.providers.length > 0) {
@@ -152,13 +160,13 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
                                             Provider Name
                                             <span className="text-red-500">*</span>
                                         </label>
-                                        <Input
-                                            type="text"
+                                        <Select
                                             id={`providerName-${provider.id}`}
-                                            placeholder="Enter Provider Name"
-                                            className={`w-full p-2 border !h-[40px] rounded-md text-base font-normal text-neutral-700 ${errors[`provider_${index}_name`] ? 'border-red-500' : 'border-gray-300'}`}
+                                            placeholder="Select Provider Name"
+                                            className={`w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700 ${errors[`provider_${index}_name`] ? 'border-red-500' : 'border-gray-300'}`}
                                             value={provider.providerName || undefined}
-                                            onChange={(e) => updateProvider(provider.id, 'providerName', e.target.value)}
+                                            onChange={(value) => updateProvider(provider.id, 'providerName', value)}
+                                            options={providerOptions}
                                             status={errors[`provider_${index}_name`] ? 'error' : ''}
                                         />
                                         {errors[`provider_${index}_name`] && (

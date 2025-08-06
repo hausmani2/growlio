@@ -65,18 +65,18 @@ const useStepValidation = () => {
         
         const errors = {};
 
-        // Handle both string and numeric labor_goal, remove % symbol if present
-        const laborGoal = data.labor_goal?.toString() || data.labor_goal;
+        // Handle both string and numeric labour_goal, remove % symbol if present
+        const laborGoal = data.labour_goal?.toString() || data.labour_goal;
         const laborGoalClean = laborGoal ? laborGoal.toString().replace('%', '') : '';
         
-        console.log("Original labor_goal:", laborGoal);
-        console.log("Cleaned labor_goal:", laborGoalClean);
+        console.log("Original labour_goal:", laborGoal);
+        console.log("Cleaned labour_goal:", laborGoalClean);
         
         if (!laborGoalClean || laborGoalClean.trim() === '') {
-            errors.labor_goal = "Labor goal is required";
+            errors.labour_goal = "Labor goal is required";
             console.log("❌ Labor goal validation failed: missing or empty");
         } else if (isNaN(laborGoalClean) || parseFloat(laborGoalClean) < 0 || parseFloat(laborGoalClean) > 100) {
-            errors.labor_goal = "Labor goal must be between 0 and 100";
+            errors.labour_goal = "Labor goal must be between 0 and 100";
             console.log("❌ Labor goal validation failed: invalid range - value:", parseFloat(laborGoalClean));
         } else {
             console.log("✅ Labor goal validation passed:", laborGoalClean, "parsed as:", parseFloat(laborGoalClean));
