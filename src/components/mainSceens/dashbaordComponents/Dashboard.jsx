@@ -408,6 +408,12 @@ const Dashboard = () => {
                   }
                 />
               </div>
+              <SalesTable
+                selectedDate={getSelectedWeekStartDate()}
+                weekDays={getWeekDays()}
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
             </Card>
           )}
         </Space>
