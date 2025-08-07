@@ -1460,6 +1460,72 @@ const createOnBoardingSlice = (set, get) => ({
         }
     },
 
+    // Restaurant goals functionality
+    restaurantGoalsLoading: false,
+    restaurantGoalsError: null,
+    restaurantGoals: null,
+
+    getRestaurentGoal: async (restaurantId = null) => {
+        set(() => ({ 
+            restaurantGoalsLoading: true, 
+            restaurantGoalsError: null 
+        }));
+
+        try {
+            // Get restaurant_id from store or localStorage if not provided
+            let finalRestaurantId = restaurantId;
+            if (!finalRestaurantId) {
+                const state = get();
+                finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
+            }
+
+            if (!finalRestaurantId) {
+                throw new Error('Restaurant ID is required');
+            }
+
+            const response = await apiGet(`/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`);
+            
+            set(() => ({
+                restaurantGoalsLoading: false,
+                restaurantGoalsError: null,
+                restaurantGoals: response.data
+            }));
+
+            return response.data;
+        } catch (error) {
+            console.error('❌ Error fetching restaurant goals:', error);
+            
+            let errorMessage = 'Failed to fetch restaurant goals. Please try again.';
+            
+            if (error.response?.status === 400) {
+                errorMessage = error.response.data?.message || 'Invalid restaurant ID.';
+            } else if (error.response?.status === 404) {
+                errorMessage = 'Restaurant goals not found.';
+            } else if (error.response?.status === 500) {
+                errorMessage = 'Server error occurred while fetching restaurant goals.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            set(() => ({
+                restaurantGoalsLoading: false,
+                restaurantGoalsError: errorMessage,
+                restaurantGoals: null
+            }));
+            
+            throw error;
+        }
+    },
+
+    // Clear restaurant goals state
+    clearRestaurantGoals: () => {
+        set(() => ({
+            restaurantGoalsLoading: false,
+            restaurantGoalsError: null,
+            restaurantGoals: null
+        }));
+    },
+
     // Clear restaurant name check state
     clearRestaurantNameCheck: () => {
         set(() => ({

@@ -1185,12 +1185,12 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
               title="Weekly Sales Data" 
               extra={
                 <Space>
-                  <Button 
+                  {/* <Button 
                     onClick={processDashboardData}
                     loading={storeLoading}
                   >
                     Refresh
-                  </Button>
+                  </Button> */}
                   <Button 
                     type="default" 
                     icon={<PlusOutlined />} 

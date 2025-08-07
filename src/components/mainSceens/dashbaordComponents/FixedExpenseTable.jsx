@@ -424,12 +424,12 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
               title={`Fixed Expenses: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
               extra={
                 <Space>
-                  <Button 
+                  {/* <Button 
                     onClick={processFixedExpenseData}
                     loading={storeLoading}
                   >
                     Refresh
-                  </Button>
+                  </Button> */}
                   {/* <Button 
                     type="default" 
                     icon={<PlusOutlined />} 

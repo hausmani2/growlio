@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin } from 'antd';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
@@ -11,6 +11,7 @@ import ProfitCogsTable from './ProfitCogsTable';
 import FixedExpensesTable from './FixedExpenseTable';
 import NetProfitTable from './NetProfitTable';
 import RestaurantInfoCard from './RestaurantInfoCard';
+import SummaryTableDashboard from './SummaryTableDashboard';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -19,55 +20,65 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(null);
 
   // Calendar dropdown states
-  const [calendarData, setCalendarData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedWeek, setSelectedWeek] = useState(null);
-
-  // Available options for dropdowns
-  const [availableYears, setAvailableYears] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
   const [availableWeeks, setAvailableWeeks] = useState([]);
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [dashboardError, setDashboardError] = useState(null);
+  const [dashboardMessage, setDashboardMessage] = useState(null);
 
   // Store integration
   const { 
-    fetchDashboardDataIfNeeded, 
-    getAllDashboardData,
-    loading: storeLoading, 
-    error: storeError 
+    fetchDashboardDataIfNeeded
   } = useStore();
 
-  // Fetch calendar data
-  const fetchCalendarData = async (year) => {
+  // Restaurant goals functionality
+  const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
+
+  // Static years and months
+  const years = Array.from({ length: 9 }, (_, i) => 2021 + i); // 2021 to 2029
+  const months = [
+    { key: 1, name: 'January' },
+    { key: 2, name: 'February' },
+    { key: 3, name: 'March' },
+    { key: 4, name: 'April' },
+    { key: 5, name: 'May' },
+    { key: 6, name: 'June' },
+    { key: 7, name: 'July' },
+    { key: 8, name: 'August' },
+    { key: 9, name: 'September' },
+    { key: 10, name: 'October' },
+    { key: 11, name: 'November' },
+    { key: 12, name: 'December' }
+  ];
+
+  // Fetch calendar data for selected year and month
+  const fetchCalendarData = async (year, month) => {
     setLoading(true);
     try {
-      const response = await apiGet(`/restaurant/structured-calendar/?year=${year}`);
-      setCalendarData(response.data);
+      const response = await apiGet(`/restaurant/structured-calendar/?month=${month}&year=${year}`);
 
-      // Extract available years (assuming we can get multiple years)
-      if (response.data.year) {
-        setAvailableYears([response.data.year]);
-        setSelectedYear(response.data.year);
-      }
-
-      // Extract available months
-      if (response.data.months) {
-        const months = Object.keys(response.data.months).map(monthKey => ({
-          key: monthKey,
-          name: response.data.months[monthKey].month_name,
-          data: response.data.months[monthKey]
+      // Extract weeks from the response
+      if (response.data && response.data.weeks) {
+        const weeks = Object.keys(response.data.weeks).map(weekKey => ({
+          key: weekKey,
+          weekNumber: response.data.weeks[weekKey].week_number,
+          startDate: response.data.weeks[weekKey].start_date,
+          endDate: response.data.weeks[weekKey].end_date,
+          data: response.data.weeks[weekKey]
         }));
-        setAvailableMonths(months);
+        setAvailableWeeks(weeks);
+      } else {
+        setAvailableWeeks([]);
       }
 
     } catch (error) {
       console.error('Error fetching calendar data:', error);
+      setAvailableWeeks([]);
     } finally {
       setLoading(false);
     }
@@ -78,14 +89,23 @@ const Dashboard = () => {
     if (!weekStartDate) return;
     
     setDashboardLoading(true);
-    setDashboardError(null);
+    setDashboardMessage(null);
     
     try {
       const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
-      setDashboardData(data);
+      
+      // Check if the response indicates no data found
+      if (data && data.status === "success" && data.message === "No weekly dashboard found for the given criteria." && data.data === null) {
+        setDashboardData(null);
+        setDashboardMessage(data.message);
+      } else {
+        setDashboardData(data);
+        setDashboardMessage(null);
+      }
     } catch (error) {
-      setDashboardError(error.message);
       console.error('Error fetching dashboard data:', error);
+      setDashboardData(null);
+      setDashboardMessage(null);
     } finally {
       setDashboardLoading(false);
     }
@@ -105,24 +125,15 @@ const Dashboard = () => {
     setSelectedMonth(null);
     setSelectedWeek(null);
     setAvailableWeeks([]);
-    fetchCalendarData(year);
   };
 
   // Handle month selection
-  const handleMonthChange = (monthKey) => {
-    setSelectedMonth(monthKey);
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
     setSelectedWeek(null);
-
-    if (calendarData && calendarData.months && calendarData.months[monthKey]) {
-      const monthData = calendarData.months[monthKey];
-      const weeks = Object.keys(monthData.weeks).map(weekKey => ({
-        key: weekKey,
-        weekNumber: monthData.weeks[weekKey].week_number,
-        startDate: monthData.weeks[weekKey].start_date,
-        endDate: monthData.weeks[weekKey].end_date,
-        data: monthData.weeks[weekKey]
-      }));
-      setAvailableWeeks(weeks);
+    
+    if (selectedYear) {
+      fetchCalendarData(selectedYear, month);
     }
   };
 
@@ -196,11 +207,35 @@ const Dashboard = () => {
     return weekDays;
   };
 
-  // Initialize with current year
+  // Initialize with current year and fetch restaurant goals
   useEffect(() => {
     const currentYear = dayjs().year();
-    fetchCalendarData(currentYear);
-  }, []);
+    setSelectedYear(currentYear);
+    
+    // Fetch restaurant goals when dashboard loads
+    const fetchRestaurantGoals = async () => {
+      try {
+        await getRestaurentGoal();
+      } catch (error) {
+        console.error('Error fetching restaurant goals:', error);
+      }
+    };
+    
+    fetchRestaurantGoals();
+  }, [getRestaurentGoal]);
+
+  // Log restaurant goals data for debugging (can be removed later)
+  useEffect(() => {
+    if (restaurantGoals) {
+      console.log('Restaurant goals loaded:', restaurantGoals);
+    }
+    if (restaurantGoalsError) {
+      console.error('Restaurant goals error:', restaurantGoalsError);
+    }
+    if (restaurantGoalsLoading) {
+      console.log('Loading restaurant goals...');
+    }
+  }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
 
   // Show loading spinner when fetching dashboard data
   if (dashboardLoading) {
@@ -215,9 +250,9 @@ const Dashboard = () => {
     <div className="w-full">
       <div className="w-full mx-auto">
         <div className="mb-6">
-          <Title level={2} className="mb-4">
+          <Title level={3} className="mb-4">
             <CalendarOutlined className="mr-2" />
-            Restaurant Dashboard
+            Cash Flow Dashboard
           </Title>
 
           <Card>
@@ -225,7 +260,7 @@ const Dashboard = () => {
               <div>
                 <Title level={4}>Select Date</Title>
                 <p className="text-gray-600 mb-4">
-                  Choose a date to view and manage dashboard data for that period.
+                  Choose a year and month to view available weeks for that period.
                 </p>
               </div>
 
@@ -242,9 +277,8 @@ const Dashboard = () => {
                       value={selectedYear}
                       onChange={handleYearChange}
                       style={{ width: '100%' }}
-                      loading={loading}
                     >
-                      {availableYears.map(year => (
+                      {years.map(year => (
                         <Option key={year} value={year}>
                           {year}
                         </Option>
@@ -263,8 +297,9 @@ const Dashboard = () => {
                       onChange={handleMonthChange}
                       style={{ width: '100%' }}
                       disabled={!selectedYear}
+                      loading={loading}
                     >
-                      {availableMonths.map(month => (
+                      {months.map(month => (
                         <Option key={month.key} value={month.key}>
                           {month.name}
                         </Option>
@@ -283,6 +318,7 @@ const Dashboard = () => {
                       onChange={handleWeekChange}
                       style={{ width: '100%' }}
                       disabled={!selectedMonth}
+                      loading={loading}
                     >
                       {availableWeeks.map(week => (
                         <Option key={week.key} value={week.key}>
@@ -292,6 +328,20 @@ const Dashboard = () => {
                     </Select>
                   </div>
                 </div>
+
+                {/* Loading indicator for weeks */}
+                {selectedMonth && loading && availableWeeks.length === 0 && (
+                  <div className="text-center py-4">
+                    <Spin size="small" /> Loading weeks...
+                  </div>
+                )}
+
+                {/* No weeks available message */}
+                {selectedMonth && !loading && availableWeeks.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    No weeks available for the selected month.
+                  </div>
+                )}
               </div>
             </Space>
           </Card>
@@ -301,43 +351,65 @@ const Dashboard = () => {
           {/* Restaurant Information Card */}
           <RestaurantInfoCard />
           
-          {/* Data Tables - Pass dashboard data to all components */}
-          <SalesTable
-            selectedDate={getSelectedWeekStartDate()}
-            weekDays={getWeekDays()}
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
-          <CogsTable 
-            selectedDate={getSelectedWeekStartDate()} 
-            weekDays={getWeekDays()} 
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
-          <LabourTable 
-            selectedDate={getSelectedWeekStartDate()} 
-            weekDays={getWeekDays()} 
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
-          <ProfitCogsTable 
-            selectedDate={getSelectedWeekStartDate()} 
-            weekDays={getWeekDays()} 
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
-          <FixedExpensesTable 
-            selectedDate={getSelectedWeekStartDate()} 
-            weekDays={getWeekDays()} 
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
-          <NetProfitTable 
-            selectedDate={getSelectedWeekStartDate()} 
-            weekDays={getWeekDays()} 
-            dashboardData={dashboardData}
-            refreshDashboardData={refreshDashboardData}
-          />
+          {/* Only show dashboard components when a week is selected and dashboard data is available */}
+          {selectedWeek && dashboardData ? (
+            <>
+              <SummaryTableDashboard 
+                dashboardData={dashboardData}
+              />
+              
+              {/* Data Tables - Pass dashboard data to all components */}
+              <SalesTable
+                selectedDate={getSelectedWeekStartDate()}
+                weekDays={getWeekDays()}
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+              <CogsTable 
+                selectedDate={getSelectedWeekStartDate()} 
+                weekDays={getWeekDays()} 
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+              <LabourTable 
+                selectedDate={getSelectedWeekStartDate()} 
+                weekDays={getWeekDays()} 
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+              <ProfitCogsTable 
+                selectedDate={getSelectedWeekStartDate()} 
+                weekDays={getWeekDays()} 
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+              <FixedExpensesTable 
+                selectedDate={getSelectedWeekStartDate()} 
+                weekDays={getWeekDays()} 
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+              <NetProfitTable 
+                selectedDate={getSelectedWeekStartDate()} 
+                weekDays={getWeekDays()} 
+                dashboardData={dashboardData}
+                refreshDashboardData={refreshDashboardData}
+              />
+            </>
+          ) : (
+            <Card>
+              <div className="text-center py-8">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    !selectedWeek 
+                      ? "Please select a week to view dashboard data." 
+                      : dashboardMessage || "No dashboard data available for the selected week."
+                  }
+                />
+              </div>
+            </Card>
+          )}
         </Space>
       </div>
     </div>

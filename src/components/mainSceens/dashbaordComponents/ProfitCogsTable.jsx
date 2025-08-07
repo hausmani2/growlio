@@ -649,12 +649,12 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
               title={`Profit After COGS & Labor: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
               extra={
                 <Space>
-                  <Button 
+                  {/* <Button 
                     onClick={processProfitData}
                     loading={storeLoading}
                   >
                     Refresh
-                  </Button>
+                  </Button> */}
                   {/* <Button 
                     type="default" 
                     icon={<PlusOutlined />} 

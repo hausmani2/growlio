@@ -40,8 +40,17 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   const { 
     saveDashboardData, 
     loading: storeLoading, 
-    error: storeError 
+    error: storeError,
+    restaurantGoals
   } = useStore();
+
+  // Get COGS goal from restaurant goals
+  const getCogsGoal = () => {
+    if (restaurantGoals && restaurantGoals.cogs_goal) {
+      return parseFloat(restaurantGoals.cogs_goal);
+    }
+    return null;
+  };
 
   // Process dashboard data when it changes
   useEffect(() => {
@@ -235,16 +244,16 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         section: "COGS Performance",
         section_data: {
           weekly: {
-            cogs_budget: finalTotals.cogsBudget,
-            cogs_actual: finalTotals.cogsActual,
-            cogs_percentage: finalTotals.cogsPercentage,
-            weekly_remaining_cog: finalTotals.weeklyRemainingCog
+            cogs_budget: parseFloat(finalTotals.cogsBudget) || 0,
+            cogs_actual: parseFloat(finalTotals.cogsActual) || 0,
+            cogs_percentage: parseFloat(finalTotals.cogsPercentage) || 0,
+            weekly_remaining_cog: parseFloat(finalTotals.weeklyRemainingCog) || 0
           },
           daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
-            cogs_budget: (day.budget || 0),
-            cogs_actual: (day.actual || 0),
-            weekly_remaining_cog: finalTotals.weeklyRemainingCog // Add weekly remaining COGS to each day
+            cogs_budget: parseFloat(day.budget) || 0,
+            cogs_actual: parseFloat(day.actual) || 0,
+            weekly_remaining_cog: parseFloat(finalTotals.weeklyRemainingCog) || 0
           }))
         }
       };
@@ -655,15 +664,15 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           {/* Weekly Data Section */}
           <Col span={18}>
             <Card 
-              title={`COGS Performance: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+              title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
               extra={
                 <Space>
-                  <Button 
+                  {/* <Button 
                     onClick={processCogsData}
                     loading={storeLoading}
                   >
                     Refresh
-                  </Button>
+                  </Button> */}
                   <Button 
                     type="default" 
                     icon={<PlusOutlined />} 
@@ -696,10 +705,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                         budget: 0,
                         actual: 0
                       });
-
-                      const percentage = totals.budget > 0 ? (totals.actual / totals.budget) * 100 : 0;
-                      const remaining = totals.budget - totals.actual;
-
                       return (
                         <Card 
                           key={week.id} 
