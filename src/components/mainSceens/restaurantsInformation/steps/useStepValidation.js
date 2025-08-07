@@ -138,8 +138,12 @@ const useStepValidation = () => {
         }
 
         // 2. Third Party Delivery Validation
-        const useThirdPartyDelivery = data.use_third_party_delivery === true || data.use_third_party_delivery === 'true' || 
-                                    data.useHiredPartyDelivery === true || data.useHiredPartyDelivery === 'true';
+        // Prioritize useHiredPartyDelivery field as it's the primary field used in the component
+        const useThirdPartyDelivery = data.useHiredPartyDelivery === true || data.useHiredPartyDelivery === 'true';
+        
+        console.log("🔍 Debug - use_third_party_delivery:", data.use_third_party_delivery);
+        console.log("🔍 Debug - useHiredPartyDelivery:", data.useHiredPartyDelivery);
+        console.log("🔍 Debug - useThirdPartyDelivery calculated as:", useThirdPartyDelivery);
         
         // Validate third party delivery selection
         if (data.useHiredPartyDelivery === undefined || data.useHiredPartyDelivery === '') {
@@ -160,7 +164,7 @@ const useStepValidation = () => {
                 console.log("✅ Delivery days validation passed for third party delivery");
             }
 
-            // Validate third party providers if they exist
+            // Validate third party providers - only if third party delivery is enabled
             if (data.providers && data.providers.length > 0) {
                 data.providers.forEach((provider, index) => {
                     if (!provider.providerName?.trim()) {
@@ -177,6 +181,7 @@ const useStepValidation = () => {
                 });
             }
         } else {
+            console.log("✅ Third party delivery is disabled - skipping provider validation");
             
             // For regular delivery, validate that at least one delivery day is selected
             if (!data.delivery_days || data.delivery_days.length === 0) {
