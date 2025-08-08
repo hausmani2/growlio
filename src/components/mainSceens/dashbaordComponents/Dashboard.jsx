@@ -226,15 +226,11 @@ const Dashboard = () => {
 
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {
-    if (restaurantGoals) {
-      console.log('Restaurant goals loaded:', restaurantGoals);
-    }
+
     if (restaurantGoalsError) {
       console.error('Restaurant goals error:', restaurantGoalsError);
     }
-    if (restaurantGoalsLoading) {
-      console.log('Loading restaurant goals...');
-    }
+
   }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
 
   // Show loading spinner when fetching dashboard data

@@ -545,7 +545,6 @@ const createDashboardSlice = (set, get) => {
                 error: null,
                 restaurantId: null
             }));
-            console.log('🗑️ Dashboard state reset');
         }
     }
 }

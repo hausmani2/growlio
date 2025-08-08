@@ -230,11 +230,21 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
         averageDailyTicket: parseFloat(salesPerformance.average_daily_ticket) || 0
       };
 
-      // Add dynamic provider fields to goals
-      providers.forEach(provider => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        goals[providerKey] = parseFloat(salesPerformance[providerKey]) || 0;
-      });
+      // Add dynamic provider fields to goals from third_party_sales object
+      if (salesPerformance.third_party_sales) {
+        providers.forEach(provider => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          // Look for provider in third_party_sales object
+          const providerFieldName = `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
+          goals[providerKey] = parseFloat(salesPerformance.third_party_sales[providerFieldName]) || 0;
+        });
+      } else {
+        // Fallback to direct fields if third_party_sales doesn't exist
+        providers.forEach(provider => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          goals[providerKey] = parseFloat(salesPerformance[providerKey]) || 0;
+        });
+      }
 
       setWeeklyGoals(goals);
     }
@@ -253,11 +263,21 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
         averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0
       };
 
-      // Add dynamic provider fields to daily data
-      providers.forEach(provider => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        dailyData[providerKey] = entry['Sales Performance']?.[providerKey] || 0;
-      });
+      // Add dynamic provider fields to daily data from third_party_sales object
+      if (entry['Sales Performance']?.third_party_sales) {
+        providers.forEach(provider => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          // Look for provider in third_party_sales object
+          const providerFieldName = `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
+          dailyData[providerKey] = parseFloat(entry['Sales Performance'].third_party_sales[providerFieldName]) || 0;
+        });
+      } else {
+        // Fallback to direct fields if third_party_sales doesn't exist
+        providers.forEach(provider => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          dailyData[providerKey] = entry['Sales Performance']?.[providerKey] || 0;
+        });
+      }
 
       return dailyData;
     }) || [];
@@ -400,16 +420,16 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
             sales_budget: finalTotals.salesBudget.toFixed(2),
             actual_sales_in_store: finalTotals.actualSalesInStore.toFixed(2),
             actual_sales_app_online: finalTotals.actualSalesAppOnline.toFixed(2),
+            net_sales_actual: finalTotals.netSalesActual.toFixed(2),
+            actual_vs_budget_sales: finalTotals.actualVsBudgetSales || 0,
+            daily_tickets: finalTotals.dailyTickets || 0,
+            average_daily_ticket: (finalTotals.averageDailyTicket || 0).toFixed(2),
             // Add dynamic provider fields to weekly data
             ...providers.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = finalTotals[providerKey]?.toFixed(2) || '0.00';
               return acc;
-            }, {}),
-            net_sales_actual: finalTotals.netSalesActual.toFixed(2),
-            actual_vs_budget_sales: finalTotals.actualVsBudgetSales || 0,
-            daily_tickets: finalTotals.dailyTickets || 0,
-            average_daily_ticket: (finalTotals.averageDailyTicket || 0).toFixed(2)
+            }, {})
           },
           daily: weekData.dailyData.map(day => {
             const dailyData = {
@@ -418,14 +438,14 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
               sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
+              daily_tickets: parseFloat(day.dailyTickets) || 0,
+              average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
               // Add dynamic provider fields to daily data
               ...providers.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                 acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = (parseFloat(day[providerKey]) || 0).toFixed(2);
                 return acc;
-              }, {}),
-              daily_tickets: parseFloat(day.dailyTickets) || 0,
-              average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2)
+              }, {})
             };
 
             // Calculate net sales actual including dynamic providers
@@ -1385,7 +1405,6 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                                 return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
                               }
                             },
-
                             {
                               title: '# Daily Tickets',
                               dataIndex: 'dailyTickets',
@@ -1433,7 +1452,6 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                                 const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
                                 const dailyTickets = parseFloat(record.dailyTickets) || 0;
                                 const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
-                                
                                 return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
                               }
                             }

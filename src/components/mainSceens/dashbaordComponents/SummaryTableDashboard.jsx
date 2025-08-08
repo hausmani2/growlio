@@ -76,7 +76,6 @@ const SummaryTableDashboard = ({ dashboardData }) => {
 
         });
 
-       console.log('Setting table data:', processedData);
        setTableData(processedData);
      };
 
@@ -265,7 +264,6 @@ const SummaryTableDashboard = ({ dashboardData }) => {
       </div>
 
              <div className="overflow-x-auto">
-         {console.log('Table data source:', tableDataSource)}
          <Table
            columns={tableColumns}
            dataSource={tableDataSource}
