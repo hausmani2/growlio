@@ -2,7 +2,7 @@ import { Input, Select } from "antd";
 import { useEffect, useState } from "react";
 import useStore from "../../../../../store/store";
 
-const RestaurantInformation = ({ data, updateData, errors = {} }) => {
+const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false }) => {
     const { 
         checkRestaurantName, 
         clearRestaurantNameCheck,
@@ -19,8 +19,20 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
     const [localRestaurantName, setLocalRestaurantName] = useState(data.restaurantName || "");
     const [debounceTimer, setDebounceTimer] = useState(null);
 
+    // Clear restaurant name validation state when in update mode
+    useEffect(() => {
+        if (isUpdateMode) {
+            clearRestaurantNameCheck();
+        }
+    }, [isUpdateMode, clearRestaurantNameCheck]);
+
     // Debounced restaurant name check
     useEffect(() => {
+        // Skip restaurant name validation in update mode
+        if (isUpdateMode) {
+            return;
+        }
+
         if (debounceTimer) {
             clearTimeout(debounceTimer);
         }
@@ -40,7 +52,7 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
                 clearTimeout(debounceTimer);
             }
         };
-    }, [localRestaurantName, checkRestaurantName, clearRestaurantNameCheck]);
+    }, [localRestaurantName, checkRestaurantName, clearRestaurantNameCheck, isUpdateMode]);
 
     // Update local state and parent data
     const handleRestaurantNameChange = (value) => {
@@ -50,6 +62,11 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
 
     // Handle blur event - check restaurant name when user moves to next field
     const handleRestaurantNameBlur = () => {
+        // Skip restaurant name validation in update mode
+        if (isUpdateMode) {
+            return;
+        }
+        
         if (localRestaurantName && localRestaurantName.trim().length > 2) {
             checkRestaurantName(localRestaurantName);
         }
@@ -85,27 +102,30 @@ const RestaurantInformation = ({ data, updateData, errors = {} }) => {
                                      placeholder="Enter your restaurant name" 
                                      className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
                                          combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
-                                     } ${isBasicInfoCompleted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                     } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                      value={localRestaurantName}
                                      onChange={(e) => handleRestaurantNameChange(e.target.value)}
                                      onBlur={handleRestaurantNameBlur}
                                      status={combinedErrors.restaurantName ? 'error' : ''}
-                                     disabled={restaurantNameCheckLoading || isBasicInfoCompleted}
+                                     disabled={restaurantNameCheckLoading || isBasicInfoCompleted || isUpdateMode}
                                  />
-                                {restaurantNameCheckLoading && (
+                                {restaurantNameCheckLoading && !isUpdateMode && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                                     </div>
                                 )}
                             </div>
-                            {combinedErrors.restaurantName && (
+                            {combinedErrors.restaurantName && !isUpdateMode && (
                                 <span className="text-red-500 text-sm">{combinedErrors.restaurantName}</span>
                             )}
-                                                         {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && (
+                                                         {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
                                  <span className="text-green-500 text-sm">✓ Restaurant name is available</span>
                              )}
-                             {isBasicInfoCompleted && (
+                             {isBasicInfoCompleted && !isUpdateMode && (
                                  <span className="text-blue-500 text-sm">🔒 Restaurant name is locked (cannot be changed after completion)</span>
+                             )}
+                             {isUpdateMode && (
+                                 <span className="text-blue-500 text-sm">🔒 Restaurant name is locked in update mode</span>
                              )}
                         </div>
                         

@@ -8,6 +8,7 @@ import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
+import LoadingSpinner from "../../../../layout/LoadingSpinner";
 
 const FoodCostWrapperContent = () => {
     const location = useLocation();
@@ -56,7 +57,7 @@ const FoodCostWrapperContent = () => {
             setCombinedData(prev => ({
                 ...prev,
                 cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : "",
-                use_third_party_delivery: data.use_third_party_delivery || false,
+                use_third_party_delivery: data.uses_third_party_delivery === true || data.use_third_party_delivery === true || false,
                 delivery_days: data.delivery_days || []
             }));
             
@@ -85,23 +86,22 @@ const FoodCostWrapperContent = () => {
                 setThirdPartyData(prev => ({
                     ...prev,
                     providers: providersData.length > 0 ? providersData : [{ id: 1, providerName: '', providerFee: '' }],
-                    useHiredPartyDelivery: data.use_third_party_delivery ? 'true' : 'false'
+                    useHiredPartyDelivery: (data.uses_third_party_delivery === true || data.use_third_party_delivery === true) ? 'true' : 'false'
                 }));
             } else {
                 // Set default third party data
                 setThirdPartyData(prev => ({
                     ...prev,
                     providers: [{ id: 1, providerName: '', providerFee: '' }],
-                    useHiredPartyDelivery: data.use_third_party_delivery ? 'true' : 'false'
+                    useHiredPartyDelivery: (data.uses_third_party_delivery === true || data.use_third_party_delivery === true) ? 'true' : 'false'
                 }));
             }
             
             // Update combined data with third party delivery status
             setCombinedData(prev => ({
                 ...prev,
-                use_third_party_delivery: data.use_third_party_delivery || false
+                use_third_party_delivery: data.uses_third_party_delivery === true || data.use_third_party_delivery === true || false
             }));
-        } else {
         }
     }, [completeOnboardingData]);
 
@@ -145,8 +145,7 @@ const FoodCostWrapperContent = () => {
             const selectedDays = Object.keys(value).filter(day => value[day]);
             setCombinedData(prev => ({
                 ...prev,
-                delivery_days: selectedDays,
-                use_third_party_delivery: selectedDays.length > 0
+                delivery_days: selectedDays
             }));
         }
         // Clear validation error for this field when user starts typing
@@ -204,7 +203,7 @@ const FoodCostWrapperContent = () => {
             // Step 3: Prepare data for API
             const cogsGoalClean = combinedData.cogs_goal ? combinedData.cogs_goal.toString().replace('%', '') : '';
             
-            // Prepare providers data for API
+            // Prepare providers data for API - only include if third party delivery is enabled
             let providersForAPI = [];
             if (thirdPartyData.useHiredPartyDelivery === 'true' && thirdPartyData.providers) {
                 providersForAPI = thirdPartyData.providers
@@ -219,7 +218,7 @@ const FoodCostWrapperContent = () => {
                 cogs_goal: parseFloat(cogsGoalClean) || 0,
                 uses_third_party_delivery: combinedData.use_third_party_delivery || false,
                 delivery_days: combinedData.delivery_days.map(day => day.toLowerCase()) || [],
-                providers: providersForAPI // Include providers array in API payload
+                ...(combinedData.use_third_party_delivery && { providers: providersForAPI }) // Only include providers if third party delivery is true
             };
 
             console.log('🔍 Debug - Step data being sent to API:', stepData);
@@ -232,6 +231,7 @@ const FoodCostWrapperContent = () => {
                 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
+                    // Restaurant ID is available if needed
                 }
                 
                 // Step 5: Handle navigation based on mode
@@ -265,6 +265,68 @@ const FoodCostWrapperContent = () => {
         }
     };
 
+    // Show loading spinner overlay when loading
+    if (loading) {
+        return (
+            <div className="relative">
+                <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center">
+                    <LoadingSpinner message="Saving food cost details..." size="medium" />
+                </div>
+                <div className="opacity-50 pointer-events-none">
+                    <div className="flex flex-col gap-6">
+                        {isUpdateMode && (
+                            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
+                                <p className="text-blue-700">
+                                    You are updating your food cost details. Changes will be saved when you click "Save & Continue".
+                                </p>
+                            </div>
+                        )}
+                        
+                        <FoodCostDetails 
+                            data={foodCostData}
+                            updateData={updateFoodCostData}
+                            errors={validationErrors}
+                        />
+                        <ThirdPartyProviders
+                            data={thirdPartyData}
+                            updateData={updateThirdPartyData}
+                            errors={validationErrors}
+                        />
+                        <DeliveryFrequency 
+                            data={deliveryData}
+                            updateData={updateDeliveryData}
+                            onSaveAndContinue={handleSaveAndContinue}
+                            errors={validationErrors}
+                            loading={loading}
+                        />
+                        
+                        <div className="flex justify-between mt-6">
+                            {isUpdateMode && (
+                                <>
+                                    <div className="ml-auto">
+                                        <button
+                                            onClick={handleSaveAndContinue}
+                                            disabled={loading}
+                                            className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
+                                            }`}
+                                        >
+                                            {loading && (
+                                                <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                            )}
+                                            {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-6">
             {isUpdateMode && (
@@ -297,16 +359,22 @@ const FoodCostWrapperContent = () => {
             <div className="flex justify-between mt-6">
                 {isUpdateMode && (
                     <>
-                <div className="ml-auto">
-                    <button
-                        onClick={handleSaveAndContinue}
-                        className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
-                        >
-                        {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                    </button>
-                </div>
-                        </>
-                    )}
+                        <div className="ml-auto">
+                            <button
+                                onClick={handleSaveAndContinue}
+                                disabled={loading}
+                                className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
+                                }`}
+                            >
+                                {loading && (
+                                    <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                )}
+                                {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

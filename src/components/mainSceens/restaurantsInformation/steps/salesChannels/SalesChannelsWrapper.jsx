@@ -6,6 +6,7 @@ import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 import { useNavigate, useLocation } from "react-router-dom";
+import LoadingSpinner from "../../../../layout/LoadingSpinner";
 
 const SalesChannelsWrapperContent = () => {
     const navigate = useNavigate();
@@ -122,6 +123,58 @@ const SalesChannelsWrapperContent = () => {
         }
     };
 
+    // Show loading spinner overlay when loading
+    if (loading) {
+        return (
+            <div className="relative">
+                <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center">
+                    <LoadingSpinner message="Saving sales channels..." size="medium" />
+                </div>
+                <div className="opacity-50 pointer-events-none">
+                    <div className="flex flex-col gap-6">
+                        {isUpdateMode && (
+                            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
+                                <p className="text-blue-700">
+                                    You are updating your sales channels. Changes will be saved when you click "Save & Continue".
+                                </p>
+                            </div>
+                        )}
+
+                        <SalesChannel
+                            data={salesChannelsData}
+                            updateData={updateSalesChannelsData}
+                            errors={validationErrors}
+                            onSaveAndContinue={handleSaveAndContinue}
+                            loading={loading}
+                        />
+
+                        <div className="flex justify-between mt-6">
+                            {isUpdateMode && (
+                                <>
+                                    <div className="ml-auto">
+                                        <button
+                                            onClick={handleSaveAndContinue}
+                                            disabled={loading}
+                                            className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
+                                            }`}
+                                        >
+                                            {loading && (
+                                                <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                            )}
+                                            {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-6">
             {isUpdateMode && (
@@ -147,8 +200,14 @@ const SalesChannelsWrapperContent = () => {
                         <div className="ml-auto">
                             <button
                                 onClick={handleSaveAndContinue}
-                                className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
+                                disabled={loading}
+                                className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
+                                }`}
                             >
+                                {loading && (
+                                    <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                )}
                                 {isUpdateMode ? "Save Changes" : "Save & Continue"}
                             </button>
                         </div>

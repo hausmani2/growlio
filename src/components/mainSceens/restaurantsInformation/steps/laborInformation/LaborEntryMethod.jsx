@@ -51,56 +51,6 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         }
     };
 
-    const handleSaveAndContinue = () => {
-        // Validate form data
-        if (!formData.goal || formData.goal.trim() === '') {
-            alert('Please enter a labor goal percentage');
-            return;
-        }
-
-        // Validate percentage format
-        const goalValue = parseFloat(formData.goal);
-        if (isNaN(goalValue) || goalValue < 0 || goalValue > 100) {
-            alert('Please enter a valid percentage between 0 and 100');
-            return;
-        }
-
-        // Update parent component data
-        if (updateData) {
-            updateData('laborEntryMethod', {
-                goal: formData.goal,
-                entryMethod: formData.entryMethod,
-                isDailyHoursCostsEnabled: formData.isDailyHoursCostsEnabled
-            });
-        }
-
-        // Navigate to next tab (Sales Channel - tab index 3)
-        handleTabClick(3);
-    };
-
-    const handleInputChange = (field, value) => {
-        // For goal field, only allow numbers and decimal point
-        if (field === 'goal') {
-            const numericValue = value.replace(/[^0-9.]/g, '');
-            // Ensure only one decimal point
-            const parts = numericValue.split('.');
-            if (parts.length > 2) return;
-            // Limit to 2 decimal places
-            if (parts[1] && parts[1].length > 2) return;
-            // Limit to 100
-            if (parseFloat(numericValue) > 100) return;
-            
-            setFormData(prev => ({
-                ...prev,
-                [field]: numericValue
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [field]: value
-            }));
-        }
-    };
 
     const handleEntryMethodSelect = (method) => {
         updateData('labor_record_method', method);

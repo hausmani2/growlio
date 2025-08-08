@@ -1,15 +1,11 @@
 import { Select } from 'antd';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
-    console.log('LaborInformation - data:', data);
-    console.log('LaborInformation - labour_goal:', data.labour_goal);
-    console.log('LaborInformation - labour_goal type:', typeof data.labour_goal);
+
     
     const handleLaborGoalChange = (value) => {
         // Convert the value to just the number if it contains percentage symbol
         const numericValue = value.toString().replace('%', '');
-        console.log('LaborInformation - handleLaborGoalChange - value:', value);
-        console.log('LaborInformation - handleLaborGoalChange - numericValue:', numericValue);
         updateData('labour_goal', numericValue);
     };
 
@@ -20,10 +16,10 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
             let zoneColor = '';
             let zoneLabel = '';
             
-            if (i <= 25) {
+            if (i <= 30) {
                 zoneColor = '#52c41a'; // Green zone (Goal)
                 zoneLabel = '✅ Goal';
-            } else if (i <= 27) {
+            } else if (i <= 33) {
                 zoneColor = '#faad14'; // Yellow zone (Needs Attention)
                 zoneLabel = '⚠️ Needs Attention';
             } else {
