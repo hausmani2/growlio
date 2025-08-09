@@ -347,39 +347,39 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
       }
     });
 
-         useEffect(() => {
-       if (editingWeek) {
-         // Ensure editingWeek has the proper structure with weeklyTotals
-         const editingWeekWithDefaults = {
-           ...editingWeek,
-           weeklyTotals: editingWeek.weeklyTotals || {
-             laborHoursBudget: 0,
-             laborHoursActual: 0,
-             budgetedLaborDollars: 0,
-             actualLaborDollars: 0,
-             dailyLaborRate: hourlyRate,
-             dailyLaborPercentage: 0,
-             weeklyLaborPercentage: 0
-           }
-         };
-         setWeekFormData(editingWeekWithDefaults);
-       } else {
-         setWeekFormData({
-           weekTitle: `Week ${weeklyData.length + 1}`,
-           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-           dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
-           weeklyTotals: {
-             laborHoursBudget: 0,
-             laborHoursActual: 0,
-             budgetedLaborDollars: 0,
-             actualLaborDollars: 0,
-             dailyLaborRate: hourlyRate,
-             dailyLaborPercentage: 0,
-             weeklyLaborPercentage: 0
-           }
-         });
-       }
-     }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
+    useEffect(() => {
+      if (editingWeek) {
+        // Ensure editingWeek has the proper structure with weeklyTotals
+        const editingWeekWithDefaults = {
+          ...editingWeek,
+          weeklyTotals: editingWeek.weeklyTotals || {
+            laborHoursBudget: 0,
+            laborHoursActual: 0,
+            budgetedLaborDollars: 0,
+            actualLaborDollars: 0,
+            dailyLaborRate: hourlyRate,
+            dailyLaborPercentage: 0,
+            weeklyLaborPercentage: 0
+          }
+        };
+        setWeekFormData(editingWeekWithDefaults);
+      } else {
+        setWeekFormData({
+          weekTitle: `Week ${weeklyData.length + 1}`,
+          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
+          weeklyTotals: {
+            laborHoursBudget: 0,
+            laborHoursActual: 0,
+            budgetedLaborDollars: 0,
+            actualLaborDollars: 0,
+            dailyLaborRate: hourlyRate,
+            dailyLaborPercentage: 0,
+            weeklyLaborPercentage: 0
+          }
+        });
+      }
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
@@ -412,7 +412,8 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
             {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
-        width={1200}
+        width="90vw"
+        style={{ maxWidth: '1200px' }}
       >
         {(isSubmitting || storeLoading) && (
           <LoadingSpinner 
@@ -421,233 +422,245 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
             fullScreen={false}
           />
         )}
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-
-
-          {/* Weekly Goals Input Section */}
+        <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
+          {/* Weekly Goals Input Section - Responsive Grid */}
           <Card title="Weekly Labor Goals" size="small">
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text strong>Labor Hours - Budget:</Text>
-                                 <Input
-                   type="number"
-                   value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursBudget || 0)}
-                   onChange={(e) => {
-                     const value = parseFloat(e.target.value) || 0;
-                     setWeekFormData(prev => ({
-                       ...prev,
-                       weeklyTotals: {
-                         ...prev.weeklyTotals,
-                         laborHoursBudget: value
-                       }
-                     }));
-                   }}
-                   suffix="hrs"
-                   placeholder="0.0"
-                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Labor Hours - Actual:</Text>
-                                 <Input
-                   type="number"
-                   value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursActual || 0)}
-                   onChange={(e) => {
-                     const value = parseFloat(e.target.value) || 0;
-                     setWeekFormData(prev => ({
-                       ...prev,
-                       weeklyTotals: {
-                         ...prev.weeklyTotals,
-                         laborHoursActual: value
-                       }
-                     }));
-                   }}
-                   suffix="hrs"
-                   placeholder="0.0"
-                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Budgeted Labor $:</Text>
-                                 <Input
-                   type="number"
-                   value={formatDisplayValue(weekFormData.weeklyTotals?.budgetedLaborDollars || 0)}
-                   onChange={(e) => {
-                     const value = parseFloat(e.target.value) || 0;
-                     setWeekFormData(prev => ({
-                       ...prev,
-                       weeklyTotals: {
-                         ...prev.weeklyTotals,
-                         budgetedLaborDollars: value
-                       }
-                     }));
-                   }}
-                   prefix="$"
-                   placeholder="0.00"
-                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Actual Labor $:</Text>
-                                 <Input
-                   type="number"
-                   value={formatDisplayValue(weekFormData.weeklyTotals?.actualLaborDollars || 0)}
-                   onChange={(e) => {
-                     const value = parseFloat(e.target.value) || 0;
-                     setWeekFormData(prev => ({
-                       ...prev,
-                       weeklyTotals: {
-                         ...prev.weeklyTotals,
-                         actualLaborDollars: value
-                       }
-                     }));
-                   }}
-                   prefix="$"
-                   placeholder="0.00"
-                 />
-              </Col>
-            </Row>
-            <Row gutter={16} style={{ marginTop: 16 }}>
-              <Col span={6}>
-                <Text strong>Daily Labor Rate:</Text>
-                                 <Input
-                   type="number"
-                   value={weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate}
-                   onChange={(e) => {
-                     const value = parseFloat(e.target.value) || 0;
-                     setWeekFormData(prev => ({
-                       ...prev,
-                       weeklyTotals: {
-                         ...prev.weeklyTotals,
-                         dailyLaborRate: value
-                       }
-                     }));
-                   }}
-                   prefix="$"
-                   placeholder="0.00"
-                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Daily Labor %:</Text>
-                                 <Input
-                   type="number"
-                   value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
-                     (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / (weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate))).toFixed(1) : 0}
-                   suffix="%"
-                   disabled
-                   style={{ backgroundColor: '#f5f5f5' }}
-                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Weekly Labor %:</Text>
-                                 <Input
-                   type="number"
-                   value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
-                     (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / ((weekFormData.weeklyTotals?.actualLaborDollars || 0) + 5000)) * 100).toFixed(1) : 0}
-                   suffix="%"
-                   disabled
-                   style={{ backgroundColor: '#f5f5f5' }}
-                 />
-              </Col>
-            </Row>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
+                <Input
+                  type="number"
+                  value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursBudget || 0)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        laborHoursBudget: value
+                      }
+                    }));
+                  }}
+                  suffix="hrs"
+                  placeholder="0.0"
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
+                <Input
+                  type="number"
+                  value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursActual || 0)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        laborHoursActual: value
+                      }
+                    }));
+                  }}
+                  suffix="hrs"
+                  placeholder="0.0"
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
+                <Input
+                  type="number"
+                  value={formatDisplayValue(weekFormData.weeklyTotals?.budgetedLaborDollars || 0)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        budgetedLaborDollars: value
+                      }
+                    }));
+                  }}
+                  prefix="$"
+                  placeholder="0.00"
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
+                <Input
+                  type="number"
+                  value={formatDisplayValue(weekFormData.weeklyTotals?.actualLaborDollars || 0)}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        actualLaborDollars: value
+                      }
+                    }));
+                  }}
+                  prefix="$"
+                  placeholder="0.00"
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
+                <Input
+                  type="number"
+                  value={weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        dailyLaborRate: value
+                      }
+                    }));
+                  }}
+                  prefix="$"
+                  placeholder="0.00"
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
+                <Input
+                  type="number"
+                  value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
+                    (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / (weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate))).toFixed(1) : 0}
+                  suffix="%"
+                  disabled
+                  style={{ backgroundColor: '#f5f5f5' }}
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
+                <Input
+                  type="number"
+                  value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
+                    (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / ((weekFormData.weeklyTotals?.actualLaborDollars || 0) + 5000)) * 100).toFixed(1) : 0}
+                  suffix="%"
+                  disabled
+                  style={{ backgroundColor: '#f5f5f5' }}
+                  className="w-full"
+                />
+              </div>
+            </div>
           </Card>
 
+          {/* Table Section - Responsive */}
+          <div className="overflow-x-auto">
+            <Table
+              dataSource={weekFormData.dailyData}
+              pagination={false}
+              size="small"
+              rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
+              scroll={{ x: 'max-content' }}
+              summary={(pageData) => {
+                const totals = pageData.reduce((acc, record) => ({
+                  laborHoursBudget: acc.laborHoursBudget + (parseFloat(record.laborHoursBudget) || 0),
+                  laborHoursActual: acc.laborHoursActual + (parseFloat(record.laborHoursActual) || 0),
+                  budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(record.budgetedLaborDollars) || 0),
+                  actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0)
+                }), {
+                  laborHoursBudget: 0,
+                  laborHoursActual: 0,
+                  budgetedLaborDollars: 0,
+                  actualLaborDollars: 0
+                });
 
-          <Table
-            dataSource={weekFormData.dailyData}
-            pagination={false}
-            size="small"
-            summary={(pageData) => {
-              const totals = pageData.reduce((acc, record) => ({
-                laborHoursBudget: acc.laborHoursBudget + (parseFloat(record.laborHoursBudget) || 0),
-                laborHoursActual: acc.laborHoursActual + (parseFloat(record.laborHoursActual) || 0),
-                budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(record.budgetedLaborDollars) || 0),
-                actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0)
-              }), {
-                laborHoursBudget: 0,
-                laborHoursActual: 0,
-                budgetedLaborDollars: 0,
-                actualLaborDollars: 0
-              });
+                const laborRecordMethod = getLaborRecordMethod();
+                const showHours = laborRecordMethod === 'hours-only' || laborRecordMethod === 'daily-hours-costs';
+                const showCosts = laborRecordMethod === 'cost-only' || laborRecordMethod === 'daily-hours-costs';
 
-              const laborRecordMethod = getLaborRecordMethod();
-              const showHours = laborRecordMethod === 'hours-only' || laborRecordMethod === 'daily-hours-costs';
-              const showCosts = laborRecordMethod === 'cost-only' || laborRecordMethod === 'daily-hours-costs';
-
-              return (
-                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong>Totals:</Text>
-                  </Table.Summary.Cell>
-                  {showHours && (
-                    <Table.Summary.Cell index={1}>
-                      <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
+                return (
+                  <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                    <Table.Summary.Cell index={0}>
+                      <Text strong>Totals:</Text>
                     </Table.Summary.Cell>
-                  )}
-                  {showCosts && (
-                    <Table.Summary.Cell index={showHours ? 2 : 1}>
-                      <Text strong>${totals.actualLaborDollars.toFixed(2)}</Text>
-                    </Table.Summary.Cell>
-                  )}
-                </Table.Summary.Row>
-              );
-            }}
-            columns={(() => {
-              const laborRecordMethod = getLaborRecordMethod();
-              const showHours = laborRecordMethod === 'hours-only' || laborRecordMethod === 'daily-hours-costs';
-              const showCosts = laborRecordMethod === 'cost-only' || laborRecordMethod === 'daily-hours-costs';
+                    {showHours && (
+                      <Table.Summary.Cell index={1}>
+                        <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
+                      </Table.Summary.Cell>
+                    )}
+                    {showCosts && (
+                      <Table.Summary.Cell index={showHours ? 2 : 1}>
+                        <Text strong>${totals.actualLaborDollars.toFixed(2)}</Text>
+                      </Table.Summary.Cell>
+                    )}
+                  </Table.Summary.Row>
+                );
+              }}
+              columns={(() => {
+                const laborRecordMethod = getLaborRecordMethod();
+                const showHours = laborRecordMethod === 'hours-only' || laborRecordMethod === 'daily-hours-costs';
+                const showCosts = laborRecordMethod === 'cost-only' || laborRecordMethod === 'daily-hours-costs';
 
-              const columns = [
-                {
-                  title: 'Day',
-                  dataIndex: 'dayName',
-                  key: 'dayName',
-                  width: 120,
-                  render: (text, record) => (
-                    <div>
-                      <div>{text}</div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>
-                        {record.date.format('MMM DD, YYYY')}
+                const columns = [
+                  {
+                    title: 'Day',
+                    dataIndex: 'dayName',
+                    key: 'dayName',
+                    width: 120,
+                    fixed: 'left',
+                    render: (text, record) => (
+                      <div>
+                        <div className="font-medium text-sm sm:text-base">{text}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {record.date.format('MMM DD, YYYY')}
+                        </div>
                       </div>
-                    </div>
-                  )
+                    )
+                  }
+                ];
+
+                if (showHours) {
+                  columns.push({
+                    title: 'Labor Hours - Actual',
+                    dataIndex: 'laborHoursActual',
+                    key: 'laborHoursActual',
+                    width: 150,
+                    render: (value, record, index) => (
+                      <Input
+                        type="number"
+                        value={formatDisplayValue(value)}
+                        onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0)}
+                        suffix="hrs"
+                        className="w-full"
+                      />
+                    )
+                  });
                 }
-              ];
 
-              if (showHours) {
-                columns.push({
-                  title: 'Labor Hours - Actual',
-                  dataIndex: 'laborHoursActual',
-                  key: 'laborHoursActual',
-                  width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={formatDisplayValue(value)}
-                      onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0)}
-                      suffix="hrs"
-                    />
-                  )
-                });
-              }
+                if (showCosts) {
+                  columns.push({
+                    title: 'Actual Labor $',
+                    dataIndex: 'actualLaborDollars',
+                    key: 'actualLaborDollars',
+                    width: 150,
+                    render: (value, record, index) => (
+                      <Input
+                        type="number"
+                        value={formatDisplayValue(value)}
+                        onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0)}
+                        prefix="$"
+                        className="w-full"
+                      />
+                    )
+                  });
+                }
 
-              if (showCosts) {
-                columns.push({
-                  title: 'Actual Labor $',
-                  dataIndex: 'actualLaborDollars',
-                  key: 'actualLaborDollars',
-                  width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={formatDisplayValue(value)}
-                      onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0)}
-                      prefix="$"
-                    />
-                  )
-                });
-              }
-
-              return columns;
-            })()}
-          />
+                return columns;
+              })()}
+            />
+          </div>
         </Space>
       </Modal>
     );
@@ -657,22 +670,28 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto">
-        <Title level={3} className="pl-2 pb-2">Labor Performance Dashboard</Title>
-        
-        {storeError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-            <Text type="danger">{storeError}</Text>
-          </div>
-        )}
-        
-        <Row gutter={24}>
-          {/* Weekly Totals Section */}
-          <Col span={6}>
-            <Card title="Weekly Labor Totals" className="h-fit">
+      <Title level={3} className="pl-2 pb-2">Labor Performance Dashboard</Title>
+      
+      {storeError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+          <Text type="danger">{storeError}</Text>
+        </div>
+      )}
+      
+      <Row gutter={[16, 16]}>
+        {/* Weekly Totals Section */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Labor Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No labor data available for this period."
+                className="py-4"
+              />
+            ) : (
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
-                  <Text strong>Labor Hours - Budget:</Text>
+                  <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
                   <Input
                     value={`${weeklyTotals.labor_hours_budget} hrs`}
                     className="mt-1"
@@ -682,7 +701,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Labor Hours - Actual:</Text>
+                  <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
                   <Input
                     value={`${weeklyTotals.labor_hours_actual} hrs`}
                     className="mt-1"
@@ -692,7 +711,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Budgeted Labor $:</Text>
+                  <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
                   <Input
                     value={`$${weeklyTotals.budgeted_labor_dollars}`}
                     className="mt-1"
@@ -702,7 +721,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Actual Labor $:</Text>
+                  <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
                   <Input
                     value={`$${weeklyTotals.actual_labor_dollars}`}
                     className="mt-1"
@@ -712,7 +731,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Daily Labor Rate:</Text>
+                  <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
                   <Input
                     value={`$${weeklyTotals.daily_labor_rate}`}
                     className="mt-1"
@@ -722,7 +741,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Daily Labor %:</Text>
+                  <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
                   <Input
                     value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / parseFloat(weeklyTotals.daily_labor_rate))).toFixed(1) : '0.0'}%`}
                     className="mt-1"
@@ -732,7 +751,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                 </div>
                 
                 <div>
-                  <Text strong>Weekly Labor %:</Text>
+                  <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
                   <Input
                     value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / (parseFloat(weeklyTotals.actual_labor_dollars) + 5000)) * 100).toFixed(1) : '0.0'}%`}
                     className="mt-1"
@@ -741,89 +760,87 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                   />
                 </div>
               </Space>
-            </Card>
-          </Col>
+            )}
+          </Card>
+        </Col>
 
-          {/* Weekly Data Section */}
-          <Col span={18}>
-            <Card 
-              title={`Labor @ $${getAverageHourlyRate().toFixed(2)}/Hour: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
-              extra={
-                <Space>
-                  {/* <Button 
-                    onClick={processLaborData}
-                    loading={storeLoading}
-                  >
-                    Refresh
-                  </Button> */}
-                  <Button 
-                    type="default" 
-                    icon={<PlusOutlined />} 
-                    onClick={showAddWeeklyModal}
-                    disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
-                  >
-                    Add Weekly Labor
-                  </Button>
-                </Space>
-              }
-            >
-              {dataNotFound || areAllValuesZero(weeklyData) ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="No labor data found for the selected period."
-                />
+        {/* Weekly Data Section */}
+        <Col xs={24} sm={24} md={24} lg={18} xl={18}>
+          <Card 
+            title={`Labor @ $${getAverageHourlyRate().toFixed(2)}/Hour: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            extra={
+              <Space>
+                <Button 
+                  type="default" 
+                  icon={<PlusOutlined />} 
+                  onClick={showAddWeeklyModal}
+                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                >
+                  Add Weekly Labor
+                </Button>
+              </Space>
+            }
+          >
+            {dataNotFound || areAllValuesZero(weeklyData) ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No labor data found for the selected period."
+              />
+            ) : (
+              weeklyData.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <CalculatorOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                  <div>No weekly labor data added yet. Click "Add Weekly Labor" to get started.</div>
+                </div>
               ) : (
-                weeklyData.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <CalculatorOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                    <div>No weekly labor data added yet. Click "Add Weekly Labor" to get started.</div>
-                  </div>
-                ) : (
-                  <Space direction="vertical" style={{ width: '100%' }} size="large">
-                    {weeklyData.map((week) => {
-                      const totals = calculateWeeklyTotals(week);
-                      return (
-                        <Card 
-                          key={week.id} 
-                          size="small" 
-                          title={week.weekTitle}
-                          extra={
-                            <Space>
-                              <Text type="secondary">
-                                Total: ${totals.actualLaborDollars.toFixed(2)}
-                              </Text>
-                              <Button 
-                                size="small" 
-                                icon={<EditOutlined />} 
-                                onClick={() => showEditWeeklyModal(week)}
-                              >
-                                Edit
-                              </Button>
-                            </Space>
-                          }
-                        >
+                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                  {weeklyData.map((week) => {
+                    const totals = calculateWeeklyTotals(week);
+                    return (
+                      <Card 
+                        key={week.id} 
+                        size="small" 
+                        title={week.weekTitle}
+                        extra={
+                          <Space>
+                            <Text type="secondary">
+                              Total: ${totals.actualLaborDollars.toFixed(2)}
+                            </Text>
+                            <Button 
+                              size="small" 
+                              icon={<EditOutlined />} 
+                              onClick={() => showEditWeeklyModal(week)}
+                            >
+                              Edit
+                            </Button>
+                          </Space>
+                        }
+                      >
+                        <div className="overflow-x-auto">
                           <Table
                             dataSource={week.dailyData || []}
                             pagination={false}
                             size="small"
+                            rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                            scroll={{ x: 'max-content' }}
                             summary={(pageData) => {
-                                                             const weekTotals = pageData.reduce((acc, record) => ({
-                                 laborHoursBudget: acc.laborHoursBudget + (parseFloat(record.laborHoursBudget) || 0),
-                                 laborHoursActual: acc.laborHoursActual + (parseFloat(record.laborHoursActual) || 0),
-                                 budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(record.budgetedLaborDollars) || 0),
-                                 actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0),
-                                 dailyLaborRate: acc.dailyLaborRate + (parseFloat(record.dailyLaborRate) || 0),
-                                 dailyLaborPercentage: acc.dailyLaborPercentage + (parseFloat(record.dailyLaborPercentage) || 0),
-                                 weeklyLaborPercentage: acc.weeklyLaborPercentage + (parseFloat(record.weeklyLaborPercentage) || 0)
-                               }), {
-                                 laborHoursBudget: 0,
-                                 laborHoursActual: 0,
-                                 budgetedLaborDollars: 0,
-                                 actualLaborDollars: 0,
-                                 dailyLaborRate: 0,
-                                 dailyLaborPercentage: 0,
-                                 weeklyLaborPercentage: 0
-                               });
+                              const weekTotals = pageData.reduce((acc, record) => ({
+                                laborHoursBudget: acc.laborHoursBudget + (parseFloat(record.laborHoursBudget) || 0),
+                                laborHoursActual: acc.laborHoursActual + (parseFloat(record.laborHoursActual) || 0),
+                                budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(record.budgetedLaborDollars) || 0),
+                                actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0),
+                                dailyLaborRate: acc.dailyLaborRate + (parseFloat(record.dailyLaborRate) || 0),
+                                dailyLaborPercentage: acc.dailyLaborPercentage + (parseFloat(record.dailyLaborPercentage) || 0),
+                                weeklyLaborPercentage: acc.weeklyLaborPercentage + (parseFloat(record.weeklyLaborPercentage) || 0)
+                              }), {
+                                laborHoursBudget: 0,
+                                laborHoursActual: 0,
+                                budgetedLaborDollars: 0,
+                                actualLaborDollars: 0,
+                                dailyLaborRate: 0,
+                                dailyLaborPercentage: 0,
+                                weeklyLaborPercentage: 0
+                              });
 
                               return (
                                 <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
@@ -860,9 +877,10 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                                 dataIndex: 'dayName',
                                 key: 'dayName',
                                 width: 120,
+                                fixed: 'left',
                                 render: (text, record) => (
                                   <div>
-                                    <div>{text}</div>
+                                    <div className="font-medium text-sm sm:text-base">{text}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
@@ -874,62 +892,62 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                                 dataIndex: 'laborHoursBudget',
                                 key: 'laborHoursBudget',
                                 width: 120,
-                                render: (value) => <Text>{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
+                                render: (value) => <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
                               },
                               {
                                 title: 'Labor Hours - Actual',
                                 dataIndex: 'laborHoursActual',
                                 key: 'laborHoursActual',
                                 width: 150,
-                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
                               },
                               {
                                 title: 'Budgeted Labor $',
                                 dataIndex: 'budgetedLaborDollars',
                                 key: 'budgetedLaborDollars',
                                 width: 120,
-                                render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value) => <Text className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>
                               },
-                                                             {
-                                 title: 'Actual Labor $',
-                                 dataIndex: 'actualLaborDollars',
-                                 key: 'actualLaborDollars',
-                                 width: 150,
-                                 render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                               },
-                               {
-                                 title: 'Daily Labor Rate',
-                                 dataIndex: 'dailyLaborRate',
-                                 key: 'dailyLaborRate',
-                                 width: 150,
-                                 render: (value) => <Text className='bg-green-200 p-1 rounded-md'>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                               },
-                               {
-                                 title:"Daily Labor %",
-                                 dataIndex:"dailyLaborPercentage",
-                                 key:"dailyLaborPercentage",
-                                 width:150,
-                                 render:(value)=><Text>{(parseFloat(value) || 0).toFixed(2)}%</Text>
-                               },
+                              {
+                                title: 'Actual Labor $',
+                                dataIndex: 'actualLaborDollars',
+                                key: 'actualLaborDollars',
+                                width: 150,
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              {
+                                title: 'Daily Labor Rate',
+                                dataIndex: 'dailyLaborRate',
+                                key: 'dailyLaborRate',
+                                width: 150,
+                                render: (value) => <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              {
+                                title:"Daily Labor %",
+                                dataIndex:"dailyLaborPercentage",
+                                key:"dailyLaborPercentage",
+                                width:150,
+                                render:(value)=><Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>
+                              },
                               {
                                 title:"Weekly Labor %",
                                 dataIndex:"weeklyLaborPercentage",
                                 key:"weeklyLaborPercentage",
                                 width:150,
-                                render:(value)=><Text>{(parseFloat(value) || 0).toFixed(2)}%</Text>
+                                render:(value)=><Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>
                               }
                             ]}
                           />
-                        </Card>
-                      );
-                    })}
-                  </Space>
-                )
-              )}
-            </Card>
-          </Col>
-        </Row>
-      </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </Space>
+              )
+            )}
+          </Card>
+        </Col>
+      </Row>
 
       <WeeklyModal />
     </div>

@@ -14,13 +14,6 @@ const formatNumber = (value) => {
   return isNaN(num) ? 0 : Math.round(num * 100) / 100; // Round to 2 decimal places
 };
 
-// Helper function to handle input changes with proper formatting
-const handleNumberInput = (value) => {
-  if (value === '' || value === null || value === undefined) return 0;
-  const num = parseFloat(value);
-  return isNaN(num) ? 0 : num;
-};
-
 const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyTotals, setWeeklyTotals] = useState({
     cogsBudget: 0,
@@ -337,29 +330,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
-    const calculateWeeklyTotals = (dailyData) => {
-      const totals = dailyData.reduce((acc, day) => ({
-        budget: acc.budget + (parseFloat(day.budget) || 0),
-        actual: acc.actual + (parseFloat(day.actual) || 0)
-      }), {
-        budget: 0,
-        actual: 0
-      });
-
-      // Calculate percentage
-      const percentage = totals.budget > 0 ? (totals.actual / totals.budget) * 100 : 0;
-      
-      // Calculate remaining COGS
-      const remainingCog = totals.budget - totals.actual;
-
-      return {
-        cogsBudget: totals.budget,
-        cogsActual: totals.actual,
-        cogsPercentage: percentage,
-        weeklyRemainingCog: remainingCog
-      };
-    };
-
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
@@ -376,7 +346,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
     return (
       <Modal
-      className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
+        className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
         title={isEditMode ? "Edit Weekly COGS Data" : "Add Weekly COGS Data"}
         open={isModalVisible}
         onCancel={() => {
@@ -396,7 +366,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
-        width={1200}
+        width="90vw"
+        style={{ maxWidth: '1200px' }}
       >
         {(isSubmitting || storeLoading) && (
           <LoadingSpinner 
@@ -405,13 +376,12 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             fullScreen={false}
           />
         )}
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-
-          {/* Weekly Goals Input Section */}
+        <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
+          {/* Weekly Goals Input Section - Responsive Grid */}
           <Card title="Weekly COGS Goals" size="small">
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text strong>COGS Budget:</Text>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">COGS Budget:</Text>
                 <Input
                   type="number"
                   value={weekFormData.weeklyTotals.cogsBudget}
@@ -427,10 +397,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   }}
                   prefix="$"
                   placeholder="0.00"
+                  className="w-full"
                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>COGS Actual:</Text>
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">COGS Actual:</Text>
                 <Input
                   type="number"
                   value={weekFormData.weeklyTotals.cogsActual}
@@ -446,10 +417,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   }}
                   prefix="$"
                   placeholder="0.00"
+                  className="w-full"
                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>COGS Percentage:</Text>
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">COGS Percentage:</Text>
                 <Input
                   type="number"
                   value={weekFormData.weeklyTotals.cogsPercentage}
@@ -465,10 +437,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   }}
                   suffix="%"
                   placeholder="0.0"
+                  className="w-full"
                 />
-              </Col>
-              <Col span={6}>
-                <Text strong>Weekly Remaining COGS:</Text>
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Weekly Remaining COGS:</Text>
                 <Input
                   type="number"
                   value={weekFormData.weeklyTotals.weeklyRemainingCog}
@@ -484,119 +457,75 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   }}
                   prefix="$"
                   placeholder="0.00"
+                  className="w-full"
                 />
-              </Col>
-            </Row>
+              </div>
+            </div>
           </Card>
 
-          <Table
-            dataSource={weekFormData.dailyData}
-            pagination={false}
-            size="small"
-            summary={(pageData) => {
-              const totals = pageData.reduce((acc, record) => ({
-                budget: acc.budget + (parseFloat(record.budget) || 0),
-                actual: acc.actual + (parseFloat(record.actual) || 0)
-              }), {
-                budget: 0,
-                actual: 0
-              });
+          {/* Table Section - Responsive */}
+          <div className="overflow-x-auto">
+            <Table
+              dataSource={weekFormData.dailyData}
+              pagination={false}
+              size="small"
+              rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
+              scroll={{ x: 'max-content' }}
+              summary={(pageData) => {
+                const totals = pageData.reduce((acc, record) => ({
+                  budget: acc.budget + (parseFloat(record.budget) || 0),
+                  actual: acc.actual + (parseFloat(record.actual) || 0)
+                }), {
+                  budget: 0,
+                  actual: 0
+                });
 
-              const percentage = totals.budget > 0 ? (totals.actual / totals.budget) * 100 : 0;
-              // Use the weekly remaining COGS from the form data
-              const remaining = weekFormData.weeklyTotals.weeklyRemainingCog || 0;
-
-              return (
-                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong>Totals:</Text>
-                  </Table.Summary.Cell>
-                  {/* <Table.Summary.Cell index={1}>
-                    <Text strong>${totals.budget.toFixed(2)}</Text>
-                  </Table.Summary.Cell> */}
-                  <Table.Summary.Cell index={2}>
-                    <Text strong>${totals.actual.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                  {/* <Table.Summary.Cell index={3}>
-                    <Text strong>{percentage.toFixed(1)}%</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={4}>
-                    <Text strong>${remaining.toFixed(2)}</Text>
-                  </Table.Summary.Cell> */}
-                </Table.Summary.Row>
-              );
-            }}
-            columns={[
-              {
-                title: 'Day',
-                dataIndex: 'dayName',
-                key: 'dayName',
-                width: 120,
-                render: (text, record) => (
-                  <div>
-                    <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
+                return (
+                  <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                    <Table.Summary.Cell index={0}>
+                      <Text strong>Totals:</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1}>
+                      <Text strong>${totals.actual.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                );
+              }}
+              columns={[
+                {
+                  title: 'Day',
+                  dataIndex: 'dayName',
+                  key: 'dayName',
+                  width: 120,
+                  fixed: 'left',
+                  render: (text, record) => (
+                    <div>
+                      <div className="font-medium">{text}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {record.date.format('MMM DD, YYYY')}
+                      </div>
                     </div>
-                  </div>
-                )
-              },
-              // {
-              //   title: 'Budget',
-              //   dataIndex: 'budget',
-              //   key: 'budget',
-              //   width: 150,
-              //   render: (value, record, index) => (
-              //     <Input
-              //       type="number"
-              //       value={value}
-              //       onChange={(e) => handleDailyDataChange(index, 'budget', parseFloat(e.target.value) || 0)}
-              //       prefix="$"
-              //     />
-              //   )
-              // },
-              {
-                title: 'Actual',
-                dataIndex: 'actual',
-                key: 'actual',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              // {
-              //   title: 'Percentage',
-              //   key: 'percentage',
-              //   width: 120,
-              //   render: (_, record, index) => {
-              //     const budget = parseFloat(record.budget) || 0;
-              //     const actual = parseFloat(record.actual) || 0;
-              //     const percentage = budget > 0 ? (actual / budget) * 100 : 0;
-              //     return (
-              //       <Text>{percentage.toFixed(1)}%</Text>
-              //     );
-              //   }
-              // },
-              // {
-              //   title: 'Remaining',
-              //   key: 'remaining',
-              //   width: 120,
-              //   render: (_, record, index) => {
-              //     const budget = parseFloat(record.budget) || 0;
-              //     const actual = parseFloat(record.actual) || 0;
-              //     const remaining = budget - actual;
-              //     return (
-              //       <Text>${remaining.toFixed(2)}</Text>
-              //     );
-              //   }
-              // }
-            ]}
-          />
+                  )
+                },
+                {
+                  title: 'Actual',
+                  dataIndex: 'actual',
+                  key: 'actual',
+                  width: 150,
+                  render: (value, record, index) => (
+                    <Input
+                      type="number"
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0)}
+                      prefix="$"
+                      placeholder="0.00"
+                      className="w-full"
+                    />
+                  )
+                }
+              ]}
+            />
+          </div>
         </Space>
       </Modal>
     );
@@ -604,19 +533,25 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto">
-        <Title level={3} className="pl-2 pb-2">COGS Performance Dashboard</Title>
-        
-        {storeError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-            <Text type="danger">{storeError}</Text>
-          </div>
-        )}
-        
-        <Row gutter={24}>
-          {/* Weekly Totals Section */}
-          <Col span={6}>
-            <Card title="Weekly COGS Totals" className="h-fit">
+      <Title level={3} className="pl-2 pb-2">COGS Performance Dashboard</Title>
+      
+      {storeError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+          <Text type="danger">{storeError}</Text>
+        </div>
+      )}
+      
+      <Row gutter={[16, 16]}>
+        {/* Weekly Totals Section */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly COGS Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No COGS data available for this period."
+                className="py-4"
+              />
+            ) : (
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div>
                   <Text strong>COGS Budget:</Text>
@@ -658,77 +593,75 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   />
                 </div>
               </Space>
-            </Card>
-          </Col>
+            )}
+          </Card>
+        </Col>
 
-          {/* Weekly Data Section */}
-          <Col span={18}>
-            <Card 
-              title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
-              extra={
-                <Space>
-                  {/* <Button 
-                    onClick={processCogsData}
-                    loading={storeLoading}
-                  >
-                    Refresh
-                  </Button> */}
-                  <Button 
-                    type="default" 
-                    icon={<PlusOutlined />} 
-                    onClick={showAddWeeklyModal}
-                    disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
-                  >
-                    Add Weekly COGS
-                  </Button>
-                </Space>
-              }
-            >
-              {dataNotFound || areAllValuesZero(weeklyData) ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="No COGS data found for the selected period."
-                />
+        {/* Weekly Data Section */}
+        <Col xs={24} sm={24} md={24} lg={18} xl={18}>
+          <Card 
+            title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            extra={
+              <Space>
+                <Button 
+                  type="default" 
+                  icon={<PlusOutlined />} 
+                  onClick={showAddWeeklyModal}
+                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                >
+                  Add Weekly COGS
+                </Button>
+              </Space>
+            }
+          >
+            {dataNotFound || areAllValuesZero(weeklyData) ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No COGS data found for the selected period."
+              />
+            ) : (
+              weeklyData.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <CalculatorOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
+                  <div>No weekly COGS data added yet. Click "Add Weekly COGS" to get started.</div>
+                </div>
               ) : (
-                weeklyData.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <CalculatorOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-                    <div>No weekly COGS data added yet. Click "Add Weekly COGS" to get started.</div>
-                  </div>
-                ) : (
-                  <Space direction="vertical" style={{ width: '100%' }} size="large">
-                    {weeklyData.map((week) => {
-                      const totals = week.dailyData.reduce((acc, day) => ({
-                        budget: acc.budget + (parseFloat(day.budget) || 0),
-                        actual: acc.actual + (parseFloat(day.actual) || 0)
-                      }), {
-                        budget: 0,
-                        actual: 0
-                      });
-                      return (
-                        <Card 
-                          key={week.id} 
-                          size="small" 
-                          title={week.weekTitle}
-                          extra={
-                            <Space>
-                              <Text type="secondary">
-                                Total: ${totals.actual.toFixed(2)}
-                              </Text>
-                              <Button 
-                                size="small" 
-                                icon={<EditOutlined />} 
-                                onClick={() => showEditWeeklyModal(week)}
-                              >
-                                Edit
-                              </Button>
-                            </Space>
-                          }
-                        >
+                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                  {weeklyData.map((week) => {
+                    const totals = week.dailyData.reduce((acc, day) => ({
+                      budget: acc.budget + (parseFloat(day.budget) || 0),
+                      actual: acc.actual + (parseFloat(day.actual) || 0)
+                    }), {
+                      budget: 0,
+                      actual: 0
+                    });
+                    return (
+                      <Card 
+                        key={week.id} 
+                        size="small" 
+                        title={week.weekTitle}
+                        extra={
+                          <Space>
+                            <Text type="secondary">
+                              Total: ${totals.actual.toFixed(2)}
+                            </Text>
+                            <Button 
+                              size="small" 
+                              icon={<EditOutlined />} 
+                              onClick={() => showEditWeeklyModal(week)}
+                            >
+                              Edit
+                            </Button>
+                          </Space>
+                        }
+                      >
+                        <div className="overflow-x-auto">
                           <Table
                             dataSource={week.dailyData || []}
                             pagination={false}
                             size="small"
+                            rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                            scroll={{ x: 'max-content' }}
                             summary={(pageData) => {
                               const weekTotals = pageData.reduce((acc, record) => ({
                                 budget: acc.budget + (parseFloat(record.budget) || 0),
@@ -738,9 +671,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 actual: 0
                               });
 
-                                                             const weekPercentage = weekTotals.budget > 0 ? (weekTotals.actual / weekTotals.budget) * 100 : 0;
-                                                             // Use the weekly remaining COGS from the first daily entry
-                              const weekRemaining = pageData.length > 0 ? parseFloat(pageData[0].weeklyRemainingCog) || 0 : parseFloat(weeklyTotals.weeklyRemainingCog) || 0;
+                              const weekPercentage = weekTotals.budget > 0 ? (weekTotals.actual / weekTotals.budget) * 100 : 0;
 
                               return (
                                 <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
@@ -756,9 +687,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                   <Table.Summary.Cell index={3}>
                                     <Text strong>{weekPercentage.toFixed(1)}%</Text>
                                   </Table.Summary.Cell>
-                                  {/* <Table.Summary.Cell index={4}>
-                                    <Text strong>${weekRemaining.toFixed(2)}</Text>
-                                  </Table.Summary.Cell> */}
                                 </Table.Summary.Row>
                               );
                             }}
@@ -768,9 +696,10 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 dataIndex: 'dayName',
                                 key: 'dayName',
                                 width: 120,
+                                fixed: 'left',
                                 render: (text, record) => (
                                   <div>
-                                    <div>{text}</div>
+                                    <div className="font-medium">{text}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
@@ -789,7 +718,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 dataIndex: 'actual',
                                 key: 'actual',
                                 width: 140,
-                                render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
                               },
                               {
                                 title: 'COGS %',
@@ -800,34 +729,33 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                   const actual = parseFloat(record.actual) || 0;
                                   const percentage = budget > 0 ? (actual / budget) * 100 : 0;
                                   return (
-                                    <Text>{percentage.toFixed(1)}%</Text>
+                                    <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{percentage.toFixed(1)}%</Text>
                                   );
                                 }
                               },
-                                                             {
-                                 title: 'Weekly Remaining COGS',
-                                 key: 'remaining',
-                                 width: 120,
-                                 render: (_, record) => {
-                                   // Use the weekly remaining COGS from the record data (prioritize record value)
-                                   const weeklyRemainingCog = parseFloat(record.weeklyRemainingCog) || 0;
-                                   return (
-                                     <Text>${weeklyRemainingCog.toFixed(2)}</Text>
-                                   );
-                                 }
-                               }
+                              {
+                                title: 'Weekly Remaining COGS',
+                                key: 'remaining',
+                                width: 120,
+                                render: (_, record) => {
+                                  const weeklyRemainingCog = parseFloat(record.weeklyRemainingCog) || 0;
+                                  return (
+                                    <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${weeklyRemainingCog.toFixed(2)}</Text>
+                                  );
+                                }
+                              }
                             ]}
                           />
-                        </Card>
-                      );
-                    })}
-                  </Space>
-                )
-              )}
-            </Card>
-          </Col>
-        </Row>
-      </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </Space>
+              )
+            )}
+          </Card>
+        </Col>
+      </Row>
 
       <WeeklyModal />
     </div>

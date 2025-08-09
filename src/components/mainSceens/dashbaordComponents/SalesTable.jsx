@@ -42,16 +42,16 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
     // Dynamic provider fields will be added here
   });
 
-  const [weeklyTotals, setWeeklyTotals] = useState({
-    salesBudget: 0,
-    actualSalesInStore: 0,
-    actualSalesAppOnline: 0,
-    netSalesActual: 0,
-    actualVsBudgetSales: 0,
-    dailyTickets: 0,
-    averageDailyTicket: 0,
-    // Dynamic provider fields will be added here
-  });
+  // const [weeklyTotals, setWeeklyTotals] = useState({
+  //   salesBudget: 0,
+  //   actualSalesInStore: 0,
+  //   actualSalesAppOnline: 0,
+  //   netSalesActual: 0,
+  //   actualVsBudgetSales: 0,
+  //   dailyTickets: 0,
+  //   averageDailyTicket: 0,
+  //   // Dynamic provider fields will be added here
+  // });
 
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -75,24 +75,24 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
         dailyTickets: 0,
         averageDailyTicket: 0
       });
-      setWeeklyTotals({
-        salesBudget: 0,
-        actualSalesInStore: 0,
-        actualSalesAppOnline: 0,
-        netSalesActual: 0,
-        dailyTickets: 0,
-        averageDailyTicket: 0
-      });
+      // setWeeklyTotals({
+      //   salesBudget: 0,
+      //   actualSalesInStore: 0,
+      //   actualSalesAppOnline: 0,
+      //   netSalesActual: 0,
+      //   dailyTickets: 0,
+      //   averageDailyTicket: 0
+      // });
       setDataNotFound(true);
     }
   }, [dashboardData, weekDays]);
 
   // Recalculate weekly totals when weeklyData changes
-  useEffect(() => {
-    if (weeklyData.length > 0) {
-      calculateWeeklyTotalsFromData(weeklyData);
-    }
-  }, [weeklyData]);
+  // useEffect(() => {
+  //   if (weeklyData.length > 0) {
+  //     calculateWeeklyTotalsFromData(weeklyData);
+  //   }
+  // }, [weeklyData]);
 
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
@@ -124,76 +124,6 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                allProviderFieldsZero;
       });
     });
-  };
-
-  // Calculate weekly totals from weekly data
-  const calculateWeeklyTotalsFromData = (weeklyTableData) => {
-    const totals = weeklyTableData.reduce((acc, week) => {
-      const weekTotals = week.dailyData.reduce((weekAcc, day) => {
-        const dayTotals = {
-          budgetedSales: weekAcc.budgetedSales + (parseFloat(day.budgetedSales) || 0),
-          actualSalesInStore: weekAcc.actualSalesInStore + (parseFloat(day.actualSalesInStore) || 0),
-          actualSalesAppOnline: weekAcc.actualSalesAppOnline + (parseFloat(day.actualSalesAppOnline) || 0),
-        };
-
-        // Add dynamic provider totals
-        providers.forEach(provider => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          dayTotals[providerKey] = weekAcc[providerKey] + (parseFloat(day[providerKey]) || 0);
-        });
-
-        return dayTotals;
-      }, {
-        budgetedSales: 0,
-        actualSalesInStore: 0,
-        actualSalesAppOnline: 0,
-        ...providers.reduce((acc, provider) => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          acc[providerKey] = 0;
-          return acc;
-        }, {})
-      });
-      
-      // Calculate net sales actual as sum of all actual sales (including dynamic providers)
-      const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
-      providers.forEach(provider => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        allSalesFields.push(providerKey);
-      });
-      
-      const netSalesActual = allSalesFields.reduce((sum, field) => sum + weekTotals[field], 0);
-      
-      const weekResult = {
-        salesBudget: acc.salesBudget + weekTotals.budgetedSales,
-        actualSalesInStore: acc.actualSalesInStore + weekTotals.actualSalesInStore,
-        actualSalesAppOnline: acc.actualSalesAppOnline + weekTotals.actualSalesAppOnline,
-        netSalesActual: acc.netSalesActual + netSalesActual,
-        dailyTickets: acc.dailyTickets,
-        averageDailyTicket: acc.averageDailyTicket
-      };
-
-      // Add dynamic provider totals to week result
-      providers.forEach(provider => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        weekResult[providerKey] = acc[providerKey] + weekTotals[providerKey];
-      });
-
-      return weekResult;
-    }, {
-      salesBudget: 0,
-      actualSalesInStore: 0,
-      actualSalesAppOnline: 0,
-      netSalesActual: 0,
-      dailyTickets: 0,
-      averageDailyTicket: 0,
-      ...providers.reduce((acc, provider) => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        acc[providerKey] = 0;
-        return acc;
-      }, {})
-    });
-    
-    setWeeklyTotals(totals);
   };
 
   // Helper function to calculate actual sales budget ratio
@@ -327,12 +257,12 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
     }]);
     
     // Calculate weekly totals from the consolidated data
-    calculateWeeklyTotalsFromData([{
-      id: 'consolidated-week',
-      weekTitle: 'Weekly Sales Data',
-      startDate: weekStartDate,
-      dailyData: dailyData
-    }]);
+    // calculateWeeklyTotalsFromData([{
+    //   id: 'consolidated-week',
+    //   weekTitle: 'Weekly Sales Data',
+    //   startDate: weekStartDate,
+    //   dailyData: dailyData
+    // }]);
   };
 
 
@@ -607,32 +537,15 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate, weeklyGoals]);
 
-
-
-
-
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
-      // Automatically calculate Net Sales Actual when any of the actual sales fields change
-      if (field === 'actualSalesInStore' || field === 'actualSalesAppOnline' || 
-          providers.some(provider => field === `actualSales${provider.provider_name.replace(/\s+/g, '')}`)) {
-        const actualSalesInStore = parseFloat(newDailyData[dayIndex].actualSalesInStore) || 0;
-        const actualSalesAppOnline = parseFloat(newDailyData[dayIndex].actualSalesAppOnline) || 0;
-        
-        // Add dynamic provider sales
-        const providerSales = providers.reduce((sum, provider) => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          return sum + (parseFloat(newDailyData[dayIndex][providerKey]) || 0);
-        }, 0);
-        
-        newDailyData[dayIndex].netSalesActual = actualSalesInStore + actualSalesAppOnline + providerSales;
-      }
-      
-      setWeekFormData({ ...weekFormData, dailyData: newDailyData });
+      setWeekFormData({ 
+        ...weekFormData, 
+        dailyData: newDailyData
+      });
     };
-
 
     const handleSubmit = () => {
       handleWeeklySubmit(weekFormData);
@@ -659,7 +572,8 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
             {isEditMode ? 'Update' : 'Add'} Week
           </Button>
         ]}
-        width={1200}
+        width="90vw"
+        style={{ maxWidth: '1200px' }}
       >
         {(isSubmitting || storeLoading) && (
           <LoadingSpinner 
@@ -668,10 +582,11 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
             fullScreen={false}
           />
         )}
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Row gutter={16}>
-            <Col span={6}>
-              <Text strong>Sales Budget:</Text>
+        <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
+          {/* Weekly Totals Section - Responsive Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base">Sales Budget:</Text>
               <Input
                 type='number'
                 value={weekFormData.weeklyTotals.salesBudget}
@@ -687,10 +602,11 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                 }}
                 prefix="$"
                 placeholder="0.00"
+                className="w-full"
               />
-            </Col>
-            <Col span={6}>
-              <Text strong>Actual Sales - In Store:</Text>
+            </div>
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base">Actual Sales - In Store:</Text>
               <Input
                 type='number'
                 value={weekFormData.weeklyTotals.actualSalesInStore}
@@ -706,10 +622,11 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                 }}
                 prefix="$"
                 placeholder="0.00"
+                className="w-full"
               />
-            </Col>
-            <Col span={6}>
-              <Text strong>Actual Sales - App/Online:</Text>
+            </div>
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base">Actual Sales - App/Online:</Text>
               <Input
                 type='number'
                 value={weekFormData.weeklyTotals.actualSalesAppOnline}
@@ -725,15 +642,17 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                 }}
                 prefix="$"
                 placeholder="0.00"
+                className="w-full"
               />
-            </Col>
-          </Row>
-          {/* Dynamic Provider Fields */}
+            </div>
+          </div>
+          
+          {/* Dynamic Provider Fields - Responsive Grid */}
           {providers.length > 0 && (
-            <Row gutter={16}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {providers.map((provider) => (
-                <Col span={6} key={provider.provider_name}>
-                  <Text strong>Actual Sales - {provider.provider_name}:</Text>
+                <div key={provider.provider_name} className="w-full">
+                  <Text strong className="text-sm sm:text-base">Actual Sales - {provider.provider_name}:</Text>
                   <Input
                     type='number'
                     value={weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
@@ -750,15 +669,16 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                     }}
                     prefix="$"
                     placeholder="0.00"
+                    className="w-full"
                   />
-                </Col>
+                </div>
               ))}
-            </Row>
+            </div>
           )}
-          <Row gutter={16}>
-
-            <Col span={6}>
-              <Text strong># Daily Tickets:</Text>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
               <Input
                 type='number'
                 value={weekFormData.weeklyTotals.dailyTickets}
@@ -773,300 +693,261 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                   }));
                 }}
                 placeholder="0"
+                className="w-full"
               />
-            </Col>
-            {/* <Col span={6}>
-              <Text strong>Average Daily Ticket:</Text>
-              <Input
-                type='number'
-                value={weekFormData.weeklyTotals.averageDailyTicket}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setWeekFormData(prev => ({
-                    ...prev,
-                    weeklyTotals: {
-                      ...prev.weeklyTotals,
-                      averageDailyTicket: value
-                    }
-                  }));
-                }}
-                prefix="$"
-                placeholder="0.00"
-              />
-            </Col> */}
-          </Row>
+            </div>
+          </div>
 
+          {/* Table Section - Responsive */}
+          <div className="overflow-x-auto">
+            <Table
+              dataSource={weekFormData.dailyData}
+              pagination={false}
+              size="small"
+              rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
+              scroll={{ x: 'max-content' }}
+              summary={(pageData) => {
+                const totals = pageData.reduce((acc, record) => {
+                  acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
+                  acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
+                  acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
+                  acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
+                  acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
+                  
+                  // Add dynamic provider totals
+                  providers.forEach(provider => {
+                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                    if (!acc[providerKey]) acc[providerKey] = 0;
+                    acc[providerKey] += parseFloat(record[providerKey]) || 0;
+                  });
+                  
+                  return acc;
+                }, {
+                  budgetedSales: 0,
+                  actualSalesInStore: 0,
+                  actualSalesAppOnline: 0,
+                  dailyTickets: 0,
+                  averageDailyTicket: 0,
+                  ...providers.reduce((acc, provider) => {
+                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                    acc[providerKey] = 0;
+                    return acc;
+                  }, {})
+                });
 
-          <Table
-            dataSource={weekFormData.dailyData}
-            pagination={false}
-            size="small"
-            rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
-            summary={(pageData) => {
-              const totals = pageData.reduce((acc, record) => {
-                acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
-                acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
-                acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
-                acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
-                acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
-                
-                // Add dynamic provider totals
+                // Calculate net sales actual total (including dynamic providers)
+                const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
                 providers.forEach(provider => {
                   const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                  if (!acc[providerKey]) acc[providerKey] = 0;
-                  acc[providerKey] += parseFloat(record[providerKey]) || 0;
+                  allSalesFields.push(providerKey);
                 });
-                
-                return acc;
-              }, {
-                budgetedSales: 0,
-                actualSalesInStore: 0,
-                actualSalesAppOnline: 0,
-                dailyTickets: 0,
-                averageDailyTicket: 0,
-                ...providers.reduce((acc, provider) => {
-                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                  acc[providerKey] = 0;
-                  return acc;
-                }, {})
-              });
+                const netSalesActualTotal = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
 
-              // Calculate net sales actual total (including dynamic providers)
-                const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
-              providers.forEach(provider => {
-                const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                allSalesFields.push(providerKey);
-              });
-              const netSalesActualTotal = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
-
-              return (
-                <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1}>
-                    <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2}>
-                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3}>
-                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                  {/* Dynamic Provider Summary Cells */}
-                  {providers.map((provider, index) => {
-                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                    return (
-                      <Table.Summary.Cell key={providerKey} index={4 + index}>
-                        <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
-                      </Table.Summary.Cell>
-                    );
-                  })}
-                  <Table.Summary.Cell index={4 + providers.length}>
-                    <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={5 + providers.length}>
-                    <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={6 + providers.length}>
-                    <Text strong style={{ color: '#1890ff' }}>
-                      {totals.budgetedSales > 0 && netSalesActualTotal > 0 
-                        ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
-                        : '0.0'}%
-                    </Text>
-                  </Table.Summary.Cell>
-
-                  <Table.Summary.Cell index={7 + providers.length}>
-                    <Text strong style={{ color: '#1890ff' }}>
-                      {totals.dailyTickets > 0 
-                        ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
-                        : 0}
-                    </Text>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
-              );
-            }}
-            columns={[
-              {
-                title: 'Day',
-                dataIndex: 'dayName',
-                key: 'dayName',
-                width: 120,
-                render: (text, record) => (
-                  <div>
-                    <div>{text}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                      {record.date.format('MMM DD, YYYY')}
-                    </div>
-                  </div>
-                )
-              },
-              {
-                title: 'Budgeted Sales',
-                dataIndex: 'budgetedSales',
-                key: 'budgetedSales',
-                width: 150,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Actual Sales - In Store',
-                dataIndex: 'actualSalesInStore',
-                key: 'actualSalesInStore',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              {
-                title: 'Actual Sales - App/Online',
-                dataIndex: 'actualSalesAppOnline',
-                key: 'actualSalesAppOnline',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
-                    prefix="$"
-                  />
-                )
-              },
-              // Dynamic Provider Columns
-              ...providers.map(provider => ({
-                title: `Actual Sales - ${provider.provider_name}`,
-                dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value || 0}
-                    onChange={(e) => {
+                return (
+                  <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
+                    <Table.Summary.Cell index={0}>
+                      <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={2}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={3}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    {/* Dynamic Provider Summary Cells */}
+                    {providers.map((provider, index) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                      handleDailyDataChange(index, providerKey, parseFloat(e.target.value) || 0);
-                    }}
-                    prefix="$"
-                  />
-                )
-              })),
-              {
-                title: 'Net Sales - Actual (Auto-calculated)',
-                dataIndex: 'netSalesActual',
-                key: 'netSalesActual',
-                width: 180,
-                render: (value, record) => {
-                  // Calculate the sum of actual sales for this day (including dynamic providers)
-                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                  
-                  // Add dynamic provider sales
-                  const providerSales = providers.reduce((sum, provider) => {
-                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                    return sum + (parseFloat(record[providerKey]) || 0);
-                  }, 0);
-                  
-                  const calculatedNetSales = actualSalesInStore + actualSalesAppOnline  + providerSales;
-                  
-                  return (
+                      return (
+                        <Table.Summary.Cell key={providerKey} index={4 + index}>
+                          <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
+                        </Table.Summary.Cell>
+                      );
+                    })}
+                    <Table.Summary.Cell index={4 + providers.length}>
+                      <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={5 + providers.length}>
+                      <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={6 + providers.length}>
+                      <Text strong style={{ color: '#1890ff' }}>
+                        {totals.budgetedSales > 0 && netSalesActualTotal > 0 
+                          ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
+                          : '0.0'}%
+                      </Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={7 + providers.length}>
+                      <Text strong style={{ color: '#1890ff' }}>
+                        {totals.dailyTickets > 0 
+                          ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
+                          : 0}
+                      </Text>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                );
+              }}
+              columns={[
+                {
+                  title: 'Day',
+                  dataIndex: 'dayName',
+                  key: 'dayName',
+                  width: 120,
+                  fixed: 'left',
+                  render: (text, record) => (
+                    <div>
+                      <div className="font-medium">{text}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {record.date.format('MMM DD, YYYY')}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  title: 'Budgeted Sales',
+                  dataIndex: 'budgetedSales',
+                  key: 'budgetedSales',
+                  width: 120,
+                  render: (value, record, index) => (
                     <Input
-                      type="number"
-                      value={calculatedNetSales.toFixed(2)}
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                      prefix="$"
+                      type='number'
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full"
                     />
-                  );
-                }
-              },
-
-              {
-                title: '# Daily Tickets',
-                dataIndex: 'dailyTickets',
-                key: 'dailyTickets',
-                width: 180,
-                render: (value, record, index) => (
-                  <Input
-                    type="number"
-                    value={value}
-                    onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0)}
-                    prefix=""
-                  />
-                )
-              },
-              {
-                title: 'Actual Sales Budget (%)',
-                dataIndex: 'actualSalesBudget',
-                key: 'actualSalesBudget',
-                width: 180,
-                render: (value, record) => {
-                  const budgetedSales = parseFloat(record.budgetedSales) || 0;
-                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                  
-                  // Add dynamic provider sales
-                  const providerSales = providers.reduce((sum, provider) => {
-                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                    return sum + (parseFloat(record[providerKey]) || 0);
-                  }, 0);
-                  
-                  const netSales = actualSalesInStore + actualSalesAppOnline  + providerSales;
-                  const actualSalesBudget = calculateActualSalesBudget(budgetedSales, netSales);
-                  
-                  return (
+                  )
+                },
+                {
+                  title: 'Actual Sales - In Store',
+                  dataIndex: 'actualSalesInStore',
+                  key: 'actualSalesInStore',
+                  width: 150,
+                  render: (value, record, index) => (
                     <Input
-                      type="number"
-                      value={actualSalesBudget.toFixed(1)}
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                      suffix="%"
+                      type='number'
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full"
                     />
-                  );
-                }
-              },
-              {
-                title: 'Average Daily Ticket',
-                dataIndex: 'averageDailyTicket',
-                key: 'averageDailyTicket',
-                width: 180,
-                render: (value, record) => {
-                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                  
-                  // Add dynamic provider sales
-                  const providerSales = providers.reduce((sum, provider) => {
-                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                    return sum + (parseFloat(record[providerKey]) || 0);
-                  }, 0);
-                  
-                  const netSales = actualSalesInStore + actualSalesAppOnline  + providerSales;
-                  const dailyTickets = parseFloat(record.dailyTickets) || 0;
-                  const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
-                  
-                  return (
+                  )
+                },
+                {
+                  title: 'Actual Sales - App/Online',
+                  dataIndex: 'actualSalesAppOnline',
+                  key: 'actualSalesAppOnline',
+                  width: 150,
+                  render: (value, record, index) => (
                     <Input
-                      type="number"
-                      value={avgDailyTicket}
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
+                      type='number'
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full"
                     />
-                  );
+                  )
+                },
+                // Dynamic Provider Columns
+                ...providers.map(provider => ({
+                  title: `Actual Sales - ${provider.provider_name}`,
+                  dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
+                  key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
+                  width: 150,
+                  render: (value, record, index) => (
+                    <Input
+                      type='number'
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full"
+                    />
+                  )
+                })),
+                {
+                  title: 'Net Sales - Actual (Auto-calculated)',
+                  dataIndex: 'netSalesActual',
+                  key: 'netSalesActual',
+                  width: 150,
+                  render: (value, record) => {
+                    // Calculate the sum of actual sales for this day (including dynamic providers)
+                    const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                    const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                    
+                    // Add dynamic provider sales
+                    const providerSales = providers.reduce((sum, provider) => {
+                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                      return sum + (parseFloat(record[providerKey]) || 0);
+                    }, 0);
+                    
+                    const calculatedNetSales = actualSalesInStore + actualSalesAppOnline  + providerSales;
+                    
+                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
+                  }
+                },
+                {
+                  title: '# Daily Tickets',
+                  dataIndex: 'dailyTickets',
+                  key: 'dailyTickets',
+                  width: 150,
+                  render: (value, record, index) => (
+                    <Input
+                      type='number'
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-full"
+                    />
+                  )
+                },
+                {
+                  title: 'Actual Sales Budget (%)',
+                  dataIndex: 'actualSalesBudget',
+                  key: 'actualSalesBudget',
+                  width: 150,
+                  render: (value, record) => {
+                    const budgetedSales = parseFloat(record.budgetedSales) || 0;
+                    const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                    const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                    
+                    // Add dynamic provider sales
+                    const providerSales = providers.reduce((sum, provider) => {
+                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                      return sum + (parseFloat(record[providerKey]) || 0);
+                    }, 0);
+                    
+                    const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
+                    const actualSalesBudget = calculateActualSalesBudget(budgetedSales, netSales);
+                    
+                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{actualSalesBudget.toFixed(1)}%</Text>;
+                  }
+                },
+                {
+                  title: 'Average Daily Ticket',
+                  dataIndex: 'averageDailyTicket',
+                  key: 'averageDailyTicket',
+                  width: 150,
+                  render: (value, record) => {
+                    const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                    const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                    
+                    // Add dynamic provider sales
+                    const providerSales = providers.reduce((sum, provider) => {
+                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                      return sum + (parseFloat(record[providerKey]) || 0);
+                    }, 0);
+                    
+                    const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
+                    const dailyTickets = parseFloat(record.dailyTickets) || 0;
+                    const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
+                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
+                  }
                 }
-              }
-              
-            ]}
-          />
+              ]}
+            />
+          </div>
         </Space>
       </Modal>
     );
@@ -1074,154 +955,145 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
 
   return (
     <div className="w-full">
-      <div className="w-full mx-auto">
-        <Title level={3} className="pl-2 pb-2">Sales Performance Dashboard</Title>
-        
-        {storeError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-            <Text type="danger">{storeError}</Text>
-          </div>
-        )}
-        
-        <Row gutter={24}>
-          {/* Weekly Goals Section */}
-          <Col span={6}>
-            <Card title="Weekly Sales Goals" className="h-fit">
-              {dataNotFound ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="No sales data available for this period."
-                  className="py-4"
-                />
-              ) : (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  <div>
-                    <Text strong>Sales - Budget:</Text>
+      <Title level={3} className="pl-2 pb-2">Sales Performance Dashboard</Title>
+      
+      {storeError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+          <Text type="danger">{storeError}</Text>
+        </div>
+      )}
+      
+      <Row gutter={[16, 16]}>
+        {/* Weekly Goals Section */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Sales Goals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No sales data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong>Sales - Budget:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Actual Sales - In Store:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Actual Sales - App / On Line:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                {/* Dynamic Provider Fields */}
+                {providers.map((provider) => (
+                  <div key={provider.provider_name}>
+                    <Text strong>Actual Sales - {provider.provider_name}:</Text>
                     <Input
-                      value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
+                      value={`$${(weeklyGoals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
                       className="mt-1"
                       disabled
                       style={{ backgroundColor: '#f5f5f5' }}
                     />
                   </div>
-                  
-                  <div>
-                    <Text strong>Actual Sales - In Store:</Text>
-                    <Input
-                      value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Text strong>Actual Sales - App / On Line:</Text>
-                    <Input
-                      value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                  
-    
-                  
-                  {/* Dynamic Provider Fields */}
-                  {providers.map((provider) => (
-                    <div key={provider.provider_name}>
-                      <Text strong>Actual Sales - {provider.provider_name}:</Text>
-                      <Input
-                        value={`$${(weeklyGoals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
-                        className="mt-1"
-                        disabled
-                        style={{ backgroundColor: '#f5f5f5' }}
-                      />
-                    </div>
-                  ))}
-                  
-                  <div>
-                    <Text strong>Net Sales - Actual:</Text>
-                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                      (Auto-calculated: In Store + App/Online + Providers)
-                    </Text>
-                    <Input
-                      value={(() => {
-                        const baseSales = weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline;
-                        const providerSales = providers.reduce((sum, provider) => {
-                          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                          return sum + (weeklyGoals[providerKey] || 0);
-                        }, 0);
-                        return baseSales + providerSales;
-                      })()}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                      prefix="$"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Text strong>% Actual vs Budgeted Sales:</Text>
-                    <Input
-                      value={weeklyGoals.actualVsBudgetSales || 0}
-                      className="mt-1"
-                      disabled
-                      style={{ 
-                        color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
-                        backgroundColor: '#f5f5f5'
-                      }}
-                      prefix="%"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Text strong># Daily Tickets:</Text>
-                    <Input
-                      value={weeklyGoals.dailyTickets || 0}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Text strong>Average Daily Ticket:</Text>
-                    <Input
-                      value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                </Space>
-              )}
-            </Card>
-          </Col>
+                ))}
+                
+                <div>
+                  <Text strong>Net Sales - Actual:</Text>
+                  <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                    (Auto-calculated: In Store + App/Online + Providers)
+                  </Text>
+                  <Input
+                    value={(() => {
+                      const baseSales = weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline;
+                      const providerSales = providers.reduce((sum, provider) => {
+                        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                        return sum + (weeklyGoals[providerKey] || 0);
+                      }, 0);
+                      return baseSales + providerSales;
+                    })()}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                    prefix="$"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>% Actual vs Budgeted Sales:</Text>
+                  <Input
+                    value={weeklyGoals.actualVsBudgetSales || 0}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
+                      backgroundColor: '#f5f5f5'
+                    }}
+                    prefix="%"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong># Daily Tickets:</Text>
+                  <Input
+                    value={weeklyGoals.dailyTickets || 0}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Average Daily Ticket:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
+            )}
+          </Card>
+        </Col>
 
-          {/* Weekly Data Section */}
-          <Col span={18}>
-            <Card 
-              title="Weekly Sales Data" 
-              extra={
-                <Space>
-                  {/* <Button 
-                    onClick={processDashboardData}
-                    loading={storeLoading}
-                  >
-                    Refresh
-                  </Button> */}
-                  <Button 
-                    type="default" 
-                    icon={<PlusOutlined />} 
-                    onClick={showAddWeeklyModal}
-                    disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
-                  >
-                    Add Weekly Sales
-                  </Button>
-                </Space>
-              }
-            >
+        {/* Weekly Data Section */}
+        <Col xs={24} sm={24} md={24} lg={18} xl={18}>
+          <Card 
+            title="Weekly Sales Data" 
+            extra={
+              <Space>
+                <Button 
+                  type="default" 
+                  icon={<PlusOutlined />} 
+                  onClick={showAddWeeklyModal}
+                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                >
+                  Add Weekly Sales
+                </Button>
+              </Space>
+            }
+          >
               {dataNotFound || areAllValuesZero(weeklyData) ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -1229,7 +1101,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                   className="py-8"
                 />
               ) : (
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
                   {weeklyData.map((week) => {
                     const totals = calculateWeeklyTotals(week);
                     return (
@@ -1238,225 +1110,230 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                         size="small" 
                         title={week.weekTitle}
                         extra={
-                          <Space>
-                            <Text type="secondary">
+                          <Space className="flex flex-col sm:flex-row gap-2">
+                            <Text type="secondary" className="text-sm">
                               Total: ${totals.netSalesActual.toFixed(2)}
                             </Text>
-                                                          <Button 
-                                size="small" 
-                                icon={<EditOutlined />} 
-                                onClick={() => showEditWeeklyModal(week)}
-                              >
-                                Edit
-                              </Button>
+                            <Button 
+                              size="small" 
+                              icon={<EditOutlined />} 
+                              onClick={() => showEditWeeklyModal(week)}
+                              className="w-full sm:w-auto"
+                            >
+                              Edit
+                            </Button>
                           </Space>
                         }
                       >
-                        <Table
-                          dataSource={week.dailyData || []}
-                          pagination={false}
-                          size="small"
-                          rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
-                          summary={(pageData) => {
-                            const totals = pageData.reduce((acc, record) => {
-                              acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
-                              acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
-                              acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
-                              acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
-                              acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
-                              
-                              // Add dynamic provider totals
+                        <div className="overflow-x-auto">
+                          <Table
+                            dataSource={week.dailyData || []}
+                            pagination={false}
+                            size="small"
+                            rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                            scroll={{ x: 'max-content' }}
+                            summary={(pageData) => {
+                              const totals = pageData.reduce((acc, record) => {
+                                acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
+                                acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
+                                acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
+                                acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
+                                acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
+                                
+                                // Add dynamic provider totals
+                                providers.forEach(provider => {
+                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                  if (!acc[providerKey]) acc[providerKey] = 0;
+                                  acc[providerKey] += parseFloat(record[providerKey]) || 0;
+                                });
+                                
+                                return acc;
+                              }, {
+                                budgetedSales: 0,
+                                actualSalesInStore: 0,
+                                actualSalesAppOnline: 0,
+                                dailyTickets: 0,
+                                averageDailyTicket: 0,
+                                ...providers.reduce((acc, provider) => {
+                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                  acc[providerKey] = 0;
+                                  return acc;
+                                }, {})
+                              });
+
+                              // Calculate net sales actual total (including dynamic providers)
+                              const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
                               providers.forEach(provider => {
                                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                if (!acc[providerKey]) acc[providerKey] = 0;
-                                acc[providerKey] += parseFloat(record[providerKey]) || 0;
+                                allSalesFields.push(providerKey);
                               });
-                              
-                              return acc;
-                            }, {
-                              budgetedSales: 0,
-                              actualSalesInStore: 0,
-                              actualSalesAppOnline: 0,
-                              dailyTickets: 0,
-                              averageDailyTicket: 0,
-                              ...providers.reduce((acc, provider) => {
-                                const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                acc[providerKey] = 0;
-                                return acc;
-                              }, {})
-                            });
+                              const netSalesActualTotal = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
 
-                            // Calculate net sales actual total (including dynamic providers)
-                              const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
-                            providers.forEach(provider => {
-                              const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                              allSalesFields.push(providerKey);
-                            });
-                            const netSalesActualTotal = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
-
-                            return (
-                              <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
-                                <Table.Summary.Cell index={0}>
-                                  <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={1}>
-                                  <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={2}>
-                                  <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={3}>
-                                  <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
-                                </Table.Summary.Cell>
-                                {/* Dynamic Provider Summary Cells */}
-                                {providers.map((provider, index) => {
-                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                  return (
-                                    <Table.Summary.Cell key={providerKey} index={4 + index}>
-                                      <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
-                                    </Table.Summary.Cell>
-                                  );
-                                })}
-                                <Table.Summary.Cell index={4 + providers.length}>
-                                  <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={5 + providers.length}>
-                                  <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={6 + providers.length}>
-                                  <Text strong style={{ color: '#1890ff' }}>
-                                    {totals.budgetedSales > 0 && netSalesActualTotal > 0 
-                                      ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
-                                      : '0.0'}%
-                                  </Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={7 + providers.length}>
-                                  <Text strong style={{ color: '#1890ff' }}>
-                                    {totals.dailyTickets > 0 
-                                      ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
-                                      : 0}
-                                  </Text>
-                                </Table.Summary.Cell>
-                              </Table.Summary.Row>
-                            );
-                          }}
-                          columns={[
-                            {
-                              title: 'Day',
-                              dataIndex: 'dayName',
-                              key: 'dayName',
-                              width: 120,
-                              render: (text, record) => (
-                                <div>
-                                  <div>{text}</div>
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {record.date.format('MMM DD, YYYY')}
+                              return (
+                                <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
+                                  <Table.Summary.Cell index={0}>
+                                    <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={1}>
+                                    <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={2}>
+                                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={3}>
+                                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  {/* Dynamic Provider Summary Cells */}
+                                  {providers.map((provider, index) => {
+                                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                    return (
+                                      <Table.Summary.Cell key={providerKey} index={4 + index}>
+                                        <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
+                                      </Table.Summary.Cell>
+                                    );
+                                  })}
+                                  <Table.Summary.Cell index={4 + providers.length}>
+                                    <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={5 + providers.length}>
+                                    <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={6 + providers.length}>
+                                    <Text strong style={{ color: '#1890ff' }}>
+                                      {totals.budgetedSales > 0 && netSalesActualTotal > 0 
+                                        ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
+                                        : '0.0'}%
+                                    </Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={7 + providers.length}>
+                                    <Text strong style={{ color: '#1890ff' }}>
+                                      {totals.dailyTickets > 0 
+                                        ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
+                                        : 0}
+                                    </Text>
+                                  </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                              );
+                            }}
+                            columns={[
+                              {
+                                title: 'Day',
+                                dataIndex: 'dayName',
+                                key: 'dayName',
+                                width: 120,
+                                fixed: 'left',
+                                render: (text, record) => (
+                                  <div>
+                                    <div className="font-medium">{text}</div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                      {record.date.format('MMM DD, YYYY')}
+                                    </div>
                                   </div>
-                                </div>
-                              )
-                            },
-                            {
-                              title: 'Budgeted Sales',
-                              dataIndex: 'budgetedSales',
-                              key: 'budgetedSales',
-                              width: 120,
-                              render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                            },
-                            {
-                              title: 'Actual Sales - In Store',
-                              dataIndex: 'actualSalesInStore',
-                              key: 'actualSalesInStore',
-                              width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                            },
-                            {
-                              title: 'Actual Sales - App/Online',
-                              dataIndex: 'actualSalesAppOnline',
-                              key: 'actualSalesAppOnline',
-                              width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                            },
-                            // Dynamic Provider Columns
-                            ...providers.map(provider => ({
-                              title: `Actual Sales - ${provider.provider_name}`,
-                              dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                              key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                              width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
-                            })),
-                            {
-                              title: 'Net Sales - Actual (Auto-calculated)',
-                              dataIndex: 'netSalesActual',
-                              key: 'netSalesActual',
-                              width: 150,
-                              render: (value, record) => {
-                                // Calculate the sum of actual sales for this day (including dynamic providers)
-                                const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                                const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                                
-                                // Add dynamic provider sales
-                                const providerSales = providers.reduce((sum, provider) => {
-                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                  return sum + (parseFloat(record[providerKey]) || 0);
-                                }, 0);
-                                
-                                const calculatedNetSales = actualSalesInStore + actualSalesAppOnline  + providerSales;
-                                
-                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
+                                )
+                              },
+                              {
+                                title: 'Budgeted Sales',
+                                dataIndex: 'budgetedSales',
+                                key: 'budgetedSales',
+                                width: 120,
+                                render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              {
+                                title: 'Actual Sales - In Store',
+                                dataIndex: 'actualSalesInStore',
+                                key: 'actualSalesInStore',
+                                width: 150,
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              {
+                                title: 'Actual Sales - App/Online',
+                                dataIndex: 'actualSalesAppOnline',
+                                key: 'actualSalesAppOnline',
+                                width: 150,
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              },
+                              // Dynamic Provider Columns
+                              ...providers.map(provider => ({
+                                title: `Actual Sales - ${provider.provider_name}`,
+                                dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
+                                key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
+                                width: 150,
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              })),
+                              {
+                                title: 'Net Sales - Actual (Auto-calculated)',
+                                dataIndex: 'netSalesActual',
+                                key: 'netSalesActual',
+                                width: 150,
+                                render: (value, record) => {
+                                  // Calculate the sum of actual sales for this day (including dynamic providers)
+                                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                                  
+                                  // Add dynamic provider sales
+                                  const providerSales = providers.reduce((sum, provider) => {
+                                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                    return sum + (parseFloat(record[providerKey]) || 0);
+                                  }, 0);
+                                  
+                                  const calculatedNetSales = actualSalesInStore + actualSalesAppOnline + providerSales;
+                                  
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
+                                }
+                              },
+                              {
+                                title: '# Daily Tickets',
+                                dataIndex: 'dailyTickets',
+                                key: 'dailyTickets',
+                                width: 150,
+                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(0)}</Text>
+                              },
+                              {
+                                title: 'Actual Sales Budget (%)',
+                                dataIndex: 'actualSalesBudget',
+                                key: 'actualSalesBudget',
+                                width: 150,
+                                render: (value, record) => {
+                                  const budgetedSales = parseFloat(record.budgetedSales) || 0;
+                                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                                  
+                                  // Add dynamic provider sales
+                                  const providerSales = providers.reduce((sum, provider) => {
+                                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                    return sum + (parseFloat(record[providerKey]) || 0);
+                                  }, 0);
+                                  
+                                  const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
+                                  const actualSalesBudget = calculateActualSalesBudget(budgetedSales, netSales);
+                                  
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{actualSalesBudget.toFixed(1)}%</Text>;
+                                }
+                              },
+                              {
+                                title: 'Average Daily Ticket',
+                                dataIndex: 'averageDailyTicket',
+                                key: 'averageDailyTicket',
+                                width: 150,
+                                render: (value, record) => {
+                                  const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
+                                  const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
+                                  
+                                  // Add dynamic provider sales
+                                  const providerSales = providers.reduce((sum, provider) => {
+                                    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                                    return sum + (parseFloat(record[providerKey]) || 0);
+                                  }, 0);
+                                  
+                                  const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
+                                  const dailyTickets = parseFloat(record.dailyTickets) || 0;
+                                  const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
+                                }
                               }
-                            },
-                            {
-                              title: '# Daily Tickets',
-                              dataIndex: 'dailyTickets',
-                              key: 'dailyTickets',
-                              width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(2)}</Text>
-                            },
-                            {
-                              title: 'Actual Sales Budget (%)',
-                              dataIndex: 'actualSalesBudget',
-                              key: 'actualSalesBudget',
-                              width: 150,
-                              render: (value, record) => {
-                                const budgetedSales = parseFloat(record.budgetedSales) || 0;
-                                const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                                const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                                
-                                // Add dynamic provider sales
-                                const providerSales = providers.reduce((sum, provider) => {
-                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                  return sum + (parseFloat(record[providerKey]) || 0);
-                                }, 0);
-                                
-                                const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
-                                const actualSalesBudget = calculateActualSalesBudget(budgetedSales, netSales);
-                                
-                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{actualSalesBudget.toFixed(1)}%</Text>;
-                              }
-                            },
-                            {
-                              title: 'Average Daily Ticket',
-                              dataIndex: 'averageDailyTicket',
-                              key: 'averageDailyTicket',
-                              width: 150,
-                              render: (value, record) => {
-                                const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
-                                const actualSalesAppOnline = parseFloat(record.actualSalesAppOnline) || 0;
-                                
-                                // Add dynamic provider sales
-                                const providerSales = providers.reduce((sum, provider) => {
-                                  const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                                  return sum + (parseFloat(record[providerKey]) || 0);
-                                }, 0);
-                                
-                                const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
-                                const dailyTickets = parseFloat(record.dailyTickets) || 0;
-                                const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
-                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
-                              }
-                            }
                             ]}
-                        />
+                          />
+                        </div>
                       </Card>
                     );
                   })}
@@ -1465,7 +1342,6 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
             </Card>
           </Col>
         </Row>
-      </div>
 
       <WeeklyModal />
     </div>
