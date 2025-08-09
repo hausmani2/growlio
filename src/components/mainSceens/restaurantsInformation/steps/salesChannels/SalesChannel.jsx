@@ -59,31 +59,31 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
     };
 
     return (
-        <div className="flex mt-5">
-            <div className="w-[40%]">
+        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+            <div className="w-full lg:w-[40%]">
                 <div className="flex flex-col gap-2">
                     <h4 className="text-lg !font-bold !mb-0">Sales Channels</h4>
-                    <span className="text-base text-neutral-600">
+                    <span className="text-sm sm:text-base text-neutral-600">
                         Define your active sales channels to accurately track your restaurant's financial performance.
                     </span>
                 </div>
             </div>
-            <div className="w-[60%]">
-                <div className="flex flex-col gap-3 p-6 bg-white rounded-xl">
+            <div className="w-full lg:w-[60%]">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
                     <div className="flex flex-col gap-4">
-                        <label className="text-base !font-bold text-neutral-600 flex items-center">
+                        <label className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center">
                             Sales Channels <span className="text-red-500">*</span>
                         </label>
                         {salesChannels.map((channel, index) => (
                             <div
                                 key={index}
-                                className={`flex items-center justify-between px-6 py-4 border border-gray-200 rounded-xl bg-white mb-3 ${
+                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white mb-3 gap-3 sm:gap-0 ${
                                     errors.sales_channels ? 'border-red-500' : ''
                                 }`}
                             >
-                                <div className='flex flex-col gap-1'>
-                                    <span className="text-base !font-bold text-neutral-600">{channel.title}</span>
-                                    <span className="text-base font-regular text-neutral-600">{channel.description}</span>
+                                <div className='flex flex-col gap-1 flex-1'>
+                                    <span className="text-sm sm:text-base !font-bold text-neutral-600">{channel.title}</span>
+                                    <span className="text-xs sm:text-base font-regular text-neutral-600">{channel.description}</span>
                                 </div>
                                 <ToggleSwitch
                                     isOn={channel.enabled}
@@ -92,22 +92,21 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                             </div>
                         ))}
                         {errors.sales_channels && (
-                            <span className="text-red-500 text-sm">{errors.sales_channels}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.sales_channels}</span>
                         )}
                     </div>
                 </div>
                 {!isUpdateMode && (
-                    <div className="flex justify-between items-center my-5">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-5">
                         <PrimaryButton 
-                            icon={LeftArrow} 
-                            title="Go Back" 
-                            className="bg-gray-200 text-black h-[40px]" 
+                            title="Back" 
+                            className="border-none w-full sm:w-auto"
                             onClick={handleGoBack}
                             disabled={loading}
                         />
                         <PrimaryButton 
                             title={loading ? "Saving..." : "Save & Continue"} 
-                            className="btn-brand"
+                            className="btn-brand w-full sm:w-auto"
                             onClick={handleSaveAndContinueClick}
                             disabled={loading}
                         />

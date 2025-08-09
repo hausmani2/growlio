@@ -2,25 +2,25 @@ import { Input, Select } from 'antd';
 
 const AddressInformation = ({ data, updateData, errors = {} }) => {
     return (
-        <div className="flex mt-5">
-            <div className="w-[40%]">
+        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+            <div className="w-full lg:w-[40%]">
                 <div className="flex flex-col gap-2">
                     <h4 className="text-lg !font-bold !mb-0">Address Information</h4>
-                    <span className="text-base text-neutral-600">
+                    <span className="text-sm sm:text-base text-neutral-600">
                         Tell us about your restaurant — name, category, and a short description to help customers get to know you.
                     </span>
                 </div>
             </div>
-            <div className="w-[60%]">
-                <div className="flex flex-col gap-3 p-6 bg-white rounded-xl">
+            <div className="w-full lg:w-[60%]">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="address1" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="address1" className="text-sm sm:text-base !font-bold text-neutral-600">
                             Address 1 <span className="text-red-500">*</span>
                         </label>
                         <Input.TextArea 
                             id="address1" 
                             placeholder="Enter Address" 
-                            className={`w-full p-2 border h-[60px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full p-2 border h-[60px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.address1 ? 'border-red-500' : 'border-gray-300'
                             }`}
                             value={data.address1}
@@ -28,18 +28,18 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                             status={errors.address1 ? 'error' : ''}
                         />
                         {errors.address1 && (
-                            <span className="text-red-500 text-sm">{errors.address1}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.address1}</span>
                         )}
                     </div>
                    
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="country" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="country" className="text-sm sm:text-base !font-bold text-neutral-600">
                             Country <span className="text-red-500">*</span>
                         </label>
                         <Select 
                             id="country" 
                             placeholder="Select Country" 
-                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.country ? 'border-red-500' : ''
                             }`}
                             value={data.country || undefined}
@@ -52,18 +52,18 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                             <Select.Option value="3">United Kingdom</Select.Option>
                         </Select>
                         {errors.country && (
-                            <span className="text-red-500 text-sm">{errors.country}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.country}</span>
                         )}
                     </div>
                     
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="state" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="state" className="text-sm sm:text-base !font-bold text-neutral-600">
                             State <span className="text-red-500">*</span>
                         </label>
                         <Select 
                             id="state" 
                             placeholder="Select State" 
-                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.state ? 'border-red-500' : ''
                             }`}
                             value={data.state || undefined}
@@ -76,19 +76,19 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                             <Select.Option value="3">Texas</Select.Option>
                         </Select>
                         {errors.state && (
-                            <span className="text-red-500 text-sm">{errors.state}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.state}</span>
                         )}
                     </div>
                     
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="zipCode" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="zipCode" className="text-sm sm:text-base !font-bold text-neutral-600">
                             Zip Code <span className="text-red-500">*</span>
                         </label>
                         <Input 
                             type="text" 
                             id="zipCode" 
                             placeholder="Enter Zip Code" 
-                            className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full p-2 border h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.zipCode ? 'border-red-500' : 'border-gray-300'
                             }`}
                             value={data.zipCode}
@@ -96,7 +96,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                             status={errors.zipCode ? 'error' : ''}
                         />
                         {errors.zipCode && (
-                            <span className="text-red-500 text-sm">{errors.zipCode}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.zipCode}</span>
                         )}
                     </div>
                 </div>

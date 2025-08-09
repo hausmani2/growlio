@@ -245,26 +245,26 @@ const Dashboard = () => {
   return (
     <div className="w-full">
       <div className="w-full mx-auto">
-        <div className="mb-6">
-          <Title level={3} className="mb-4">
+        <div className="mb-4 sm:mb-6">
+          <Title level={3} className="mb-2 sm:mb-4 text-lg sm:text-xl lg:text-2xl">
             <CalendarOutlined className="mr-2" />
             Cash Flow Dashboard
           </Title>
 
-          <Card>
-            <Space direction="vertical" style={{ width: '100%' }}>
+          <Card className="p-4 sm:p-6">
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <div>
-                <Title level={4}>Select Date</Title>
-                <p className="text-gray-600 mb-4">
+                <Title level={4} className="text-base sm:text-lg lg:text-xl">Select Date</Title>
+                <p className="text-gray-600 mb-2 sm:mb-4 text-sm sm:text-base">
                   Choose a year and month to view available weeks for that period.
                 </p>
               </div>
 
               {/* Calendar Dropdowns */}
               <div className="space-y-4">
-                <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                   {/* Year Dropdown */}
-                  <div className="flex-1 min-w-[150px]">
+                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Year
                     </label>
@@ -273,6 +273,7 @@ const Dashboard = () => {
                       value={selectedYear}
                       onChange={handleYearChange}
                       style={{ width: '100%' }}
+                      className="w-full"
                     >
                       {years.map(year => (
                         <Option key={year} value={year}>
@@ -283,7 +284,7 @@ const Dashboard = () => {
                   </div>
 
                   {/* Month Dropdown */}
-                  <div className="flex-1 min-w-[150px]">
+                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Month
                     </label>
@@ -294,6 +295,7 @@ const Dashboard = () => {
                       style={{ width: '100%' }}
                       disabled={!selectedYear}
                       loading={loading}
+                      className="w-full"
                     >
                       {months.map(month => (
                         <Option key={month.key} value={month.key}>
@@ -304,7 +306,7 @@ const Dashboard = () => {
                   </div>
 
                   {/* Week Dropdown */}
-                  <div className="flex-1 min-w-[150px]">
+                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Week
                     </label>

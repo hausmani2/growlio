@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
 import { HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
@@ -16,6 +16,8 @@ const { Content } = Layout;
  */
 const Wrapper = ({ showSidebar = false, children, className }) => {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const menuItems = [
     {
       key: 'dashboard',
@@ -62,20 +64,32 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     },
   ];
 
+  const handleMenuClick = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleMobileMenuToggle = (isOpen) => {
+    setMobileMenuOpen(isOpen);
+  };
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex flex-col h-screen">
       <div className="flex-shrink-0">
-        <Header />
+        <Header onMenuClick={handleMenuClick} />
         <div className='border-t border-gray-200'></div>
       </div>
       <div className="flex-1 flex flex-row min-h-0">
         {showSidebar && (
           <div className="flex-shrink-0 h-full">
-            <Sidebar menuItems={menuItems} />
+            <Sidebar 
+              menuItems={menuItems} 
+              mobileMenuOpen={mobileMenuOpen}
+              onMobileMenuToggle={handleMobileMenuToggle}
+            />
           </div>
         )}
         <div className={`flex-1 min-h-0 overflow-auto`}>
-          <Content className={`px-4 py-4 bg-gray-100 w-full ${className}`}>
+          <Content className={`px-2 sm:px-4 py-2 sm:py-4 bg-gray-100 w-full ${className}`}>
             {children}
           </Content>
         </div>

@@ -98,96 +98,93 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
     };
 
     return (
-        <div className="flex mt-5">
-        <div className="w-[40%]">
-            <div className="flex flex-col gap-2">
-                <h4 className="text-lg !font-bold !mb-0">Labor Information </h4>
-                <span className="text-base text-neutral-600">Add basic labor details so we can help you manage operations more effectively.</span>
-            </div>
-        </div>
-        <div className="w-[60%]">
-            <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
-
+        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+            <div className="w-full lg:w-[40%]">
                 <div className="flex flex-col gap-2">
-                    <label htmlFor="hourlyRate" className="text-base !font-bold text-neutral-600 flex items-center gap-2">
-                        What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
-                        <Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count"><img src={SubTrack} alt="SubTrack" /></Tooltip>
-                    </label>
-                   <div className="relative">
-                        <Input 
-                            type="number" 
-                            id="avg_hourly_rate" 
-                            placeholder="Enter Hourly Wage" 
-                            className={`w-full p-2 border !h-[40px] rounded-md text-base font-normal text-neutral-700 pl-6 ${
-                                errors.avg_hourly_rate ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                            value={data.avg_hourly_rate}
-                            onChange={(e) => updateData('avg_hourly_rate', e.target.value)}
-                            status={errors.avg_hourly_rate ? 'error' : ''}
-                        />
-                        {data.avg_hourly_rate && (
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-base">
-                                
-                            </span>
+                    <h4 className="text-lg !font-bold !mb-0">Labor Information </h4>
+                    <span className="text-sm sm:text-base text-neutral-600">Add basic labor details so we can help you manage operations more effectively.</span>
+                </div>
+            </div>
+            <div className="w-full lg:w-[60%]">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl" >
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="hourlyRate" className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center gap-2">
+                            What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
+                            <Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count">
+                                <img src={SubTrack} alt="SubTrack" className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </Tooltip>
+                        </label>
+                        <div className="relative">
+                            <Input 
+                                type="number" 
+                                id="avg_hourly_rate" 
+                                placeholder="Enter Hourly Wage" 
+                                className={`w-full p-2 border !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 pl-6 ${
+                                    errors.avg_hourly_rate ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                                value={data.avg_hourly_rate}
+                                onChange={(e) => updateData('avg_hourly_rate', e.target.value)}
+                                status={errors.avg_hourly_rate ? 'error' : ''}
+                            />
+                            {data.avg_hourly_rate && (
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm sm:text-base">
+                                    
+                                </span>
+                            )}
+                        </div>
+                        {errors.avg_hourly_rate && (
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.avg_hourly_rate}</span>
                         )}
                     </div>
-                    {errors.avg_hourly_rate && (
-                        <span className="text-red-500 text-sm">{errors.avg_hourly_rate}</span>
-                    )}
-                </div>
-                <div className="flex flex-col gap-4">
-                    <div className='flex flex-col gap-2'>
-                    <label htmlFor="needsAttention" className="text-base !font-bold text-neutral-600">How would you like to record your labor?</label>
-                    <div className='flex items-center gap-2 justify-between w-full'>
-                        <PrimaryButton 
-                            title="Daily Hours & Costs (Recommended)" 
-                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                data.labor_record_method === 'daily-hours-costs' 
-                                    ? 'border border-orange-500 text-orange-500' 
-                                    : 'text-neutral'
-                            }`}
-                            onClick={() => handleEntryMethodSelect('daily-hours-costs')}
-                        />
-                        <PrimaryButton 
-                            title="Hours Only" 
-                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                data.labor_record_method === 'hours-only' 
-                                    ? 'border border-orange-500 text-orange-500' 
-                                    : 'text-neutral '
-                            }`}
-                            onClick={() => handleEntryMethodSelect('hours-only')}
-                        />
-                        <PrimaryButton 
-                            title="Cost Only" 
-                            className={`h-[40px] px-3 py-4 text-base font-medium rounded-md hover:border-orange-300 ${
-                                data.labor_record_method === 'cost-only' 
-                                    ? 'border border-orange-500 text-orange-500' 
-                                    : 'text-neutral '
-                            }`}
-                            onClick={() => handleEntryMethodSelect('cost-only')}
-                        />
-
-                    </div>
-                    </div>
-                    <div
-                                className={`flex items-center justify-between px-6 py-4 border border-gray-200 rounded-xl bg-white`}
-                            >
-                                <span className={`text-base`}>{getToggleText()}</span>
-                                <ToggleSwitch
-                                    isOn={isToggleEnabled()}
-                                    setIsOn={handleToggleSwitch}
-                                    disabled={false}
+                    <div className="flex flex-col gap-4">
+                        <div className='flex flex-col gap-2'>
+                            <label htmlFor="needsAttention" className="text-sm sm:text-base !font-bold text-neutral-600">How would you like to record your labor?</label>
+                            <div className='flex flex-col sm:flex-row items-center gap-2 justify-between w-full'>
+                                <PrimaryButton 
+                                    title="Daily Hours & Costs (Recommended)" 
+                                    className={`h-[40px] px-3 py-4 text-sm sm:text-base font-medium rounded-md hover:border-orange-300 w-full sm:w-auto ${
+                                        data.labor_record_method === 'daily-hours-costs' 
+                                            ? 'border border-orange-500 text-orange-500' 
+                                            : 'text-neutral'
+                                    }`}
+                                    onClick={() => handleEntryMethodSelect('daily-hours-costs')}
+                                />
+                                <PrimaryButton 
+                                    title="Hours Only" 
+                                    className={`h-[40px] px-3 py-4 text-sm sm:text-base font-medium rounded-md hover:border-orange-300 w-full sm:w-auto ${
+                                        data.labor_record_method === 'hours-only' 
+                                            ? 'border border-orange-500 text-orange-500' 
+                                            : 'text-neutral '
+                                    }`}
+                                    onClick={() => handleEntryMethodSelect('hours-only')}
+                                />
+                                <PrimaryButton 
+                                    title="Cost Only" 
+                                    className={`h-[40px] px-3 py-4 text-sm sm:text-base font-medium rounded-md hover:border-orange-300 w-full sm:w-auto ${
+                                        data.labor_record_method === 'cost-only' 
+                                            ? 'border border-orange-500 text-orange-500' 
+                                            : 'text-neutral '
+                                    }`}
+                                    onClick={() => handleEntryMethodSelect('cost-only')}
                                 />
                             </div>
-
-                </div>
-                <div className="flex flex-col gap-2">
-                        <label htmlFor="ticketCount" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count? </label>
+                        </div>
+                        <div className={`flex items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white`}>
+                            <span className={`text-sm sm:text-base`}>{getToggleText()}</span>
+                            <ToggleSwitch
+                                isOn={isToggleEnabled()}
+                                setIsOn={handleToggleSwitch}
+                                disabled={false}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="ticketCount" className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center gap-2">Would you like to daily ticket count? </label>
                         <Select 
                             type="text" 
                             id="daily_ticket_count" 
                             placeholder="No" 
-                            className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
+                            className="w-full p-2 !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700"
                             value={data.daily_ticket_count}
                             onChange={(value) => updateData('daily_ticket_count', value)}
                         >
@@ -195,13 +192,13 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             <Select.Option value="2">Yes</Select.Option>
                         </Select>                
                     </div>
-                <div className="flex flex-col gap-2">
-                        <label htmlFor="previousLaborReport" className="text-base !font-bold text-neutral-600 flex items-center gap-2">Forword previous week's actual labor rate?</label>
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="previousLaborReport" className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center gap-2">Forword previous week's actual labor rate?</label>
                         <Select 
                             type="text" 
                             id="forward_prev_week_rate" 
                             placeholder="No" 
-                            className="w-full p-2 !h-[40px] rounded-md text-base font-normal text-neutral-700"
+                            className="w-full p-2 !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700"
                             value={data.forward_prev_week_rate}
                             onChange={(value) => updateData('forward_prev_week_rate', value)}
                         >
@@ -209,23 +206,27 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             <Select.Option value="2">Yes</Select.Option>
                         </Select>                
                     </div>
-                
-
-            </div>
-            {!isUpdateMode && (
-                <div className="flex justify-between items-center my-5">
-                    <PrimaryButton icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleGoBack} disabled={loading} />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
                 </div>
-            )}
+                
+                {!isUpdateMode && (
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-5">
+                        <PrimaryButton 
+                            title="Back" 
+                            className="border-none w-full sm:w-auto"
+                            onClick={handleGoBack}
+                            disabled={loading}
+                        />
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand w-full sm:w-auto"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
-    </div>
-        )
+    );
 }
 
 export default LaborEntryMethod;

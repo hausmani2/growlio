@@ -30,29 +30,29 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
     };
     
     return (
-        <div className="flex mt-5">
-            <div className="w-[40%]">
+        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+            <div className="w-full lg:w-[40%]">
                 <div className="flex flex-col gap-2">
                     <h4 className="text-lg !font-bold !mb-0">Restaurant Details</h4>
-                    <span className="text-base text-neutral-600">
+                    <span className="text-sm sm:text-base text-neutral-600">
                         Tell us about your restaurant — name, category, and a short description to help customers get to know you.
                     </span>
                 </div>
             </div>
-            <div className="w-[60%]">
-                <div className="flex flex-col gap-3 p-6 bg-white rounded-xl">
+            <div className="w-full lg:w-[60%]">
+                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="sqft" className="text-base !font-bold text-neutral-600 flex items-center gap-2">
+                        <label htmlFor="sqft" className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center gap-2">
                             How many SQFT is your location? <span className="text-red-500">*</span>
                             <Tooltip placement="bottomLeft" title="Enter the total square footage of your restaurant location">
-                                <img src={SubTrack} alt="SubTrack" />
+                                <img src={SubTrack} alt="SubTrack" className="w-4 h-4 sm:w-5 sm:h-5" />
                             </Tooltip>
                         </label>
                         <Input 
                             type="text" 
                             id="sqft" 
                             placeholder="Enter SQFT" 
-                            className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full p-2 border h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.sqft ? 'border-red-500' : 'border-gray-300'
                             }`}
                             value={data.sqft}
@@ -60,21 +60,21 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                             status={errors.sqft ? 'error' : ''}
                         />
                         {errors.sqft && (
-                            <span className="text-red-500 text-sm">{errors.sqft}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.sqft}</span>
                         )}
                     </div>
                     
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="franchise" className="text-base !font-bold text-neutral-600 flex items-center gap-2">
+                        <label htmlFor="franchise" className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center gap-2">
                             Is this location a franchise? <span className="text-red-500">*</span>
                             <Tooltip placement="bottomLeft" title="Select whether this restaurant location is part of a franchise or independently owned">
-                                <img src={SubTrack} alt="SubTrack" />
+                                <img src={SubTrack} alt="SubTrack" className="w-4 h-4 sm:w-5 sm:h-5" />
                             </Tooltip>
                         </label>
                         <Select 
                             id="franchise" 
                             placeholder="No" 
-                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.isFranchise ? 'border-red-500' : ''
                             }`}
                             value={data.isFranchise || undefined}
@@ -85,18 +85,18 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                             <Select.Option value="2">Yes</Select.Option>
                         </Select>
                         {errors.isFranchise && (
-                            <span className="text-red-500 text-sm">{errors.isFranchise}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.isFranchise}</span>
                         )}
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="restaurantType" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="restaurantType" className="text-sm sm:text-base !font-bold text-neutral-600">
                             Restaurant Type <span className="text-red-500">*</span>
                         </label>
                         <Select 
                             id="restaurantType" 
                             placeholder="Select Restaurant Type" 
-                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.restaurantType ? 'border-red-500' : ''
                             }`}
                             value={data.restaurantType || undefined}
@@ -114,18 +114,18 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                             <Select.Option value="Pop-Up Restaurant">Pop-Up Restaurant</Select.Option>
                         </Select>
                         {errors.restaurantType && (
-                            <span className="text-red-500 text-sm">{errors.restaurantType}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.restaurantType}</span>
                         )}
                     </div>
                     
                     <div className="flex flex-col gap-2">
-                        <label htmlFor="menuType" className="text-base !font-bold text-neutral-600">
+                        <label htmlFor="menuType" className="text-sm sm:text-base !font-bold text-neutral-600">
                             Menu Type <span className="text-red-500">*</span>
                         </label>
                         <Select 
                             id="menuType" 
                             placeholder="Select Menu Type" 
-                            className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                            className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                 errors.menuType ? 'border-red-500' : ''
                             }`}
                             value={data.menuType || undefined}
@@ -143,22 +143,22 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                             <Select.Option value="Indian">Indian</Select.Option>
                         </Select>
                         {errors.menuType && (
-                            <span className="text-red-500 text-sm">{errors.menuType}</span>
+                            <span className="text-red-500 text-xs sm:text-sm">{errors.menuType}</span>
                         )}
                     </div>
                 </div>
                 
                 {!isUpdateMode && (
-                    <div className="flex justify-between items-center my-5">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-5">
                         <PrimaryButton 
                             title="Back" 
-                            className="border-none"
+                            className="border-none w-full sm:w-auto"
                             onClick={handleGoBack}
                             disabled={loading}
                         />
                         <PrimaryButton 
                             title={loading ? "Saving..." : "Save & Continue"} 
-                            className="btn-brand"
+                            className="btn-brand w-full sm:w-auto"
                             onClick={handleSaveAndContinueClick}
                             disabled={loading}
                         />

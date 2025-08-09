@@ -49,29 +49,25 @@ const CompleteSteps = () => {
     };
 
     return (
-        <div className=" flex flex-col gap-6 px-5 h-screen bg-white">
+        <div className="flex flex-col gap-4 sm:gap-6 px-4 sm:px-5 h-screen bg-white">
            <Header />
-           <div className="flex flex-col gap-5 container mx-auto justify-center items-center h-full">
-            <div className="flex flex-col justify-center items-center gap-2">
-                <h2 className="text-2xl !font-bold !mb-0"> 🎉 Congratulations!</h2>
-                <div className="flex items-center flex-col ">
-
-                <span className="text-base font-medium  text-neutral-600">You've successfully completed all your restaurant setup details.</span>
-                    <span className="text-base font-medium  text-neutral-600"> Your dashboard is now ready — start exploring, managing, and growing your business!</span>
+           <div className="flex flex-col gap-4 sm:gap-5 container mx-auto justify-center items-center h-full px-4 sm:px-0">
+            <div className="flex flex-col justify-center items-center gap-2 text-center">
+                <h2 className="text-xl sm:text-2xl !font-bold !mb-0"> 🎉 Congratulations!</h2>
+                <div className="flex items-center flex-col gap-1">
+                    <span className="text-sm sm:text-base font-medium text-neutral-600">You've successfully completed all your restaurant setup details.</span>
+                    <span className="text-sm sm:text-base font-medium text-neutral-600">Your dashboard is now ready — start exploring, managing, and growing your business!</span>
                 </div>
-
             </div>
-            <img src={Card} alt="cafe" className="w-[400px] h-[370px] object-cover " />
+            <img src={Card} alt="cafe" className="w-full max-w-[300px] sm:max-w-[400px] h-auto max-h-[300px] sm:max-h-[370px] object-cover" />
 
             <PrimaryBtn 
                 title={isChecking ? "Checking..." : "Go to Dashboard"} 
-                className="btn-brand w-[500px]" 
+                className="btn-brand w-full max-w-[300px] sm:max-w-[500px] text-sm sm:text-base py-3 sm:py-4" 
                 onClick={handleGoToDashboard}
                 disabled={isChecking}
             />
-
            </div>
-
         </div>
     )
 }

@@ -80,35 +80,35 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
 
     return (
         <div>
-            <div className="flex mt-5">
-                <div className="w-[40%]">
+            <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+                <div className="w-full lg:w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Restaurant Information</h4>
-                        <span className="text-base text-neutral-600">
+                        <span className="text-sm sm:text-base text-neutral-600">
                             Tell us about your restaurant — name, category, and a short description to help customers get to know you.
                         </span>
                     </div>
                 </div>
-                <div className="w-[60%]">
-                    <div className="flex flex-col gap-3 p-6 bg-white rounded-xl">
+                <div className="w-full lg:w-[60%]">
+                    <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
                         <div className="flex flex-col gap-2">
-                            <label htmlFor="restaurantName" className="text-base !font-bold text-neutral-600">
+                            <label htmlFor="restaurantName" className="text-sm sm:text-base !font-bold text-neutral-600">
                                 Restaurant Name <span className="text-red-500">*</span>
                             </label>
                             <div className="relative">
-                                                                 <Input 
-                                     type="text" 
-                                     id="restaurantName" 
-                                     placeholder="Enter your restaurant name" 
-                                     className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
-                                         combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
-                                     } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                     value={localRestaurantName}
-                                     onChange={(e) => handleRestaurantNameChange(e.target.value)}
-                                     onBlur={handleRestaurantNameBlur}
-                                     status={combinedErrors.restaurantName ? 'error' : ''}
-                                     disabled={restaurantNameCheckLoading || isBasicInfoCompleted || isUpdateMode}
-                                 />
+                                <Input 
+                                    type="text" 
+                                    id="restaurantName" 
+                                    placeholder="Enter your restaurant name" 
+                                    className={`w-full p-2 border h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
+                                        combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
+                                    } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                    value={localRestaurantName}
+                                    onChange={(e) => handleRestaurantNameChange(e.target.value)}
+                                    onBlur={handleRestaurantNameBlur}
+                                    status={combinedErrors.restaurantName ? 'error' : ''}
+                                    disabled={restaurantNameCheckLoading || isBasicInfoCompleted || isUpdateMode}
+                                />
                                 {restaurantNameCheckLoading && !isUpdateMode && (
                                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -116,27 +116,27 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                                 )}
                             </div>
                             {combinedErrors.restaurantName && !isUpdateMode && (
-                                <span className="text-red-500 text-sm">{combinedErrors.restaurantName}</span>
+                                <span className="text-red-500 text-xs sm:text-sm">{combinedErrors.restaurantName}</span>
                             )}
-                                                         {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
-                                 <span className="text-green-500 text-sm">✓ Restaurant name is available</span>
-                             )}
-                             {isBasicInfoCompleted && !isUpdateMode && (
-                                 <span className="text-blue-500 text-sm">🔒 Restaurant name is locked (cannot be changed after completion)</span>
-                             )}
-                             {isUpdateMode && (
-                                 <span className="text-blue-500 text-sm">🔒 Restaurant name is locked in update mode</span>
-                             )}
+                            {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
+                                <span className="text-green-500 text-xs sm:text-sm">✓ Restaurant name is available</span>
+                            )}
+                            {isBasicInfoCompleted && !isUpdateMode && (
+                                <span className="text-blue-500 text-xs sm:text-sm">🔒 Restaurant name is locked (cannot be changed after completion)</span>
+                            )}
+                            {isUpdateMode && (
+                                <span className="text-blue-500 text-xs sm:text-sm">🔒 Restaurant name is locked in update mode</span>
+                            )}
                         </div>
                         
                         <div className="flex flex-col gap-2">
-                            <label htmlFor="numberOfLocations" className="text-base !font-bold text-neutral-600">
+                            <label htmlFor="numberOfLocations" className="text-sm sm:text-base !font-bold text-neutral-600">
                                 Number of Locations <span className="text-red-500">*</span>
                             </label>
                             <Select 
                                 id="numberOfLocations" 
                                 placeholder="Select Locations" 
-                                className={`w-full !h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                                className={`w-full !h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                     errors.numberOfLocations ? 'border-red-500' : ''
                                 }`}
                                 value={data.numberOfLocations}
@@ -151,19 +151,19 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                                 ]}
                             />
                             {errors.numberOfLocations && (
-                                <span className="text-red-500 text-sm">{errors.numberOfLocations}</span>
+                                <span className="text-red-500 text-xs sm:text-sm">{errors.numberOfLocations}</span>
                             )}
                         </div>
                         
                         <div className="flex flex-col gap-2">
-                            <label htmlFor="locationName" className="text-base !font-bold text-neutral-600">
+                            <label htmlFor="locationName" className="text-sm sm:text-base !font-bold text-neutral-600">
                                 Location Name <span className="text-red-500">*</span>
                             </label>
                             <Input 
                                 type="text" 
                                 id="locationName" 
                                 placeholder="Enter your location" 
-                                className={`w-full p-2 border h-[40px] rounded-md text-base font-normal text-neutral-700 ${
+                                className={`w-full p-2 border h-[40px] rounded-md text-sm sm:text-base font-normal text-neutral-700 ${
                                     errors.locationName ? 'border-red-500' : 'border-gray-300'
                                 }`}
                                 value={data.locationName || ""}
@@ -173,7 +173,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                                 status={errors.locationName ? 'error' : ''}
                             />
                             {errors.locationName && (
-                                <span className="text-red-500 text-sm">{errors.locationName}</span>
+                                <span className="text-red-500 text-xs sm:text-sm">{errors.locationName}</span>
                             )}
                         </div>
                     </div>

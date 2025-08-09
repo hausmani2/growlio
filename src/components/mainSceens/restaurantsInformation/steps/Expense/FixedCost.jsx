@@ -92,122 +92,91 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
 
     return (
         <div>
-            <div className="flex mt-5">
-                <div className="w-[40%]">
+            <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+                <div className="w-full lg:w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Fixed Cost</h4>
-                        <span className="text-base text-neutral-600">
+                        <span className="text-sm sm:text-base text-neutral-600 hidden sm:block">
                             What are the fixed costs for this location?
-                            Add a new field to add a fixed cost.
                         </span>
                     </div>
                 </div>
-                <div className="w-[60%]">
-                    <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
-                        
-                        {/* Dynamic Fields */}
-                        {dynamicFields.map((field, index) => (
-                            <div key={field.id} className="flex items-center justify-between gap-2">
-                                <label htmlFor={field.key} className="w-1/4 text-base !font-bold text-neutral-600">
-                                    {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
-                                </label>
-                                <div className="flex items-center gap-2 w-full">
-                                    <div className="relative w-full">
-                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                            <Input 
-                                            type="number" 
-                                            id={field.key} 
-                                            placeholder={`Enter ${field.label}`} 
-                                            className={`w-full p-2 pl-8 border h-[40px] rounded-md text-[18px] font-normal text-neutral-700 ${errors[`dynamic_fixed_${index}_amount`] ? 'border-red-500' : 'border-gray-300'}`}
-                                            value={field.value}
-                                            onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
-                                            min="0"
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-') {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                            status={errors[`dynamic_fixed_${index}_amount`] ? 'error' : ''}
-                                        />
+                <div className="w-full lg:w-[60%]">
+                    <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm sm:text-base !font-bold text-neutral-600">
+                                Fixed Costs <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex flex-col gap-3">
+                                {dynamicFields.map((field) => (
+                                    <div key={field.id} className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+                                        <div className="flex-1 w-full sm:w-auto">
+                                            <Input
+                                                type="text"
+                                                placeholder="Cost name"
+                                                value={field.label}
+                                                className="w-full sm:w-48 h-[40px] rounded-md text-sm sm:text-base"
+                                                disabled
+                                            />
+                                        </div>
+                                        <div className="flex-1 w-full sm:w-auto">
+                                            <Input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={field.value}
+                                                onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
+                                                className="w-full sm:w-32 h-[40px] rounded-md text-sm sm:text-base"
+                                                step="0.01"
+                                                min="0"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            onClick={() => handleDeleteField(field.id)}
+                                            className="h-[40px] px-2 sm:px-4 text-sm sm:text-base"
+                                        >
+                                            Delete
+                                        </Button>
                                     </div>
-                                    <button 
-                                        className="text-[20px] !font-bold text-neutral-600 cursor-pointer !text-red-500"
-                                        onClick={() => handleDeleteField(field.id)}
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                                {errors[`dynamic_fixed_${index}_amount`] && (
-                                    <div className="w-full mt-1">
-                                        <span className="text-red-500 text-sm">{errors[`dynamic_fixed_${index}_amount`]}</span>
-                                    </div>
-                                )}
+                                ))}
+                                <Button
+                                    type="dashed"
+                                    icon={<PlusOutlined />}
+                                    onClick={showModal}
+                                    className="h-[40px] text-sm sm:text-base"
+                                >
+                                    Add Fixed Cost
+                                </Button>
                             </div>
-                        ))}
-
-                        {/* Show message when no fields are added */}
-                        {dynamicFields.length === 0 && (
-                            <div className="text-center py-4 text-gray-500">
-                                <p className="text-sm">No fixed costs added yet. Click the + button to add your first expense.</p>
-                            </div>
-                        )}
-
-                        {/* Show specific error message for missing fixed costs */}
-                        {errors.no_fixed_costs && (
-                            <div className="text-center py-2">
-                                <span className="text-red-500 text-sm font-semibold">{errors.no_fixed_costs}</span>
-                            </div>
-                        )}
-
-                        {/* Show general error message */}
-                        {errors.no_expenses && !errors.no_fixed_costs && (
-                            <div className="text-center py-2">
-                                <span className="text-red-500 text-sm">{errors.no_expenses}</span>
-                            </div>
-                        )}
-
-                        <div className="flex justify-end">
-                            <Button className="" onClick={showModal}><PlusOutlined /></Button>
-                            </div>
-                       
-                        <div className="flex items-center justify-between ">
-                            <label htmlFor="other" className="text-base !font-bold text-neutral-600">Total Fixed Cost</label>
-                            <span className="text-base !font-bold text-neutral-600">${data.totalFixedCost || '0.00'}</span>
+                            {errors.fixedCosts && (
+                                <span className="text-red-500 text-xs sm:text-sm">{errors.fixedCosts}</span>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Modal for adding new fields */}
             <Modal
-                title=""
+                title="Add Fixed Cost"
                 open={isModalVisible}
                 onOk={handleOk}
                 onCancel={handleCancel}
                 okText="Add"
                 cancelText="Cancel"
             >
-                <div className="flex flex-col gap-4">
-                    <label htmlFor="fieldLabel" className="text-base font-semibold text-neutral-600">
-                        Add Fixed Cost
-                        <span className="text-red-500">*</span>
-                    </label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-sm sm:text-base font-medium">Cost Name</label>
                     <Input
-                        id="fieldLabel"
-                        placeholder="Enter Fixed Cost Name"
+                        placeholder="Enter cost name"
                         value={newFieldLabel}
                         onChange={(e) => setNewFieldLabel(e.target.value)}
-                        onPressEnter={handleOk}
-                        className={newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 ? 'border-red-500' : ''}
-                        status={newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 ? 'error' : ''}
+                        className="h-[40px] text-sm sm:text-base"
                     />
-                    {newFieldLabel.trim().length > 0 && newFieldLabel.trim().length < 2 && (
-                        <span className="text-red-500 text-sm">Field name must be at least 2 characters</span>
-                    )}
                 </div>
             </Modal>
         </div>
-    )
+    );
 }
 
 export default FixedCost;

@@ -192,73 +192,82 @@ const OnboardingWrapper = () => {
 
     return (
         <>
-            <div className="min-h-screen flex flex-col lg:flex-row">
-                {/* Content Section */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0">
-                <div className="w-full max-w-sm mx-auto">
-                    <div className="flex flex-col gap-4 sm:gap-6">
-                        <div>
-                        <button className="flex items-center gap-2 text-gray-700 !mb-0">
-                        <FaArrowLeftLong />
-                        Go Back
-                        </button>
-                        </div>
-                        {/* Header */}
-                        <div className="flex flex-col gap-2 sm:gap-2">
-                            <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] font-bold leading-tight !mb-0 !font-bold">
-                                Is Your Restaurant Already on Growlio?
-                            </h1>
-                            <h2 className="text-base sm:text-lg lg:text-xl xl:text-[18px] !font-bold text-gray-800 leading-tight !mb-0">
-                                Let us know how you'd like to get started.
-                            </h2>
-                        </div>
-                        <div className="flex flex-col gap-6 sm:gap-8">
-                        <div className="border border-gray-300 rounded-lg p-4 sm:p-6 " disabled>
-                                <div className="flex items-center gap-2">
-                                    <Checkbox disabled />
-                                    <span className="text-sm sm:text-base font-bold">Yes, My Restaurant Exists</span>
-
-                                </div>
-                                <p className="text-sm sm:text-base font-regular text-gray-700 leading-relaxed !mb-0 mt-1">Claim and manage an existing listing.</p>
-
+            <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+                {/* Content Section - Improved responsive design */}
+                <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0">
+                    <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">
+                        <div className="flex flex-col gap-6 sm:gap-8 bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10">
+                            {/* Back Button */}
+                            <div>
+                                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium">
+                                    <FaArrowLeftLong className="text-sm" />
+                                    <span className="hidden sm:inline">Go Back</span>
+                                </button>
                             </div>
-                            <div className="border border-gray-300 rounded-lg p-4 sm:p-6">
-                                <div className="flex items-center gap-2">
-                                    <Checkbox />
-                                    <span className="text-sm sm:text-base font-bold">No, I Want to Create a New One</span>
-
+                            
+                            {/* Header */}
+                            <div className="flex flex-col gap-3">
+                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-gray-900">
+                                    Is Your Restaurant Already on Growlio?
+                                </h1>
+                                <h2 className="text-lg sm:text-xl text-gray-600 leading-relaxed">
+                                    Let us know how you'd like to get started.
+                                </h2>
+                            </div>
+                            
+                            {/* Options */}
+                            <div className="flex flex-col gap-4 sm:gap-6">
+                                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50 opacity-60">
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox disabled />
+                                        <span className="text-base sm:text-lg font-semibold text-gray-500">
+                                            Yes, My Restaurant Exists
+                                        </span>
+                                    </div>
+                                    <p className="text-sm sm:text-base text-gray-500 leading-relaxed mt-2 ml-6">
+                                        Claim and manage an existing listing.
+                                    </p>
                                 </div>
-                                <p className="text-sm sm:text-base font-regular text-gray-700 leading-relaxed !mb-0 mt-1"> Register a new restaurant on Growlio.</p>
+                                
+                                <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer">
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox defaultChecked />
+                                        <span className="text-base sm:text-lg font-semibold text-orange-800">
+                                            No, I Want to Create a New One
+                                        </span>
+                                    </div>
+                                    <p className="text-sm sm:text-base text-orange-700 leading-relaxed mt-2 ml-6">
+                                        Register a new restaurant on Growlio.
+                                    </p>
+                                </div>
+                            </div>
 
+                            {/* Button */}
+                            <div className="mt-6 sm:mt-8">
+                                <PrimaryBtn 
+                                    title={isChecking ? "Checking..." : "Continue"} 
+                                    className="btn-brand w-full text-base sm:text-lg py-4 sm:py-5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300" 
+                                    onClick={handleSubmit}
+                                    disabled={isChecking || onboardingLoading}
+                                />
                             </div>
                         </div>
-
-                    {/* Button */}
-                    <div className="mt-4 sm:mt-6">
-                        <PrimaryBtn 
-                            title={isChecking ? "Checking..." : "Continue"} 
-                            className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4" 
-                            onClick={handleSubmit}
-                            disabled={isChecking || onboardingLoading}
-                        />
-                    </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Image Section - Hidden on mobile, visible on lg and above */}
-            <div className="hidden lg:block w-full lg:w-1/2 relative">
-                <ImageLayout>
-                    <div className="relative w-full h-full flex items-end justify-center">
-                        <img
-                            src={OnBoard}
-                            alt="onboarding "
-                            className="h-[calc(100vh-100px)]"
-                        />
-                    </div>
-                </ImageLayout>
+                {/* Image Section - Hidden on mobile, visible on lg and above */}
+                <div className="hidden lg:block w-full lg:w-1/2 relative bg-gradient-to-br from-orange-50 to-orange-100">
+                    <ImageLayout>
+                        <div className="relative w-full h-full flex items-end justify-center">
+                            <img
+                                src={OnBoard}
+                                alt="onboarding"
+                                className="h-[calc(100vh-100px)] object-contain"
+                            />
+                        </div>
+                    </ImageLayout>
+                </div>
             </div>
-        </div>
         </>
     );
 };

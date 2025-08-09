@@ -212,71 +212,71 @@ const SummaryTableDashboard = ({ dashboardData }) => {
    }
 
   return (
-    <Card className="shadow-lg border-0">
-      <div className="mb-6">
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Title level={2} className="mb-0 font-serif text-gray-800">
-              Budget Summary
-            </Title>
-          </Col>
-          <Col>
-            <Space size="middle">
-              <div className="flex items-center gap-2">
-                <button 
-                  type="text" 
-                  icon={<PrinterOutlined />}
-                  onClick={handlePrint}
-                  className=" border border-gray-200 px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Print
-                </button>
-                <button 
-                  type="text" 
-                  icon={<DownloadOutlined />}
-                  onClick={handleExport}
-                  className=" border border-gray-200 px-3 py-1 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Export
-                </button>
-              </div>
-              <div className="flex gap-2 overflow-hidden">
-                <Button 
-                  type={viewMode === 'daily' ? 'primary' : 'default'}
-                  onClick={() => setViewMode('daily')}
-                  className="border-0 rounded-none"
-                  disabled={true}
-                >
-                  Daily
-                </Button>
-                <Button 
-                  type={viewMode === 'weekly' ? 'primary' : 'default'}
-                  onClick={() => setViewMode('weekly')}
-                  className="border-0 rounded-none"
-                  disabled={true}
-                >
-                  Weekly
-                </Button>
-              </div>
-            </Space>
-          </Col>
-        </Row>
+    <Card className="mb-4 sm:mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <Title level={4} className="mb-0 text-lg sm:text-xl lg:text-2xl">
+          Summary Table
+        </Title>
+        <Space className="flex flex-col sm:flex-row gap-2">
+          <Button 
+            icon={<PrinterOutlined />} 
+            onClick={handlePrint}
+            className="w-full sm:w-auto text-sm"
+          >
+            Print
+          </Button>
+          <Button 
+            icon={<DownloadOutlined />} 
+            onClick={handleExport}
+            className="w-full sm:w-auto text-sm"
+          >
+            Export
+          </Button>
+        </Space>
       </div>
 
-             <div className="overflow-x-auto">
-         <Table
-           columns={tableColumns}
-           dataSource={tableDataSource}
-           pagination={false}
-           bordered
-           size="middle"
-           className="summary-table"
-           rowClassName={(record) => 
-             record.key === 'sales' ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
-           }
-           scroll={{ x: 'max-content' }}
-         />
-       </div>
+      <div className="overflow-x-auto">
+        <Table
+          dataSource={categories}
+          pagination={false}
+          size="small"
+          className="summary-table"
+          scroll={{ x: 'max-content' }}
+        >
+          <Table.Column
+            title="Category"
+            dataIndex="label"
+            key="label"
+            className="font-semibold text-sm sm:text-base"
+            render={(text) => <span className="text-sm sm:text-base">{text}</span>}
+          />
+          {dashboardData?.daily_entries?.map((entry) => {
+            const dayKey = entry.day.substring(0, 3);
+            return (
+              <Table.Column
+                key={dayKey}
+                title={dayKey}
+                dataIndex="key"
+                className="text-center text-sm sm:text-base"
+                render={(categoryKey) => {
+                  const value = tableData[categoryKey]?.[dayKey] || 0;
+                  const formattedValue = categoryKey === 'sales' || categoryKey === 'laborAmount' || categoryKey === 'foodCost' || categoryKey === 'netProfit'
+                    ? formatCurrency(value)
+                    : categoryKey === 'averageHourlyRate'
+                    ? formatCurrency(value)
+                    : formatNumber(value);
+                  
+                  return (
+                    <span className="text-sm sm:text-base">
+                      {formattedValue}
+                    </span>
+                  );
+                }}
+              />
+            );
+          })}
+        </Table>
+      </div>
     </Card>
   );
 };
