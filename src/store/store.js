@@ -3,6 +3,7 @@ import { persist, devtools } from 'zustand/middleware';
 import createAuthSlice from './slices/authSlice';
 import createOnBoardingSlice from './slices/onBoardingSlice';
 import createDashboardSlice from './slices/dashboardSlice';
+import createDashboardSummarySlice from './slices/dashboardSummary';
 
 const useStore = create(
   devtools(
@@ -11,6 +12,8 @@ const useStore = create(
         ...createAuthSlice(set, get),
         ...createOnBoardingSlice(set, get),
         ...createDashboardSlice(set, get),
+        ...createDashboardSummarySlice(set, get),
+      
         
         // Function to completely clear all persisted state
         clearPersistedState: () => {
@@ -32,7 +35,6 @@ const useStore = create(
             error: null,
             onboardingStatus: null,
             loading: false,
-            onboardingLoading: false,
             
             // Onboarding slice reset
             completeOnboardingData: {

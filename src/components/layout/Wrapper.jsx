@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
-import { FaPeopleCarry, FaStore } from 'react-icons/fa';
+import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiExpensify } from 'react-icons/si';
 const { Content } = Layout;
@@ -19,6 +19,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
+    {
+      key: 'dashboard summary',
+      icon: <FaChartLine />,
+      label: 'Dashboard Summary',
+      onClick: () => navigate('/dashboard/summary'),
+    },
     {
       key: 'dashboard',
       icon: <HomeOutlined />,

@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
-import { CalendarOutlined } from '@ant-design/icons';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, Button } from 'antd';
+import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
-import SalesTable from './SalesTable';
-import CogsTable from './CogsTable';
-import LabourTable from './LabourTable';
-import ProfitCogsTable from './ProfitCogsTable';
-import FixedExpensesTable from './FixedExpenseTable';
-import NetProfitTable from './NetProfitTable';
-import RestaurantInfoCard from './RestaurantInfoCard';
-import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
+import SummaryTableDashboard from './SummaryTableDashboard';
+import SalesDataModal from './SalesDataModal';
 
 const { Title } = Typography;
 const { Option } = Select;
 
-const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
-
+const SummaryDashboard = () => {
   // Calendar dropdown states
   const [loading, setLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState(null);
@@ -26,18 +18,21 @@ const Dashboard = () => {
   const [selectedWeek, setSelectedWeek] = useState(null);
   const [availableWeeks, setAvailableWeeks] = useState([]);
 
-  // Dashboard data state
-  const [dashboardData, setDashboardData] = useState(null);
-  const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [dashboardMessage, setDashboardMessage] = useState(null);
+  // Modal states
+  const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
 
-  // Store integration
-  const { 
-    fetchDashboardDataIfNeeded
-  } = useStore();
+  // Dashboard data state
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
+
+  // Dashboard summary functionality
+  const { 
+    fetchDashboardSummary, 
+    dashboardSummaryData, 
+    loading: summaryLoading, 
+    error: summaryError 
+  } = useStore();
 
   // Static years and months
   const years = Array.from({ length: 9 }, (_, i) => 2021 + i); // 2021 to 2029
@@ -56,11 +51,38 @@ const Dashboard = () => {
     { key: 12, name: 'December' }
   ];
 
+  // Helper function to find the current week based on current date
+  const findCurrentWeek = (weeks, currentDate) => {
+    if (!weeks || !currentDate || weeks.length === 0) return null;
+    
+    for (const week of weeks) {
+      const startDate = dayjs(week.startDate);
+      const endDate = dayjs(week.endDate);
+      
+      // Check if current date falls within this week's range (inclusive)
+      // Using manual comparison since isBetween plugin might not be available
+      const currentDateStr = currentDate.format('YYYY-MM-DD');
+      const startDateStr = startDate.format('YYYY-MM-DD');
+      const endDateStr = endDate.format('YYYY-MM-DD');
+      
+      if (currentDateStr >= startDateStr && currentDateStr <= endDateStr) {
+        return week.key;
+      }
+    }
+    
+    return null;
+  };
+
   // Fetch calendar data for selected year and month
-  const fetchCalendarData = async (year, month) => {
+  const fetchCalendarData = async (year, month, shouldAutoSelectWeek = false) => {
+    if (!year || !month) return;
+    
     setLoading(true);
     try {
+      console.log(`Fetching calendar data for year: ${year}, month: ${month}`);
       const response = await apiGet(`/restaurant/structured-calendar/?month=${month}&year=${year}`);
+
+      console.log('Calendar API response:', response);
 
       // Extract weeks from the response
       if (response.data && response.data.weeks) {
@@ -71,8 +93,22 @@ const Dashboard = () => {
           endDate: response.data.weeks[weekKey].end_date,
           data: response.data.weeks[weekKey]
         }));
+        
+        console.log('Processed weeks:', weeks);
         setAvailableWeeks(weeks);
+        
+        // Auto-select current week if requested
+        if (shouldAutoSelectWeek) {
+          const currentDate = dayjs();
+          console.log('Current date:', currentDate.format('YYYY-MM-DD'));
+          const currentWeekKey = findCurrentWeek(weeks, currentDate);
+          console.log('Found current week key:', currentWeekKey);
+          if (currentWeekKey) {
+            setSelectedWeek(currentWeekKey);
+          }
+        }
       } else {
+        console.log('No weeks data in response');
         setAvailableWeeks([]);
       }
 
@@ -84,38 +120,19 @@ const Dashboard = () => {
     }
   };
 
-  // Fetch dashboard data for the selected week
-  const fetchDashboardData = async (weekStartDate) => {
-    if (!weekStartDate) return;
-    
-    setDashboardLoading(true);
-    setDashboardMessage(null);
+  // Fetch dashboard summary data for selected week
+  const fetchSummaryData = async (weekKey) => {
+    if (!weekKey) return;
     
     try {
-      const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
-      
-      // Check if the response indicates no data found
-      if (data && data.status === "success" && data.message === "No weekly dashboard found for the given criteria." && data.data === null) {
-        setDashboardData(null);
-        setDashboardMessage(data.message);
-      } else {
-        setDashboardData(data);
-        setDashboardMessage(null);
+      const selectedWeekData = availableWeeks.find(week => week.key === weekKey);
+      if (selectedWeekData) {
+        const weekStartDate = selectedWeekData.startDate;
+        console.log(`Fetching dashboard summary for week starting: ${weekStartDate}`);
+        await fetchDashboardSummary(weekStartDate);
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setDashboardData(null);
-      setDashboardMessage(null);
-    } finally {
-      setDashboardLoading(false);
-    }
-  };
-
-  // Callback function to refresh dashboard data after any component saves data
-  const refreshDashboardData = async () => {
-    const weekStartDate = getSelectedWeekStartDate();
-    if (weekStartDate) {
-      await fetchDashboardData(weekStartDate);
+      console.error('Error fetching dashboard summary:', error);
     }
   };
 
@@ -133,122 +150,103 @@ const Dashboard = () => {
     setSelectedWeek(null);
     
     if (selectedYear) {
-      fetchCalendarData(selectedYear, month);
+      fetchCalendarData(selectedYear, month, true);
     }
   };
 
   // Handle week selection
   const handleWeekChange = (weekKey) => {
     setSelectedWeek(weekKey);
+    // Fetch dashboard summary data when week is selected
+    fetchSummaryData(weekKey);
+  };
 
-    // Find the selected week data and set the date to the start of the week
-    if (availableWeeks.length > 0) {
-      const selectedWeekData = availableWeeks.find(week => week.key === weekKey);
-      if (selectedWeekData) {
-        const weekStartDate = dayjs(selectedWeekData.startDate);
-        setSelectedDate(weekStartDate);
-        // Fetch dashboard data for the selected week
-        fetchDashboardData(weekStartDate);
-      }
+  // Handle sales modal visibility
+  const handleShowSalesModal = () => {
+    setIsSalesModalVisible(true);
+  };
+
+  const handleCloseSalesModal = () => {
+    setIsSalesModalVisible(false);
+  };
+
+  // Handle data saved callback
+  const handleDataSaved = async () => {
+    // Refresh the dashboard data
+    if (selectedWeek) {
+      await fetchSummaryData(selectedWeek);
     }
   };
 
-  // Get the selected week start date
-  const getSelectedWeekStartDate = () => {
-    if (!selectedWeek || !availableWeeks.length) {
-      return selectedDate;
-    }
-
-    const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
-    return selectedWeekData ? dayjs(selectedWeekData.startDate) : selectedDate;
-  };
-
-  // Generate week days based on selected week
-  const getWeekDays = () => {
-    if (!selectedWeek || !availableWeeks.length) {
-      return [];
-    }
-
-    const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
-    if (!selectedWeekData) {
-      return [];
-    }
-
-    // Use the days from the API response if available
-    if (selectedWeekData.data && selectedWeekData.data.days) {
-      return selectedWeekData.data.days
-        .filter(day => day.belongs_to_year) // Only include days that belong to the selected year
-        .map(day => ({
-          date: dayjs(day.date),
-          dayName: day.day_name,
-          dayNumber: day.day_number,
-          month: day.month,
-          isWeekend: day.is_weekend,
-          belongsToYear: day.belongs_to_year
-        }));
-    }
-
-    // Fallback: Generate 7 days starting from the start date
-    const weekDays = [];
-    const startDate = dayjs(selectedWeekData.startDate);
-
-    for (let i = 0; i < 7; i++) {
-      const currentDate = startDate.add(i, 'day');
-      weekDays.push({
-        date: currentDate,
-        dayName: currentDate.format('dddd'),
-        dayNumber: currentDate.date(),
-        month: currentDate.month() + 1,
-        isWeekend: [0, 6].includes(currentDate.day()), // 0 = Sunday, 6 = Saturday
-        belongsToYear: currentDate.year() === selectedYear // Check if the date belongs to the selected year
-      });
-    }
-
-    return weekDays;
-  };
-
-  // Initialize with current year and fetch restaurant goals
+  // Initialize with current year, month, and week
   useEffect(() => {
-    const currentYear = dayjs().year();
-    setSelectedYear(currentYear);
-    
-    // Fetch restaurant goals when dashboard loads
-    const fetchRestaurantGoals = async () => {
+    const initializeDashboard = async () => {
+      const currentDate = dayjs();
+      const currentYear = currentDate.year();
+      const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
+      
+      console.log(`Initializing dashboard with current year: ${currentYear}, month: ${currentMonth}`);
+      
+      setSelectedYear(currentYear);
+      setSelectedMonth(currentMonth);
+      
+      // Fetch calendar data for current month and auto-select current week
+      await fetchCalendarData(currentYear, currentMonth, true);
+      
+      // Fetch restaurant goals when dashboard loads
       try {
         await getRestaurentGoal();
       } catch (error) {
         console.error('Error fetching restaurant goals:', error);
       }
     };
-    
-    fetchRestaurantGoals();
-  }, [getRestaurentGoal]);
+
+    initializeDashboard();
+  }, []); // Remove getRestaurentGoal from dependencies to avoid re-renders
+
+  // Fetch summary data when selectedWeek changes
+  useEffect(() => {
+    if (selectedWeek) {
+      fetchSummaryData(selectedWeek);
+    }
+  }, [selectedWeek]);
 
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {
-
     if (restaurantGoalsError) {
       console.error('Restaurant goals error:', restaurantGoalsError);
     }
-
   }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
 
-  // Show loading spinner when fetching dashboard data
-  if (dashboardLoading) {
-    return (
-      <div className="w-full flex justify-center items-center min-h-screen">
-        <Spin size="large" tip="Loading dashboard data..." />
-      </div>
-    );
-  }
+  // Check if there's no data available
+  const hasNoData = () => {
+    if (!dashboardSummaryData) return true;
+    
+    // Check for API error responses
+    if (dashboardSummaryData.status === 'fail' || dashboardSummaryData.status === 'error') {
+      return true;
+    }
+    
+    // Check if data is empty or null
+    if (!dashboardSummaryData.data || dashboardSummaryData.data.length === 0) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Get selected week data
+  const getSelectedWeekData = () => {
+    if (!selectedWeek || !availableWeeks.length) return null;
+    return availableWeeks.find(week => week.key === selectedWeek);
+  };
 
   return (
     <div className="w-full">
       <div className="w-full mx-auto">
         <div className="mb-4 sm:mb-6">
           <Title level={3} className="mb-2 sm:mb-4 text-lg sm:text-xl lg:text-2xl">
-            <CalendarOutlined className="mr-2" />
-            Cash Flow Dashboard
+           Summary Dashboard
           </Title>
 
           <Card className="p-4 sm:p-6">
@@ -346,50 +344,40 @@ const Dashboard = () => {
         </div>
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Restaurant Information Card */}
-          <RestaurantInfoCard />
           
           {/* Only show dashboard components when a week is selected and dashboard data is available */}
-          {selectedWeek && dashboardData ? (
+          {selectedWeek ? (
             <>
-              
-              {/* Data Tables - Pass dashboard data to all components */}
-              <SalesTable
-                selectedDate={getSelectedWeekStartDate()}
-                weekDays={getWeekDays()}
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <CogsTable 
-                selectedDate={getSelectedWeekStartDate()} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <LabourTable 
-                selectedDate={getSelectedWeekStartDate()} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <ProfitCogsTable 
-                selectedDate={getSelectedWeekStartDate()} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <FixedExpensesTable 
-                selectedDate={getSelectedWeekStartDate()} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <NetProfitTable 
-                selectedDate={getSelectedWeekStartDate()} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
+              {hasNoData() ? (
+                <Card>
+                  <div className="text-center py-8">
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description={
+                        <div>
+                          <p className="text-gray-600 mb-4">
+                            No weekly dashboard data found for the selected week.
+                          </p>
+                          <Button 
+                            type="primary" 
+                            icon={<PlusOutlined />}
+                            onClick={handleShowSalesModal}
+                            size="large"
+                          >
+                            Add Sales Data
+                          </Button>
+                        </div>
+                      }
+                    />
+                  </div>
+                </Card>
+              ) : (
+                <SummaryTableDashboard 
+                  dashboardSummaryData={dashboardSummaryData}
+                  loading={summaryLoading}
+                  error={summaryError}
+                />
+              )}
             </>
           ) : (
             <Card>
@@ -399,22 +387,25 @@ const Dashboard = () => {
                   description={
                     !selectedWeek 
                       ? "Please select a week to view dashboard data." 
-                      : dashboardMessage || "No dashboard data available for the selected week."
+                      : "No dashboard data available for the selected week."
                   }
                 />
               </div>
-              <SalesTable
-                selectedDate={getSelectedWeekStartDate()}
-                weekDays={getWeekDays()}
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
             </Card>
           )}
         </Space>
       </div>
+
+      {/* Sales Data Modal */}
+      <SalesDataModal
+        visible={isSalesModalVisible}
+        onCancel={handleCloseSalesModal}
+        selectedWeekData={getSelectedWeekData()}
+        weekDays={[]}
+        onDataSaved={handleDataSaved}
+      />
     </div>
   );
 };
 
-export default Dashboard;
+export default SummaryDashboard;

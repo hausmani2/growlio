@@ -17,6 +17,7 @@ import LaborInformationWrapper from './components/mainSceens/restaurantsInformat
 import FoodCostDetailsWrapper from './components/mainSceens/restaurantsInformation/steps/foodCostDetails/FoodCostWrapper';
 import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation/steps/salesChannels/SalesChannelsWrapper';
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
+import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -37,6 +38,7 @@ function App() {
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
+          <Route path="/dashboard/summary" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />

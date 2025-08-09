@@ -15,6 +15,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
+    '/dashboard/summary': 'dashboard summary',
     '/dashboard': 'dashboard',
     '/dashboard/onboarding': 'onboarding',
     '/dashboard/basic-information': 'basic-information',
@@ -23,7 +24,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/expense': 'expense',
   };
-  const selectedKey = pathKeyMap[location.pathname] || 'dashboard';
+  const selectedKey = pathKeyMap[location.pathname] || 'dashboard summary';
 
   // Close sidebar on window resize if desktop
   useEffect(() => {
