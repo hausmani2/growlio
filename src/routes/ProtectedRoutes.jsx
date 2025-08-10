@@ -18,19 +18,32 @@ const ProtectedRoutes = () => {
   
   // Get onboarding status and check function
   const refreshOnboardingStatus = useStore((state) => state.refreshOnboardingStatus);
+  const redirectToOnboardingIfNeeded = useStore((state) => state.redirectToOnboardingIfNeeded);
 
 
   // Check onboarding status for authenticated users
   useEffect(() => {
     const checkOnboarding = async () => {
       try {
+        // First check if user needs to be redirected to onboarding (no restaurants)
+        const redirectCheck = await redirectToOnboardingIfNeeded();
+        
+        if (redirectCheck.shouldRedirect) {
+          console.log('🆕 Redirecting to onboarding:', redirectCheck.reason);
+          if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
+            setRedirectPath('/onboarding');
+            return;
+          }
+        }
+        
+        // Then check general onboarding status
         const result = await refreshOnboardingStatus();
         
         if (result.success) {
           const isComplete = result.onboarding_complete;
           
           if (!isComplete && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) {
-            setRedirectPath('/onboarding/summary');
+            setRedirectPath('/onboarding');
             return;
           }
           
@@ -40,14 +53,14 @@ const ProtectedRoutes = () => {
           }
         } else {
           if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
-            setRedirectPath('/onboarding/summary');
+            setRedirectPath('/onboarding');
             return;
           }
         }
       } catch (error) {
         console.error('ProtectedRoutes - Error checking onboarding status:', error);
         if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
-          setRedirectPath('/onboarding/summary');
+          setRedirectPath('/onboarding');
           return;
         }
       } finally {
@@ -55,18 +68,21 @@ const ProtectedRoutes = () => {
       }
     };
 
-    if ((location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) && isAuthenticated && token) {
-      if (!hasCheckedForPath.current.has(location.pathname)) {
+    // Only check if we're authenticated and have a token
+    if (isAuthenticated && token) {
+      // Only check for dashboard routes or if we're currently checking
+      if ((location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) && 
+          !hasCheckedForPath.current.has(location.pathname)) {
         hasCheckedForPath.current.add(location.pathname);
         setIsCheckingOnboarding(true);
         checkOnboarding();
+      } else if (isCheckingOnboarding) {
+        checkOnboarding();
       }
-    } else if (isCheckingOnboarding && isAuthenticated && token) {
-      checkOnboarding();
-    } else if (!isAuthenticated || !token) {
+    } else {
       setIsCheckingOnboarding(false);
     }
-  }, [refreshOnboardingStatus, location.pathname, isCheckingOnboarding, isAuthenticated, token, navigate]);
+  }, [location.pathname, isAuthenticated, token]); // Removed refreshOnboardingStatus and navigate from dependencies
 
   useEffect(() => {
     return () => {

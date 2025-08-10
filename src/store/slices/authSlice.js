@@ -20,6 +20,7 @@ const createAuthSlice = (set, get) => {
     error: null,
     onboardingStatus: null, // 'loading', 'complete', 'incomplete', null
     onboardingLoading: false, // Loading state for onboarding checks
+    isNewUser: false, // Track if user is new (no restaurants)
     
     // Check onboarding status using /restaurant/restaurants-onboarding/ API
     checkOnboardingStatus: async () => {
@@ -37,23 +38,39 @@ const createAuthSlice = (set, get) => {
         const response = await Promise.race([apiPromise, timeoutPromise]);
         const onboardingData = response.data;
         
+        console.log('🔍 Onboarding status check - Raw data:', onboardingData);
+        
         // Safely get restaurant_id if available
         let restaurantId = null;
         if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
           restaurantId = onboardingData.restaurants[0].restaurant_id;
           set(() => ({ restaurantId }));
+          
+          // Also save to localStorage for persistence
+          localStorage.setItem('restaurant_id', restaurantId);
+          console.log('✅ Restaurant ID saved to localStorage:', restaurantId);
         }
         
-        // Check if user has no restaurants (new user)
-        if (onboardingData && onboardingData.message === "No restaurants found for this user." && 
-            (!onboardingData.restaurants || onboardingData.restaurants.length === 0)) {
-          set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
+        // Check if user has no restaurants (new user) - Enhanced check
+        const hasNoRestaurants = !onboardingData?.restaurants || 
+                                onboardingData.restaurants.length === 0 || 
+                                (onboardingData.message === "No restaurants found for this user." && 
+                                 (!onboardingData.restaurants || onboardingData.restaurants.length === 0));
+        
+        if (hasNoRestaurants) {
+          console.log('🆕 New user detected - no restaurants found');
+          set(() => ({ 
+            onboardingStatus: 'incomplete', 
+            onboardingLoading: false,
+            isNewUser: true 
+          }));
           
           return {
             success: true,
             onboarding_complete: false,
             isNewUser: true,
-            user: onboardingData.user
+            user: onboardingData?.user || null,
+            shouldRedirectToOnboarding: true
           };
         }
         
@@ -65,7 +82,19 @@ const createAuthSlice = (set, get) => {
           );
           
           if (hasCompletedOnboarding) {
-            set(() => ({ onboardingStatus: 'complete', onboardingLoading: false }));
+            set(() => ({ 
+              onboardingStatus: 'complete', 
+              onboardingLoading: false,
+              isNewUser: false 
+            }));
+            
+            // Update onboarding slice with restaurant data if available
+            const currentState = get();
+            if (currentState.updateOnboardingData && restaurantId) {
+              currentState.updateOnboardingData({
+                restaurant_id: restaurantId
+              });
+            }
             
             return {
               success: true,
@@ -75,7 +104,19 @@ const createAuthSlice = (set, get) => {
               restaurants: onboardingData.restaurants
             };
           } else {
-            set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
+            set(() => ({ 
+              onboardingStatus: 'incomplete', 
+              onboardingLoading: false,
+              isNewUser: false 
+            }));
+            
+            // Update onboarding slice with restaurant data if available
+            const currentState = get();
+            if (currentState.updateOnboardingData && restaurantId) {
+              currentState.updateOnboardingData({
+                restaurant_id: restaurantId
+              });
+            }
             
             return {
               success: true,
@@ -88,13 +129,18 @@ const createAuthSlice = (set, get) => {
         }
         
         // Fallback case
-        set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
+        set(() => ({ 
+          onboardingStatus: 'incomplete', 
+          onboardingLoading: false,
+          isNewUser: true 
+        }));
         
         return {
           success: true,
           onboarding_complete: false,
           isNewUser: true,
-          user: onboardingData?.user || null
+          user: onboardingData?.user || null,
+          shouldRedirectToOnboarding: true
         };
       } catch (error) {
         console.error('Onboarding status check failed:', error);
@@ -110,12 +156,46 @@ const createAuthSlice = (set, get) => {
         }
         
         // If API fails, assume onboarding is incomplete
-        set(() => ({ onboardingStatus: 'incomplete', onboardingLoading: false }));
+        set(() => ({ 
+          onboardingStatus: 'incomplete', 
+          onboardingLoading: false,
+          isNewUser: true 
+        }));
         
         return {
           success: false,
           onboarding_complete: false,
-          error: errorMessage
+          error: errorMessage,
+          shouldRedirectToOnboarding: true
+        };
+      }
+    },
+
+    // Auto-redirect to onboarding if no restaurants found
+    redirectToOnboardingIfNeeded: async () => {
+      try {
+        console.log('🔄 Checking if user needs to be redirected to onboarding...');
+        const result = await get().checkOnboardingStatus();
+        
+        if (result.success && result.shouldRedirectToOnboarding) {
+          console.log('🆕 User has no restaurants - should redirect to onboarding');
+          return {
+            shouldRedirect: true,
+            reason: 'No restaurants found',
+            user: result.user
+          };
+        }
+        
+        return {
+          shouldRedirect: false,
+          reason: null
+        };
+      } catch (error) {
+        console.error('❌ Error checking if redirect needed:', error);
+        return {
+          shouldRedirect: true,
+          reason: 'Error checking status',
+          error: error.message
         };
       }
     },
@@ -363,6 +443,13 @@ const createAuthSlice = (set, get) => {
           token, 
           isAuthenticated: true 
         }));
+        
+        // Also check for restaurant ID in localStorage
+        const restaurantId = localStorage.getItem('restaurant_id');
+        if (restaurantId) {
+          set(() => ({ restaurantId }));
+          console.log('✅ Restaurant ID loaded from localStorage:', restaurantId);
+        }
       } else {
         // Clear invalid token
         localStorage.removeItem('token');
@@ -371,6 +458,41 @@ const createAuthSlice = (set, get) => {
           isAuthenticated: false 
         }));
       }
+    },
+    
+    // Ensure restaurant ID is available (fetch from API if needed)
+    ensureRestaurantId: async () => {
+      const state = get();
+      let restaurantId = state.restaurantId || localStorage.getItem('restaurant_id');
+      
+      if (!restaurantId) {
+        try {
+          console.log('🔄 No restaurant ID found, fetching from API...');
+          const response = await apiGet('/restaurant/restaurants-onboarding/');
+          const onboardingData = response.data;
+          
+          if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+            restaurantId = onboardingData.restaurants[0].restaurant_id;
+            
+            // Update store and localStorage
+            set(() => ({ restaurantId }));
+            localStorage.setItem('restaurant_id', restaurantId);
+            
+            console.log('✅ Restaurant ID fetched and stored:', restaurantId);
+          } else {
+            console.log('⚠️ No restaurants found in onboarding data');
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch restaurant ID:', error);
+          
+          // If it's a 404, that's okay - user might not have completed onboarding yet
+          if (error.response?.status === 404) {
+            console.log('ℹ️ No onboarding data found (404) - user may not have completed onboarding');
+          }
+        }
+      }
+      
+      return restaurantId;
     },
   };
 };

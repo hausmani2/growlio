@@ -694,6 +694,43 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
+            // First, ensure we have a restaurant ID
+            const state = get();
+            let restaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
+            
+            // If no restaurant ID, try to fetch it from the API
+            if (!restaurantId) {
+                try {
+                    console.log('🔄 No restaurant ID found locally, attempting to fetch from API...');
+                    const onboardingResponse = await apiGet('/restaurant/restaurants-onboarding/');
+                    const onboardingData = onboardingResponse.data;
+                    
+                    if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+                        restaurantId = onboardingData.restaurants[0].restaurant_id;
+                        
+                        // Update the store with the restaurant ID
+                        set((state) => ({
+                            completeOnboardingData: {
+                                ...state.completeOnboardingData,
+                                restaurant_id: restaurantId
+                            }
+                        }));
+                        
+                        // Also save to localStorage
+                        localStorage.setItem('restaurant_id', restaurantId);
+                        
+                        console.log('✅ Restaurant ID fetched and stored:', restaurantId);
+                    }
+                } catch (fetchError) {
+                    console.error('❌ Failed to fetch restaurant ID from API:', fetchError);
+                }
+            }
+            
+            if (!restaurantId) {
+                console.log('⚠️ No restaurant ID available, skipping onboarding data load');
+                set(() => ({ onboardingLoading: false, onboardingError: null }));
+                return { success: false, message: 'No restaurant ID available' };
+            }
             
             // Add timeout to prevent infinite loading
             const timeoutPromise = new Promise((_, reject) => 
@@ -883,11 +920,15 @@ const createOnBoardingSlice = (set, get) => ({
             console.error('❌ Error loading existing onboarding data:', error);
             
             let errorMessage = 'Failed to load existing onboarding data.';
+            let shouldSetError = true;
             
             if (error.message === 'Request timeout') {
                 errorMessage = 'Request timed out. Please check your connection and try again.';
             } else if (error.response?.status === 404) {
+                // 404 is not an error - it just means no data exists yet
                 errorMessage = 'No onboarding data found. Starting fresh setup.';
+                shouldSetError = false;
+                console.log('ℹ️ No onboarding data found (404) - this is normal for new users');
             } else if (error.response?.status === 401) {
                 errorMessage = 'Authentication required. Please log in again.';
             } else if (error.response?.data?.message) {
@@ -899,8 +940,8 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             set(() => ({ 
-                loading: false, 
-                error: errorMessage 
+                onboardingLoading: false, 
+                onboardingError: shouldSetError ? errorMessage : null 
             }));
             
             // Don't throw error, return failure result instead
@@ -1479,8 +1520,42 @@ const createOnBoardingSlice = (set, get) => ({
                 finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             }
 
+            // If still no restaurant ID, try to fetch it from the API
             if (!finalRestaurantId) {
-                throw new Error('Restaurant ID is required');
+                try {
+                    console.log('🔄 No restaurant ID found locally, attempting to fetch from API...');
+                    const onboardingResponse = await apiGet('/restaurant/restaurants-onboarding/');
+                    const onboardingData = onboardingResponse.data;
+                    
+                    if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
+                        finalRestaurantId = onboardingData.restaurants[0].restaurant_id;
+                        
+                        // Update the store with the restaurant ID
+                        set((state) => ({
+                            completeOnboardingData: {
+                                ...state.completeOnboardingData,
+                                restaurant_id: finalRestaurantId
+                            }
+                        }));
+                        
+                        // Also save to localStorage
+                        localStorage.setItem('restaurant_id', finalRestaurantId);
+                        
+                        console.log('✅ Restaurant ID fetched and stored:', finalRestaurantId);
+                    }
+                } catch (fetchError) {
+                    console.error('❌ Failed to fetch restaurant ID from API:', fetchError);
+                }
+            }
+
+            if (!finalRestaurantId) {
+                console.warn('⚠️ No restaurant ID available - user may need to complete onboarding first');
+                set(() => ({
+                    restaurantGoalsLoading: false,
+                    restaurantGoalsError: 'Restaurant ID is required - please complete onboarding first',
+                    restaurantGoals: null
+                }));
+                return null;
             }
 
             const response = await apiGet(`/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`);
@@ -1513,7 +1588,9 @@ const createOnBoardingSlice = (set, get) => ({
                 restaurantGoals: null
             }));
             
-            throw error;
+            // Don't throw the error to prevent infinite loops in components
+            console.warn('⚠️ Restaurant goals fetch failed:', errorMessage);
+            return null;
         }
     },
 

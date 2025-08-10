@@ -44,6 +44,12 @@ const SummaryDashboard = () => {
     error: summaryError 
   } = useStore();
 
+  // Auth functionality for restaurant ID
+  const { ensureRestaurantId } = useStore();
+
+  // Note: Redirection logic is handled by ProtectedRoutes.jsx
+  // No need to duplicate the redirect check here
+
   // Static years and months
   const years = Array.from({ length: 9 }, (_, i) => 2021 + i); // 2021 to 2029
   const months = [
@@ -312,9 +318,26 @@ const SummaryDashboard = () => {
       
       // Fetch restaurant goals when dashboard loads
       try {
-        await getRestaurentGoal();
+        // Ensure restaurant ID is available
+        const restaurantId = await ensureRestaurantId();
+        
+        if (!restaurantId) {
+          console.warn('No restaurant ID available. Skipping restaurant goals fetch.');
+          return;
+        }
+        
+        const result = await getRestaurentGoal(restaurantId);
+        if (result === null) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       } catch (error) {
-        console.error('Error fetching restaurant goals:', error);
+        console.error('Restaurant goals error:', error.message);
+        
+        // Don't show error to user if it's just that no goals exist yet
+        if (error.message.includes('Restaurant ID is required') || 
+            error.message.includes('Restaurant goals not found')) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       }
     };
 
