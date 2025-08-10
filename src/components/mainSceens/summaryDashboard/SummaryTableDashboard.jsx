@@ -489,3 +489,4 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 };
 
 export default SummaryTableDashboard;
+

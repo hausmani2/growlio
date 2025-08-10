@@ -202,96 +202,91 @@ const OnboardingWrapper = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <div className="flex-1 flex items-center justify-center p-4">
-                <div className=" w-full">
-                    {/* Welcome Message for Auto-Redirected Users */}
-                    {showWelcomeMessage && (
-                        <Alert
-                            message="Welcome to Growlio!"
-                            description="We noticed you don't have any restaurants set up yet. Let's get you started with setting up your first restaurant."
-                            type="info"
-                            showIcon
-                            className="mb-6"
-                            closable
-                            onClose={() => setShowWelcomeMessage(false)}
-                        />
-                    )}
-                    
-                    <div className="bg-white rounded-xl shadow-lg p-8">
-                        {/* <div className="text-center mb-8">
-                            <ImageLayout 
-                                src={OnBoard} 
-                                alt="Onboarding" 
-                                className="w-64 h-64 mx-auto mb-6"
-                            />
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                                Welcome to Growlio
-                            </h1>
-                            <p className="text-gray-600 mb-6">
-                                Let's set up your restaurant and get you started with managing your business efficiently.
-                            </p>
-                        </div> */}
-
-                        <div className="space-y-4">
-                            <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="text-blue-600 text-sm font-semibold">1</span>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-gray-900">Restaurant Information</h3>
-                                    <p className="text-sm text-gray-600">Basic details about your restaurant</p>
-                                </div>
+        <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+                {/* Content Section - Improved responsive design */}
+                <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0">
+                    <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">
+                        <div className="flex flex-col gap-6 sm:gap-8 bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10">
+                            {/* Back Button */}
+                            <div>
+                                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium">
+                                    <FaArrowLeftLong className="text-sm" />
+                                    <span className="hidden sm:inline">Go Back</span>
+                                </button>
                             </div>
                             
-                            <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="text-blue-600 text-sm font-semibold">2</span>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-gray-900">Labor & Costs</h3>
-                                    <p className="text-sm text-gray-600">Set up your labor goals and expense tracking</p>
-                                </div>
+                            {/* Header */}
+                            <div className="flex flex-col gap-3">
+                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-gray-900">
+                                    Is Your Restaurant Already on Growlio?
+                                </h1>
+                                <h2 className="text-lg sm:text-xl text-gray-600 leading-relaxed">
+                                    Let us know how you'd like to get started.
+                                </h2>
                             </div>
                             
-                            <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="text-blue-600 text-sm font-semibold">3</span>
+                            {/* Options */}
+                            <div className="flex flex-col gap-4 sm:gap-6">
+                                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50 opacity-60">
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox disabled />
+                                        <span className="text-base sm:text-lg font-semibold text-gray-500">
+                                            Yes, My Restaurant Exists
+                                        </span>
+                                    </div>
+                                    <p className="text-sm sm:text-base text-gray-500 leading-relaxed mt-2 ml-6">
+                                        Claim and manage an existing listing.
+                                    </p>
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-gray-900">Sales Channels</h3>
-                                    <p className="text-sm text-gray-600">Configure your sales and delivery channels</p>
+                                
+                                <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer">
+                                    <div className="flex items-center gap-3">
+                                        <Checkbox defaultChecked />
+                                        <span className="text-base sm:text-lg font-semibold text-orange-800">
+                                            No, I Want to Create a New One
+                                        </span>
+                                    </div>
+                                    <p className="text-sm sm:text-base text-orange-700 leading-relaxed mt-2 ml-6">
+                                        Register a new restaurant on Growlio.
+                                    </p>
                                 </div>
                             </div>
-                        </div>
 
                         <div className="mt-8">
-                            <PrimaryBtn
+                            <button
                                 onClick={handleSubmit}
                                 disabled={isChecking}
-                                className="w-full"
+                                className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gray-50 opacity-60"
                             >
                                 {isChecking ? (
                                     <div className="flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white text-black mr-2"></div>
                                         Checking...
                                     </div>
                                 ) : (
                                     "Get Started"
                                 )}
-                            </PrimaryBtn>
-                        </div>
-
-                        <div className="mt-6 text-center">
-                            <p className="text-xs text-gray-500">
-                                By continuing, you agree to our Terms of Service and Privacy Policy
-                            </p>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+   {/* Image Section - Hidden on mobile, visible on lg and above */}
+   <div className="hidden lg:block w-full lg:w-1/2 relative bg-gradient-to-br from-orange-50 to-orange-100">
+                    <ImageLayout>
+                        <div className="relative w-full h-full flex items-end justify-center">
+                            <img
+                                src={OnBoard}
+                                alt="onboarding"
+                                className="h-[calc(100vh-100px)] object-contain"
+                            />
+                        </div>
+                    </ImageLayout>
+                </div>
         </div>
     );
 };
 
 export default OnboardingWrapper;
+
+
