@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, message } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
@@ -224,6 +224,49 @@ const Dashboard = () => {
     fetchRestaurantGoals();
   }, [getRestaurentGoal]);
 
+  // Handle navigation context from Summary Dashboard
+  useEffect(() => {
+    const navigationContext = localStorage.getItem('dashboardNavigationContext');
+    
+    if (navigationContext) {
+      try {
+        const context = JSON.parse(navigationContext);
+        
+        // Check if this navigation came from Summary Dashboard
+        if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
+          console.log('🎯 Processing navigation context from Summary Dashboard:', context);
+          
+          // Set the selected date, year, and month
+          if (context.selectedDate) {
+            const targetDate = dayjs(context.selectedDate);
+            const targetYear = targetDate.year();
+            const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
+            
+            setSelectedYear(targetYear);
+            setSelectedMonth(targetMonth);
+            
+            // Fetch calendar data for the target month
+            fetchCalendarData(targetYear, targetMonth).then(() => {
+              // After calendar data is loaded, set the selected week
+              if (context.selectedWeek) {
+                setSelectedWeek(context.selectedWeek);
+              }
+            });
+          }
+          
+          // Don't clear the navigation context yet - let SalesTable handle it after opening modal
+          // localStorage.removeItem('dashboardNavigationContext');
+          
+          // Show success message
+          message.success('Welcome to Dashboard! Loading data for the selected week...');
+        }
+      } catch (error) {
+        console.error('Error processing navigation context:', error);
+        localStorage.removeItem('dashboardNavigationContext');
+      }
+    }
+  }, []);
+
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {
 
@@ -232,6 +275,19 @@ const Dashboard = () => {
     }
 
   }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
+
+  // Fetch dashboard data when selectedWeek changes and availableWeeks are loaded
+  useEffect(() => {
+    if (selectedWeek && availableWeeks.length > 0) {
+      const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
+      if (selectedWeekData) {
+        const weekStartDate = dayjs(selectedWeekData.startDate);
+        setSelectedDate(weekStartDate);
+        // Fetch dashboard data for the selected week
+        fetchDashboardData(weekStartDate);
+      }
+    }
+  }, [selectedWeek, availableWeeks]);
 
   // Show loading spinner when fetching dashboard data
   if (dashboardLoading) {

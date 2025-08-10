@@ -87,6 +87,69 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
     }
   }, [dashboardData, weekDays]);
 
+  // Handle navigation context from Summary Dashboard - Auto-open sales modal
+  useEffect(() => {
+    const navigationContext = localStorage.getItem('dashboardNavigationContext');
+    
+    if (navigationContext) {
+      try {
+        const context = JSON.parse(navigationContext);
+        
+        // Check if this navigation came from Summary Dashboard and should open sales modal
+        if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
+          console.log('🎯 Processing navigation context for sales modal');
+          
+          // Store the budgeted sales data for use in the modal
+          if (context.budgetedSalesData) {
+            localStorage.setItem('budgetedSalesData', JSON.stringify(context.budgetedSalesData));
+          }
+          
+          // Wait for dashboard data to be processed before opening modal
+          // The modal will be opened in the next useEffect after data is processed
+        }
+      } catch (error) {
+        console.error('Error processing navigation context for sales modal:', error);
+        localStorage.removeItem('dashboardNavigationContext');
+      }
+    }
+  }, []); // Only run once on mount
+
+  // Auto-open modal after dashboard data is processed
+  useEffect(() => {
+    const navigationContext = localStorage.getItem('dashboardNavigationContext');
+    
+    if (navigationContext && dashboardData !== null) {
+      try {
+        const context = JSON.parse(navigationContext);
+        
+        if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
+          // Check if we have budgeted sales data from summary dashboard
+          const budgetedSalesData = localStorage.getItem('budgetedSalesData');
+          
+          if (budgetedSalesData) {
+            // We have budgeted sales data from summary dashboard, open in edit mode
+            showEditWeeklyModal(weeklyData[0]);
+            message.info('Editing sales data with budgeted sales from summary dashboard...');
+          } else if (dataNotFound || areAllValuesZero(weeklyData)) {
+            // No data exists, open in add mode
+            showAddWeeklyModal();
+            message.info('Adding sales data for the selected week...');
+          } else {
+            // Data exists, open in edit mode
+            showEditWeeklyModal(weeklyData[0]);
+            message.info('Editing existing sales data for the selected week...');
+          }
+          
+          // Clear the navigation context after processing
+          localStorage.removeItem('dashboardNavigationContext');
+        }
+      } catch (error) {
+        console.error('Error auto-opening sales modal:', error);
+        localStorage.removeItem('dashboardNavigationContext');
+      }
+    }
+  }, [dashboardData, dataNotFound, weeklyData]);
+
   // Recalculate weekly totals when weeklyData changes
   // useEffect(() => {
   //   if (weeklyData.length > 0) {
@@ -393,7 +456,48 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
       };
 
       await saveDashboardData(transformedData);
+      
+      // Show success message
       message.success(isEditMode ? 'Sales data updated successfully!' : 'Sales data saved successfully!');
+      
+      // Show confirmation popup asking if user wants to add COGS data
+      Modal.confirm({
+        title: '🎉 Sales Data Saved Successfully!',
+        content: (
+          <div>
+            <p>Your sales performance data has been saved successfully.</p>
+            <p style={{ marginTop: '8px', fontWeight: 'bold', color: '#1890ff' }}>
+              Would you like to add COGS (Cost of Goods Sold) data for this week?
+            </p>
+          </div>
+        ),
+        okText: 'Yes, Add COGS Data',
+        cancelText: 'No, Later',
+        okType: 'primary',
+        onOk: () => {
+          // Close the sales modal first
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+          
+          // Show message that COGS modal will open
+          message.info('Opening COGS data modal...');
+          
+          // Trigger COGS modal opening by dispatching a custom event
+          const event = new CustomEvent('openCogsModal', {
+            detail: {
+              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD')
+            }
+          });
+          window.dispatchEvent(event);
+        },
+        onCancel: () => {
+          // Just close the sales modal
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+        }
+      });
       
       // Refresh all dashboard data to show updated data across all components
       if (refreshDashboardData) {
@@ -402,10 +506,6 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
         // Fallback: reload data after saving
         await processDashboardData(); 
       }
-      
-      setIsModalVisible(false);
-      setEditingWeek(null);
-      setIsEditMode(false);
     } catch (error) {
       console.error('Error in handleWeeklySubmit:', error);
       message.error(`Failed to ${isEditMode ? 'update' : 'save'} sales data: ${error.message}`);
@@ -499,8 +599,37 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
     useEffect(() => {
       if (editingWeek) {
         // When editing, use the weeklyGoals for weeklyTotals since that's where the weekly data is stored
+        let dailyData = editingWeek.dailyData || [];
+        
+        // Check if we have budgeted sales data from Summary Dashboard (even in edit mode)
+        const budgetedSalesData = localStorage.getItem('budgetedSalesData');
+        if (budgetedSalesData) {
+          try {
+            const parsedBudgetedData = JSON.parse(budgetedSalesData);
+            
+            // Pre-fill the daily data with budgeted sales
+            dailyData = dailyData.map((day, index) => {
+              const budgetedDay = parsedBudgetedData[index];
+              if (budgetedDay && budgetedDay.budgetedSales > 0) {
+                return {
+                  ...day,
+                  budgetedSales: budgetedDay.budgetedSales
+                };
+              }
+              return day;
+            });
+            
+            // Clear the budgeted sales data after using it
+            localStorage.removeItem('budgetedSalesData');
+          } catch (error) {
+            console.error('Error parsing budgeted sales data in edit mode:', error);
+            localStorage.removeItem('budgetedSalesData');
+          }
+        }
+        
         setWeekFormData({
           ...editingWeek,
+          dailyData: dailyData,
           weeklyTotals: {
             salesBudget: weeklyGoals.salesBudget || 0,
             actualSalesInStore: weeklyGoals.actualSalesInStore || 0,
@@ -516,10 +645,38 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
           }
         });
       } else {
+        // Check if we have budgeted sales data from Summary Dashboard
+        const budgetedSalesData = localStorage.getItem('budgetedSalesData');
+        let dailyData = generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate);
+        
+        if (budgetedSalesData) {
+          try {
+            const parsedBudgetedData = JSON.parse(budgetedSalesData);
+            
+            // Pre-fill the daily data with budgeted sales
+            dailyData = dailyData.map((day, index) => {
+              const budgetedDay = parsedBudgetedData[index];
+              if (budgetedDay && budgetedDay.budgetedSales > 0) {
+                return {
+                  ...day,
+                  budgetedSales: budgetedDay.budgetedSales
+                };
+              }
+              return day;
+            });
+            
+            // Clear the budgeted sales data after using it
+            localStorage.removeItem('budgetedSalesData');
+          } catch (error) {
+            console.error('Error parsing budgeted sales data:', error);
+            localStorage.removeItem('budgetedSalesData');
+          }
+        }
+        
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
+          dailyData: dailyData,
           weeklyTotals: {
             salesBudget: 0,
             actualSalesInStore: 0,

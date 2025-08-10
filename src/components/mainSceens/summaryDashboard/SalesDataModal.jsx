@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
 
@@ -11,7 +11,8 @@ const SalesDataModal = ({
   onCancel, 
   selectedWeekData, 
   weekDays = [], 
-  onDataSaved 
+  onDataSaved,
+  autoOpenFromSummary = false
 }) => {
   // Store integration
   const { 
@@ -31,6 +32,7 @@ const SalesDataModal = ({
 
   const [providers, setProviders] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDayForSales, setSelectedDayForSales] = useState(null);
   const [formData, setFormData] = useState({
     weeklyTotals: {
       salesBudget: 0,
@@ -107,6 +109,76 @@ const SalesDataModal = ({
     return days;
   };
 
+  // Show top popup notification
+  const showTopPopupNotification = (selectedDay) => {
+    notification.info({
+      message: (
+        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+          🎉 Budgeted Sales Added Successfully!
+        </div>
+      ),
+      description: (
+        <div style={{ marginTop: '8px' }}>
+          <p style={{ marginBottom: '8px' }}>
+            <strong>${selectedDay.budgetedSales}</strong> has been added for <strong>{selectedDay.dayName}</strong> ({selectedDay.date.format('MMM DD, YYYY')}).
+          </p>
+          <p style={{ marginBottom: '12px', color: '#666' }}>
+            Would you like to add net actual sales for this date?
+          </p>
+          <Button 
+            type="primary" 
+            size="small" 
+            icon={<DollarOutlined />}
+            onClick={() => handleNavigateToDashboardSales(selectedDay)}
+            style={{ 
+              marginTop: '8px',
+              backgroundColor: '#52c41a',
+              borderColor: '#52c41a'
+            }}
+          >
+            Add Sales Performance
+            <ArrowRightOutlined />
+          </Button>
+        </div>
+      ),
+      duration: 0, // Don't auto-close
+      placement: 'top',
+      style: {
+        width: 450,
+        zIndex: 99999,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        borderRadius: '8px',
+        marginTop: '20px',
+      },
+      onClose: () => {
+        console.log('Top popup notification closed');
+        setSelectedDayForSales(null);
+      }
+    });
+  };
+
+  // Handle navigation to dashboard sales modal
+  const handleNavigateToDashboardSales = (selectedDay) => {
+    // Close current modal
+    onCancel();
+    
+    // Close the notification
+    notification.destroy();
+    
+    // Navigate to dashboard with selected date
+    // You can implement navigation logic here
+    console.log('Navigating to dashboard sales with date:', selectedDay.date.format('YYYY-MM-DD'));
+    
+    // Show success message
+    message.success(`Opening sales performance for ${selectedDay.dayName} (${selectedDay.date.format('MMM DD, YYYY')})`);
+    
+    // You can emit an event or use a callback to navigate to the dashboard
+    // For now, we'll just show a message
+    setTimeout(() => {
+      message.info('Please navigate to Dashboard > Sales Performance to add/edit sales data');
+    }, 2000);
+  };
+
   // Handle daily data changes
   const handleDailyDataChange = (dayIndex, field, value) => {
     const newDailyData = [...formData.dailyData];
@@ -116,6 +188,21 @@ const SalesDataModal = ({
       ...formData, 
       dailyData: newDailyData
     });
+
+    // Track budgeted sales changes
+    if (field === 'budgetedSales' && value > 0) {
+      const changedDay = newDailyData[dayIndex];
+      console.log('Budgeted sales changed:', { field, value, changedDay }); // Debug log
+      
+      // Show immediate feedback
+      message.success(`Budgeted sales of $${value} added for ${changedDay.dayName}`);
+      
+      // Show top popup notification after 2 seconds
+      setTimeout(() => {
+        setSelectedDayForSales(changedDay);
+        showTopPopupNotification(changedDay);
+      }, 2000);
+    }
   };
 
   // Handle weekly totals changes
@@ -315,92 +402,97 @@ const SalesDataModal = ({
       )}
 
       <Space direction="vertical" style={{ width: '100%' }} size="large">
-        {/* Weekly Totals Section */}
-        <Card title="Weekly Totals" size="small">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <div>
-                <Text strong className="text-sm">Sales Budget:</Text>
-                <Input
-                  type="number"
-                  value={formData.weeklyTotals.salesBudget}
-                  onChange={(e) => handleWeeklyTotalsChange('salesBudget', parseFloat(e.target.value) || 0)}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="mt-1"
-                />
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <div>
-                <Text strong className="text-sm">Actual Sales - In Store:</Text>
-                <Input
-                  type="number"
-                  value={formData.weeklyTotals.actualSalesInStore}
-                  onChange={(e) => handleWeeklyTotalsChange('actualSalesInStore', parseFloat(e.target.value) || 0)}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="mt-1"
-                />
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <div>
-                <Text strong className="text-sm">Actual Sales - App/Online:</Text>
-                <Input
-                  type="number"
-                  value={formData.weeklyTotals.actualSalesAppOnline}
-                  onChange={(e) => handleWeeklyTotalsChange('actualSalesAppOnline', parseFloat(e.target.value) || 0)}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="mt-1"
-                />
-              </div>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <div>
-                <Text strong className="text-sm">Daily Tickets:</Text>
-                <Input
-                  type="number"
-                  value={formData.weeklyTotals.dailyTickets}
-                  onChange={(e) => handleWeeklyTotalsChange('dailyTickets', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  className="mt-1"
-                />
-              </div>
-            </Col>
-          </Row>
+        {/* Weekly Totals Section - Only show when not auto-opened from summary */}
+        {!autoOpenFromSummary && (
+          <Card title="Weekly Totals" size="small">
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <div>
+                  <Text strong className="text-sm">Sales Budget:</Text>
+                  <Input
+                    type="number"
+                    value={formData.weeklyTotals.salesBudget}
+                    onChange={(e) => handleWeeklyTotalsChange('salesBudget', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                    placeholder="0.00"
+                    className="mt-1"
+                  />
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <div>
+                  <Text strong className="text-sm">Actual Sales - In Store:</Text>
+                  <Input
+                    type="number"
+                    value={formData.weeklyTotals.actualSalesInStore}
+                    onChange={(e) => handleWeeklyTotalsChange('actualSalesInStore', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                    placeholder="0.00"
+                    className="mt-1"
+                  />
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <div>
+                  <Text strong className="text-sm">Actual Sales - App/Online:</Text>
+                  <Input
+                    type="number"
+                    value={formData.weeklyTotals.actualSalesAppOnline}
+                    onChange={(e) => handleWeeklyTotalsChange('actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                    prefix="$"
+                    placeholder="0.00"
+                    className="mt-1"
+                  />
+                </div>
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <div>
+                  <Text strong className="text-sm">Daily Tickets:</Text>
+                  <Input
+                    type="number"
+                    value={formData.weeklyTotals.dailyTickets}
+                    onChange={(e) => handleWeeklyTotalsChange('dailyTickets', parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    className="mt-1"
+                  />
+                </div>
+              </Col>
+            </Row>
 
-          {/* Dynamic Provider Fields */}
-          {getProviders().length > 0 && (
-            <>
-              <Divider orientation="left">Third Party Sales</Divider>
-              <Row gutter={[16, 16]}>
-                {getProviders().map((provider) => (
-                  <Col xs={24} sm={12} md={8} lg={6} key={provider.provider_name}>
-                    <div>
-                      <Text strong className="text-sm">Actual Sales - {provider.provider_name}:</Text>
-                      <Input
-                        type="number"
-                        value={formData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
-                        onChange={(e) => {
-                          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                          handleWeeklyTotalsChange(providerKey, parseFloat(e.target.value) || 0);
-                        }}
-                        prefix="$"
-                        placeholder="0.00"
-                        className="mt-1"
-                      />
-                    </div>
-                  </Col>
-                ))}
-              </Row>
-            </>
-          )}
-        </Card>
+            {/* Dynamic Provider Fields */}
+            {getProviders().length > 0 && (
+              <>
+                <Divider orientation="left">Third Party Sales</Divider>
+                <Row gutter={[16, 16]}>
+                  {getProviders().map((provider) => (
+                    <Col xs={24} sm={12} md={8} lg={6} key={provider.provider_name}>
+                      <div>
+                        <Text strong className="text-sm">Actual Sales - {provider.provider_name}:</Text>
+                        <Input
+                          type="number"
+                          value={formData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
+                          onChange={(e) => {
+                            const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                            handleWeeklyTotalsChange(providerKey, parseFloat(e.target.value) || 0);
+                          }}
+                          prefix="$"
+                          placeholder="0.00"
+                          className="mt-1"
+                        />
+                      </div>
+                    </Col>
+                  ))}
+                </Row>
+              </>
+            )}
+          </Card>
+        )}
 
         {/* Daily Data Table */}
-        <Card title="Daily Sales Data" size="small">
+        <Card 
+          title="Daily Sales Data"
+          size="small"
+        >
           <div className="overflow-x-auto">
             <Table
               dataSource={formData.dailyData}
@@ -441,6 +533,21 @@ const SalesDataModal = ({
                     return sum + totals[providerKey];
                   }, 0);
 
+                if (autoOpenFromSummary) {
+                  // Only show budgeted sales total when auto-opened from summary
+                  return (
+                    <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
+                      <Table.Summary.Cell index={0}>
+                        <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1}>
+                        <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }
+
+                // Show all totals when not auto-opened from summary
                 return (
                   <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
                     <Table.Summary.Cell index={0}>
@@ -486,7 +593,40 @@ const SalesDataModal = ({
                   </Table.Summary.Row>
                 );
               }}
-              columns={[
+              columns={autoOpenFromSummary ? [
+                // Only show Day and Budgeted Sales when auto-opened from summary
+                {
+                  title: 'Day',
+                  dataIndex: 'dayName',
+                  key: 'dayName',
+                  width: 120,
+                  fixed: 'left',
+                  render: (text, record) => (
+                    <div>
+                      <div className="font-medium">{text}</div>
+                      <div style={{ fontSize: '12px', color: '#666' }}>
+                        {record.date.format('MMM DD, YYYY')}
+                      </div>
+                    </div>
+                  )
+                },
+                {
+                  title: 'Budgeted Sales',
+                  dataIndex: 'budgetedSales',
+                  key: 'budgetedSales',
+                  width: 120,
+                  render: (value, record, index) => (
+                    <Input
+                      type="number"
+                      value={value}
+                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-full"
+                    />
+                  )
+                }
+              ] : [
+                // Show all columns when not auto-opened from summary
                 {
                   title: 'Day',
                   dataIndex: 'dayName',

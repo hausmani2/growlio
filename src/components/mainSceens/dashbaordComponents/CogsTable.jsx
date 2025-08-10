@@ -62,6 +62,60 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     }
   }, [dashboardData, weekDays]);
 
+  // Listen for custom event to open COGS modal from SalesTable
+  useEffect(() => {
+    const handleOpenCogsModal = (event) => {
+      console.log('🎯 Received openCogsModal event:', event.detail);
+      
+      // Store the event data for later use when data is loaded
+      localStorage.setItem('pendingCogsModal', JSON.stringify({
+        shouldOpen: true,
+        weekStartDate: event.detail.weekStartDate,
+        timestamp: Date.now()
+      }));
+    };
+
+    // Add event listener
+    window.addEventListener('openCogsModal', handleOpenCogsModal);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('openCogsModal', handleOpenCogsModal);
+    };
+  }, []); // No dependencies - only run once
+
+  // Check for pending COGS modal after data is processed
+  useEffect(() => {
+    const pendingCogsModal = localStorage.getItem('pendingCogsModal');
+    
+    if (pendingCogsModal && dashboardData !== null) { // Only proceed if dashboard data has been loaded
+      try {
+        const pendingData = JSON.parse(pendingCogsModal);
+        
+        if (pendingData.shouldOpen) {
+          console.log('🎯 Opening COGS modal after data processing');
+          
+          // Check if we have data or if we need to add data
+          if (dataNotFound || areAllValuesZero(weeklyData)) {
+            // No data exists, open in add mode
+            showAddWeeklyModal();
+            message.info('Adding COGS data for the selected week...');
+          } else {
+            // Data exists, open in edit mode
+            showEditWeeklyModal(weeklyData[0]);
+            message.info('Editing existing COGS data for the selected week...');
+          }
+          
+          // Clear the pending modal data
+          localStorage.removeItem('pendingCogsModal');
+        }
+      } catch (error) {
+        console.error('Error processing pending COGS modal:', error);
+        localStorage.removeItem('pendingCogsModal');
+      }
+    }
+  }, [dashboardData, dataNotFound, weeklyData]); // Depend on processed data
+
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
     if (!weeklyData || weeklyData.length === 0) return true;

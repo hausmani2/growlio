@@ -33,7 +33,7 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/dashboard/summary');
     }
   }, [isAuthenticated, navigate]);
 
@@ -113,6 +113,7 @@ const Register = () => {
       const result = await register(form);
       
       if (result.success) {
+        message.success('Registration successful! Please login to continue.');
         if (result.needsLogin) {
           message.success('Registration successful! Please login to continue.');
           // Navigate to login after successful registration
@@ -123,7 +124,7 @@ const Register = () => {
           message.success('Registration successful! Welcome to Growlio!');
           // Navigate to onboarding after successful registration with token
           setTimeout(() => {
-            navigate('/onboarding');
+            navigate('/onboarding/summary');
           }, 1500);
         }
       }

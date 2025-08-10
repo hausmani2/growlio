@@ -30,24 +30,24 @@ const ProtectedRoutes = () => {
           const isComplete = result.onboarding_complete;
           
           if (!isComplete && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) {
-            setRedirectPath('/onboarding');
+            setRedirectPath('/onboarding/summary');
             return;
           }
           
           if (isComplete && (location.pathname === '/onboarding' || location.pathname.startsWith('/onboarding/'))) {
-            setRedirectPath('/dashboard');
+            setRedirectPath('/dashboard/summary');
             return;
           }
         } else {
           if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
-            setRedirectPath('/onboarding');
+            setRedirectPath('/onboarding/summary');
             return;
           }
         }
       } catch (error) {
         console.error('ProtectedRoutes - Error checking onboarding status:', error);
         if (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/')) {
-          setRedirectPath('/onboarding');
+          setRedirectPath('/onboarding/summary');
           return;
         }
       } finally {

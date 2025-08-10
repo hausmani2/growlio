@@ -28,21 +28,21 @@ const CompleteSteps = () => {
                 
                 if (hasCompletedOnboarding) {
                     message.success("Welcome to your dashboard!");
-                    navigate('/dashboard');
+                    navigate('/dashboard/summary');
                 } else {
                     message.warning("Please wait while we finalize your setup...");
                     // Stay on the completion page for now
                 }
             } else {
                 message.info("Redirecting to dashboard...");
-                navigate('/dashboard');
+                navigate('/dashboard/summary');
             }
             
         } catch (error) {
             console.error("Error checking final onboarding status:", error);
             message.error("Something went wrong. Please try again.");
             // Fallback to dashboard
-            navigate('/dashboard');
+            navigate('/dashboard/summary');
         } finally {
             setIsChecking(false);
         }

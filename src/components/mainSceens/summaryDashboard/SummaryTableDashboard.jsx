@@ -9,6 +9,23 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
 
+  // Helper function to handle None/null/undefined values
+  const handleValue = useCallback((value) => {
+    if (value === null || value === undefined || value === 'None' || value === '') {
+      return '-';
+    }
+    return value;
+  }, []);
+
+  // Helper function to parse numeric values safely
+  const parseNumericValue = useCallback((value) => {
+    if (value === null || value === undefined || value === 'None' || value === '') {
+      return 0;
+    }
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }, []);
+
   // Process data
   useEffect(() => {
     const dataToProcess = dashboardSummaryData || dashboardData;
@@ -43,11 +60,14 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       return;
     }
 
-    // Process the data - Updated to match new API response structure
+    // Process the data - Updated to match new API response structure with profit columns
     const processed = {
       sales_budget: {},
+      sales_budeget_profit: {},
       labour: {},
+      labour_profit: {},
       food_cost: {},
+      food_cost_profit: {},
       hours: {},
       amount: {},
       average_hourly_rate: {},
@@ -55,49 +75,80 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     };
 
     weekEntries.forEach((entry) => {
-      const dayKey = entry.day ? entry.day.substring(0, 3) : entry.date ? dayjs(entry.date).format('ddd') : 'N/A';
+      // Use full date as key for better data organization
+      const dateKey = entry.date || entry.day || 'N/A';
       
-      processed.sales_budget[dayKey] = parseFloat(entry.sales_budget || 0);
-      processed.labour[dayKey] = parseFloat(entry.labour || 0);
-      processed.food_cost[dayKey] = parseFloat(entry.food_cost || 0);
-      processed.hours[dayKey] = parseFloat(entry.hours || 0);
-      processed.amount[dayKey] = parseFloat(entry.amount || 0);
-      processed.average_hourly_rate[dayKey] = parseFloat(entry.average_hourly_rate || 0);
-      processed.profit_loss[dayKey] = parseFloat(entry.profit_loss || 0);
+      processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
+      processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
+      processed.labour[dateKey] = parseNumericValue(entry.labour);
+      processed.labour_profit[dateKey] = parseNumericValue(entry.labour_profit);
+      processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
+      processed.food_cost_profit[dateKey] = parseNumericValue(entry.food_cost_profit);
+      processed.hours[dateKey] = parseNumericValue(entry.hours);
+      processed.amount[dateKey] = parseNumericValue(entry.amount);
+      processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
+      processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
     });
 
     setProcessedData(processed);
     setTableData(weekEntries);
-  }, [dashboardData, dashboardSummaryData]);
+  }, [dashboardData, dashboardSummaryData, parseNumericValue]);
 
-  // Categories for the summary table - Updated to match new API response structure
+  // Categories for the summary table - Updated to remove profit columns as separate rows
   const categories = useMemo(() => [
     { key: 'sales_budget', label: 'Sales Budget', type: 'currency' },
     { key: 'labour', label: 'Labor', type: 'number' },
+    { key: 'food_cost', label: 'Food Cost', type: 'currency' },
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'amount', label: 'Labor Amount', type: 'currency' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
-    { key: 'food_cost', label: 'Food Cost', type: 'currency' },
     { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' }
   ], []);
 
+  // Helper function to format percentage
+  const formatPercentage = useCallback((value) => {
+    if (value === null || value === undefined || value === 'None' || value === '') {
+      return null;
+    }
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return null;
+    return `${numValue > 0 ? '+' : ''}${numValue.toFixed(1)}%`;
+  }, []);
+
+  // Helper function to get percentage color
+  const getPercentageColor = useCallback((value) => {
+    if (value === null || value === undefined || value === 'None' || value === '') {
+      return 'text-gray-400';
+    }
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return 'text-gray-400';
+    if (numValue > 0) return 'text-green-600';
+    if (numValue < 0) return 'text-red-600';
+    return 'text-gray-600';
+  }, []);
+
   // Formatting utilities
   const formatCurrency = useCallback((value) => {
+    if (value === '-') return '-';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value || 0);
   }, []);
 
   const formatNumber = useCallback((value) => {
+    if (value === '-') return '-';
     return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value || 0);
   }, []);
 
   // Color coding for profit/loss values
   const getProfitLossColor = useCallback((value) => {
+    if (value === '-') return 'text-gray-500';
     if (value > 0) {
       return 'text-green-600 font-semibold'; // Green for profit
     } else if (value < 0) {
@@ -106,22 +157,59 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     return 'text-gray-600'; // Default color for zero
   }, []);
 
+  // Format profit/loss with trading-like display (+ for positive values)
+  const formatProfitLoss = useCallback((value) => {
+    if (value === '-') return '-';
+    const formattedValue = formatCurrency(Math.abs(value));
+    if (value > 0) {
+      return `+${formattedValue}`;
+    } else if (value < 0) {
+      return `-${formattedValue}`;
+    }
+    return formattedValue;
+  }, [formatCurrency]);
+
+  // Format date for display
+  const formatDateForDisplay = useCallback((dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = dayjs(dateString);
+      return {
+        day: date.format('ddd'),
+        date: date.format('MMM DD'),
+        fullDate: date.format('MMM DD, YYYY')
+      };
+    } catch {
+      return {
+        day: 'N/A',
+        date: 'N/A',
+        fullDate: 'N/A'
+      };
+    }
+  }, []);
+
   // CSV generation
   const generateCSV = useCallback(() => {
     if (!tableData || tableData.length === 0) return '';
     
-    const days = tableData.map(entry => entry.day ? entry.day.substring(0, 3) : dayjs(entry.date).format('ddd'));
-    const headers = ['Category', ...days];
+    const dates = tableData.map(entry => {
+      const dateInfo = formatDateForDisplay(entry.date || entry.day);
+      return dateInfo.fullDate;
+    });
+    const headers = ['Category', ...dates];
     const rows = categories.map(category => {
       const rowData = [category.label];
-      days.forEach(day => {
-        const value = processedData[category.key]?.[day] || 0;
+      dates.forEach((_, index) => {
+        const entry = tableData[index];
+        const dateKey = entry.date || entry.day || 'N/A';
+        const value = processedData[category.key]?.[dateKey] || 0;
         rowData.push(value.toString());
       });
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData]);
+  }, [tableData, categories, processedData, formatDateForDisplay]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -146,49 +234,93 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      width: 200,
+      width: 180,
       fixed: 'left',
       render: (text) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-gray-800 text-sm sm:text-base">{text}</span>
+          <span className="font-semibold text-gray-800 text-sm">{text}</span>
         </div>
       ),
       responsive: ['md']
     },
     ...tableData.map((entry, index) => {
-      const dayKey = entry.day ? entry.day.substring(0, 3) : (entry.date ? dayjs(entry.date).format('ddd') : 'N/A');
-      const uniqueKey = `${dayKey}-${index}`;
+      const dateInfo = formatDateForDisplay(entry.date || entry.day);
+      const uniqueKey = `${dateInfo.fullDate}-${index}`;
       
       return {
         title: (
           <div className="text-center">
-            <div className="font-semibold text-xs sm:text-sm">
-              {dayKey}
+            <div className="font-semibold text-xs text-gray-800">
+              {dateInfo.day}
             </div>
-            {index === 0 && <div className="text-xs text-gray-500 italic hidden sm:block">Date</div>}
+            <div className="text-xs text-gray-600">
+              {dateInfo.date}
+            </div>
           </div>
         ),
         dataIndex: uniqueKey,
         key: uniqueKey,
         width: 120,
+        align: 'center',
         render: (value, record) => {
           const categoryKey = record.key;
-          const dataValue = processedData[categoryKey]?.[dayKey] || 0;
+          const dateKey = entry.date || entry.day || 'N/A';
+          const rawValue = processedData[categoryKey]?.[dateKey] || 0;
+          
+          // Check if the original value was None/null/undefined
+          const originalValue = entry[categoryKey];
+          const displayValue = handleValue(originalValue);
+          
+          if (displayValue === '-') {
+            return <span className="text-xs text-gray-500">-</span>;
+          }
+          
+          // Get profit percentage for inline display
+          let profitPercentage = null;
+          if (categoryKey === 'sales_budget' && entry.sales_budeget_profit) {
+            profitPercentage = formatPercentage(entry.sales_budeget_profit);
+          } else if (categoryKey === 'labour' && entry.labour_profit) {
+            profitPercentage = formatPercentage(entry.labour_profit);
+          } else if (categoryKey === 'food_cost' && entry.food_cost_profit) {
+            profitPercentage = formatPercentage(entry.food_cost_profit);
+          }
           
           // Handle currency fields
-          if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || categoryKey === 'profit_loss') {
-            const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(dataValue) : 'text-gray-600';
-            return <span className={`text-xs sm:text-sm ${colorClass}`}>{formatCurrency(dataValue)}</span>;
+          if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
+              categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
+              categoryKey === 'profit_loss') {
+            const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
+            const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
+            
+            return (
+              <div className="flex items-center justify-center">
+                <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
+                {profitPercentage && (
+                  <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                    {profitPercentage}
+                  </span>
+                )}
+              </div>
+            );
           }
           // Handle number fields
           if (categoryKey === 'labour' || categoryKey === 'hours') {
-            return <span className="text-xs sm:text-sm">{formatNumber(dataValue)}</span>;
+            return (
+              <div className="flex items-center justify-center">
+                <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
+                {profitPercentage && (
+                  <span className={`text-xs ml-1 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                    {profitPercentage}
+                </span>
+                )}
+              </div>
+            );
           }
-          return <span className="text-xs sm:text-sm">{dataValue}</span>;
+          return <span className="text-sm text-gray-700">{rawValue}</span>;
         }
       };
     })
-  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor]);
+  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor]);
 
   // Table data source
   const tableDataSource = useMemo(() => 
@@ -196,12 +328,13 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       key: category.key,
       category: category.label,
       ...tableData.reduce((acc, entry, index) => {
-        const dayKey = entry.day ? entry.day.substring(0, 3) : dayjs(entry.date).format('ddd');
-        const uniqueKey = `${dayKey}-${index}`;
-        acc[uniqueKey] = processedData[category.key]?.[dayKey] || 0;
+        const dateInfo = formatDateForDisplay(entry.date || entry.day);
+        const uniqueKey = `${dateInfo.fullDate}-${index}`;
+        const dateKey = entry.date || entry.day || 'N/A';
+        acc[uniqueKey] = processedData[category.key]?.[dateKey] || 0;
         return acc;
       }, {})
-    })), [categories, tableData, processedData]);
+    })), [categories, tableData, processedData, formatDateForDisplay]);
 
   // Check if we have data
   const hasData = tableData.length > 0;
@@ -249,11 +382,13 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
   return (
     <Card className="shadow-lg border-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <Title level={4} className="mb-0 text-lg sm:text-xl">
-          Weekly Summary Dashboard
-        </Title>
-        <Space className="flex  sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
+        <div>
+          <Title level={4} className="mb-0 text-lg sm:text-xl">
+            Weekly Summary Dashboard
+          </Title>
+        </div>
+        <Space className="flex sm:flex-row gap-2">
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
@@ -272,30 +407,6 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           </Button>
         </Space>
       </div>
-
-      {/* Mobile-friendly summary cards */}
-      {/* <div className="block sm:hidden mb-6">
-        <Row gutter={[16, 16]}>
-          {categories.map(category => {
-            const totalValue = Object.values(processedData[category.key] || {}).reduce((sum, val) => sum + val, 0);
-            const colorClass = category.key === 'profit_loss' ? getProfitLossColor(totalValue) : 'text-gray-800';
-            
-            return (
-              <Col xs={24} sm={12} key={category.key}>
-                <Card size="small" className="text-center">
-                  <div className="text-sm font-semibold text-gray-600 mb-2">{category.label}</div>
-                  <div className={`text-lg font-bold ${colorClass}`}>
-                    {category.type === 'currency' 
-                      ? formatCurrency(totalValue)
-                      : formatNumber(totalValue)
-                    }
-                  </div>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      </div> */}
 
       {/* Desktop table */}
       <div className="hidden sm:block">
@@ -320,23 +431,51 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {tableData.map((entry, index) => {
-                  const dayKey = entry.day ? entry.day.substring(0, 3) : (entry.date ? dayjs(entry.date).format('ddd') : 'N/A');
-                  const uniqueKey = `${dayKey}-${index}`;
-                  const value = processedData[row.key]?.[dayKey] || 0;
+                  const dateInfo = formatDateForDisplay(entry.date || entry.day);
+                  const uniqueKey = `${dateInfo.fullDate}-${index}`;
+                  const dateKey = entry.date || entry.day || 'N/A';
+                  const rawValue = processedData[row.key]?.[dateKey] || 0;
+                  const originalValue = entry[row.key];
+                  const displayValue = handleValue(originalValue);
+                  
+                  // Get profit percentage for inline display
+                  let profitPercentage = null;
+                  if (row.key === 'sales_budget' && entry.sales_budeget_profit) {
+                    profitPercentage = formatPercentage(entry.sales_budeget_profit);
+                  } else if (row.key === 'labour' && entry.labour_profit) {
+                    profitPercentage = formatPercentage(entry.labour_profit);
+                  } else if (row.key === 'food_cost' && entry.food_cost_profit) {
+                    profitPercentage = formatPercentage(entry.food_cost_profit);
+                  }
                   
                   return (
                     <div key={uniqueKey} className="flex justify-between text-xs">
-                      <span className="text-gray-600">{dayKey}:</span>
-                      <span className={`font-medium ${
-                        row.key === 'profit_loss' ? getProfitLossColor(value) : 'text-gray-600'
-                      }`}>
-                        {row.key === 'sales_budget' || row.key === 'food_cost' || row.key === 'amount' || row.key === 'average_hourly_rate' || row.key === 'profit_loss'
-                          ? formatCurrency(value)
-                          : row.key === 'labour' || row.key === 'hours'
-                          ? formatNumber(value)
-                          : value
-                        }
+                      <span className="text-gray-600">
+                        {dateInfo.day} {dateInfo.date}
                       </span>
+                      <div className="flex items-center">
+                        <span className={`font-medium ${
+                          displayValue === '-' ? 'text-gray-500' :
+                          row.key === 'profit_loss'
+                            ? getProfitLossColor(rawValue) : 'text-gray-600'
+                        }`}>
+                          {displayValue === '-' ? '-' :
+                           row.key === 'profit_loss'
+                            ? formatProfitLoss(rawValue)
+                            : row.key === 'sales_budget' || row.key === 'food_cost' || 
+                              row.key === 'amount' || row.key === 'average_hourly_rate'
+                            ? formatCurrency(rawValue)
+                            : row.key === 'labour' || row.key === 'hours'
+                            ? formatNumber(rawValue)
+                            : rawValue
+                          }
+                        </span>
+                        {profitPercentage && (
+                          <span className={`text-xs ml-1 ${getPercentageColor(entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                            {profitPercentage}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

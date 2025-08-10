@@ -106,19 +106,19 @@ const Login = () => {
           if (isComplete) {
             message.success('Welcome back! Redirecting to dashboard...');
             setTimeout(() => {
-              navigate('/dashboard');
+              navigate('/dashboard/summary');
             }, 1000);
           } else {
             message.info('Please complete your onboarding setup...');
             setTimeout(() => {
-              navigate('/onboarding');
+              navigate('/onboarding/summary');
             }, 1000);
           }
         } else {
           // Fallback to onboarding if check fails
           message.info('Redirecting to onboarding...');
           setTimeout(() => {
-            navigate('/onboarding');
+            navigate('/onboarding/summary');
           }, 1000);
         }
       }

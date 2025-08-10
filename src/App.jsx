@@ -36,9 +36,8 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard/summary" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
-          <Route path="/dashboard/summary" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
@@ -46,6 +45,7 @@ function App() {
           <Route path="/onboarding/expense" element={<RestaurantInfo />} />
           <Route path="/onboarding/complete" element={<CompleteSteps />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
+          <Route path="/dashboard/summary" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
           <Route path="/dashboard/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />

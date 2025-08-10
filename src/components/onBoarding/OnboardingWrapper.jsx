@@ -79,7 +79,7 @@ const OnboardingWrapper = () => {
                     console.log('✅ User has restaurants with completed onboarding - redirecting to dashboard');
                     message.success("Welcome back! Redirecting to your dashboard...");
                     setTimeout(() => {
-                        navigate('/dashboard');
+                        navigate('/dashboard/summary');
                     }, 1000);
                     return;
                 } else {
@@ -167,7 +167,7 @@ const OnboardingWrapper = () => {
     useEffect(() => {
         if (onboardingStatus === 'complete') {
             console.log('✅ Onboarding already complete - redirecting to dashboard');
-            navigate('/dashboard');
+            navigate('/dashboard/summary');
         } else if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
             console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
         }
