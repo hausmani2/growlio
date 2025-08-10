@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import SummaryTableDashboard from './SummaryTableDashboard';
+import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
 
 const { Title } = Typography;
@@ -27,6 +28,8 @@ const SummaryDashboard = () => {
   
   // Flash message state
   const [showFlashMessage, setShowFlashMessage] = useState(false);
+  
+
 
   // Dashboard data state
 
@@ -542,6 +545,8 @@ const SummaryDashboard = () => {
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           
+
+          
           {/* Only show dashboard components when a week is selected and dashboard data is available */}
           {selectedWeek ? (
             <>
@@ -598,14 +603,41 @@ const SummaryDashboard = () => {
                     />
                   </div>
                 </Card>
-              ) : (
-                <SummaryTableDashboard 
-                  dashboardSummaryData={dashboardSummaryData}
-                  loading={summaryLoading}
-                  error={summaryError}
-                  selectedWeekData={getSelectedWeekData()}
-                />
-              )}
+                             ) : (
+                 <>
+                   {/* Summary Table - First */}
+                   <SummaryTableDashboard 
+                     dashboardSummaryData={dashboardSummaryData}
+                     loading={summaryLoading}
+                     error={summaryError}
+                     selectedWeekData={getSelectedWeekData()}
+                   />
+                   
+                   {/* Budget Dashboard - Second */}
+                   <BudgetDashboard 
+                     dashboardData={dashboardSummaryData}
+                     loading={summaryLoading}
+                     error={summaryError}
+                     onAddData={handleShowSalesModal}
+                     onEditData={() => {
+                       // Navigate to dashboard for editing
+                       const selectedWeekData = getSelectedWeekData();
+                       if (selectedWeekData) {
+                         const navigationContext = {
+                           selectedDate: selectedWeekData.startDate,
+                           selectedWeek: selectedWeek,
+                           selectedYear: selectedYear,
+                           selectedMonth: selectedMonth,
+                           shouldOpenSalesModal: true,
+                           source: 'summary-dashboard'
+                         };
+                         localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
+                         navigate('/dashboard');
+                       }
+                     }}
+                   />
+                 </>
+               )}
             </>
           ) : (
             <Card>

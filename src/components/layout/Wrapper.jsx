@@ -28,7 +28,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     {
       key: 'dashboard',
       icon: <HomeOutlined />,
-      label: 'Dashboard',
+      label: 'Cost Detail',
       onClick: () => navigate('/dashboard'),
     },
     {
