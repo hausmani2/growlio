@@ -249,7 +249,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       
       return {
         title: (
-          <div className="text-center">
+          <div className="text-start">
             <div className="font-semibold text-xs text-gray-800">
               {dateInfo.day}
             </div>
@@ -261,7 +261,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         dataIndex: uniqueKey,
         key: uniqueKey,
         width: 120,
-        align: 'center',
+        
         render: (value, record) => {
           const categoryKey = record.key;
           const dateKey = entry.date || entry.day || 'N/A';
@@ -293,7 +293,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
             
             return (
-              <div className="flex items-center justify-center">
+              <div className="flex items-start justify-start">
                 <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
                 {profitPercentage && (
                   <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
@@ -306,7 +306,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           // Handle number fields
           if (categoryKey === 'labour' || categoryKey === 'hours') {
             return (
-              <div className="flex items-center justify-center">
+              <div className="flex items-start justify-start">
                 <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
                 {profitPercentage && (
                   <span className={`text-xs ml-1 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
