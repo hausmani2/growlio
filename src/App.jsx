@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import useStore from './store/store';
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
@@ -16,8 +17,15 @@ import LaborInformationWrapper from './components/mainSceens/restaurantsInformat
 import FoodCostDetailsWrapper from './components/mainSceens/restaurantsInformation/steps/foodCostDetails/FoodCostWrapper';
 import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation/steps/salesChannels/SalesChannelsWrapper';
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
+import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 
 function App() {
+  const initializeAuth = useStore((state) => state.initializeAuth);
+  
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <Router>
       <Routes>
@@ -28,24 +36,26 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
+          <Route path="/" element={<Navigate to="/dashboard/summary" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
-          <Route path="/create-restaurant-info" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/basic-information" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/labour-information" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/food-cost-details" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/sales-channels" element={<RestaurantInfo />} />
-          <Route path="/create-restaurant-info/expense" element={<RestaurantInfo />} />
+          <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
+          <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
+          <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
+          <Route path="/onboarding/sales-channels" element={<RestaurantInfo />} />
+          <Route path="/onboarding/expense" element={<RestaurantInfo />} />
+          <Route path="/onboarding/complete" element={<CompleteSteps />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
+          <Route path="/dashboard/summary" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
-          <Route path="/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
-          <Route path="/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
-          <Route path="/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
-          <Route path="/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
-          <Route path="/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
+          <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
+          <Route path="/dashboard/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
+          <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
+          <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
+          <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}
-        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   );

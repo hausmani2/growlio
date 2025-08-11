@@ -1,39 +1,205 @@
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { message } from "antd";
+import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
-import { useNavigate } from "react-router-dom";
 import TotalExpense from "./TotalExpense";
 import { TabProvider } from "../../TabContext";
+import { useTabHook } from "../../useTabHook";
+import useStore from "../../../../../store/store";
+import useStepValidation from "../useStepValidation";
 
-const ExpenseWrapper = () => {
-    const navigate = useNavigate();
-    // State for expense data
+const ExpenseWrapperContent = () => {
+    const location = useLocation();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
+    const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
+    const { navigateToNextStep, completeOnboarding } = useTabHook();
+    
+    // Ref for VariableFixed component to access percentage field filtering
+    const variableFixedRef = useRef();
+    
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
+    
+    // State for expense data - only dynamic fields
     const [expenseData, setExpenseData] = useState({
-        // Fixed costs
-        bankFees: "",
-        insurance: "",
-        interestExpense: "",
-        rent: "",
-        utilities: "",
         totalFixedCost: "0.00",
+        totalVariableCost: "0.00",
         
-        // Variable costs
-        accountingLegal: "",
-        advertising: "",
-        adyenFees: "",
-        duesAndSubscriptions: "",
-        mealsAndEntertainment: "",
-        medicalBenefits: "",
-        officeExpenses: "",
-        repairsAndMaintenance: "",
-        royalty: "",
-        brandFund: "",
-        telephoneAndInternet: "",
-        travel: "",
-        taxes: "",
-        totalVariableCost: "0.00"
+        // Dynamic fields
+        dynamicFixedFields: [],
+        dynamicVariableFields: []
     });
+
+    // API-ready expense data
+    const [apiExpenseData, setApiExpenseData] = useState({
+        fixed_costs: [],
+        variable_costs: []
+    });
+
+    // Load saved data when component mounts or when completeOnboardingData changes
+    useEffect(() => {
+        const expenseInfoData = completeOnboardingData["Expense"];
+        
+        if (expenseInfoData && expenseInfoData.data) {
+            const data = expenseInfoData.data;
+            
+            // Load fixed costs
+            if (data.fixed_costs && Array.isArray(data.fixed_costs)) {
+                const dynamicFixedCosts = data.fixed_costs.map(cost => ({
+                    id: Date.now() + Math.random(),
+                    label: cost.name,
+                    value: cost.amount.toString(),
+                    key: `dynamic_fixed_${Date.now()}_${Math.random()}`
+                }));
+                
+                if (dynamicFixedCosts.length > 0) {
+                    // Calculate total fixed cost
+                    const totalFixed = dynamicFixedCosts.reduce((sum, field) => {
+                        return sum + parseFloat(field.value || 0);
+                    }, 0);
+                    
+                    setExpenseData(prev => ({ 
+                        ...prev, 
+                        dynamicFixedFields: dynamicFixedCosts,
+                        totalFixedCost: totalFixed.toFixed(2)
+                    }));
+                }
+            }
+            
+            // Load variable costs
+            if (data.variable_costs && Array.isArray(data.variable_costs)) {
+                const dynamicVariableCosts = data.variable_costs.map(cost => ({
+                    id: Date.now() + Math.random(),
+                    label: cost.name,
+                    value: cost.amount.toString(),
+                    key: `dynamic_variable_${Date.now()}_${Math.random()}`
+                }));
+                
+                if (dynamicVariableCosts.length > 0) {
+                    // Calculate total variable cost (excluding percentage fields)
+                    const totalVariable = dynamicVariableCosts.reduce((sum, field) => {
+                        // Skip percentage fields (royalty/brand and fund) from total calculation
+                        const royaltyFields = ["royalty", "brand and fund"];
+                        const labelLower = field.label.toLowerCase();
+                        const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
+                        
+                        if (isPercentageField) {
+                            return sum;
+                        }
+                        return sum + parseFloat(field.value || 0);
+                    }, 0);
+                    
+                    setExpenseData(prev => ({ 
+                        ...prev, 
+                        dynamicVariableFields: dynamicVariableCosts,
+                        totalVariableCost: totalVariable.toFixed(2)
+                    }));
+                }
+            }
+        } else {
+            console.log("No expense data found in completeOnboardingData");
+            console.log("Available keys:", Object.keys(completeOnboardingData));
+        }
+    }, [completeOnboardingData]);
+
+    // Clear error when component mounts
+    useEffect(() => {
+        clearError();
+    }, [clearError]);
+
+    // Show error message when there's an error
+    useEffect(() => {
+        if (error) {
+            message.error(error);
+        }
+    }, [error]);
+
+    // Update API-ready data when expense data changes
+    useEffect(() => {
+        // Dynamic fixed costs
+        const dynamicFixedCosts = expenseData.dynamicFixedFields
+            .filter(field => parseFloat(field.value) > 0)
+            .map(field => ({
+                name: field.label,
+                amount: parseFloat(field.value)
+            }));
+
+        // Dynamic variable costs - include all fields in API
+        let dynamicVariableCosts = [];
+        if (variableFixedRef.current) {
+            // Use the ref to get all fields (including percentage fields)
+            const allFields = variableFixedRef.current.getFieldsForAPI();
+            dynamicVariableCosts = allFields
+                .filter(field => parseFloat(field.value) > 0)
+                .map(field => ({
+                    name: field.label,
+                    amount: parseFloat(field.value)
+                }));
+        } else {
+            // Fallback: include all fields
+            dynamicVariableCosts = expenseData.dynamicVariableFields
+                .filter(field => parseFloat(field.value) > 0)
+                .map(field => ({
+                    name: field.label,
+                    amount: parseFloat(field.value)
+                }));
+        }
+
+        const newApiData = {
+            fixed_costs: dynamicFixedCosts,
+            variable_costs: dynamicVariableCosts
+        };
+
+        // Only update if the data has actually changed
+        const currentDataString = JSON.stringify(apiExpenseData);
+        const newDataString = JSON.stringify(newApiData);
+        
+        if (currentDataString !== newDataString) {
+            setApiExpenseData(newApiData);
+        }
+    }, [expenseData, apiExpenseData]);
+
+    // Recalculate totals whenever dynamic fields change
+    useEffect(() => {
+        // Calculate total fixed cost
+        const totalFixed = expenseData.dynamicFixedFields.reduce((sum, field) => {
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+
+        // Calculate total variable cost (excluding percentage fields)
+        const totalVariable = expenseData.dynamicVariableFields.reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            const royaltyFields = ["royalty", "brand and fund"];
+            const labelLower = field.label.toLowerCase();
+            const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
+            
+            if (isPercentageField) {
+                return sum;
+            }
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+
+        // Debug logging
+        console.log('ExpenseWrapper Debug:', {
+            dynamicFixedFields: expenseData.dynamicFixedFields,
+            dynamicVariableFields: expenseData.dynamicVariableFields,
+            currentTotalFixed: expenseData.totalFixedCost,
+            currentTotalVariable: expenseData.totalVariableCost,
+            calculatedTotalFixed: totalFixed,
+            calculatedTotalVariable: totalVariable
+        });
+
+        // Update totals if they've changed
+        if (parseFloat(expenseData.totalFixedCost) !== totalFixed) {
+            setExpenseData(prev => ({ ...prev, totalFixedCost: totalFixed.toFixed(2) }));
+        }
+        
+        if (parseFloat(expenseData.totalVariableCost) !== totalVariable) {
+            setExpenseData(prev => ({ ...prev, totalVariableCost: totalVariable.toFixed(2) }));
+        }
+    }, [expenseData.dynamicFixedFields, expenseData.dynamicVariableFields]);
 
     const updateExpenseData = useCallback((field, value) => {
         setExpenseData(prev => {
@@ -46,58 +212,172 @@ const ExpenseWrapper = () => {
                 [field]: value
             };
         });
-    }, []);
+        // Clear validation error for this field when user starts typing
+        if (validationErrors[field]) {
+            clearFieldError(field);
+        }
+    }, [clearFieldError, validationErrors]);
 
-    // Handle save functionality
-    const handleSave = () => {
-        navigate("/complete-steps");
+    // Custom validation for expense data
+    const validateExpenseData = (data) => {
+        const errors = {};
         
-        console.log("=== EXPENSE DATA SAVED ===");
-        console.log("📊 Fixed Costs:");
-        console.log("  • Bank Fees:", expenseData.bankFees || "0");
-        console.log("  • Insurance:", expenseData.insurance || "0");
-        console.log("  • Interest Expense:", expenseData.interestExpense || "0");
-        console.log("  • Rent:", expenseData.rent || "0");
-        console.log("  • Utilities:", expenseData.utilities || "0");
-        console.log("  • Total Fixed Cost:", expenseData.totalFixedCost || "0.00");
+        // Check if at least one field is added in either fixed or variable costs
+        const hasFixedCosts = data.fixed_costs && data.fixed_costs.length > 0;
+        const hasVariableCosts = data.variable_costs && data.variable_costs.length > 0;
         
-        console.log("\n📈 Variable Costs:");
-        console.log("  • Accounting & Legal:", expenseData.accountingLegal || "0");
-        console.log("  • Advertising:", expenseData.advertising || "0");
-        console.log("  • Adyen Fees:", expenseData.adyenFees || "0");
-        console.log("  • Dues and Subscriptions:", expenseData.duesAndSubscriptions || "0");
-        console.log("  • Meals and Entertainment:", expenseData.mealsAndEntertainment || "0");
-        console.log("  • Medical Benefits:", expenseData.medicalBenefits || "0");
-        console.log("  • Office Expenses:", expenseData.officeExpenses || "0");
-        console.log("  • Repairs and Maintenance:", expenseData.repairsAndMaintenance || "0");
-        console.log("  • Royalty:", expenseData.royalty || "0");
-        console.log("  • Brand / Advertising Fund:", expenseData.brandFund || "0");
-        console.log("  • Telephone & Internet:", expenseData.telephoneAndInternet || "0");
-        console.log("  • Travel:", expenseData.travel || "0");
-        console.log("  • WSIB / Taxes:", expenseData.taxes || "0");
-        console.log("  • Total Variable Cost:", expenseData.totalVariableCost || "0.00");
-        
-        console.log("\n💰 SUMMARY:");
-        const totalFixed = parseFloat(expenseData.totalFixedCost) || 0;
-        const totalVariable = parseFloat(expenseData.totalVariableCost) || 0;
-        const grandTotal = totalFixed + totalVariable;
-        console.log("  • Total Fixed Cost: $", totalFixed.toFixed(2));
-        console.log("  • Total Variable Cost: $", totalVariable.toFixed(2));
-        console.log("  • Grand Total: $", grandTotal.toFixed(2));
-        console.log("==========================");
+        if (!hasFixedCosts && !hasVariableCosts) {
+            errors.no_fields = "Please add at least one expense field before saving";
+            return errors;
+        }
+
+        // Validate each field has a name and valid amount
+        if (data.fixed_costs && data.fixed_costs.length > 0) {
+            data.fixed_costs.forEach((cost, index) => {
+                if (!cost.name?.trim()) {
+                    errors[`fixed_cost_${index}_name`] = "Cost name is required";
+                }
+                if (!cost.amount || isNaN(cost.amount) || parseFloat(cost.amount) <= 0) {
+                    errors[`fixed_cost_${index}_amount`] = "Please enter a valid amount greater than 0";
+                }
+            });
+        }
+
+        if (data.variable_costs && data.variable_costs.length > 0) {
+            data.variable_costs.forEach((cost, index) => {
+                if (!cost.name?.trim()) {
+                    errors[`variable_cost_${index}_name`] = "Cost name is required";
+                }
+                if (!cost.amount || isNaN(cost.amount) || parseFloat(cost.amount) <= 0) {
+                    errors[`variable_cost_${index}_amount`] = "Please enter a valid amount greater than 0";
+                }
+            });
+        }
+
+        return errors;
+    };
+
+    const handleSave = async () => {
+        try {
+            // Step 1: Validate the API-ready data
+            const validationErrors = validateExpenseData(apiExpenseData);
+            
+            if (Object.keys(validationErrors).length > 0) {
+                setValidationErrors(validationErrors);
+                message.error("Please fix the validation errors before saving");
+                return;
+            }
+
+            // Step 2: Validate using the step validation hook
+            const isValid = validateExpense(apiExpenseData);
+            
+            if (!isValid) {
+                message.error("Please fix the validation errors before saving");
+                return;
+            }
+
+            // Step 3: Check if we have any expenses to save
+            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
+            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
+            
+            if (!hasFixedCosts && !hasVariableCosts) {
+                setValidationErrors({ no_expenses: "Please add at least one expense before saving" });
+                message.error("Please add at least one expense before saving");
+                return;
+            }
+
+            // Step 4: Prepare data for API
+            const stepData = {
+                fixed_costs: apiExpenseData.fixed_costs,
+                variable_costs: apiExpenseData.variable_costs
+            };
+            
+            // Step 5: Call API through Zustand store with success callback
+            const result = await submitStepData("Expense", stepData, async (responseData) => {
+                // Success callback - handle navigation based on mode
+                
+                // Clear all validation errors on successful save
+                clearAllErrors();
+
+                const totalFixed = apiExpenseData.fixed_costs.reduce((sum, cost) => sum + cost.amount, 0);
+                const totalVariable = apiExpenseData.variable_costs.reduce((sum, cost) => sum + cost.amount, 0);
+                const grandTotal = totalFixed + totalVariable;
+                
+                // Check if restaurant_id was returned and log it
+                if (responseData && responseData.restaurant_id) {
+                }
+
+                if (isUpdateMode) {
+                    // Update mode: show success message and stay on current page
+                    message.success("Expense information updated successfully!");
+                } else {
+                    // Onboarding mode: navigate to next step
+                    await navigateToNextStep();
+                }
+            });
+
+            if (!result.success) {
+                console.error("Failed to save expense data:", result.error);
+                message.error("Failed to save expense data. Please try again.");
+            }
+
+        } catch (error) {
+            console.error("Error saving expense data:", error);
+            message.error("An unexpected error occurred. Please try again.");
+        }
     };
 
     return (
-        <TabProvider>
-            <div>
-                <div className="flex flex-col h-[80vh]">
-                    <FixedCost data={expenseData} updateData={updateExpenseData} />
-                    <VariableFixed data={expenseData} updateData={updateExpenseData} onSave={handleSave} />
-                    <TotalExpense data={expenseData} onSave={handleSave} />
+        <div>
+            {/* Show prominent error message when no expenses are added */}
+            {validationErrors.no_expenses && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Expense Required</h3>
+                    <p className="text-red-700">
+                        {validationErrors.no_expenses}
+                    </p>
                 </div>
+            )}
+            
+            <FixedCost 
+                data={expenseData} 
+                updateData={updateExpenseData}
+                errors={validationErrors}
+            />
+            <VariableFixed 
+                ref={variableFixedRef}
+                data={expenseData} 
+                updateData={updateExpenseData}
+                errors={validationErrors}
+            />
+            <TotalExpense 
+                data={expenseData} 
+                onSave={handleSave}
+                loading={loading}
+            />
+            
+            <div className="flex justify-end mt-6">
+
+                {isUpdateMode && (
+                    <button
+                        onClick={handleSave}
+                        className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
+                        disabled={loading}
+                    >
+                        {loading ? "Saving..." : "Save Changes"}
+                    </button>
+                )}
             </div>
+        </div>
+    );
+};
+
+const ExpenseWrapper = () => {
+    return (
+        <TabProvider>
+            <ExpenseWrapperContent />
         </TabProvider>
-    )
-}
+    );
+};
 
 export default ExpenseWrapper;

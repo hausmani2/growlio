@@ -1,21 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 
-const FixedCost = ({ data, updateData }) => {
+const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
-    const [dynamicFields, setDynamicFields] = useState(data.dynamicFields || []);
+    const [dynamicFields, setDynamicFields] = useState(data.dynamicFixedFields || []);
 
-    // Calculate total fixed cost whenever any input changes
+    // Update local state when data prop changes (when API data is loaded)
     useEffect(() => {
-        const dynamicTotal = dynamicFields.reduce((sum, field) => {
-            return sum + parseFloat(field.value || 0);
-        }, 0);
-        
-        updateData('totalFixedCost', dynamicTotal.toFixed(2));
-        updateData('dynamicFields', dynamicFields);
-    }, [dynamicFields, updateData]);
+        if (data.dynamicFixedFields && data.dynamicFixedFields.length > 0) {
+            setDynamicFields(data.dynamicFixedFields);
+        }
+    }, [data.dynamicFixedFields]);
+
+    // Memoize the updateData callback to prevent unnecessary re-renders
+    const memoizedUpdateData = useCallback((field, value) => {
+        updateData(field, value);
+    }, [updateData]);
 
     const showModal = () => {
         setIsModalVisible(true);
@@ -23,13 +25,19 @@ const FixedCost = ({ data, updateData }) => {
 
     const handleOk = () => {
         if (newFieldLabel.trim()) {
+            if (newFieldLabel.trim().length < 2) {
+                // Show error for short field names
+                return;
+            }
             const newField = {
-                id: Date.now(),
+                id: Date.now() + Math.random(),
                 label: newFieldLabel.trim(),
                 value: "",
-                key: `dynamic_${Date.now()}`
+                key: `dynamic_fixed_${Date.now()}_${Math.random()}`
             };
-            setDynamicFields([...dynamicFields, newField]);
+            const updatedFields = [...dynamicFields, newField];
+            setDynamicFields(updatedFields);
+            memoizedUpdateData('dynamicFixedFields', updatedFields);
             setNewFieldLabel("");
             setIsModalVisible(false);
         }
@@ -42,132 +50,133 @@ const FixedCost = ({ data, updateData }) => {
 
     const handleDynamicFieldChange = (id, value) => {
         if (value === '' || parseFloat(value) >= 0) {
-            setDynamicFields(prev => 
-                prev.map(field => 
-                    field.id === id ? { ...field, value } : field
-                )
+            const updatedFields = dynamicFields.map(field => 
+                field.id === id ? { ...field, value } : field
             );
+            setDynamicFields(updatedFields);
+            
+            // Update parent with new fields
+            memoizedUpdateData('dynamicFixedFields', updatedFields);
+            
+            // Calculate and update total
+            const dynamicTotal = updatedFields.reduce((sum, field) => {
+                return sum + parseFloat(field.value || 0);
+            }, 0);
+            
+            // Only update if the total has actually changed
+            const currentTotal = parseFloat(data.totalFixedCost || 0);
+            if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
+                memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+            }
         }
     };
 
     const handleDeleteField = (id) => {
-        setDynamicFields(prev => prev.filter(field => field.id !== id));
+        const updatedFields = dynamicFields.filter(field => field.id !== id);
+        setDynamicFields(updatedFields);
+        
+        // Update parent with new fields
+        memoizedUpdateData('dynamicFixedFields', updatedFields);
+        
+        // Calculate and update total
+        const dynamicTotal = updatedFields.reduce((sum, field) => {
+            return sum + parseFloat(field.value || 0);
+        }, 0);
+        
+        // Only update if the total has actually changed
+        const currentTotal = parseFloat(data.totalFixedCost || 0);
+        if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
+            memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
+        }
     };
-
-    // Show static field only when there are no dynamic fields
-    const shouldShowStaticField = dynamicFields.length === 0;
 
     return (
         <div>
-            <div className="flex mt-5">
-                <div className="w-[40%]">
+            <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
+                <div className="w-full lg:w-[40%]">
                     <div className="flex flex-col gap-2">
                         <h4 className="text-lg !font-bold !mb-0">Fixed Cost</h4>
-                        <span className="text-base text-neutral-600">
+                        <span className="text-sm sm:text-base text-neutral-600 hidden sm:block">
                             What are the fixed costs for this location?
-                            Add a new field to add a fixed cost.
                         </span>
                     </div>
                 </div>
-                <div className="w-[60%]">
-                    <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
-                        
-                        {/* Static Field - only show when no dynamic fields */}
-                        {shouldShowStaticField && (
-                            <div className="flex items-center justify-between gap-2">
-                                <label htmlFor="rent" className="w-1/4 text-base !font-bold text-neutral-600">Rent</label>
-                                <div className="flex items-center gap-2 w-full">
-                                    <div className="relative w-full">
-                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                        <Input 
-                                            type="number" 
-                                            id="rent" 
-                                            placeholder="Enter Rent" 
-                                            className="w-full p-2 pl-8 border border-gray-300 h-[40px] rounded-md text-[18px] font-normal text-neutral-700"
-                                            value={data.rent}
-                                            onChange={(e) => updateData('rent', e.target.value)}
-                                            min="0"
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-') {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                        />
+                <div className="w-full lg:w-[60%]">
+                    <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm sm:text-base !font-bold text-neutral-600">
+                                Fixed Costs <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex flex-col gap-3">
+                                {dynamicFields.map((field) => (
+                                    <div key={field.id} className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
+                                        <div className="flex-1 w-full sm:w-auto">
+                                            <Input
+                                                type="text"
+                                                placeholder="Cost name"
+                                                value={field.label}
+                                                className="w-full sm:w-48 h-[40px] rounded-md text-sm sm:text-base"
+                                                disabled
+                                            />
+                                        </div>
+                                        <div className="flex-1 w-full sm:w-auto">
+                                            <Input
+                                                type="number"
+                                                placeholder="0.00"
+                                                value={field.value}
+                                                onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
+                                                className="w-full sm:w-32 h-[40px] rounded-md text-sm sm:text-base"
+                                                step="0.01"
+                                                min="0"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            onClick={() => handleDeleteField(field.id)}
+                                            className="h-[40px] px-2 sm:px-4 text-sm sm:text-base"
+                                        >
+                                            Delete
+                                        </Button>
                                     </div>
-                                </div>
+                                ))}
+                                <Button
+                                    type="dashed"
+                                    icon={<PlusOutlined />}
+                                    onClick={showModal}
+                                    className="h-[40px] text-sm sm:text-base"
+                                >
+                                    Add Fixed Cost
+                                </Button>
                             </div>
-                        )}
-
-                        {/* Dynamic Fields */}
-                        {dynamicFields.map((field) => (
-                            <div key={field.id} className="flex items-center justify-between gap-2">
-                                <label htmlFor={field.key} className="w-1/4 text-base !font-bold text-neutral-600">
-                                    {field.label.charAt(0).toUpperCase() + field.label.slice(1)}
-                                </label>
-                                <div className="flex items-center gap-2 w-full">
-                                    <div className="relative w-full">
-                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base font-normal text-neutral-700">$</span>
-                                            <Input 
-                                            type="number" 
-                                            id={field.key} 
-                                            placeholder={`Enter ${field.label}`} 
-                                            className="w-full p-2 pl-8 border border-gray-300 h-[40px] rounded-md text-[18px] font-normal text-neutral-700"
-                                            value={field.value}
-                                            onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
-                                            min="0"
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-') {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                    <button 
-                                        className="text-[20px] !font-bold text-neutral-600 cursor-pointer !text-red-500"
-                                        onClick={() => handleDeleteField(field.id)}
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-
-                        <div className="flex justify-end">
-                            <Button className="" onClick={showModal}><PlusOutlined /></Button>
-                            </div>
-                       
-                        <div className="flex items-center justify-between ">
-                            <label htmlFor="other" className="text-base !font-bold text-neutral-600">Total Fixed Cost</label>
-                            <span className="text-base !font-bold text-neutral-600">${data.totalFixedCost || '0.00'}</span>
+                            {errors.fixedCosts && (
+                                <span className="text-red-500 text-xs sm:text-sm">{errors.fixedCosts}</span>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Modal for adding new fields */}
             <Modal
-                title=""
+                title="Add Fixed Cost"
                 open={isModalVisible}
                 onOk={handleOk}
                 onCancel={handleCancel}
                 okText="Add"
                 cancelText="Cancel"
             >
-                <div className="flex flex-col gap-4">
-                    <label htmlFor="fieldLabel" className="text-base font-semibold text-neutral-600">
-                        Add Expense
-                    </label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-sm sm:text-base font-medium">Cost Name</label>
                     <Input
-                        id="fieldLabel"
-                        placeholder="Enter Expense"
+                        placeholder="Enter cost name"
                         value={newFieldLabel}
                         onChange={(e) => setNewFieldLabel(e.target.value)}
-                        onPressEnter={handleOk}
+                        className="h-[40px] text-sm sm:text-base"
                     />
                 </div>
             </Modal>
         </div>
-    )
+    );
 }
 
 export default FixedCost;
