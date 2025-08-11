@@ -6,7 +6,7 @@ import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 const { Title, Text } = Typography;
 
-const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   // Store integration
   const { 
     saveDashboardData, 
@@ -406,7 +406,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Sales Performance",
         section_data: {
           weekly: {
@@ -486,7 +486,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
           // Trigger COGS modal opening by dispatching a custom event
           const event = new CustomEvent('openCogsModal', {
             detail: {
-              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD')
+              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null
             }
           });
           window.dispatchEvent(event);
@@ -1112,7 +1112,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Sales Performance Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Sales Performance</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -1121,132 +1121,21 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Goals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Sales Goals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No sales data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong>Sales - Budget:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Actual Sales - In Store:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Actual Sales - App / On Line:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                {/* Dynamic Provider Fields */}
-                {providers.map((provider) => (
-                  <div key={provider.provider_name}>
-                    <Text strong>Actual Sales - {provider.provider_name}:</Text>
-                    <Input
-                      value={`$${(weeklyGoals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                ))}
-                
-                <div>
-                  <Text strong>Net Sales - Actual:</Text>
-                  <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                    (Auto-calculated: In Store + App/Online + Providers)
-                  </Text>
-                  <Input
-                    value={(() => {
-                      const baseSales = weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline;
-                      const providerSales = providers.reduce((sum, provider) => {
-                        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                        return sum + (weeklyGoals[providerKey] || 0);
-                      }, 0);
-                      return baseSales + providerSales;
-                    })()}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                    prefix="$"
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>% Actual vs Budgeted Sales:</Text>
-                  <Input
-                    value={weeklyGoals.actualVsBudgetSales || 0}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
-                      backgroundColor: '#f5f5f5'
-                    }}
-                    prefix="%"
-                  />
-                </div>
-                
-                <div>
-                  <Text strong># Daily Tickets:</Text>
-                  <Input
-                    value={weeklyGoals.dailyTickets || 0}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Average Daily Ticket:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+      
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title="Weekly Sales Data" 
+            title="Weekly Sales Data"
             extra={
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />}
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Sales
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Sales" : "Edit Weekly Sales"}
                 </Button>
               </Space>
             }
@@ -1265,22 +1154,8 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                       <Card 
                         key={week.id || `week-${week.weekTitle}`} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space className="flex flex-col sm:flex-row gap-2">
-                            <Text type="secondary" className="text-sm">
-                              Total: ${totals.netSalesActual.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                              className="w-full sm:w-auto"
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                       
+                       
                       >
                         <div className="overflow-x-auto">
                           <Table
@@ -1498,6 +1373,118 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
               )}
             </Card>
           </Col>
+            {/* Weekly Goals Section */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Sales Goals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No sales data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong>Sales - Budget:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Actual Sales - In Store:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Actual Sales - App / On Line:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                {/* Dynamic Provider Fields */}
+                {providers.map((provider) => (
+                  <div key={provider.provider_name}>
+                    <Text strong>Actual Sales - {provider.provider_name}:</Text>
+                    <Input
+                      value={`$${(weeklyGoals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
+                      className="mt-1"
+                      disabled
+                      style={{ backgroundColor: '#f5f5f5' }}
+                    />
+                  </div>
+                ))}
+                
+                <div>
+                  <Text strong>Net Sales - Actual:</Text>
+                  <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                    (Auto-calculated: In Store + App/Online + Providers)
+                  </Text>
+                  <Input
+                    value={(() => {
+                      const baseSales = weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline;
+                      const providerSales = providers.reduce((sum, provider) => {
+                        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                        return sum + (weeklyGoals[providerKey] || 0);
+                      }, 0);
+                      return baseSales + providerSales;
+                    })()}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                    prefix="$"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>% Actual vs Budgeted Sales:</Text>
+                  <Input
+                    value={weeklyGoals.actualVsBudgetSales || 0}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
+                      backgroundColor: '#f5f5f5'
+                    }}
+                    prefix="%"
+                  />
+                </div>
+                
+                <div>
+                  <Text strong># Daily Tickets:</Text>
+                  <Input
+                    value={weeklyGoals.dailyTickets || 0}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Average Daily Ticket:</Text>
+                  <Input
+                    value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
+            )}
+          </Card>
+        </Col>
         </Row>
 
       <WeeklyModal />

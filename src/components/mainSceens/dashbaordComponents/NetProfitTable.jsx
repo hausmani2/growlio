@@ -6,7 +6,7 @@ import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 const { Title, Text } = Typography;
 
-const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const NetProfitTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -171,7 +171,7 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Net Profit",
         section_data: {
           weekly: {
@@ -252,7 +252,15 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
 
     useEffect(() => {
       if (editingWeek) {
-        setWeekFormData(editingWeek);
+        // Ensure editingWeek has weeklyTotals property
+        const weekDataWithTotals = {
+          ...editingWeek,
+          weeklyTotals: editingWeek.weeklyTotals || {
+            netProfit: 0,
+            netProfitMargin: 0
+          }
+        };
+        setWeekFormData(weekDataWithTotals);
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
@@ -476,7 +484,7 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Net Profit Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Net Profit</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -485,60 +493,21 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Net Profit Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No net profit data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Net Profit:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.netProfit.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.netProfit < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Net Profit Margin %:</Text>
-                  <Input
-                    value={`${weeklyResponseValues.netProfitMargin.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+      
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`Net Profit: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            title={`Net Profit`}
             extra={
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Net Profit
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Net Profit" : "Edit Weekly Net Profit"}
                 </Button>
               </Space>
             }
@@ -562,21 +531,7 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
                       <Card 
                         key={week.id} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Text type="secondary" className="text-sm sm:text-base">
-                              Total: ${totals.netProfit.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                       
                       >
                         <div className="overflow-x-auto">
                           <Table
@@ -658,6 +613,46 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+          {/* Weekly Totals Section */}
+          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Net Profit Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No net profit data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Net Profit:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.netProfit.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.netProfit < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Net Profit Margin %:</Text>
+                  <Input
+                    value={`${weeklyResponseValues.netProfitMargin.toFixed(1)}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

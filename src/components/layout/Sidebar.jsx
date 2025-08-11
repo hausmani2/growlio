@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MenuOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
+import { FaArrowLeftLong } from 'react-icons/fa6';
 
 /**
  * Sidebar component
@@ -169,9 +170,9 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
         } ${collapsed ? 'lg:!w-16' : 'lg:!w-64'} border-r border-gray-200`}
       >
         {/* Header - Improved styling */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+        <div className="flex items-center justify-between p-3 px-6 border-b border-gray-100 bg-white">
           <span className={`text-lg font-semibold text-gray-800 transition-all duration-300 ${collapsed ? 'lg:hidden' : 'block'}`}>
-            MAIN MENU
+            GROWLIO
           </span>
           {/* Close button for mobile - Improved styling */}
           <button
@@ -187,7 +188,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
             aria-label="Toggle collapse"
             onClick={() => setCollapsed(!collapsed)}
           >
-            {collapsed ? <MenuOutlined /> : <CloseOutlined />}
+            {collapsed ? <MenuOutlined /> : <FaArrowLeftLong  />}
           </button>
         </div>
 

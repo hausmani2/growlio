@@ -308,9 +308,9 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
     <div className="space-y-6">     
 
       {/* Summary Cards */}
-      <Row gutter={[16, 16]}>
+      {/* <Row gutter={[16, 16]}> */}
         {/* Sales Summary */}
-        <Col xs={24} sm={12} lg={8}>
+        {/* <Col xs={24} sm={12} lg={8}>
           <Card className="h-full">
             <div className="text-center">
               <ShoppingOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
@@ -338,10 +338,10 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
               </Text>
             </div>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Food Cost Summary */}
-        <Col xs={24} sm={12} lg={8}>
+        {/* <Col xs={24} sm={12} lg={8}>
           <Card className="h-full">
             <div className="text-center">
               <ShoppingOutlined style={{ fontSize: '32px', color: '#52c41a' }} />
@@ -367,10 +367,10 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
               </Text>
             </div>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Labor Summary */}
-        <Col xs={24} sm={12} lg={8}>
+        {/* <Col xs={24} sm={12} lg={8}>
           <Card className="h-full">
             <div className="text-center">
               <TeamOutlined style={{ fontSize: '32px', color: '#faad14' }} />
@@ -396,29 +396,29 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
               </Text>
             </div>
           </Card>
-        </Col>
-      </Row>
+        </Col> */}
+      {/* </Row> */}
 
       {/* Charts */}
-      <Row gutter={[16, 16]}>
+      {/* <Row gutter={[16, 16]}> */}
         {/* Sales Comparison Chart */}
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Daily Sales: Budget vs Actual" className="h-full">
             <div style={{ height: '300px' }}>
               <Bar data={salesChartData} options={chartOptions} />
             </div>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Cost Comparison Chart */}
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Daily Costs: Budget vs Actual" className="h-full">
             <div style={{ height: '300px' }}>
               <Bar data={costChartData} options={chartOptions} />
             </div>
           </Card>
-        </Col>
-      </Row>
+        </Col> */}
+      {/* </Row> */}
 
       {/* Profit Trend */}
       <Row gutter={[16, 16]}>
@@ -433,16 +433,16 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
 
       {/* Budget Distribution Pie Chart */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Budget Distribution" className="h-full">
             <div style={{ height: '300px' }}>
               <Pie data={pieChartData} options={pieChartOptions} />
             </div>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Remaining Budget */}
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Remaining Budget for the Week" className="h-full">
             <div className="space-y-4">
               <div className="text-center">
@@ -475,7 +475,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
               </div>
             </div>
           </Card>
-        </Col>
+        </Col> */}
       </Row>
     </div>
   );

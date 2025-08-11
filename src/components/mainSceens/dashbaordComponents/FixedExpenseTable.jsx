@@ -7,7 +7,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const FixedExpenseTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -166,7 +166,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Expenses",
         section_data: {
           weekly: {
@@ -239,7 +239,14 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
 
     useEffect(() => {
       if (editingWeek) {
-        setWeekFormData(editingWeek);
+        // Ensure editingWeek has weeklyTotals property
+        const weekDataWithTotals = {
+          ...editingWeek,
+          weeklyTotals: editingWeek.weeklyTotals || {
+            fixedWeeklyExpenses: 0
+          }
+        };
+        setWeekFormData(weekDataWithTotals);
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
@@ -399,7 +406,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Fixed Expenses Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Fixed Expenses</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -408,44 +415,21 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Fixed Expenses Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No fixed expenses data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Fixed Weekly Expenses:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.fixedWeeklyExpenses.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+      
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`Fixed Expenses: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            title={`Fixed Expenses`}
             extra={
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Fixed Expenses
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Fixed Expenses" : "Edit Weekly Fixed Expenses"}
                 </Button>
               </Space>
             }
@@ -469,21 +453,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
                       <Card 
                         key={week.id} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Text type="secondary">
-                              Total: ${totals.fixedWeeklyExpenses.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                       
                       >
                         <div className="overflow-x-auto">
                           <Table
@@ -541,6 +511,30 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+          {/* Weekly Totals Section */}
+          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Fixed Expenses Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No fixed expenses data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Fixed Weekly Expenses:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.fixedWeeklyExpenses.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

@@ -159,7 +159,7 @@ body {
 
 /* Custom input styles */
 .input-brand {
-  height: 40px;
+  height: 32px;
   border-radius: 12px;
   font-size: 16px;
   border: 1px solid #d9d9d9;
@@ -265,3 +265,11 @@ body {
   background-color: rgba(255, 129, 50, 0.15) !important;
   color: var(--color-brand-orange) !important;
 }
+
+.ant-select .ant-select-selector {
+  height: 32px !important;
+  font-size: 12px !important;
+}
+.ant-card .ant-card-body {
+  padding: 12px !important;
+} 
