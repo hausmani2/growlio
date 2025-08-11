@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import SummaryTableDashboard from './SummaryTableDashboard';
+import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
 
 const { Title } = Typography;
@@ -27,6 +28,9 @@ const SummaryDashboard = () => {
   
   // Flash message state
   const [showFlashMessage, setShowFlashMessage] = useState(false);
+  const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
+  
+
 
   // Dashboard data state
 
@@ -40,6 +44,12 @@ const SummaryDashboard = () => {
     loading: summaryLoading, 
     error: summaryError 
   } = useStore();
+
+  // Auth functionality for restaurant ID
+  const { ensureRestaurantId } = useStore();
+
+  // Note: Redirection logic is handled by ProtectedRoutes.jsx
+  // No need to duplicate the redirect check here
 
   // Static years and months
   const years = Array.from({ length: 9 }, (_, i) => 2021 + i); // 2021 to 2029
@@ -186,10 +196,21 @@ const SummaryDashboard = () => {
     // Reset the flag when data is saved
     setHasManuallyClosedModal(false);
     
+    // Set success flash message flag
+    setShowSuccessFlashMessage(true);
+    
     // Refresh the dashboard data
     if (selectedWeek) {
       await fetchSummaryData(selectedWeek);
     }
+    
+    // Show success flash message
+    message.success('Sales data added successfully! 🎉');
+    
+    // Auto-hide success flash message after 5 seconds
+    setTimeout(() => {
+      setShowSuccessFlashMessage(false);
+    }, 5000);
     
     // Show popup asking if user wants to add actual sales
     // This will show after successful API response (200)
@@ -197,16 +218,16 @@ const SummaryDashboard = () => {
       notification.info({
         message: (
           <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-            🎉 Budgeted Sales Added Successfully!
+            🎉 Sales Data Added Successfully!
           </div>
         ),
         description: (
           <div style={{ marginTop: '8px' }}>
             <p style={{ marginBottom: '8px' }}>
-              Your budgeted sales have been saved successfully.
+              Your sales data has been saved successfully.
             </p>
             <p style={{ marginBottom: '12px', color: '#666' }}>
-              Would you like to add actual sales data for this week?
+              Would you like to add more sales data or edit existing data for this week?
             </p>
             <Button 
               type="primary" 
@@ -222,7 +243,7 @@ const SummaryDashboard = () => {
                 borderColor: '#52c41a'
               }}
             >
-              Add Actual Sales
+              Add More Sales Data
               <ArrowRightOutlined />
             </Button>
           </div>
@@ -237,7 +258,7 @@ const SummaryDashboard = () => {
           marginTop: '20px',
         },
         onClose: () => {
-          console.log('Budgeted sales success popup closed');
+          console.log('Sales data success popup closed');
         }
       });
     }, 1000); // Show after 1 second
@@ -309,9 +330,26 @@ const SummaryDashboard = () => {
       
       // Fetch restaurant goals when dashboard loads
       try {
-        await getRestaurentGoal();
+        // Ensure restaurant ID is available
+        const restaurantId = await ensureRestaurantId();
+        
+        if (!restaurantId) {
+          console.warn('No restaurant ID available. Skipping restaurant goals fetch.');
+          return;
+        }
+        
+        const result = await getRestaurentGoal(restaurantId);
+        if (result === null) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       } catch (error) {
-        console.error('Error fetching restaurant goals:', error);
+        console.error('Restaurant goals error:', error.message);
+        
+        // Don't show error to user if it's just that no goals exist yet
+        if (error.message.includes('Restaurant ID is required') || 
+            error.message.includes('Restaurant goals not found')) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       }
     };
 
@@ -407,6 +445,44 @@ const SummaryDashboard = () => {
   return (
     <div className="w-full">
 
+
+      {/* Success Flash Message for New Data Added */}
+      {showSuccessFlashMessage && (
+        <div className="mb-2 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm animate-pulse">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
+                🎉 Sales Data Added Successfully!
+              </h3>
+              <p className="text-green-700 mt-1">
+                Your sales data has been saved and the dashboard has been updated. You can now view the updated information below.
+              </p>
+            </div>
+            <div className="flex gap-2 ml-4">
+              <Button 
+                size="small"
+                type="primary" 
+                icon={<DollarOutlined />}
+                onClick={handleFlashMessageButtonClick}
+                style={{ 
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a',
+                  fontSize: '12px'
+                }}
+              >
+                Add More Data
+                <ArrowRightOutlined />
+              </Button>
+              <Button 
+                size="small" 
+                onClick={() => setShowSuccessFlashMessage(false)}
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Flash Message for Sales Budget */}
       {showFlashMessage && (
@@ -542,6 +618,8 @@ const SummaryDashboard = () => {
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           
+
+          
           {/* Only show dashboard components when a week is selected and dashboard data is available */}
           {selectedWeek ? (
             <>
@@ -598,14 +676,41 @@ const SummaryDashboard = () => {
                     />
                   </div>
                 </Card>
-              ) : (
-                <SummaryTableDashboard 
-                  dashboardSummaryData={dashboardSummaryData}
-                  loading={summaryLoading}
-                  error={summaryError}
-                  selectedWeekData={getSelectedWeekData()}
-                />
-              )}
+                             ) : (
+                 <>
+                   {/* Summary Table - First */}
+                   <SummaryTableDashboard 
+                     dashboardSummaryData={dashboardSummaryData}
+                     loading={summaryLoading}
+                     error={summaryError}
+                     selectedWeekData={getSelectedWeekData()}
+                   />
+                   
+                   {/* Budget Dashboard - Second */}
+                   <BudgetDashboard 
+                     dashboardData={dashboardSummaryData}
+                     loading={summaryLoading}
+                     error={summaryError}
+                     onAddData={handleShowSalesModal}
+                     onEditData={() => {
+                       // Navigate to dashboard for editing
+                       const selectedWeekData = getSelectedWeekData();
+                       if (selectedWeekData) {
+                         const navigationContext = {
+                           selectedDate: selectedWeekData.startDate,
+                           selectedWeek: selectedWeek,
+                           selectedYear: selectedYear,
+                           selectedMonth: selectedMonth,
+                           shouldOpenSalesModal: true,
+                           source: 'summary-dashboard'
+                         };
+                         localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
+                         navigate('/dashboard');
+                       }
+                     }}
+                   />
+                 </>
+               )}
             </>
           ) : (
             <Card>

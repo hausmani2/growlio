@@ -22,7 +22,13 @@ const RestaurantInfoCard = () => {
         setError(null);
         
         try {
-            await loadExistingOnboardingData();
+            const result = await loadExistingOnboardingData();
+            
+            // If no data found, that's okay - just show empty state
+            if (!result.success && result.message.includes('No onboarding data found')) {
+                console.log('ℹ️ No onboarding data available - showing empty state');
+                setError(null);
+            }
         } catch (error) {
             console.error('❌ Error fetching restaurant data:', error);
             setError('Failed to load restaurant data');
@@ -69,14 +75,8 @@ const RestaurantInfoCard = () => {
         );
     }
 
-    // Get restaurant data from onboarding
-    const restaurantData = completeOnboardingData?.['Basic Information']?.data || {};
-    const laborData = completeOnboardingData?.['Labour Information']?.data || {};
-    const foodCostData = completeOnboardingData?.['Food Cost Details']?.data || {};
-    const salesChannelsData = completeOnboardingData?.['Sales Channels']?.data || {};
-    const expenseData = completeOnboardingData?.['Expense']?.data || {};
 
-    return 
+    return;
 };
 
 export default RestaurantInfoCard; 

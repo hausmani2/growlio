@@ -22,13 +22,13 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     {
       key: 'dashboard summary',
       icon: <FaChartLine />,
-      label: 'Dashboard Summary',
+      label: 'Dashboard',
       onClick: () => navigate('/dashboard/summary'),
     },
     {
       key: 'dashboard',
       icon: <HomeOutlined />,
-      label: 'Dashboard',
+      label: 'Cost Detail',
       onClick: () => navigate('/dashboard'),
     },
     {

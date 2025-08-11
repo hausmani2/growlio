@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, message } from 'antd';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
@@ -33,11 +33,15 @@ const Dashboard = () => {
 
   // Store integration
   const { 
-    fetchDashboardDataIfNeeded
+    fetchDashboardDataIfNeeded,
+    ensureRestaurantId
   } = useStore();
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
+
+  // Note: Redirection logic is handled by ProtectedRoutes.jsx
+  // No need to duplicate the redirect check here
 
   // Static years and months
   const years = Array.from({ length: 9 }, (_, i) => 2021 + i); // 2021 to 2029
@@ -215,14 +219,31 @@ const Dashboard = () => {
     // Fetch restaurant goals when dashboard loads
     const fetchRestaurantGoals = async () => {
       try {
-        await getRestaurentGoal();
+        // Ensure restaurant ID is available
+        const restaurantId = await ensureRestaurantId();
+        
+        if (!restaurantId) {
+          console.warn('No restaurant ID available. Skipping restaurant goals fetch.');
+          return;
+        }
+        
+        const result = await getRestaurentGoal(restaurantId);
+        if (result === null) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       } catch (error) {
-        console.error('Error fetching restaurant goals:', error);
+        console.error('Restaurant goals error:', error.message);
+        
+        // Don't show error to user if it's just that no goals exist yet
+        if (error.message.includes('Restaurant ID is required') || 
+            error.message.includes('Restaurant goals not found')) {
+          console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
+        }
       }
     };
     
     fetchRestaurantGoals();
-  }, [getRestaurentGoal]);
+  }, []); // Removed getRestaurentGoal dependency to prevent infinite loops
 
   // Handle navigation context from Summary Dashboard
   useEffect(() => {
@@ -232,34 +253,27 @@ const Dashboard = () => {
       try {
         const context = JSON.parse(navigationContext);
         
-        // Check if this navigation came from Summary Dashboard
-        if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
-          console.log('🎯 Processing navigation context from Summary Dashboard:', context);
+        // Set the selected date, year, and month
+        if (context.selectedDate) {
+          const targetDate = dayjs(context.selectedDate);
+          const targetYear = targetDate.year();
+          const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
           
-          // Set the selected date, year, and month
-          if (context.selectedDate) {
-            const targetDate = dayjs(context.selectedDate);
-            const targetYear = targetDate.year();
-            const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
-            
-            setSelectedYear(targetYear);
-            setSelectedMonth(targetMonth);
-            
-            // Fetch calendar data for the target month
-            fetchCalendarData(targetYear, targetMonth).then(() => {
-              // After calendar data is loaded, set the selected week
-              if (context.selectedWeek) {
-                setSelectedWeek(context.selectedWeek);
-              }
-            });
-          }
+          setSelectedYear(targetYear);
+          setSelectedMonth(targetMonth);
           
-          // Don't clear the navigation context yet - let SalesTable handle it after opening modal
-          // localStorage.removeItem('dashboardNavigationContext');
-          
-          // Show success message
-          message.success('Welcome to Dashboard! Loading data for the selected week...');
+          // Fetch calendar data for the target month
+          fetchCalendarData(targetYear, targetMonth).then(() => {
+            // After calendar data is loaded, set the selected week
+            if (context.selectedWeek) {
+              setSelectedWeek(context.selectedWeek);
+            }
+          });
         }
+        
+        // Clear the navigation context
+        localStorage.removeItem('dashboardNavigationContext');
+        
       } catch (error) {
         console.error('Error processing navigation context:', error);
         localStorage.removeItem('dashboardNavigationContext');

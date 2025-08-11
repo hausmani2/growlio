@@ -31,20 +31,27 @@ const Header = ({ onMenuClick }) => {
         navigate('/login');
     };
 
-    const menu = (
-        <Menu className="min-w-[200px] shadow-lg border border-gray-200 rounded-lg">
-            <Menu.Item key="1" className="hover:bg-gray-50">
+    const menuItems = [
+        {
+            key: '1',
+            label: (
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Profile</span>
                 </div>
-            </Menu.Item>
-            <Menu.Item key="2" onClick={handleLogout} className="hover:bg-gray-50">
+            ),
+            className: 'hover:bg-gray-50'
+        },
+        {
+            key: '2',
+            label: (
                 <div className="flex items-center gap-2 text-red-600">
                     <span className="text-sm font-medium">Logout</span>
                 </div>
-            </Menu.Item>
-        </Menu>
-    );
+            ),
+            onClick: handleLogout,
+            className: 'hover:bg-gray-50'
+        }
+    ];
 
     return (
         <header className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white border-b border-gray-200 shadow-sm">
@@ -77,7 +84,14 @@ const Header = ({ onMenuClick }) => {
                 </div>
                 
                 {/* Name and dropdown */}
-                <Dropdown overlay={menu} trigger={['click']} placement="bottomRight">
+                <Dropdown 
+                    menu={{ 
+                        items: menuItems,
+                        className: "min-w-[200px] shadow-lg border border-gray-200 rounded-lg"
+                    }} 
+                    trigger={['click']} 
+                    placement="bottomRight"
+                >
                     <div className="flex items-center cursor-pointer select-none group">
                         <span className="font-semibold text-sm sm:text-base text-gray-800 mr-2 hidden sm:block group-hover:text-orange-600 transition-colors">
                             {name}
