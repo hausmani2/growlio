@@ -7,7 +7,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -184,7 +184,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Profit",
         section_data: {
           weekly: {
@@ -601,7 +601,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Profit After COGS & Labor Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Profit After COGS & Labor</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -615,7 +615,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`Profit After COGS & Labor: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            title={`Profit After COGS & Labor`}
             extra={
               <Space>
                 <Button 

@@ -52,6 +52,7 @@ const SummaryDashboard = () => {
   // Dashboard summary functionality
   const { 
     fetchDashboardSummary, 
+    fetchMonthlyDashboardSummary,
     dashboardSummaryData, 
     loading: summaryLoading, 
     error: summaryError 
@@ -183,12 +184,37 @@ const SummaryDashboard = () => {
     }
   };
 
+  // Fetch monthly dashboard summary data
+  const fetchMonthlyData = async (year, month) => {
+    console.log('fetchMonthlyData called with year:', year, 'month:', month);
+    if (!year || !month) {
+      console.log('No year or month provided, returning');
+      return;
+    }
+    
+    // Format month as "YYYY-MM" for logging
+    const monthParam = `${year}-${month.toString().padStart(2, '0')}`;
+    console.log(`Fetching monthly dashboard summary for month: ${monthParam}`);
+    
+    try {
+      const result = await fetchMonthlyDashboardSummary(year, month);
+      console.log('fetchMonthlyDashboardSummary result:', result);
+    } catch (error) {
+      console.error('Error in fetchMonthlyDashboardSummary:', error);
+    }
+  };
+
   // Handle year selection
   const handleYearChange = (year) => {
     setSelectedYear(year);
     setSelectedMonth(null);
     setSelectedWeek(null);
     setAvailableWeeks([]);
+    
+    // If in monthly view, fetch monthly data for the new year and current month
+    if (viewMode === 'monthly' && selectedMonth) {
+      fetchMonthlyData(year, selectedMonth);
+    }
   };
 
   // Handle month selection
@@ -197,7 +223,12 @@ const SummaryDashboard = () => {
     setSelectedWeek(null);
     
     if (selectedYear) {
-      fetchCalendarData(selectedYear, month, true);
+      if (viewMode === 'weekly') {
+        fetchCalendarData(selectedYear, month, true);
+      } else if (viewMode === 'monthly') {
+        // Fetch monthly data when month changes in monthly view
+        fetchMonthlyData(selectedYear, month);
+      }
     }
   };
 
@@ -209,12 +240,38 @@ const SummaryDashboard = () => {
     fetchSummaryData(weekKey);
   };
 
-  // Handle view mode change (weekly/monthly)
-  const handleViewModeChange = (mode) => {
+  // Handle view mode change (weekly/monthly) with improved state management
+  const handleViewModeChange = async (mode) => {
     setViewMode(mode);
-    // Clear week selection when switching to monthly view
+    
     if (mode === 'monthly') {
+      // Clear week selection when switching to monthly view
       setSelectedWeek(null);
+      
+      // Fetch monthly data for the selected year and month
+      if (selectedYear && selectedMonth) {
+        console.log('Switching to monthly view - fetching monthly data');
+        await fetchMonthlyData(selectedYear, selectedMonth);
+      }
+    } else if (mode === 'weekly') {
+      // If switching back to weekly, ensure we have calendar data and a selected week
+      if (selectedYear && selectedMonth) {
+        if (availableWeeks.length === 0) {
+          // Fetch calendar data if not available
+          await fetchCalendarData(selectedYear, selectedMonth, true);
+        } else if (selectedWeek) {
+          // If we have weeks and a selected week, fetch weekly data
+          console.log('Switching back to weekly view - fetching weekly data');
+          await fetchSummaryData(selectedWeek);
+        } else {
+          // Auto-select current week if no week is selected
+          const currentDate = dayjs();
+          const currentWeekKey = findCurrentWeek(availableWeeks, currentDate);
+          if (currentWeekKey) {
+            setSelectedWeek(currentWeekKey);
+          }
+        }
+      }
     }
   };
 
@@ -236,9 +293,11 @@ const SummaryDashboard = () => {
     // Set success flash message flag
     setShowSuccessFlashMessage(true);
     
-    // Refresh the dashboard data
-    if (selectedWeek) {
+    // Refresh the dashboard data based on current view mode
+    if (viewMode === 'weekly' && selectedWeek) {
       await fetchSummaryData(selectedWeek);
+    } else if (viewMode === 'monthly' && selectedYear && selectedMonth) {
+      await fetchMonthlyData(selectedYear, selectedMonth);
     }
     
     // Show success flash message
@@ -264,7 +323,7 @@ const SummaryDashboard = () => {
               Your sales data has been saved successfully.
             </p>
             <p style={{ marginBottom: '12px', color: '#666' }}>
-              Would you like to add more sales data or edit existing data for this week?
+              Would you like to add more sales data or edit existing data for this {viewMode === 'weekly' ? 'week' : 'month'}?
             </p>
             <Button 
               type="primary" 
@@ -303,78 +362,127 @@ const SummaryDashboard = () => {
 
   // Handle flash message button click - Navigate to Dashboard with selected date
           const handleFlashMessageButtonClick = () => {
-          const selectedWeekData = getSelectedWeekData();
-          
-          if (selectedWeekData) {
-            // Get the budgeted sales data from the dashboard summary data
-            let budgetedSalesData = [];
+          if (viewMode === 'weekly') {
+            const selectedWeekData = getSelectedWeekData();
             
-            if (dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0) {
-              // Extract budgeted sales data from the dashboard summary data
-              budgetedSalesData = dashboardSummaryData.data.map(day => ({
-                budgetedSales: parseFloat(day.budgeted_sales) || 0,
-                actualSalesInStore: parseFloat(day.actual_sales_in_store) || 0,
-                actualSalesAppOnline: parseFloat(day.actual_sales_app_online) || 0,
-                dailyTickets: parseFloat(day.daily_tickets) || 0,
-                averageDailyTicket: parseFloat(day.average_daily_ticket) || 0
-              }));
+            if (selectedWeekData) {
+              // Get the budgeted sales data from the dashboard summary data
+              let budgetedSalesData = [];
+              
+              if (dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0) {
+                // Extract budgeted sales data from the dashboard summary data
+                budgetedSalesData = dashboardSummaryData.data.map(day => ({
+                  budgetedSales: parseFloat(day.budgeted_sales) || 0,
+                  actualSalesInStore: parseFloat(day.actual_sales_in_store) || 0,
+                  actualSalesAppOnline: parseFloat(day.actual_sales_app_online) || 0,
+                  dailyTickets: parseFloat(day.daily_tickets) || 0,
+                  averageDailyTicket: parseFloat(day.average_daily_ticket) || 0
+                }));
+              }
+              
+              // Store navigation context for the Dashboard component
+              const navigationContext = {
+                selectedDate: selectedWeekData.startDate,
+                selectedWeek: selectedWeek,
+                selectedYear: selectedYear,
+                selectedMonth: selectedMonth,
+                shouldOpenSalesModal: true,
+                source: 'summary-dashboard',
+                budgetedSalesData: budgetedSalesData // Include budgeted sales data
+              };
+              
+              // Store in localStorage for Dashboard component to access
+              localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
+              
+              // Also store budgeted sales data separately for easy access
+              localStorage.setItem('budgetedSalesData', JSON.stringify(budgetedSalesData));
+              
+              // Show success message
+              message.success('Navigating to Dashboard...');
+              
+              // Navigate to the main Dashboard component
+              navigate('/dashboard');
+              
+              // Clear flash message
+              setShowFlashMessage(false);
+            } else {
+              message.error('Unable to navigate: No week data selected');
             }
-            
-            // Store navigation context for the Dashboard component
-            const navigationContext = {
-              selectedDate: selectedWeekData.startDate,
-              selectedWeek: selectedWeek,
-              selectedYear: selectedYear,
-              selectedMonth: selectedMonth,
-              shouldOpenSalesModal: true,
-              source: 'summary-dashboard',
-              budgetedSalesData: budgetedSalesData // Include budgeted sales data
-            };
-            
-            // Store in localStorage for Dashboard component to access
-            localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
-            
-            // Also store budgeted sales data separately for easy access
-            localStorage.setItem('budgetedSalesData', JSON.stringify(budgetedSalesData));
-            
-            // Show success message
-            message.success('Navigating to Dashboard...');
-            
-            // Navigate to the main Dashboard component
-            navigate('/dashboard');
-            
-            // Clear flash message
-            setShowFlashMessage(false);
-          } else {
-            message.error('Unable to navigate: No week data selected');
+          } else if (viewMode === 'monthly') {
+            // Handle monthly view navigation
+            if (selectedYear && selectedMonth) {
+              // Store navigation context for the Dashboard component
+              const navigationContext = {
+                selectedYear: selectedYear,
+                selectedMonth: selectedMonth,
+                shouldOpenSalesModal: true,
+                source: 'summary-dashboard',
+                viewMode: 'monthly'
+              };
+              
+              // Store in localStorage for Dashboard component to access
+              localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
+              
+              // Show success message
+              message.success('Navigating to Dashboard...');
+              
+              // Navigate to the main Dashboard component
+              navigate('/dashboard');
+              
+              // Clear flash message
+              setShowFlashMessage(false);
+            } else {
+              message.error('Unable to navigate: No year or month selected');
+            }
           }
         };
 
   // Initialize with current year, month, and week
   useEffect(() => {
     const initializeDashboard = async () => {
-      // Check if we already have selected year and month in the store
-      if (!selectedYear || !selectedMonth) {
-        const currentDate = dayjs();
-        const currentYear = currentDate.year();
-        const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
+      try {
+        // Check if we already have selected year and month in the store
+        if (!selectedYear || !selectedMonth) {
+          const currentDate = dayjs();
+          const currentYear = currentDate.year();
+          const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
+          
+          console.log(`Initializing dashboard with current year: ${currentYear}, month: ${currentMonth}`);
+          
+          setSelectedYear(currentYear);
+          setSelectedMonth(currentMonth);
+          
+          // Fetch data based on current view mode
+          if (viewMode === 'weekly') {
+            // Fetch calendar data for current month and auto-select current week
+            await fetchCalendarData(currentYear, currentMonth, true);
+          } else if (viewMode === 'monthly') {
+            // Fetch monthly data for current month
+            await fetchMonthlyData(currentYear, currentMonth);
+          }
+        } else {
+          // Use existing selected year and month from store
+          console.log(`Using existing selection: year: ${selectedYear}, month: ${selectedMonth}`);
+          
+          // Fetch data based on current view mode
+          if (viewMode === 'weekly') {
+            // Fetch calendar data for the selected month
+            await fetchCalendarData(selectedYear, selectedMonth, false);
+          } else if (viewMode === 'monthly') {
+            // Fetch monthly data for the selected month
+            await fetchMonthlyData(selectedYear, selectedMonth);
+          }
+        }
         
-        console.log(`Initializing dashboard with current year: ${currentYear}, month: ${currentMonth}`);
+        // Fetch restaurant goals when dashboard loads
+        await fetchRestaurantGoals();
         
-        setSelectedYear(currentYear);
-        setSelectedMonth(currentMonth);
-        
-        // Fetch calendar data for current month and auto-select current week
-        await fetchCalendarData(currentYear, currentMonth, true);
-      } else {
-        // Use existing selected year and month from store
-        console.log(`Using existing selection: year: ${selectedYear}, month: ${selectedMonth}`);
-        
-        // Fetch calendar data for the selected month
-        await fetchCalendarData(selectedYear, selectedMonth, false);
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
       }
-      
-      // Fetch restaurant goals when dashboard loads
+    };
+
+    const fetchRestaurantGoals = async () => {
       try {
         // Ensure restaurant ID is available
         const restaurantId = await ensureRestaurantId();
@@ -400,7 +508,7 @@ const SummaryDashboard = () => {
     };
 
     initializeDashboard();
-  }, []); // Remove getRestaurentGoal from dependencies to avoid re-renders
+  }, [viewMode]); // Add viewMode to dependencies
 
   // Fetch summary data when selectedWeek changes
   useEffect(() => {
@@ -412,6 +520,21 @@ const SummaryDashboard = () => {
       console.log('Week selected but no available weeks yet');
     }
   }, [selectedWeek, availableWeeks]);
+
+  // Fetch monthly data when year or month changes in monthly view
+  useEffect(() => {
+    console.log('Monthly data useEffect triggered:', { 
+      viewMode, 
+      selectedYear, 
+      selectedMonth,
+      shouldFetch: viewMode === 'monthly' && selectedYear && selectedMonth 
+    });
+    
+    if (viewMode === 'monthly' && selectedYear && selectedMonth) {
+      console.log('Fetching monthly data for year:', selectedYear, 'month:', selectedMonth);
+      fetchMonthlyData(selectedYear, selectedMonth);
+    }
+  }, [viewMode, selectedYear, selectedMonth]);
 
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {
@@ -432,12 +555,6 @@ const SummaryDashboard = () => {
       hasValidData: dashboardSummaryData?.data && Array.isArray(dashboardSummaryData.data) && dashboardSummaryData.data.length > 0,
       summaryLoading
     });
-    
-    // For monthly view, always show dashboard (don't show "no data" state)
-    if (viewMode === 'monthly') {
-      console.log('hasNoData: Monthly view - always show dashboard');
-      return false;
-    }
     
     // If still loading, don't make a decision yet
     if (summaryLoading) {
@@ -475,6 +592,8 @@ const SummaryDashboard = () => {
     console.log('Flash message useEffect triggered:', {
       viewMode,
       selectedWeek,
+      selectedYear,
+      selectedMonth,
       hasNoData: hasNoData(),
       isSalesModalVisible,
       hasManuallyClosedModal,
@@ -658,8 +777,7 @@ const SummaryDashboard = () => {
                     </button>
                     <button
                       onClick={() => handleViewModeChange('monthly')}
-                      disabled={true}
-                      className={` rounded-md text-sm font-medium transition-colors h-[32px] w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={` rounded-md text-sm font-medium transition-colors h-[32px] w-[100px]  ${
                         viewMode === 'monthly'
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -737,6 +855,9 @@ const SummaryDashboard = () => {
                {(() => {
                  console.log('Conditional rendering check:', {
                    selectedWeek,
+                   viewMode,
+                   selectedYear,
+                   selectedMonth,
                    summaryLoading,
                    hasNoData: hasNoData(),
                    shouldShowLoading: summaryLoading,
@@ -767,8 +888,9 @@ const SummaryDashboard = () => {
                            description={
                              <div>
                                <p className="text-gray-600 mb-4">
-                                 {dashboardSummaryData?.message || (viewMode === 'weekly' ? 'No weekly dashboard data found for the selected week.' : 'No monthly dashboard data found.')}
+                                 {dashboardSummaryData?.message || (viewMode === 'weekly' ? 'No weekly dashboard data found for the selected week.' : 'No monthly dashboard data found for the selected month.')}
                                </p>
+                               {viewMode === 'weekly' && (
                                <Button 
                                  type="primary" 
                                  icon={<PlusOutlined />}
@@ -777,6 +899,7 @@ const SummaryDashboard = () => {
                                >
                                  Add Sales Data
                                </Button>
+                               )}
                              </div>
                            }
                          />
@@ -803,15 +926,28 @@ const SummaryDashboard = () => {
                           onAddData={handleShowSalesModal}
                           onEditData={() => {
                             // Navigate to dashboard for editing
-                            const selectedWeekData = getSelectedWeekData();
-                            if (selectedWeekData) {
+                            if (viewMode === 'weekly') {
+                              const selectedWeekData = getSelectedWeekData();
+                              if (selectedWeekData) {
+                                const navigationContext = {
+                                  selectedDate: selectedWeekData.startDate,
+                                  selectedWeek: selectedWeek,
+                                  selectedYear: selectedYear,
+                                  selectedMonth: selectedMonth,
+                                  shouldOpenSalesModal: true,
+                                  source: 'summary-dashboard'
+                                };
+                                localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
+                                navigate('/dashboard');
+                              }
+                            } else if (viewMode === 'monthly') {
+                              // For monthly view, navigate with month context
                               const navigationContext = {
-                                selectedDate: selectedWeekData.startDate,
-                                selectedWeek: selectedWeek,
                                 selectedYear: selectedYear,
                                 selectedMonth: selectedMonth,
                                 shouldOpenSalesModal: true,
-                                source: 'summary-dashboard'
+                                source: 'summary-dashboard',
+                                viewMode: 'monthly'
                               };
                               localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
                               navigate('/dashboard');
@@ -832,8 +968,8 @@ const SummaryDashboard = () => {
                     description={
                       viewMode === 'weekly' && !selectedWeek
                         ? "Please select a week to view dashboard data." 
-                        : viewMode === 'monthly'
-                        ? "Monthly dashboard data will be displayed here."
+                        : viewMode === 'monthly' && (!selectedYear || !selectedMonth)
+                        ? "Please select a year and month to view monthly dashboard data."
                         : "No dashboard data available for the selected period."
                     }
                   />

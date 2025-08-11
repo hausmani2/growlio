@@ -7,7 +7,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const FixedExpenseTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -166,7 +166,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Expenses",
         section_data: {
           weekly: {
@@ -406,7 +406,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Fixed Expenses Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Fixed Expenses</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -420,7 +420,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`Fixed Expenses: ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            title={`Fixed Expenses`}
             extra={
               <Space>
                 <Button 

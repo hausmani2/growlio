@@ -587,7 +587,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">COGS Performance Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">COGS Performance</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -601,7 +601,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} ${selectedDate ? selectedDate.format('MMM-YY') : ''}`}
+            title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
             extra={
               <Space>
                 <Button 

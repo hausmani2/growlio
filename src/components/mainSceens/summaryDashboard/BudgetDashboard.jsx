@@ -433,16 +433,16 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
 
       {/* Budget Distribution Pie Chart */}
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Budget Distribution" className="h-full">
             <div style={{ height: '300px' }}>
               <Pie data={pieChartData} options={pieChartOptions} />
             </div>
           </Card>
-        </Col>
+        </Col> */}
 
         {/* Remaining Budget */}
-        <Col xs={24} lg={12}>
+        {/* <Col xs={24} lg={12}>
           <Card title="Remaining Budget for the Week" className="h-full">
             <div className="space-y-4">
               <div className="text-center">
@@ -475,7 +475,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
               </div>
             </div>
           </Card>
-        </Col>
+        </Col> */}
       </Row>
     </div>
   );

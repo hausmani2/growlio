@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
-const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error }) => {
+const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
 
@@ -253,6 +253,11 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             <div className="font-semibold text-xs text-gray-800">
               {dateInfo.day}
             </div>
+            { viewMode === 'monthly' && (
+              <div className="text-xs text-gray-600">
+                {dateInfo.date}
+              </div>
+            )}
             {/* <div className="text-xs text-gray-600">
               {dateInfo.date}
             </div> */}

@@ -162,8 +162,6 @@ const Dashboard = () => {
     }
   };
 
-
-
   // Generate week days based on selected week
   const getWeekDays = () => {
     if (!selectedWeek || !availableWeeks.length) {
@@ -208,21 +206,40 @@ const Dashboard = () => {
     return weekDays;
   };
 
-  // Initialize with current year and fetch restaurant goals
+  // Professional initialization with proper state management
   useEffect(() => {
-    // Check if we already have a selected year in the store
-    const { selectedYear: storeSelectedYear } = getDateSelection();
-    
-    if (!storeSelectedYear) {
-      // Only set current year if no year is already selected
-      const currentYear = dayjs().year();
-      setSelectedYear(currentYear);
-    }
-    
-    // Fetch restaurant goals when dashboard loads
+    const initializeDashboard = async () => {
+      try {
+        // Check if we already have a selected year in the store
+        const { selectedYear: storeSelectedYear, selectedMonth: storeSelectedMonth } = getDateSelection();
+        
+        let yearToUse = storeSelectedYear;
+        let monthToUse = storeSelectedMonth;
+        
+        // If no year/month in store, use current date
+        if (!yearToUse) {
+          yearToUse = dayjs().year();
+          setSelectedYear(yearToUse);
+        }
+        
+        if (!monthToUse) {
+          monthToUse = dayjs().month() + 1; // dayjs months are 0-indexed
+          setSelectedMonth(monthToUse);
+        }
+        
+        // Fetch calendar data for the month
+        await fetchCalendarData(yearToUse, monthToUse);
+        
+        // Fetch restaurant goals
+        await fetchRestaurantGoals();
+        
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+      }
+    };
+
     const fetchRestaurantGoals = async () => {
       try {
-        // Ensure restaurant ID is available
         const restaurantId = await ensureRestaurantId();
         
         if (!restaurantId) {
@@ -237,18 +254,17 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Restaurant goals error:', error.message);
         
-        // Don't show error to user if it's just that no goals exist yet
         if (error.message.includes('Restaurant ID is required') || 
             error.message.includes('Restaurant goals not found')) {
           console.log('ℹ️ No restaurant goals available yet - this is normal for new users');
         }
       }
     };
-    
-    fetchRestaurantGoals();
-  }, []); // Removed getRestaurentGoal dependency to prevent infinite loops
 
-  // Handle navigation context from Summary Dashboard
+    initializeDashboard();
+  }, []); // Only run once on mount
+
+  // Handle navigation context from Summary Dashboard with improved state management
   useEffect(() => {
     const navigationContext = localStorage.getItem('dashboardNavigationContext');
     
@@ -284,16 +300,35 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Log restaurant goals data for debugging (can be removed later)
+  // Professional auto-select logic with proper state validation
   useEffect(() => {
-
-    if (restaurantGoalsError) {
-      console.error('Restaurant goals error:', restaurantGoalsError);
+    if (availableWeeks.length > 0 && !selectedWeek) {
+      const currentDate = dayjs();
+      const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
+      
+      // Check if current month is the same as selected month
+      if (selectedMonth === currentMonth) {
+        // If same month, find the week that contains the current date
+        const currentWeek = availableWeeks.find(week => {
+          const weekStart = dayjs(week.startDate);
+          const weekEnd = dayjs(week.endDate);
+          // Check if current date is between week start and end (inclusive)
+          return currentDate.isSame(weekStart, 'day') || 
+                 currentDate.isSame(weekEnd, 'day') || 
+                 (currentDate.isAfter(weekStart, 'day') && currentDate.isBefore(weekEnd, 'day'));
+        });
+        
+        // If current week is found, select it; otherwise fall back to first week
+        const weekToSelect = currentWeek || availableWeeks[0];
+        setSelectedWeek(weekToSelect.key);
+      } else {
+        // If different month, select the first week
+        setSelectedWeek(availableWeeks[0].key);
+      }
     }
+  }, [availableWeeks, selectedWeek, selectedMonth]);
 
-  }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
-
-  // Fetch dashboard data when selectedWeek changes and availableWeeks are loaded
+  // Professional dashboard data fetching with proper state validation
   useEffect(() => {
     if (selectedWeek && availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
@@ -305,6 +340,13 @@ const Dashboard = () => {
       }
     }
   }, [selectedWeek, availableWeeks]);
+
+  // Log restaurant goals data for debugging (can be removed later)
+  useEffect(() => {
+    if (restaurantGoalsError) {
+      console.error('Restaurant goals error:', restaurantGoalsError);
+    }
+  }, [restaurantGoals, restaurantGoalsError, restaurantGoalsLoading]);
 
   // Show loading spinner when fetching dashboard data
   if (dashboardLoading) {
@@ -327,7 +369,8 @@ const Dashboard = () => {
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
 
               {/* Calendar Dropdowns */}
-              <div className="space-y-4">
+              <div className="space-y-1">
+                  <p>You can change dates to insert or update weekly costing data.</p>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                   {/* Year Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
@@ -438,7 +481,7 @@ const Dashboard = () => {
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
-              <ProfitCogsTable 
+              {/* <ProfitCogsTable 
                 selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
@@ -455,7 +498,7 @@ const Dashboard = () => {
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
-              />
+              /> */}
             </>
           ) : (
             <Card>

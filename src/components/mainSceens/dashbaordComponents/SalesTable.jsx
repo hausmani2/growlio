@@ -6,7 +6,7 @@ import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 const { Title, Text } = Typography;
 
-const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
   // Store integration
   const { 
     saveDashboardData, 
@@ -406,7 +406,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
 
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD'),
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
         section: "Sales Performance",
         section_data: {
           weekly: {
@@ -486,7 +486,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
           // Trigger COGS modal opening by dispatching a custom event
           const event = new CustomEvent('openCogsModal', {
             detail: {
-              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD')
+              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null
             }
           });
           window.dispatchEvent(event);
@@ -1112,7 +1112,7 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">Sales Performance Dashboard</Title>
+      <Title level={3} className="pl-2 pb-2">Sales Performance</Title>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
