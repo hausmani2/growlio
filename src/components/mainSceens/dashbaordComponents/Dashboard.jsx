@@ -318,9 +318,8 @@ const Dashboard = () => {
   return (
     <div className="w-full">
       <div className="w-full mx-auto">
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-2">
           <Title level={3} className="mb-2 sm:mb-4 text-lg sm:text-xl lg:text-2xl">
-            <CalendarOutlined className="mr-2" />
             Cash Flow Dashboard
           </Title>
 
@@ -332,7 +331,7 @@ const Dashboard = () => {
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                   {/* Year Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Year
                     </label>
                     <Select
@@ -352,7 +351,7 @@ const Dashboard = () => {
 
                   {/* Month Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Month
                     </label>
                     <Select
@@ -374,7 +373,7 @@ const Dashboard = () => {
 
                   {/* Week Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Week
                     </label>
                     <Select

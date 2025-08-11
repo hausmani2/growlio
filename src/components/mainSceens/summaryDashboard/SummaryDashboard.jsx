@@ -38,6 +38,9 @@ const SummaryDashboard = () => {
   // Flash message state
   const [showFlashMessage, setShowFlashMessage] = useState(false);
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
+
+  // View mode state (weekly/monthly)
+  const [viewMode, setViewMode] = useState('weekly');
   
 
 
@@ -204,6 +207,15 @@ const SummaryDashboard = () => {
     setHasManuallyClosedModal(false); // Reset the flag when week changes
     // Fetch dashboard summary data when week is selected
     fetchSummaryData(weekKey);
+  };
+
+  // Handle view mode change (weekly/monthly)
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    // Clear week selection when switching to monthly view
+    if (mode === 'monthly') {
+      setSelectedWeek(null);
+    }
   };
 
   // Handle sales modal visibility
@@ -411,6 +423,7 @@ const SummaryDashboard = () => {
   // Check if there's no data available
   const hasNoData = () => {
     console.log('hasNoData check:', {
+      viewMode,
       dashboardSummaryData: dashboardSummaryData ? 'exists' : 'null',
       status: dashboardSummaryData?.status,
       data: dashboardSummaryData?.data,
@@ -419,6 +432,12 @@ const SummaryDashboard = () => {
       hasValidData: dashboardSummaryData?.data && Array.isArray(dashboardSummaryData.data) && dashboardSummaryData.data.length > 0,
       summaryLoading
     });
+    
+    // For monthly view, always show dashboard (don't show "no data" state)
+    if (viewMode === 'monthly') {
+      console.log('hasNoData: Monthly view - always show dashboard');
+      return false;
+    }
     
     // If still loading, don't make a decision yet
     if (summaryLoading) {
@@ -451,9 +470,10 @@ const SummaryDashboard = () => {
 
 
 
-  // Show flash message and handle auto-opening when no data is available
+  // Show flash message and handle auto-opening when no data is available (weekly view only)
   useEffect(() => {
     console.log('Flash message useEffect triggered:', {
+      viewMode,
       selectedWeek,
       hasNoData: hasNoData(),
       isSalesModalVisible,
@@ -463,9 +483,9 @@ const SummaryDashboard = () => {
       hasData: dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0
     });
 
-    // Only proceed if a week is selected
-    if (!selectedWeek) {
-      console.log('No week selected - hiding flash message');
+    // Only proceed for weekly view and if a week is selected
+    if (viewMode !== 'weekly' || !selectedWeek) {
+      console.log('Not weekly view or no week selected - hiding flash message');
       setShowFlashMessage(false);
       return;
     }
@@ -492,7 +512,7 @@ const SummaryDashboard = () => {
       console.log('Setting flash message to false - conditions not met');
       setShowFlashMessage(false);
     }
-  }, [selectedWeek, dashboardSummaryData, isSalesModalVisible, hasManuallyClosedModal, summaryLoading]);
+  }, [viewMode, selectedWeek, dashboardSummaryData, isSalesModalVisible, hasManuallyClosedModal, summaryLoading]);
 
   // Get selected week data
   const getSelectedWeekData = () => {
@@ -558,7 +578,7 @@ const SummaryDashboard = () => {
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                   {/* Year Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Year
                     </label>
                     <Select
@@ -578,7 +598,7 @@ const SummaryDashboard = () => {
 
                   {/* Month Dropdown */}
                   <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Month
                     </label>
                     <Select
@@ -598,37 +618,68 @@ const SummaryDashboard = () => {
                     </Select>
                   </div>
 
-                  {/* Week Dropdown */}
-                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Week
-                    </label>
-                    <Select
-                      placeholder="Select Week"
-                      value={selectedWeek}
-                      onChange={handleWeekChange}
-                      style={{ width: '100%' }}
-                      disabled={!selectedMonth}
-                      loading={loading}
+                  {/* Week Dropdown - Only show in weekly view */}
+                  {viewMode === 'weekly' && (
+                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Week
+                      </label>
+                      <Select
+                        placeholder="Select Week"
+                        value={selectedWeek}
+                        onChange={handleWeekChange}
+                        style={{ width: '100%' }}
+                        disabled={!selectedMonth}
+                        loading={loading}
+                      >
+                        {availableWeeks.map(week => (
+                          <Option key={week.key} value={week.key}>
+                            Week {week.weekNumber} ({dayjs(week.startDate).format('MMM DD')} - {dayjs(week.endDate).format('MMM DD')})
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+                {/* View Mode Toggle */}
+                <div className="flex-1 min-w-[150px] w-full sm:w-auto">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    View Mode
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleViewModeChange('weekly')}
+                      className={` rounded-md text-sm font-medium transition-colors h-[32px] w-[100px] ${
+                        viewMode === 'weekly'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
                     >
-                      {availableWeeks.map(week => (
-                        <Option key={week.key} value={week.key}>
-                          Week {week.weekNumber} ({dayjs(week.startDate).format('MMM DD')} - {dayjs(week.endDate).format('MMM DD')})
-                        </Option>
-                      ))}
-                    </Select>
+                      Weekly
+                    </button>
+                    <button
+                      onClick={() => handleViewModeChange('monthly')}
+                      disabled={true}
+                      className={` rounded-md text-sm font-medium transition-colors h-[32px] w-[100px] disabled:opacity-50 disabled:cursor-not-allowed ${
+                        viewMode === 'monthly'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Monthly
+                    </button>
                   </div>
                 </div>
+                </div>
 
-                {/* Loading indicator for weeks */}
-                {selectedMonth && loading && availableWeeks.length === 0 && (
+                {/* Loading indicator for weeks - Only show in weekly view */}
+                {viewMode === 'weekly' && selectedMonth && loading && availableWeeks.length === 0 && (
                   <div className="text-center py-4">
                     <Spin size="small" /> Loading weeks...
                   </div>
                 )}
 
-                {/* No weeks available message */}
-                {selectedMonth && !loading && availableWeeks.length === 0 && (
+                {/* No weeks available message - Only show in weekly view */}
+                {viewMode === 'weekly' && selectedMonth && !loading && availableWeeks.length === 0 && (
                   <div className="text-center py-4 text-gray-500">
                     No weeks available for the selected month.
                   </div>
@@ -680,8 +731,8 @@ const SummaryDashboard = () => {
           
 
           
-                     {/* Only show dashboard components when a week is selected and dashboard data is available */}
-           {selectedWeek ? (
+                     {/* Show dashboard components when a week is selected (weekly view) or when monthly view is selected */}
+           {(selectedWeek || viewMode === 'monthly') ? (
              <>
                {(() => {
                  console.log('Conditional rendering check:', {
@@ -716,7 +767,7 @@ const SummaryDashboard = () => {
                            description={
                              <div>
                                <p className="text-gray-600 mb-4">
-                                 {dashboardSummaryData?.message || 'No weekly dashboard data found for the selected week.'}
+                                 {dashboardSummaryData?.message || (viewMode === 'weekly' ? 'No weekly dashboard data found for the selected week.' : 'No monthly dashboard data found.')}
                                </p>
                                <Button 
                                  type="primary" 
@@ -741,6 +792,7 @@ const SummaryDashboard = () => {
                           loading={summaryLoading}
                           error={summaryError}
                           selectedWeekData={getSelectedWeekData()}
+                          viewMode={viewMode}
                         />
                         
                         {/* Budget Dashboard - Second */}
@@ -765,6 +817,7 @@ const SummaryDashboard = () => {
                               navigate('/dashboard');
                             }
                           }}
+                          viewMode={viewMode}
                         />
                       </>
                     );
@@ -777,9 +830,11 @@ const SummaryDashboard = () => {
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
-                      !selectedWeek 
+                      viewMode === 'weekly' && !selectedWeek
                         ? "Please select a week to view dashboard data." 
-                        : "No dashboard data available for the selected week."
+                        : viewMode === 'monthly'
+                        ? "Monthly dashboard data will be displayed here."
+                        : "No dashboard data available for the selected period."
                     }
                   />
                 </div>
