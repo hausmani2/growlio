@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, message } from 'antd';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { apiGet } from '../../../utils/axiosInterceptors';
@@ -253,34 +253,27 @@ const Dashboard = () => {
       try {
         const context = JSON.parse(navigationContext);
         
-        // Check if this navigation came from Summary Dashboard
-        if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
-          console.log('🎯 Processing navigation context from Summary Dashboard:', context);
+        // Set the selected date, year, and month
+        if (context.selectedDate) {
+          const targetDate = dayjs(context.selectedDate);
+          const targetYear = targetDate.year();
+          const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
           
-          // Set the selected date, year, and month
-          if (context.selectedDate) {
-            const targetDate = dayjs(context.selectedDate);
-            const targetYear = targetDate.year();
-            const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
-            
-            setSelectedYear(targetYear);
-            setSelectedMonth(targetMonth);
-            
-            // Fetch calendar data for the target month
-            fetchCalendarData(targetYear, targetMonth).then(() => {
-              // After calendar data is loaded, set the selected week
-              if (context.selectedWeek) {
-                setSelectedWeek(context.selectedWeek);
-              }
-            });
-          }
+          setSelectedYear(targetYear);
+          setSelectedMonth(targetMonth);
           
-          // Don't clear the navigation context yet - let SalesTable handle it after opening modal
-          // localStorage.removeItem('dashboardNavigationContext');
-          
-          // Show success message
-          message.success('Welcome to Dashboard! Loading data for the selected week...');
+          // Fetch calendar data for the target month
+          fetchCalendarData(targetYear, targetMonth).then(() => {
+            // After calendar data is loaded, set the selected week
+            if (context.selectedWeek) {
+              setSelectedWeek(context.selectedWeek);
+            }
+          });
         }
+        
+        // Clear the navigation context
+        localStorage.removeItem('dashboardNavigationContext');
+        
       } catch (error) {
         console.error('Error processing navigation context:', error);
         localStorage.removeItem('dashboardNavigationContext');
