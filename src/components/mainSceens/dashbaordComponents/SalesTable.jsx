@@ -1126,16 +1126,16 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title="Weekly Sales Data" 
+            title="Weekly Sales Data"
             extra={
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />}
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Sales
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Sales" : "Edit Weekly Sales"}
                 </Button>
               </Space>
             }
@@ -1154,22 +1154,8 @@ const SalesTable = ({ selectedDate, weekDays = [], dashboardData = null, refresh
                       <Card 
                         key={week.id || `week-${week.weekTitle}`} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space className="flex flex-col sm:flex-row gap-2">
-                            <Text type="secondary" className="text-sm">
-                              Total: ${totals.netSalesActual.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                              className="w-full sm:w-auto"
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                       
+                       
                       >
                         <div className="overflow-x-auto">
                           <Table

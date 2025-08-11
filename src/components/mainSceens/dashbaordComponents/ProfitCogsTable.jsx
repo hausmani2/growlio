@@ -273,23 +273,33 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
       }
     });
 
-    useEffect(() => {
-      if (editingWeek) {
-        setWeekFormData(editingWeek);
-      } else {
-        setWeekFormData({
-          weekTitle: `Week ${weeklyData.length + 1}`,
-          startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-          dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
-          weeklyTotals: {
-            thirdPartyFees: 0,
-            profitAfterCogsLabor: 0,
-            dailyVariableProfitPercentage: 0,
-            weeklyVariableProfitPercentage: 0
-          }
-        });
-      }
-    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
+         useEffect(() => {
+       if (editingWeek) {
+         // Ensure editingWeek has weeklyTotals property
+         const weekDataWithTotals = {
+           ...editingWeek,
+           weeklyTotals: editingWeek.weeklyTotals || {
+             thirdPartyFees: 0,
+             profitAfterCogsLabor: 0,
+             dailyVariableProfitPercentage: 0,
+             weeklyVariableProfitPercentage: 0
+           }
+         };
+         setWeekFormData(weekDataWithTotals);
+       } else {
+         setWeekFormData({
+           weekTitle: `Week ${weeklyData.length + 1}`,
+           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
+           dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
+           weeklyTotals: {
+             thirdPartyFees: 0,
+             profitAfterCogsLabor: 0,
+             dailyVariableProfitPercentage: 0,
+             weeklyVariableProfitPercentage: 0
+           }
+         });
+       }
+     }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
@@ -610,11 +620,11 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Profit
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Profit" : "Edit Weekly Profit"}
                 </Button>
               </Space>
             }
@@ -631,29 +641,19 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
                   <div>No weekly profit data added yet. Click "Add Weekly Profit" to get started.</div>
                 </div>
               ) : (
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  {weeklyData.map((week) => {
-                    const totals = calculateWeeklyTotals(week);
-                    return (
-                      <Card 
-                        key={week.id} 
-                        size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Text type="secondary">
-                              Total: ${totals.profitAfterCogsLabor.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
-                      >
+                                 <Space direction="vertical" style={{ width: '100%' }} size="large">
+                   {weeklyData.map((week) => {
+                     return (
+                       <Card 
+                         key={week.id} 
+                         size="small" 
+                         title={week.weekTitle}
+                         extra={
+                           <Text type="secondary">
+                             Total: ${calculateWeeklyTotals(week).profitAfterCogsLabor.toFixed(2)}
+                           </Text>
+                         }
+                       >
                         <div className="overflow-x-auto">
                           <Table
                             dataSource={week.dailyData || []}

@@ -270,3 +270,6 @@ body {
   height: 32px !important;
   font-size: 12px !important;
 }
+.ant-card .ant-card-body {
+  padding: 12px !important;
+} 

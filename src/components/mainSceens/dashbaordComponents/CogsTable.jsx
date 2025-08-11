@@ -606,11 +606,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly COGS
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly COGS" : "Edit Weekly COGS"}
                 </Button>
               </Space>
             }
@@ -640,21 +640,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                       <Card 
                         key={week.id} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Text type="secondary">
-                              Total: ${totals.actual.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                        
                       >
                         <div className="overflow-x-auto">
                           <Table

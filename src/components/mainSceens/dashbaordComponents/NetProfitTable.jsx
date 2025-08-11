@@ -252,7 +252,15 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
 
     useEffect(() => {
       if (editingWeek) {
-        setWeekFormData(editingWeek);
+        // Ensure editingWeek has weeklyTotals property
+        const weekDataWithTotals = {
+          ...editingWeek,
+          weeklyTotals: editingWeek.weeklyTotals || {
+            netProfit: 0,
+            netProfitMargin: 0
+          }
+        };
+        setWeekFormData(weekDataWithTotals);
       } else {
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
@@ -495,11 +503,11 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
               <Space>
                 <Button 
                   type="default" 
-                  icon={<PlusOutlined />} 
-                  onClick={showAddWeeklyModal}
-                  disabled={!selectedDate || (weeklyData.length > 0 && !areAllValuesZero(weeklyData))}
+                  icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
+                  onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
+                  disabled={!selectedDate}
                 >
-                  Add Weekly Net Profit
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Net Profit" : "Edit Weekly Net Profit"}
                 </Button>
               </Space>
             }
@@ -523,21 +531,7 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
                       <Card 
                         key={week.id} 
                         size="small" 
-                        title={week.weekTitle}
-                        extra={
-                          <Space>
-                            <Text type="secondary" className="text-sm sm:text-base">
-                              Total: ${totals.netProfit.toFixed(2)}
-                            </Text>
-                            <Button 
-                              size="small" 
-                              icon={<EditOutlined />} 
-                              onClick={() => showEditWeeklyModal(week)}
-                            >
-                              Edit
-                            </Button>
-                          </Space>
-                        }
+                       
                       >
                         <div className="overflow-x-auto">
                           <Table
