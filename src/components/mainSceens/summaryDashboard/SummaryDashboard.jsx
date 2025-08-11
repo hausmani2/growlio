@@ -416,8 +416,15 @@ const SummaryDashboard = () => {
       data: dashboardSummaryData?.data,
       dataLength: dashboardSummaryData?.data?.length,
       isArray: Array.isArray(dashboardSummaryData?.data),
-      hasValidData: dashboardSummaryData?.data && Array.isArray(dashboardSummaryData.data) && dashboardSummaryData.data.length > 0
+      hasValidData: dashboardSummaryData?.data && Array.isArray(dashboardSummaryData.data) && dashboardSummaryData.data.length > 0,
+      summaryLoading
     });
+    
+    // If still loading, don't make a decision yet
+    if (summaryLoading) {
+      console.log('hasNoData: Still loading - deferring decision');
+      return false; // Return false to show loading state instead of "no data"
+    }
     
     // If no dashboardSummaryData object exists, show "Add Sales Data"
     if (!dashboardSummaryData) {
@@ -463,15 +470,22 @@ const SummaryDashboard = () => {
       return;
     }
 
-    // If no data exists, show the sales modal directly (not flash message)
-    if (hasNoData() && !isSalesModalVisible && !hasManuallyClosedModal && !summaryLoading) {
+    // Don't make decisions while loading
+    if (summaryLoading) {
+      console.log('Still loading - deferring flash message and modal decisions');
+      setShowFlashMessage(false);
+      return;
+    }
+
+    // If no data exists and not loading, show the sales modal directly (not flash message)
+    if (hasNoData() && !isSalesModalVisible && !hasManuallyClosedModal) {
       console.log('No data found - opening sales modal directly');
       setIsSalesModalVisible(true);
       setShowFlashMessage(false);
     } 
     // If data exists, show flash message (regardless of modal visibility)
     else if (dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0 && 
-             !hasManuallyClosedModal && !summaryLoading) {
+             !hasManuallyClosedModal) {
       console.log('Data exists - showing flash message to add more sales');
       setShowFlashMessage(true);
     } else {
@@ -670,15 +684,16 @@ const SummaryDashboard = () => {
            {selectedWeek ? (
              <>
                {(() => {
-                 const noData = hasNoData();
                  console.log('Conditional rendering check:', {
                    selectedWeek,
                    summaryLoading,
-                   hasNoData: noData,
-                   shouldShowEmpty: noData,
-                   shouldShowDashboard: !noData
+                   hasNoData: hasNoData(),
+                   shouldShowLoading: summaryLoading,
+                   shouldShowEmpty: !summaryLoading && hasNoData(),
+                   shouldShowDashboard: !summaryLoading && !hasNoData()
                  });
                  
+                 // Always show loading first if still loading
                  if (summaryLoading) {
                    return (
                      <Card>
@@ -688,7 +703,11 @@ const SummaryDashboard = () => {
                        </div>
                      </Card>
                    );
-                 } else if (noData) {
+                 }
+                 
+                 // After loading is complete, check if we have data
+                 const noData = hasNoData();
+                 if (noData) {
                    return (
                      <Card>
                        <div className="text-center py-8">
@@ -713,7 +732,7 @@ const SummaryDashboard = () => {
                        </div>
                      </Card>
                    );
-                                   } else {
+                 } else {
                     return (
                       <>
                         {/* Summary Table - First */}
