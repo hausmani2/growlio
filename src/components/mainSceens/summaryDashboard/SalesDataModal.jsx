@@ -336,7 +336,7 @@ const SalesDataModal = ({
       };
 
       await saveDashboardData(transformedData);
-      message.success('Sales data saved successfully!');
+      message.success('Sales data saved successfully! 🎉');
       
       // Call the callback to refresh data
       if (onDataSaved) {

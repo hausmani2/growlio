@@ -28,6 +28,7 @@ const SummaryDashboard = () => {
   
   // Flash message state
   const [showFlashMessage, setShowFlashMessage] = useState(false);
+  const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
   
 
 
@@ -195,10 +196,21 @@ const SummaryDashboard = () => {
     // Reset the flag when data is saved
     setHasManuallyClosedModal(false);
     
+    // Set success flash message flag
+    setShowSuccessFlashMessage(true);
+    
     // Refresh the dashboard data
     if (selectedWeek) {
       await fetchSummaryData(selectedWeek);
     }
+    
+    // Show success flash message
+    message.success('Sales data added successfully! 🎉');
+    
+    // Auto-hide success flash message after 5 seconds
+    setTimeout(() => {
+      setShowSuccessFlashMessage(false);
+    }, 5000);
     
     // Show popup asking if user wants to add actual sales
     // This will show after successful API response (200)
@@ -206,16 +218,16 @@ const SummaryDashboard = () => {
       notification.info({
         message: (
           <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-            🎉 Budgeted Sales Added Successfully!
+            🎉 Sales Data Added Successfully!
           </div>
         ),
         description: (
           <div style={{ marginTop: '8px' }}>
             <p style={{ marginBottom: '8px' }}>
-              Your budgeted sales have been saved successfully.
+              Your sales data has been saved successfully.
             </p>
             <p style={{ marginBottom: '12px', color: '#666' }}>
-              Would you like to add actual sales data for this week?
+              Would you like to add more sales data or edit existing data for this week?
             </p>
             <Button 
               type="primary" 
@@ -231,7 +243,7 @@ const SummaryDashboard = () => {
                 borderColor: '#52c41a'
               }}
             >
-              Add Actual Sales
+              Add More Sales Data
               <ArrowRightOutlined />
             </Button>
           </div>
@@ -246,7 +258,7 @@ const SummaryDashboard = () => {
           marginTop: '20px',
         },
         onClose: () => {
-          console.log('Budgeted sales success popup closed');
+          console.log('Sales data success popup closed');
         }
       });
     }, 1000); // Show after 1 second
@@ -433,6 +445,44 @@ const SummaryDashboard = () => {
   return (
     <div className="w-full">
 
+
+      {/* Success Flash Message for New Data Added */}
+      {showSuccessFlashMessage && (
+        <div className="mb-2 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm animate-pulse">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
+                🎉 Sales Data Added Successfully!
+              </h3>
+              <p className="text-green-700 mt-1">
+                Your sales data has been saved and the dashboard has been updated. You can now view the updated information below.
+              </p>
+            </div>
+            <div className="flex gap-2 ml-4">
+              <Button 
+                size="small"
+                type="primary" 
+                icon={<DollarOutlined />}
+                onClick={handleFlashMessageButtonClick}
+                style={{ 
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a',
+                  fontSize: '12px'
+                }}
+              >
+                Add More Data
+                <ArrowRightOutlined />
+              </Button>
+              <Button 
+                size="small" 
+                onClick={() => setShowSuccessFlashMessage(false)}
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Flash Message for Sales Budget */}
       {showFlashMessage && (
