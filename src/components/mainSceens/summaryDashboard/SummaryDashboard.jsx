@@ -40,7 +40,7 @@ const SummaryDashboard = () => {
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
 
   // View mode state (weekly/monthly)
-  const [viewMode, setViewMode] = useState('weekly');
+  const [viewMode, setViewMode] = useState('monthly');
   
 
 
