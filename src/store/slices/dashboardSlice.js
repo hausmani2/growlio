@@ -10,12 +10,60 @@ const createDashboardSlice = (set, get) => {
         error: null,
         restaurantId: null,
         lastFetchedDate: null, // Track when data was last fetched
+        
+        // Date selection state for persistence across tabs
+        selectedDate: null,
+        selectedYear: null,
+        selectedMonth: null,
+        selectedWeek: null,
+        availableWeeks: [],
 
         // Actions
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
         setDashboardData: (data) => set({ dashboardData: data }),
         setGoalsData: (data) => set({ goalsData: data }),
+
+        // Date selection actions
+        setSelectedDate: (date) => set({ selectedDate: date }),
+        setSelectedYear: (year) => set({ selectedYear: year }),
+        setSelectedMonth: (month) => set({ selectedMonth: month }),
+        setSelectedWeek: (week) => set({ selectedWeek: week }),
+        setAvailableWeeks: (weeks) => set({ availableWeeks: weeks }),
+        
+        // Clear date selection
+        clearDateSelection: () => set({ 
+            selectedDate: null, 
+            selectedYear: null, 
+            selectedMonth: null, 
+            selectedWeek: null, 
+            availableWeeks: [] 
+        }),
+
+        // Get current date selection
+        getDateSelection: () => {
+            const { selectedDate, selectedYear, selectedMonth, selectedWeek, availableWeeks } = get();
+            
+            // Calculate week start date if week is selected
+            let weekStartDate = null;
+            if (selectedWeek && availableWeeks.length > 0) {
+                const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
+                if (selectedWeekData) {
+                    weekStartDate = dayjs(selectedWeekData.startDate);
+                }
+            } else if (selectedDate) {
+                weekStartDate = selectedDate;
+            }
+            
+            return { 
+                selectedDate, 
+                selectedYear, 
+                selectedMonth, 
+                selectedWeek, 
+                availableWeeks,
+                weekStartDate 
+            };
+        },
 
         // Fetch dashboard data with caching
         fetchDashboardData: async (weekStart = null) => {
@@ -543,7 +591,12 @@ const createDashboardSlice = (set, get) => {
                 goalsData: null,
                 loading: false,
                 error: null,
-                restaurantId: null
+                restaurantId: null,
+                selectedDate: null,
+                selectedYear: null,
+                selectedMonth: null,
+                selectedWeek: null,
+                availableWeeks: []
             }));
         }
     }

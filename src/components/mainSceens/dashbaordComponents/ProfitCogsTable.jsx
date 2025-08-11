@@ -600,69 +600,7 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Profit Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No profit data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Third Party Fees:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.thirdPartyFees.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Profit After COGS & Labor:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.profitAfterCogsLabor.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Daily Variable Profit %:</Text>
-                  <Input
-                    value={`${weeklyResponseValues.dailyVariableProfitPercentage.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Weekly Variable Profit %:</Text>
-                  <Input
-                    value={`${weeklyResponseValues.weeklyVariableProfitPercentage.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+       
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
@@ -826,6 +764,69 @@ const ProfitCogsTable = ({ selectedDate, weekDays = [], dashboardData = null, re
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+         {/* Weekly Totals Section */}
+         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Profit Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No profit data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Third Party Fees:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.thirdPartyFees.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Profit After COGS & Labor:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.profitAfterCogsLabor.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.profitAfterCogsLabor < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Daily Variable Profit %:</Text>
+                  <Input
+                    value={`${weeklyResponseValues.dailyVariableProfitPercentage.toFixed(1)}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.dailyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Weekly Variable Profit %:</Text>
+                  <Input
+                    value={`${weeklyResponseValues.weeklyVariableProfitPercentage.toFixed(1)}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.weeklyVariableProfitPercentage < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

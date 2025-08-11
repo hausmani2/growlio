@@ -408,30 +408,7 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Fixed Expenses Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No fixed expenses data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Fixed Weekly Expenses:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.fixedWeeklyExpenses.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+      
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
@@ -541,6 +518,30 @@ const FixedExpenseTable = ({ selectedDate, weekDays = [], dashboardData = null, 
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+          {/* Weekly Totals Section */}
+          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Fixed Expenses Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No fixed expenses data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Fixed Weekly Expenses:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.fixedWeeklyExpenses.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

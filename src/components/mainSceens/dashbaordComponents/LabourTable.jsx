@@ -679,90 +679,7 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Labor Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No labor data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
-                  <Input
-                    value={`${weeklyTotals.labor_hours_budget} hrs`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
-                  <Input
-                    value={`${weeklyTotals.labor_hours_actual} hrs`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
-                  <Input
-                    value={`$${weeklyTotals.budgeted_labor_dollars}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
-                  <Input
-                    value={`$${weeklyTotals.actual_labor_dollars}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
-                  <Input
-                    value={`$${weeklyTotals.daily_labor_rate}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
-                  <Input
-                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / parseFloat(weeklyTotals.daily_labor_rate))).toFixed(1) : '0.0'}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
-                  <Input
-                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / (parseFloat(weeklyTotals.actual_labor_dollars) + 5000)) * 100).toFixed(1) : '0.0'}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+       
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
@@ -944,6 +861,90 @@ const LabourTable = ({ selectedDate, weekDays = [], dashboardData = null, refres
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+         {/* Weekly Totals Section */}
+         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Labor Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No labor data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
+                  <Input
+                    value={`${weeklyTotals.labor_hours_budget} hrs`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
+                  <Input
+                    value={`${weeklyTotals.labor_hours_actual} hrs`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
+                  <Input
+                    value={`$${weeklyTotals.budgeted_labor_dollars}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
+                  <Input
+                    value={`$${weeklyTotals.actual_labor_dollars}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
+                  <Input
+                    value={`$${weeklyTotals.daily_labor_rate}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
+                  <Input
+                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / parseFloat(weeklyTotals.daily_labor_rate))).toFixed(1) : '0.0'}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
+                  <Input
+                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / (parseFloat(weeklyTotals.actual_labor_dollars) + 5000)) * 100).toFixed(1) : '0.0'}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

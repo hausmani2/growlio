@@ -485,46 +485,7 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Net Profit Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No net profit data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong className="text-sm sm:text-base">Net Profit:</Text>
-                  <Input
-                    value={`$${weeklyResponseValues.netProfit.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.netProfit < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong className="text-sm sm:text-base">Net Profit Margin %:</Text>
-                  <Input
-                    value={`${weeklyResponseValues.netProfitMargin.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: '#f5f5f5',
-                      color: weeklyResponseValues.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
-                    }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+      
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
@@ -658,6 +619,46 @@ const NetProfitTable = ({ selectedDate, weekDays = [], dashboardData = null, ref
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+          {/* Weekly Totals Section */}
+          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly Net Profit Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No net profit data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong className="text-sm sm:text-base">Net Profit:</Text>
+                  <Input
+                    value={`$${weeklyResponseValues.netProfit.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.netProfit < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong className="text-sm sm:text-base">Net Profit Margin %:</Text>
+                  <Input
+                    value={`${weeklyResponseValues.netProfitMargin.toFixed(1)}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      color: weeklyResponseValues.netProfitMargin < 0 ? '#ff4d4f' : '#52c41a'
+                    }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

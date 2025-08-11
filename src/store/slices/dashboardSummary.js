@@ -45,6 +45,8 @@ const createDashboardSummarySlice = (set, get) => {
                 console.log('Fetching dashboard summary from:', url);
                 
                 const response = await apiGet(url);
+                console.log('Dashboard summary API response:', response);
+                console.log('Response data:', response.data);
                 
                 set({ 
                     dashboardSummaryData: response.data, 

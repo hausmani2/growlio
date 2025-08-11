@@ -17,25 +17,30 @@ const { Title } = Typography;
 const { Option } = Select;
 
 const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
+  // Store integration for date selection persistence
+  const { 
+    fetchDashboardDataIfNeeded,
+    ensureRestaurantId,
+    // Date selection from store
+    selectedYear,
+    selectedMonth,
+    selectedWeek,
+    availableWeeks,
+    setSelectedDate,
+    setSelectedYear,
+    setSelectedMonth,
+    setSelectedWeek,
+    setAvailableWeeks,
+    getDateSelection
+  } = useStore();
 
-  // Calendar dropdown states
+  // Local loading states
   const [loading, setLoading] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [selectedWeek, setSelectedWeek] = useState(null);
-  const [availableWeeks, setAvailableWeeks] = useState([]);
-
-  // Dashboard data state
-  const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardMessage, setDashboardMessage] = useState(null);
 
-  // Store integration
-  const { 
-    fetchDashboardDataIfNeeded,
-    ensureRestaurantId
-  } = useStore();
+  // Dashboard data state
+  const [dashboardData, setDashboardData] = useState(null);
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
@@ -117,7 +122,7 @@ const Dashboard = () => {
 
   // Callback function to refresh dashboard data after any component saves data
   const refreshDashboardData = async () => {
-    const weekStartDate = getSelectedWeekStartDate();
+    const { weekStartDate } = getDateSelection();
     if (weekStartDate) {
       await fetchDashboardData(weekStartDate);
     }
@@ -157,15 +162,7 @@ const Dashboard = () => {
     }
   };
 
-  // Get the selected week start date
-  const getSelectedWeekStartDate = () => {
-    if (!selectedWeek || !availableWeeks.length) {
-      return selectedDate;
-    }
 
-    const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
-    return selectedWeekData ? dayjs(selectedWeekData.startDate) : selectedDate;
-  };
 
   // Generate week days based on selected week
   const getWeekDays = () => {
@@ -213,8 +210,14 @@ const Dashboard = () => {
 
   // Initialize with current year and fetch restaurant goals
   useEffect(() => {
-    const currentYear = dayjs().year();
-    setSelectedYear(currentYear);
+    // Check if we already have a selected year in the store
+    const { selectedYear: storeSelectedYear } = getDateSelection();
+    
+    if (!storeSelectedYear) {
+      // Only set current year if no year is already selected
+      const currentYear = dayjs().year();
+      setSelectedYear(currentYear);
+    }
     
     // Fetch restaurant goals when dashboard loads
     const fetchRestaurantGoals = async () => {
@@ -323,12 +326,6 @@ const Dashboard = () => {
 
           <Card className="p-4 sm:p-6">
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <div>
-                <Title level={4} className="text-base sm:text-lg lg:text-xl">Select Date</Title>
-                <p className="text-gray-600 mb-2 sm:mb-4 text-sm sm:text-base">
-                  Choose a year and month to view available weeks for that period.
-                </p>
-              </div>
 
               {/* Calendar Dropdowns */}
               <div className="space-y-4">
@@ -425,37 +422,37 @@ const Dashboard = () => {
               
               {/* Data Tables - Pass dashboard data to all components */}
               <SalesTable
-                selectedDate={getSelectedWeekStartDate()}
+                selectedDate={getDateSelection().weekStartDate}
                 weekDays={getWeekDays()}
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
               <CogsTable 
-                selectedDate={getSelectedWeekStartDate()} 
+                selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
               <LabourTable 
-                selectedDate={getSelectedWeekStartDate()} 
+                selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
               <ProfitCogsTable 
-                selectedDate={getSelectedWeekStartDate()} 
+                selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
               <FixedExpensesTable 
-                selectedDate={getSelectedWeekStartDate()} 
+                selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
               />
               <NetProfitTable 
-                selectedDate={getSelectedWeekStartDate()} 
+                selectedDate={getDateSelection().weekStartDate} 
                 weekDays={getWeekDays()} 
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}
@@ -474,7 +471,7 @@ const Dashboard = () => {
                 />
               </div>
               <SalesTable
-                selectedDate={getSelectedWeekStartDate()}
+                selectedDate={getDateSelection().weekStartDate}
                 weekDays={getWeekDays()}
                 dashboardData={dashboardData}
                 refreshDashboardData={refreshDashboardData}

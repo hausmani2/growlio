@@ -596,60 +596,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       )}
       
       <Row gutter={[16, 16]}>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly COGS Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No COGS data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong>COGS Budget:</Text>
-                  <Input
-                    value={`$${weeklyTotals.cogsBudget.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>COGS Actual:</Text>
-                  <Input
-                    value={`$${weeklyTotals.cogsActual.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>COGS Percentage:</Text>
-                  <Input
-                    value={`${weeklyTotals.cogsPercentage.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Weekly Remaining COGS:</Text>
-                  <Input
-                    value={`$${weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+        
 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
@@ -806,6 +753,60 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   })}
                 </Space>
               )
+            )}
+          </Card>
+        </Col>
+        {/* Weekly Totals Section */}
+        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+          <Card title="Weekly COGS Totals" className="h-fit">
+            {dataNotFound ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No COGS data available for this period."
+                className="py-4"
+              />
+            ) : (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong>COGS Budget:</Text>
+                  <Input
+                    value={`$${weeklyTotals.cogsBudget.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>COGS Actual:</Text>
+                  <Input
+                    value={`$${weeklyTotals.cogsActual.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>COGS Percentage:</Text>
+                  <Input
+                    value={`${weeklyTotals.cogsPercentage.toFixed(1)}%`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>Weekly Remaining COGS:</Text>
+                  <Input
+                    value={`$${weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f5f5f5' }}
+                  />
+                </div>
+              </Space>
             )}
           </Card>
         </Col>

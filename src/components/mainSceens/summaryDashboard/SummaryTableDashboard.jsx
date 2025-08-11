@@ -253,9 +253,9 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             <div className="font-semibold text-xs text-gray-800">
               {dateInfo.day}
             </div>
-            <div className="text-xs text-gray-600">
+            {/* <div className="text-xs text-gray-600">
               {dateInfo.date}
-            </div>
+            </div> */}
           </div>
         ),
         dataIndex: uniqueKey,
