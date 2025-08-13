@@ -38,8 +38,9 @@ const LaborDetailDropdown = ({
                            parseFloat(laborData.daily_labor_rate) || 
                            parseFloat(laborData.hourly_rate) || 0;
   
-  const amtOverUnder =  laborBudget - laborActual;
-  const percentOverUnder = laborBudget > 0 ? ((amtOverUnder / laborBudget) * 100) : 0;
+  // Get over/under values directly from API response
+  const amtOverUnder = parseFloat(laborData.labour_amount) || 0;
+  const percentOverUnder = parseFloat(laborData.labour_amount_percent) || 0;
 
   // Get color for over/under values
   const getOverUnderColor = (value) => {
@@ -58,9 +59,9 @@ const LaborDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage
+  // Format percentage - API provides the value, format to 1 decimal place
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
   };
 
   // Format hours

@@ -60,8 +60,10 @@ const SalesDetailDropdown = ({
   const totalActualSales = salesActual;
   const tickets = parseFloat(salesData.tickets) || 0;
   const avgTicket = parseFloat(salesData.average_ticket) || (tickets > 0 ? totalActualSales / tickets : 0);
-  const amtOverUnder = totalActualSales - salesBudget;
-  const percentOverUnder = salesBudget > 0 ? ((amtOverUnder / salesBudget) * 100) : 0;
+  
+  // Get over/under values directly from API response
+  const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
+  const percentOverUnder = parseFloat(salesData.sales_amount_percent) || 0;
 
   // Color for over/under values is now hardcoded to red
 
@@ -75,9 +77,9 @@ const SalesDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage
+  // Format percentage - API already provides the percentage value
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+    return `${value > 0 ? '+' : ''}${value}%`;
   };
 
   // Toggle section expansion

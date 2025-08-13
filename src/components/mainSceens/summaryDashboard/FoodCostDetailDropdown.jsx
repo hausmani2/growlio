@@ -30,8 +30,9 @@ const FoodCostDetailDropdown = ({
                         parseFloat(foodCostData.fc_actual) || 
                         parseFloat(foodCostData.actual_food_cost) || 0;
   
-  const amtOverUnder = foodCostActual - foodCostBudget;
-  const percentOverUnder = foodCostBudget > 0 ? ((amtOverUnder / foodCostBudget) * 100) : 0;
+  // Get over/under values directly from API response
+  const amtOverUnder = parseFloat(foodCostData.food_cost_amount) || 0;
+  const percentOverUnder = parseFloat(foodCostData.food_cost_amount_percent) || 0;
 
   // Get color for over/under values
   const getOverUnderColor = (value) => {
@@ -50,9 +51,9 @@ const FoodCostDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage
+  // Format percentage - API provides the value, format to 1 decimal place
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
   };
 
   // Toggle section expansion
