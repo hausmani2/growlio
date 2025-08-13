@@ -79,11 +79,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       const dateKey = entry.date || entry.day || 'N/A';
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
-      processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
-      processed.labour_profit[dateKey] = parseNumericValue(entry.labour_profit);
       processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
-      processed.food_cost_profit[dateKey] = parseNumericValue(entry.food_cost_profit);
       processed.hours[dateKey] = parseNumericValue(entry.hours);
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
@@ -97,11 +94,10 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   // Categories for the summary table - Updated to remove profit columns as separate rows
   const categories = useMemo(() => [
     { key: 'sales_budget', label: 'Sales Budget', type: 'currency' },
-    { key: 'labour', label: 'Labor', type: 'number' },
-    { key: 'food_cost', label: 'Food Cost', type: 'currency' },
+    { key: 'labour', label: 'Labor Budget', type: 'number' },
     { key: 'hours', label: 'Hours', type: 'number' },
-    { key: 'amount', label: 'Labor Amount', type: 'currency' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
+    { key: 'food_cost', label: 'Food Cost', type: 'currency' },
     { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' }
   ], []);
 
@@ -280,15 +276,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             return <span className="text-xs text-gray-500">-</span>;
           }
           
-          // Get profit percentage for inline display
-          let profitPercentage = null;
-          if (categoryKey === 'sales_budget' && entry.sales_budeget_profit) {
-            profitPercentage = formatPercentage(entry.sales_budeget_profit);
-          } else if (categoryKey === 'labour' && entry.labour_profit) {
-            profitPercentage = formatPercentage(entry.labour_profit);
-          } else if (categoryKey === 'food_cost' && entry.food_cost_profit) {
-            profitPercentage = formatPercentage(entry.food_cost_profit);
-          }
+
           
           // Handle currency fields
           if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
@@ -300,11 +288,6 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             return (
               <div className="flex items-start justify-start">
                 <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-                {profitPercentage && (
-                  <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
-                    {profitPercentage}
-                  </span>
-                )}
               </div>
             );
           }
@@ -313,11 +296,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             return (
               <div className="flex items-start justify-start">
                 <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
-                {profitPercentage && (
-                  <span className={`text-xs ml-1 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
-                    {profitPercentage}
-                </span>
-                )}
+
               </div>
             );
           }

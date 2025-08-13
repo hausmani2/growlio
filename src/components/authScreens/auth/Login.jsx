@@ -180,7 +180,7 @@ const Login = () => {
               placeholder="Enter Email Address"
               prefix={<img src={Message} alt="Message" className="h-6 w-6" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.email ? 'border-red-500' : ''
               }`}
               status={formErrors.email ? 'error' : ''}
@@ -204,7 +204,7 @@ const Login = () => {
               placeholder="Enter Password"
               prefix={<img src={Lock} alt="Lock" className="h-6 w-6" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.password ? 'border-red-500' : ''
               }`}
               status={formErrors.password ? 'error' : ''}

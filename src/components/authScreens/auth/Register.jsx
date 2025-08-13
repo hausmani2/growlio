@@ -6,8 +6,9 @@ import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button, Spin } from 'antd';
+import { Input, message, Button, Spin, Checkbox } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
+import DisclaimerModal from './DisclaimerModal';
 
 const Register = () => {
   const [form, setForm] = useState({ 
@@ -18,6 +19,8 @@ const Register = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   
   // Zustand store hooks
   const { 
@@ -136,8 +139,17 @@ const Register = () => {
     }
   };
 
-  const isFormValid = form.full_name && form.email && form.username && form.password;
+  const isFormValid = form.full_name && form.email && form.username && form.password && disclaimerAccepted;
   const isLoading = loading || isSubmitting;
+
+  const handleDisclaimerAccept = () => {
+    setDisclaimerAccepted(true);
+    setShowDisclaimerModal(false);
+  };
+
+  const handleDisclaimerModalClose = () => {
+    setShowDisclaimerModal(false);
+  };
 
   return (
     <div className="w-full max-w-sm">
@@ -171,7 +183,7 @@ const Register = () => {
               placeholder="Enter Full Name"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.full_name ? 'border-red-500' : ''
               }`}
               status={formErrors.full_name ? 'error' : ''}
@@ -196,7 +208,7 @@ const Register = () => {
               placeholder="Enter Email Address"
               prefix={<img src={Message} alt="Message" className="h-4 w-4" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.email ? 'border-red-500' : ''
               }`}
               status={formErrors.email ? 'error' : ''}
@@ -221,7 +233,7 @@ const Register = () => {
               placeholder="Enter Username"
               prefix={<img src={User} alt="User" className="h-4 w-4" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.username ? 'border-red-500' : ''
               }`}
               status={formErrors.username ? 'error' : ''}
@@ -245,7 +257,7 @@ const Register = () => {
               placeholder="Enter Password"
               prefix={<img src={Lock} alt="Lock" className="h-4 w-4" />}
               size="large"
-              className={`h-[40px] rounded-md text-lg tw-input input-brand ${
+              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
                 formErrors.password ? 'border-red-500' : ''
               }`}
               status={formErrors.password ? 'error' : ''}
@@ -253,6 +265,34 @@ const Register = () => {
             {formErrors.password && (
               <div className="text-red-500 text-sm mt-1">{formErrors.password}</div>
             )}
+          </div>
+          
+          <div className="flex items-start gap-2 mt-4">
+            <Checkbox
+              checked={disclaimerAccepted}
+              onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+              disabled={!disclaimerAccepted && !showDisclaimerModal}
+            />
+            <div className="flex-1">
+              <p className="text-sm text-neutral-600">
+                I have read and agree to the{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowDisclaimerModal(true)}
+                  className="text-[#FF8132] font-bold hover:text-[#EB5B00] underline"
+                >
+                  Terms and Conditions
+                </button>
+                {' '}and{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowDisclaimerModal(true)}
+                  className="text-[#FF8132] font-bold hover:text-[#EB5B00] underline"
+                >
+                  Privacy Policy
+                </button>
+              </p>
+            </div>
           </div>
           
           <div className='flex justify-end items-center'>
@@ -285,6 +325,13 @@ const Register = () => {
           Already have an account? <Link to="/login" className='text-[#FF8132] font-bold hover:text-[#EB5B00]'>Login</Link>
         </p>
       </div>
+
+      <DisclaimerModal
+        isOpen={showDisclaimerModal}
+        onClose={handleDisclaimerModalClose}
+        onAccept={handleDisclaimerAccept}
+        title="Terms and Conditions"
+      />
     </div>
   );
 };
