@@ -122,6 +122,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
     { key: 'fixedCost', label: 'Fixed Cost', type: 'currency' },
     { key: 'variableCost', label: 'Variable Cost', type: 'currency' },
+    { key: 'profit_loss', label: 'Profit & Loss', type: 'currency' },
  
   ], []);
 

@@ -17,8 +17,6 @@ const VariableCostDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the variable cost data structure
-  console.log('Variable Cost Detail Dropdown Data:', { dayData, variableCostData });
 
   // Calculate values - handle different possible field names
   const variableCostBudget = parseFloat(variableCostData.variable_cost) || 

@@ -286,19 +286,12 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
         <div className="mb-4">
           <ShoppingOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />
         </div>
-        <AntTitle level={4} className="text-gray-500">No Budget Data Available</AntTitle>
+        <AntTitle level={4} className="text-gray-500"> Data Available</AntTitle>
         <Text className="text-gray-400 mb-6 block">
           Start by adding your weekly budget and actual sales data.
         </Text>
         <Space>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={onAddData}
-            size="large"
-          >
-            Add Budget Data
-          </Button>
+        
         </Space>
       </Card>
     );

@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from '../../utils/axiosInterceptors';
+import { apiPost } from '../../utils/axiosInterceptors';
 
 // Simple token check - just undefined vs token
 const hasToken = (token) => {
@@ -18,187 +18,9 @@ const createAuthSlice = (set, get) => {
     isAuthenticated: hasStoredToken,
     loading: false,
     error: null,
-    onboardingStatus: null, // 'loading', 'complete', 'incomplete', null
-    onboardingLoading: false, // Loading state for onboarding checks
-    isNewUser: false, // Track if user is new (no restaurants)
+    // Note: Onboarding status checking is now handled by onBoardingSlice
     
-    // Check onboarding status using /restaurant/restaurants-onboarding/ API
-    checkOnboardingStatus: async () => {
-      // Clear any cached onboarding status first
-      set(() => ({ onboardingStatus: null, onboardingLoading: true }));
-      
-      try {
-        
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
-        
-        const apiPromise = apiGet('/restaurant/restaurants-onboarding/');
-        const response = await Promise.race([apiPromise, timeoutPromise]);
-        const onboardingData = response.data;
-        
-        console.log('🔍 Onboarding status check - Raw data:', onboardingData);
-        
-        // Safely get restaurant_id if available
-        let restaurantId = null;
-        if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
-          restaurantId = onboardingData.restaurants[0].restaurant_id;
-          set(() => ({ restaurantId }));
-          
-          // Also save to localStorage for persistence
-          localStorage.setItem('restaurant_id', restaurantId);
-          console.log('✅ Restaurant ID saved to localStorage:', restaurantId);
-        }
-        
-        // Check if user has no restaurants (new user) - Enhanced check
-        const hasNoRestaurants = !onboardingData?.restaurants || 
-                                onboardingData.restaurants.length === 0 || 
-                                (onboardingData.message === "No restaurants found for this user." && 
-                                 (!onboardingData.restaurants || onboardingData.restaurants.length === 0));
-        
-        if (hasNoRestaurants) {
-          console.log('🆕 New user detected - no restaurants found');
-          set(() => ({ 
-            onboardingStatus: 'incomplete', 
-            onboardingLoading: false,
-            isNewUser: true 
-          }));
-          
-          return {
-            success: true,
-            onboarding_complete: false,
-            isNewUser: true,
-            user: onboardingData?.user || null,
-            shouldRedirectToOnboarding: true
-          };
-        }
-        
-        // Check if user has restaurants
-        if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
-          // Check if any restaurant has onboarding_complete: true
-          const hasCompletedOnboarding = onboardingData.restaurants.some(restaurant => 
-            restaurant.onboarding_complete === true
-          );
-          
-          if (hasCompletedOnboarding) {
-            set(() => ({ 
-              onboardingStatus: 'complete', 
-              onboardingLoading: false,
-              isNewUser: false 
-            }));
-            
-            // Update onboarding slice with restaurant data if available
-            const currentState = get();
-            if (currentState.updateOnboardingData && restaurantId) {
-              currentState.updateOnboardingData({
-                restaurant_id: restaurantId
-              });
-            }
-            
-            return {
-              success: true,
-              onboarding_complete: true,
-              isNewUser: false,
-              user: onboardingData.user,
-              restaurants: onboardingData.restaurants
-            };
-          } else {
-            set(() => ({ 
-              onboardingStatus: 'incomplete', 
-              onboardingLoading: false,
-              isNewUser: false 
-            }));
-            
-            // Update onboarding slice with restaurant data if available
-            const currentState = get();
-            if (currentState.updateOnboardingData && restaurantId) {
-              currentState.updateOnboardingData({
-                restaurant_id: restaurantId
-              });
-            }
-            
-            return {
-              success: true,
-              onboarding_complete: false,
-              isNewUser: false,
-              user: onboardingData.user,
-              restaurants: onboardingData.restaurants
-            };
-          }
-        }
-        
-        // Fallback case
-        set(() => ({ 
-          onboardingStatus: 'incomplete', 
-          onboardingLoading: false,
-          isNewUser: true 
-        }));
-        
-        return {
-          success: true,
-          onboarding_complete: false,
-          isNewUser: true,
-          user: onboardingData?.user || null,
-          shouldRedirectToOnboarding: true
-        };
-      } catch (error) {
-        console.error('Onboarding status check failed:', error);
-        
-        let errorMessage = 'Failed to check onboarding status';
-        
-        if (error.message === 'Request timeout') {
-          errorMessage = 'Request timed out. Please check your connection.';
-        } else if (error.response?.status === 401) {
-          errorMessage = 'Authentication required. Please log in again.';
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        // If API fails, assume onboarding is incomplete
-        set(() => ({ 
-          onboardingStatus: 'incomplete', 
-          onboardingLoading: false,
-          isNewUser: true 
-        }));
-        
-        return {
-          success: false,
-          onboarding_complete: false,
-          error: errorMessage,
-          shouldRedirectToOnboarding: true
-        };
-      }
-    },
-
-    // Auto-redirect to onboarding if no restaurants found
-    redirectToOnboardingIfNeeded: async () => {
-      try {
-        console.log('🔄 Checking if user needs to be redirected to onboarding...');
-        const result = await get().checkOnboardingStatus();
-        
-        if (result.success && result.shouldRedirectToOnboarding) {
-          console.log('🆕 User has no restaurants - should redirect to onboarding');
-          return {
-            shouldRedirect: true,
-            reason: 'No restaurants found',
-            user: result.user
-          };
-        }
-        
-        return {
-          shouldRedirect: false,
-          reason: null
-        };
-      } catch (error) {
-        console.error('❌ Error checking if redirect needed:', error);
-        return {
-          shouldRedirect: true,
-          reason: 'Error checking status',
-          error: error.message
-        };
-      }
-    },
+    // Onboarding status checking is now handled by onBoardingSlice.checkOnboardingCompletion()
     
     login: async (credentials) => {
       set(() => ({ loading: true, error: null }));
@@ -293,6 +115,9 @@ const createAuthSlice = (set, get) => {
       // Clear sessionStorage as well
       sessionStorage.clear(); 
       
+      // Clear onboarding-specific session storage
+      sessionStorage.removeItem('onboarding_completion_check_time');
+      
       // Reset onboarding state first
       const currentState = get();
       if (currentState.resetOnboarding) {
@@ -310,9 +135,7 @@ const createAuthSlice = (set, get) => {
         token: null, 
         isAuthenticated: false, 
         error: null, 
-        onboardingStatus: null,
-        loading: false,
-        onboardingLoading: false
+        loading: false
       }));
       
       // Use the store's clearPersistedState function to completely reset all state
@@ -382,20 +205,6 @@ const createAuthSlice = (set, get) => {
     
     clearError: () => set(() => ({ error: null })),
     
-    // Clear onboarding status cache and force fresh check
-    clearOnboardingStatus: () => {
-      set(() => ({ 
-        onboardingStatus: null, 
-        onboardingLoading: false 
-      }));
-    },
-    
-    // Force refresh onboarding status
-    refreshOnboardingStatus: async () => {
-      set(() => ({ onboardingStatus: null, onboardingLoading: true }));
-      return await get().checkOnboardingStatus();
-    },
-    
     // Clear all application state (for logout or reset)
     // This function clears:
     // - All localStorage items (token, restaurant_id, growlio-store)
@@ -422,9 +231,7 @@ const createAuthSlice = (set, get) => {
         token: null, 
         isAuthenticated: false, 
         error: null, 
-        onboardingStatus: null,
-        loading: false,
-        onboardingLoading: false
+        loading: false
       }));
       
       // Use the store's clearPersistedState function to completely reset all state
@@ -466,30 +273,10 @@ const createAuthSlice = (set, get) => {
       let restaurantId = state.restaurantId || localStorage.getItem('restaurant_id');
       
       if (!restaurantId) {
-        try {
-          console.log('🔄 No restaurant ID found, fetching from API...');
-          const response = await apiGet('/restaurant/restaurants-onboarding/');
-          const onboardingData = response.data;
-          
-          if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
-            restaurantId = onboardingData.restaurants[0].restaurant_id;
-            
-            // Update store and localStorage
-            set(() => ({ restaurantId }));
-            localStorage.setItem('restaurant_id', restaurantId);
-            
-            console.log('✅ Restaurant ID fetched and stored:', restaurantId);
-          } else {
-            console.log('⚠️ No restaurants found in onboarding data');
-          }
-        } catch (error) {
-          console.error('❌ Failed to fetch restaurant ID:', error);
-          
-          // If it's a 404, that's okay - user might not have completed onboarding yet
-          if (error.response?.status === 404) {
-            console.log('ℹ️ No onboarding data found (404) - user may not have completed onboarding');
-          }
-        }
+        // If no restaurant ID found, this means the user is new and hasn't completed onboarding
+        // Don't make API calls - just return null and let the onboarding flow handle it
+        console.log('ℹ️ No restaurant ID found - user needs to complete onboarding first');
+        return null;
       }
       
       return restaurantId;

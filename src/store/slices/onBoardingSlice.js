@@ -698,32 +698,16 @@ const createOnBoardingSlice = (set, get) => ({
             const state = get();
             let restaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             
-            // If no restaurant ID, try to fetch it from the API
+            // If no restaurant ID, this means the user is new and hasn't completed onboarding
+            // Don't make API calls - just return early
             if (!restaurantId) {
-                try {
-                    console.log('🔄 No restaurant ID found locally, attempting to fetch from API...');
-                    const onboardingResponse = await apiGet('/restaurant/restaurants-onboarding/');
-                    const onboardingData = onboardingResponse.data;
-                    
-                    if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
-                        restaurantId = onboardingData.restaurants[0].restaurant_id;
-                        
-                        // Update the store with the restaurant ID
-                        set((state) => ({
-                            completeOnboardingData: {
-                                ...state.completeOnboardingData,
-                                restaurant_id: restaurantId
-                            }
-                        }));
-                        
-                        // Also save to localStorage
-                        localStorage.setItem('restaurant_id', restaurantId);
-                        
-                        console.log('✅ Restaurant ID fetched and stored:', restaurantId);
-                    }
-                } catch (fetchError) {
-                    console.error('❌ Failed to fetch restaurant ID from API:', fetchError);
-                }
+                console.log('ℹ️ No restaurant ID found - user is new and needs to complete onboarding');
+                set(() => ({ onboardingLoading: false, onboardingError: null }));
+                return { 
+                    success: false, 
+                    message: 'No restaurant ID found - user needs to complete onboarding first',
+                    isNewUser: true
+                };
             }
             
             if (!restaurantId) {
@@ -999,6 +983,16 @@ const createOnBoardingSlice = (set, get) => ({
     resetOnboarding: () => {
         // Clear restaurant_id from localStorage
         localStorage.removeItem('restaurant_id');
+        
+        // Clear session storage timestamps
+        sessionStorage.removeItem('onboarding_completion_check_time');
+        
+        // Reset onboarding completion state
+        set(() => ({ 
+            isOnBoardingCompleted: false,
+            onboardingLoading: false,
+            onboardingError: null
+        }));
         
         // Reset to initial state
         set(() => ({ 
@@ -1295,10 +1289,52 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Check if onboarding is complete by calling the restaurants-onboarding API
     checkOnboardingCompletion: async () => {
-        set(() => ({ loading: true, error: null }));
+        const currentState = get();
+        console.log('🔍 checkOnboardingCompletion called');
+        console.log('🔍 Current onboardingLoading state:', currentState.onboardingLoading);
+        
+        // Check if we're already loading to prevent multiple simultaneous calls
+        if (currentState.onboardingLoading) {
+            console.log('⏳ Onboarding completion check already in progress...');
+            return {
+                success: false,
+                isComplete: false,
+                error: 'Check already in progress'
+            };
+        }
+        
+        // Check session storage for recent check to prevent rapid successive calls
+        const lastCheckTime = sessionStorage.getItem('onboarding_completion_check_time');
+        const now = Date.now();
+        const timeSinceLastCheck = lastCheckTime ? now - parseInt(lastCheckTime) : Infinity;
+        
+        console.log('🔍 Time since last check:', timeSinceLastCheck, 'ms');
+        
+        // If we checked within the last 10 seconds, use cached result
+        if (timeSinceLastCheck < 10000) {
+            console.log('⏱️ Using recent onboarding completion check result (checked', Math.round(timeSinceLastCheck / 1000), 'seconds ago)');
+            return {
+                success: true,
+                isComplete: currentState.isOnBoardingCompleted || false,
+                message: 'Using cached result'
+            };
+        }
+        
+        // Record this check time
+        sessionStorage.setItem('onboarding_completion_check_time', now.toString());
+        
+        set(() => ({ onboardingLoading: true, error: null }));
+        
+        // Add timeout to prevent stuck loading state
+        const timeoutId = setTimeout(() => {
+            console.log('⚠️ Onboarding check timeout - resetting loading state');
+            set(() => ({ onboardingLoading: false }));
+        }, 30000); // 30 second timeout
         
         try {
+            console.log('🔍 Making API call to /restaurant/restaurants-onboarding/');
             const response = await apiGet('/restaurant/restaurants-onboarding/');
+            console.log('🔍 API response received:', response);
             const onboardingData = response.data;
 
             
@@ -1313,6 +1349,30 @@ const createOnBoardingSlice = (set, get) => ({
                     restaurant.onboarding_complete === true
                 );
                 
+                console.log('🔍 Found restaurants:', onboardingData.restaurants);
+                console.log('🔍 Has completed onboarding:', hasCompletedOnboarding);
+                
+                // Extract restaurant ID from the first restaurant (or the completed one)
+                let restaurantId = null;
+                if (hasCompletedOnboarding) {
+                    // Get the restaurant ID from the completed restaurant
+                    const completedRestaurant = onboardingData.restaurants.find(restaurant => 
+                        restaurant.onboarding_complete === true
+                    );
+                    restaurantId = completedRestaurant?.restaurant_id;
+                } else {
+                    // Get the restaurant ID from the first restaurant (for incomplete onboarding)
+                    restaurantId = onboardingData.restaurants[0]?.restaurant_id;
+                }
+                
+                console.log('🔍 Extracted restaurant ID:', restaurantId);
+                
+                // Store restaurant ID in localStorage and store if found
+                if (restaurantId) {
+                    localStorage.setItem('restaurant_id', restaurantId.toString());
+                    console.log('✅ Restaurant ID saved to localStorage:', restaurantId);
+                }
+                
                 if (hasCompletedOnboarding) {
                     set(() => ({ 
                         isOnBoardingCompleted: true,
@@ -1323,7 +1383,8 @@ const createOnBoardingSlice = (set, get) => ({
                     return { 
                         success: true, 
                         isComplete: true,
-                        message: 'Onboarding completed successfully!'
+                        message: 'Onboarding completed successfully!',
+                        restaurantId: restaurantId
                     };
                 } else {
                     set(() => ({ 
@@ -1335,7 +1396,8 @@ const createOnBoardingSlice = (set, get) => ({
                     return { 
                         success: true, 
                         isComplete: false,
-                        message: 'Onboarding not yet complete'
+                        message: 'Onboarding not yet complete',
+                        restaurantId: restaurantId
                     };
                 }
             } else {
@@ -1366,12 +1428,25 @@ const createOnBoardingSlice = (set, get) => ({
             }));
             
             throw new Error(errorMessage);
+        } finally {
+            // Clear timeout and reset loading state
+            clearTimeout(timeoutId);
+            set(() => ({ onboardingLoading: false }));
         }
     },
     
     // Manually refresh existing onboarding data (useful for debugging or manual refresh)
     refreshExistingOnboardingData: async () => {
         return await get().loadExistingOnboardingData();
+    },
+    
+    // Force a fresh onboarding completion check by clearing cache
+    forceOnboardingCheck: async () => {
+        // Clear the cache to force a fresh API call
+        sessionStorage.removeItem('onboarding_completion_check_time');
+        // Reset loading state to ensure clean start
+        set(() => ({ onboardingLoading: false }));
+        return await get().checkOnboardingCompletion();
     },
     
     // Get detailed step status information
@@ -1520,36 +1595,9 @@ const createOnBoardingSlice = (set, get) => ({
                 finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             }
 
-            // If still no restaurant ID, try to fetch it from the API
+            // If no restaurant ID found, this means the user is new and hasn't completed onboarding
             if (!finalRestaurantId) {
-                try {
-                    console.log('🔄 No restaurant ID found locally, attempting to fetch from API...');
-                    const onboardingResponse = await apiGet('/restaurant/restaurants-onboarding/');
-                    const onboardingData = onboardingResponse.data;
-                    
-                    if (onboardingData && onboardingData.restaurants && onboardingData.restaurants.length > 0) {
-                        finalRestaurantId = onboardingData.restaurants[0].restaurant_id;
-                        
-                        // Update the store with the restaurant ID
-                        set((state) => ({
-                            completeOnboardingData: {
-                                ...state.completeOnboardingData,
-                                restaurant_id: finalRestaurantId
-                            }
-                        }));
-                        
-                        // Also save to localStorage
-                        localStorage.setItem('restaurant_id', finalRestaurantId);
-                        
-                        console.log('✅ Restaurant ID fetched and stored:', finalRestaurantId);
-                    }
-                } catch (fetchError) {
-                    console.error('❌ Failed to fetch restaurant ID from API:', fetchError);
-                }
-            }
-
-            if (!finalRestaurantId) {
-                console.warn('⚠️ No restaurant ID available - user may need to complete onboarding first');
+                console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
                 set(() => ({
                     restaurantGoalsLoading: false,
                     restaurantGoalsError: 'Restaurant ID is required - please complete onboarding first',

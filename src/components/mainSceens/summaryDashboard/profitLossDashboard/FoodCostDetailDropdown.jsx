@@ -17,8 +17,6 @@ const FoodCostDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the food cost data structure
-  console.log('Food Cost Detail Dropdown Data:', { dayData, foodCostData });
 
   // Calculate values - handle different possible field names
   const foodCostBudget = parseFloat(foodCostData.food_cost) || 

@@ -19,12 +19,13 @@ const Login = () => {
   // Zustand store hooks
   const { 
     login, 
-    checkOnboardingStatus,
     error, 
     isAuthenticated, 
-    clearError,
-    onboardingStatus
+    clearError
   } = useStore();
+  
+  // Get onboarding status check from onboarding slice
+  const checkOnboardingCompletion = useStore((state) => state.checkOnboardingCompletion);
   
   const navigate = useNavigate();
 
@@ -98,27 +99,27 @@ const Login = () => {
         message.success('Login successful! Checking your onboarding status...');
         
         // Check onboarding status after successful login
-        const onboardingResult = await checkOnboardingStatus();
+        const onboardingResult = await checkOnboardingCompletion();
         
         if (onboardingResult.success) {
-          const isComplete = onboardingResult.onboarding_complete;
+          const isComplete = onboardingResult.isComplete;
           
           if (isComplete) {
             message.success('Welcome back! Redirecting to dashboard...');
             setTimeout(() => {
-              navigate('/dashboard/summary');
+              navigate('/dashboard/budget');
             }, 1000);
           } else {
             message.info('Please complete your onboarding setup...');
             setTimeout(() => {
-              navigate('/onboarding/summary');
+              navigate('/onboarding/budget');
             }, 1000);
           }
         } else {
           // Fallback to onboarding if check fails
           message.info('Redirecting to onboarding...');
           setTimeout(() => {
-            navigate('/onboarding/summary');
+            navigate('/onboarding/budget');
           }, 1000);
         }
       }
@@ -136,7 +137,7 @@ const Login = () => {
   const isLoading = isSubmitting;
   
   // Show loading overlay during onboarding check
-  const showLoadingOverlay = onboardingStatus === 'loading';
+  const showLoadingOverlay = isSubmitting;
 
   return (
     <div className="w-full max-w-sm relative">
@@ -145,7 +146,7 @@ const Login = () => {
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-lg">
           <div className="text-center">
             <Spin size="large" />
-            <p className="mt-2 text-gray-600">Checking onboarding status...</p>
+            <p className="mt-2 text-gray-600">Logging in...</p>
           </div>
         </div>
       )}

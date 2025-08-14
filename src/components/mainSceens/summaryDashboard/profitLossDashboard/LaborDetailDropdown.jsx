@@ -17,8 +17,6 @@ const LaborDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the labor data structure
-  console.log('Labor Detail Dropdown Data:', { dayData, laborData });
 
   // Calculate values - handle different possible field names
   const laborBudget = parseFloat(laborData.labour) || 

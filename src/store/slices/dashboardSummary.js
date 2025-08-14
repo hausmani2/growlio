@@ -26,9 +26,17 @@ const createDashboardSummarySlice = (set, get) => {
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
                 if (!targetRestaurantId) {
-                    targetRestaurantId = await get().fetchRestaurantId();
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.log('⚠️ Error fetching restaurant ID:', error);
+                        targetRestaurantId = null;
+                    }
+                    
                     if (!targetRestaurantId) {
-                        throw new Error('Restaurant ID not found');
+                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        set({ loading: false, error: null });
+                        return null;
                     }
                 }
                 
@@ -75,9 +83,17 @@ const createDashboardSummarySlice = (set, get) => {
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
                 if (!targetRestaurantId) {
-                    targetRestaurantId = await get().fetchRestaurantId();
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.log('⚠️ Error fetching restaurant ID:', error);
+                        targetRestaurantId = null;
+                    }
+                    
                     if (!targetRestaurantId) {
-                        throw new Error('Restaurant ID not found');
+                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        set({ loading: false, error: null });
+                        return null;
                     }
                 }
                 

@@ -19,10 +19,6 @@ const SalesDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the sales data structure
-  console.log('Sales Detail Dropdown Data:', { dayData, salesData });
-  console.log('Available salesData fields:', Object.keys(salesData || {}));
-  console.log('In-store sales value:', salesData?.in_store_sales, salesData?.['in-store_sales']);
   
   // Note: sales_actual comes directly from API response, not calculated
   // Only fixed_costs and variable_costs arrays should be summed
@@ -77,9 +73,9 @@ const SalesDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage - API already provides the percentage value
+  // Format percentage - API provides the value, format to 1 decimal place
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value}%`;
+    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
   };
 
   // Toggle section expansion

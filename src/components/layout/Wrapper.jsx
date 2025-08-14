@@ -20,10 +20,23 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const menuItems = [
     {
-      key: 'dashboard summary',
+      key: 'dashboard-summary',
       icon: <FaChartLine />,
       label: 'Dashboard',
-      onClick: () => navigate('/dashboard/summary'),
+      children: [
+        {
+          key: 'budget',
+          icon: <FaChartLine />,
+          label: 'Budget',
+          onClick: () => navigate('/dashboard/budget'),
+        },
+        {
+          key: 'profit-loss',
+          icon: <FaChartLine />,
+          label: 'Profit & Loss',
+          onClick: () => navigate('/dashboard/profit-loss'),
+        },
+      ],
     },
     {
       key: 'dashboard',

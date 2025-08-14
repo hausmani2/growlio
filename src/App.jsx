@@ -18,13 +18,26 @@ import FoodCostDetailsWrapper from './components/mainSceens/restaurantsInformati
 import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation/steps/salesChannels/SalesChannelsWrapper';
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
+import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const token = useStore((state) => state.token);
   
   useEffect(() => {
+    console.log('🚀 App component mounted - initializing auth...');
     initializeAuth();
   }, [initializeAuth]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 App Debug - Auth State:', {
+      isAuthenticated,
+      hasToken: !!token,
+      localStorageToken: !!localStorage.getItem('token')
+    });
+  }, [isAuthenticated, token]);
 
   return (
     <Router>
@@ -36,8 +49,9 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<Navigate to="/dashboard/summary" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
+          <Route path="/onboarding/budget" element={<OnboardingWrapper />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
@@ -45,7 +59,8 @@ function App() {
           <Route path="/onboarding/expense" element={<RestaurantInfo />} />
           <Route path="/onboarding/complete" element={<CompleteSteps />} />
           <Route path="/complete-steps" element={<CompleteSteps />} />
-          <Route path="/dashboard/summary" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
+          <Route path="/dashboard/budget" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
+          <Route path="/dashboard/profit-loss" element={<Wrapper showSidebar={true} children={<ProfitLossDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
           <Route path="/dashboard/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />

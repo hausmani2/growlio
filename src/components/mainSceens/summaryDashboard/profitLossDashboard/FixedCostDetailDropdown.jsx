@@ -17,8 +17,6 @@ const FixedCostDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the fixed cost data structure
-  console.log('Fixed Cost Detail Dropdown Data:', { dayData, fixedCostData });
 
   // Calculate values - handle different possible field names
   const fixedCostBudget = parseFloat(fixedCostData.fixed_cost) || 

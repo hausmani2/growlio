@@ -73,7 +73,11 @@ const createDashboardSlice = (set, get) => {
                 // Get restaurant ID
                 const restaurantId = await get().fetchRestaurantId();
                 if (!restaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    // Don't throw error - just set loading to false and return
+                    // This is expected for new users who haven't completed onboarding
+                    set({ loading: false, error: null });
+                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                    return null;
                 }
                 
                 let url = '/restaurant/dashboard/';
@@ -138,7 +142,11 @@ const createDashboardSlice = (set, get) => {
                 // Get restaurant ID if not provided
                 const targetRestaurantId = restaurantId || await get().fetchRestaurantId();
                 if (!targetRestaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    // Don't throw error - just set loading to false and return
+                    // This is expected for new users who haven't completed onboarding
+                    set({ loading: false, error: null });
+                    console.log('ℹ️ No restaurant ID available for goals - user needs to complete onboarding first');
+                    return null;
                 }
                 
                 const url = `/restaurant/goals/?restaurant_id=${targetRestaurantId}`;
@@ -286,7 +294,9 @@ const createDashboardSlice = (set, get) => {
                     const restaurantId = await get().fetchRestaurantId();
                     
                     if (!restaurantId) {
-                        throw new Error('Restaurant ID not found');
+                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        set({ loading: false, error: null });
+                        return null;
                     }
                     
                     // Add restaurant_id to the new payload format
@@ -312,7 +322,9 @@ const createDashboardSlice = (set, get) => {
                 const restaurantId = await get().fetchRestaurantId();
 
                 if (!restaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                    set({ loading: false, error: null });
+                    return null;
                 }
 
                 // First, get existing data to merge with new data
@@ -555,34 +567,94 @@ const createDashboardSlice = (set, get) => {
             return restaurantId;
         },
 
-        // Fetch restaurant ID from onboarding data or localStorage
+        // Fetch restaurant ID from localStorage or store
         fetchRestaurantId: async () => {
-            const state = get();
-            const storeRestaurantId = state.restaurantId;
-            
-            if (storeRestaurantId) {
-                return storeRestaurantId;
+            try {
+                const state = get();
+                const storeRestaurantId = state.restaurantId;
+                
+                console.log('🔍 fetchRestaurantId - storeRestaurantId:', storeRestaurantId);
+                
+                if (storeRestaurantId) {
+                    console.log('✅ Using restaurant ID from store:', storeRestaurantId);
+                    return storeRestaurantId;
+                }
+                
+                // Try localStorage as fallback
+                const localRestaurantId = localStorage.getItem('restaurant_id');
+                console.log('🔍 fetchRestaurantId - localRestaurantId:', localRestaurantId);
+                
+                if (localRestaurantId) {
+                    console.log('✅ Using restaurant ID from localStorage:', localRestaurantId);
+                    set({ restaurantId: localRestaurantId });
+                    return localRestaurantId;
+                }
+                
+                // Try to get restaurant ID from onboarding slice if available
+                try {
+                    const onboardingState = get();
+                    if (onboardingState.completeOnboardingData?.restaurant_id) {
+                        const onboardingRestaurantId = onboardingState.completeOnboardingData.restaurant_id;
+                        console.log('✅ Using restaurant ID from onboarding data:', onboardingRestaurantId);
+                        set({ restaurantId: onboardingRestaurantId });
+                        localStorage.setItem('restaurant_id', onboardingRestaurantId.toString());
+                        return onboardingRestaurantId;
+                    }
+                } catch (error) {
+                    console.log('⚠️ Could not get restaurant ID from onboarding data:', error);
+                }
+                
+                // If no restaurant ID found, this means the user is new and hasn't completed onboarding
+                // Don't make API calls - just return null and let the onboarding flow handle it
+                console.log('ℹ️ No restaurant ID found - user needs to complete onboarding first');
+                return null;
+            } catch (error) {
+                console.error('❌ Error in fetchRestaurantId:', error);
+                return null;
             }
-            
-            // Try to get from onboarding slice
-            const onboardingRestaurantId = state.getRestaurantIdWithFallback?.();
-            if (onboardingRestaurantId) {
-                set({ restaurantId: onboardingRestaurantId });
-                return onboardingRestaurantId;
-            }
-            
-            // Try localStorage as last resort
-            const localRestaurantId = localStorage.getItem('restaurant_id');
-            if (localRestaurantId) {
-                set({ restaurantId: localRestaurantId });
-                return localRestaurantId;
-            }
-            
-            return null;
         },
 
         // Set restaurant ID
         setRestaurantId: (id) => set({ restaurantId: id }),
+        
+        // Manually set restaurant ID and save to localStorage
+        setRestaurantIdAndPersist: (id) => {
+            if (id) {
+                console.log('🔧 Manually setting restaurant ID:', id);
+                set({ restaurantId: id });
+                localStorage.setItem('restaurant_id', id.toString());
+                console.log('✅ Restaurant ID saved to localStorage:', id);
+            }
+        },
+        
+        // Debug function to check restaurant ID status
+        debugRestaurantId: () => {
+            const state = get();
+            const storeRestaurantId = state.restaurantId;
+            const localRestaurantId = localStorage.getItem('restaurant_id');
+            
+            console.log('🔍 Restaurant ID Debug Info:');
+            console.log('  - Store restaurantId:', storeRestaurantId);
+            console.log('  - localStorage restaurant_id:', localRestaurantId);
+            console.log('  - Store state keys:', Object.keys(state));
+            
+            // Check onboarding slice if available
+            try {
+                if (state.completeOnboardingData?.restaurant_id) {
+                    console.log('  - Onboarding data restaurant_id:', state.completeOnboardingData.restaurant_id);
+                }
+            } catch (error) {
+                console.log('  - Could not access onboarding data');
+            }
+            
+            return {
+                storeRestaurantId,
+                localRestaurantId,
+                hasStoreId: !!storeRestaurantId,
+                hasLocalId: !!localRestaurantId,
+                onboardingRestaurantId: state.completeOnboardingData?.restaurant_id
+            };
+        },
         
         // Reset dashboard state (for logout)
         resetDashboard: () => {

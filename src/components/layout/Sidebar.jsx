@@ -16,7 +16,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
-    '/dashboard/summary': 'dashboard summary',
+    '/dashboard/budget': 'budget',
+    '/dashboard/profit-loss': 'profit-loss',
     '/dashboard': 'dashboard',
     '/dashboard/onboarding': 'onboarding',
     '/dashboard/basic-information': 'basic-information',
@@ -25,7 +26,15 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/expense': 'expense',
   };
-  const selectedKey = pathKeyMap[location.pathname] || 'dashboard summary';
+  
+  // Determine selected key based on current path
+  let selectedKey = pathKeyMap[location.pathname] || 'dashboard';
+  
+  // If we're on a dashboard sub-page, also mark the parent as selected
+  if (location.pathname === '/dashboard/budget' || location.pathname === '/dashboard/profit-loss') {
+    // For dashboard sub-pages, we want to show the parent as expanded and the child as selected
+    selectedKey = pathKeyMap[location.pathname];
+  }
 
   // Close sidebar on window resize if desktop
   useEffect(() => {
@@ -40,6 +49,22 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [onMobileMenuToggle]);
+
+  // Auto-expand parent menu items when child is selected
+  useEffect(() => {
+    const newExpandedItems = new Set(expandedItems);
+    
+    // Find parent items that should be expanded based on current selection
+    menuItems.forEach(item => {
+      if (item.children && item.children.some(child => selectedKey === child.key)) {
+        newExpandedItems.add(item.key);
+      }
+    });
+    
+    if (newExpandedItems.size !== expandedItems.size) {
+      setExpandedItems(newExpandedItems);
+    }
+  }, [selectedKey, menuItems]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -85,8 +110,11 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   const renderMenuItem = (item, level = 0) => {
     const isSelected = selectedKey === item.key;
-    const isExpanded = expandedItems.has(item.key);
     const hasChildren = item.children && item.children.length > 0;
+    
+    // Auto-expand parent if any child is selected
+    const shouldAutoExpand = hasChildren && item.children.some(child => selectedKey === child.key);
+    const isExpanded = expandedItems.has(item.key) || shouldAutoExpand;
 
     return (
       <div key={item.key} className="relative">

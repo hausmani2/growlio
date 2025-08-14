@@ -103,6 +103,13 @@ const Dashboard = () => {
     try {
       const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
       
+      // If no data returned (null), this means no restaurant ID was found
+      if (!data) {
+        setDashboardData(null);
+        setDashboardMessage('Please complete your onboarding setup first to view dashboard data.');
+        return;
+      }
+      
       // Check if the response indicates no data found
       if (data && data.status === "success" && data.message === "No weekly dashboard found for the given criteria." && data.data === null) {
         setDashboardData(null);
@@ -243,7 +250,7 @@ const Dashboard = () => {
         const restaurantId = await ensureRestaurantId();
         
         if (!restaurantId) {
-          console.warn('No restaurant ID available. Skipping restaurant goals fetch.');
+          console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
           return;
         }
         
@@ -455,6 +462,8 @@ const Dashboard = () => {
         </div>
 
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Debug Component - Remove this in production */}
+          
           {/* Restaurant Information Card */}
           <RestaurantInfoCard />
           
