@@ -18,10 +18,7 @@ const FixedCostDetailDropdown = ({
   }
 
 
-  // Calculate values - handle different possible field names
-  const fixedCostBudget = parseFloat(fixedCostData.fixed_cost) || 
-                         parseFloat(fixedCostData.fixed_cost_budget) || 
-                         parseFloat(fixedCostData.budgeted_fixed_cost) || 0;
+
   
   // Calculate actual from fixed_costs array
   const fixedCostActual = Array.isArray(fixedCostData.fixed_costs) 
@@ -29,15 +26,7 @@ const FixedCostDetailDropdown = ({
     : parseFloat(fixedCostData.fixed_cost_actual) || 
       parseFloat(fixedCostData.actual_fixed_cost) || 0;
   
-  const amtOverUnder = fixedCostActual - fixedCostBudget;
-  const percentOverUnder = fixedCostBudget > 0 ? ((amtOverUnder / fixedCostBudget) * 100) : 0;
 
-  // Get color for over/under values
-  const getOverUnderColor = (value) => {
-    if (value > 0) return 'text-red-600';
-    if (value < 0) return 'text-green-600';
-    return 'text-gray-600';
-  };
 
   // Format currency
   const formatCurrency = (value) => {
@@ -49,10 +38,7 @@ const FixedCostDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage
-  const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
-  };
+
 
   // Toggle section expansion
   const toggleSection = (section) => {

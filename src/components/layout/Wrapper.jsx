@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
-import { SiExpensify } from 'react-icons/si';
+import { SiActualbudget, SiExpensify } from 'react-icons/si';
 const { Content } = Layout;
 
 /**
@@ -26,13 +26,13 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       children: [
         {
           key: 'budget',
-          icon: <FaChartLine />,
+          icon: <SiActualbudget />,
           label: 'Budget',
           onClick: () => navigate('/dashboard/budget'),
         },
         {
           key: 'profit-loss',
-          icon: <FaChartLine />,
+          icon: <ArrowUpOutlined />,
           label: 'Profit & Loss',
           onClick: () => navigate('/dashboard/profit-loss'),
         },

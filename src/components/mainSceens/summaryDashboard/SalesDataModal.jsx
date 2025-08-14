@@ -3,6 +3,7 @@ import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider
 import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 
 const { Title, Text } = Typography;
 
@@ -95,7 +96,8 @@ const SalesDataModal = ({
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
         dailyTickets: 0,
-        averageDailyTicket: 0
+        averageDailyTicket: 0,
+        isRestaurantOpen: true // Default to open for all days
       };
 
       // Add dynamic provider fields
@@ -283,6 +285,12 @@ const SalesDataModal = ({
         return;
       }
 
+             // Check if budgeted sales are entered
+       if (!hasBudgetedSales()) {
+         message.warning('Please add budgeted sales data before saving.');
+         return;
+       }
+
       const weeklyTotals = calculateWeeklyTotals();
       const startDate = selectedWeekData?.startDate ? dayjs(selectedWeekData.startDate) : dayjs();
       const currentProviders = getProviders();
@@ -314,6 +322,7 @@ const SalesDataModal = ({
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
               daily_tickets: parseFloat(day.dailyTickets) || 0,
+              is_restaurant_open: day.isRestaurantOpen, // Include the new field
               // Add dynamic provider fields to daily data
               ...currentProviders.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
@@ -364,6 +373,35 @@ const SalesDataModal = ({
     return Math.round(netSales / dailyTickets);
   };
 
+  // Check if a day is closed (restaurant not open)
+  const isDayClosed = (record) => {
+    return !record.isRestaurantOpen;
+  };
+
+  // Handle input change with closed day validation
+  const handleInputChange = (dayIndex, field, value, record) => {
+    if (isDayClosed(record)) {
+      message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
+      return;
+    }
+    handleDailyDataChange(dayIndex, field, value);
+  };
+
+  // Check if all days are closed
+  const areAllDaysClosed = () => {
+    return formData.dailyData.every(day => !day.isRestaurantOpen);
+  };
+
+  // Check if any budgeted sales are entered
+  const hasBudgetedSales = () => {
+    return formData.dailyData.some(day => day.budgetedSales && day.budgetedSales > 0);
+  };
+
+  // Check if save button should be disabled
+  const isSaveButtonDisabled = () => {
+    return !hasBudgetedSales();
+  };
+
   return (
     <Modal
       title={
@@ -378,15 +416,16 @@ const SalesDataModal = ({
         <Button key="cancel" onClick={onCancel}>
           Cancel
         </Button>,
-        <Button 
-          key="submit" 
-          type="primary" 
-          icon={<SaveOutlined />}
-          onClick={handleSubmit} 
-          loading={isSubmitting || storeLoading}
-        >
-          Save Sales Data
-        </Button>
+                 <Button 
+           key="submit" 
+           type="primary" 
+           icon={<SaveOutlined />}
+           onClick={handleSubmit} 
+           loading={isSubmitting || storeLoading}
+           disabled={isSaveButtonDisabled()}
+         >
+           Save Sales Data
+         </Button>
       ]}
       width="90vw"
       style={{ maxWidth: '1200px' }}
@@ -404,7 +443,18 @@ const SalesDataModal = ({
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         {/* Weekly Totals Section - Only show when not auto-opened from summary */}
         {!autoOpenFromSummary && (
-          <Card title="Weekly Totals" size="small">
+          <Card 
+            title="Weekly Totals" 
+            size="small"
+            extra={
+              <div className="text-xs text-gray-500">
+                {formData.dailyData.filter(day => day.isRestaurantOpen).length} of 7 days open
+                {areAllDaysClosed() && (
+                  <span className="text-red-500 ml-2">⚠️ All days are closed</span>
+                )}
+              </div>
+            }
+          >
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={8} lg={6}>
                 <div>
@@ -492,6 +542,14 @@ const SalesDataModal = ({
         <Card 
           title="Daily Sales Data"
           size="small"
+                     extra={
+             <div className="text-xs text-gray-500 flex items-center gap-2">
+               <span>💡 Toggle switches control restaurant open/closed status for each day</span>
+               {!hasBudgetedSales() && (
+                 <span className="text-red-500 ml-2">⚠️ Budgeted sales required to save</span>
+               )}
+             </div>
+           }
         >
           <div className="overflow-x-auto">
             <Table
@@ -500,6 +558,7 @@ const SalesDataModal = ({
               size="small"
               rowKey={(record) => record.key}
               scroll={{ x: 'max-content' }}
+              rowClassName={(record) => !record.isRestaurantOpen ? 'opacity-50 bg-gray-50' : ''}
               summary={(pageData) => {
                 const currentProviders = getProviders();
                 const totals = pageData.reduce((acc, record) => {
@@ -541,6 +600,9 @@ const SalesDataModal = ({
                         <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={1}>
+                        <Text strong style={{ color: '#1890ff' }}>-</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={2}>
                         <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                       </Table.Summary.Cell>
                     </Table.Summary.Row>
@@ -554,36 +616,39 @@ const SalesDataModal = ({
                       <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>-</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={2}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={3}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4}>
                       <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     {currentProviders.map((provider, index) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return (
-                        <Table.Summary.Cell key={providerKey} index={4 + index}>
+                        <Table.Summary.Cell key={providerKey} index={5 + index}>
                           <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
                         </Table.Summary.Cell>
                       );
                     })}
-                    <Table.Summary.Cell index={4 + currentProviders.length}>
+                    <Table.Summary.Cell index={5 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={5 + currentProviders.length}>
+                    <Table.Summary.Cell index={6 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={6 + currentProviders.length}>
+                    <Table.Summary.Cell index={7 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.budgetedSales > 0 && netSalesActualTotal > 0 
                           ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
                           : '0.0'}%
                       </Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={7 + currentProviders.length}>
+                    <Table.Summary.Cell index={8 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.dailyTickets > 0 
                           ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
@@ -594,7 +659,7 @@ const SalesDataModal = ({
                 );
               }}
               columns={autoOpenFromSummary ? [
-                // Only show Day and Budgeted Sales when auto-opened from summary
+                // Only show Day, Days Open, and Budgeted Sales when auto-opened from summary
                 {
                   title: 'Day',
                   dataIndex: 'dayName',
@@ -603,7 +668,14 @@ const SalesDataModal = ({
                   fixed: 'left',
                   render: (text, record) => (
                     <div>
-                      <div className="font-medium">{text}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {text}
+                        {isDayClosed(record) && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                            CLOSED
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
@@ -611,21 +683,47 @@ const SalesDataModal = ({
                   )
                 },
                 {
-                  title: 'Budgeted Sales',
-                  dataIndex: 'budgetedSales',
-                  key: 'budgetedSales',
+                  title: 'Days Open',
+                  dataIndex: 'isRestaurantOpen',
+                  key: 'isRestaurantOpen',
                   width: 120,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                      className="w-full"
-                    />
+                  render: (isOpen, record, index) => (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <ToggleSwitch
+                          isOn={isOpen}
+                          setIsOn={(checked) => handleDailyDataChange(index, 'isRestaurantOpen', checked)}
+                          size="small"
+                        />
+                        <span className={`text-xs font-medium ${isOpen ? 'text-green-600' : 'text-red-600'}`}>
+                          {isOpen ? 'Open' : 'Closed'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">{record.dayName}</span>
+                    </div>
                   )
-                }
-              ] : [
+                                 },
+                 {
+                   title: 'Budgeted Sales',
+                   dataIndex: 'budgetedSales',
+                   key: 'budgetedSales',
+                   width: 120,
+                   render: (value, record, index) => (
+                     <Input
+                       type="number"
+                       value={value}
+                       onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                       placeholder="0.00"
+                       className="w-full"
+                       disabled={isDayClosed(record)}
+                       style={{ 
+                         opacity: isDayClosed(record) ? 0.5 : 1,
+                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                       }}
+                     />
+                   )
+                 }
+               ] : [
                 // Show all columns when not auto-opened from summary
                 {
                   title: 'Day',
@@ -635,10 +733,38 @@ const SalesDataModal = ({
                   fixed: 'left',
                   render: (text, record) => (
                     <div>
-                      <div className="font-medium">{text}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {text}
+                        {isDayClosed(record) && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                            CLOSED
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
+                    </div>
+                  )
+                },
+                {
+                  title: 'Days Open',
+                  dataIndex: 'isRestaurantOpen',
+                  key: 'isRestaurantOpen',
+                  width: 120,
+                  render: (isOpen, record, index) => (
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <ToggleSwitch
+                          isOn={isOpen}
+                          setIsOn={(checked) => handleDailyDataChange(index, 'isRestaurantOpen', checked)}
+                          size="small"
+                        />
+                        <span className={`text-xs font-medium ${isOpen ? 'text-green-600' : 'text-red-600'}`}>
+                          {isOpen ? 'Open' : 'Closed'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500">{record.dayName}</span>
                     </div>
                   )
                 },
@@ -651,9 +777,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -666,9 +797,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -681,9 +817,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -697,9 +838,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 })),
@@ -729,9 +875,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
                       placeholder="0"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },

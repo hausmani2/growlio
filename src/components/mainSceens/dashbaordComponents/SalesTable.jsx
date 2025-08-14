@@ -201,6 +201,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return Math.round(netSales / dailyTickets);
   };
 
+
+
   // Process dashboard data to extract sales information
   const processDashboardData = () => {
     if (!dashboardData) {
@@ -253,7 +255,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: entry['Sales Performance']?.actual_sales_app_online || 0,
         actualVsBudgetSales: entry['Sales Performance']?.actual_vs_budget_sales || 0,
         dailyTickets: entry['Sales Performance']?.daily_tickets || 0,
-        averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0
+        averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0,
+        isRestaurantOpen: entry['Sales Performance']?.is_restaurant_open !== false // Default to true if not specified
       };
 
       // Add dynamic provider fields to daily data from third_party_sales object
@@ -294,7 +297,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           actualSalesAppOnline: 0,
           actualVsBudgetSales: 0,
           dailyTickets: 0,
-          averageDailyTicket: 0
+          averageDailyTicket: 0,
+          isRestaurantOpen: true // Default to open for new days
         };
 
         // Add dynamic provider fields to default data
@@ -433,6 +437,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
               daily_tickets: parseFloat(day.dailyTickets) || 0,
               average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
+              is_restaurant_open: day.isRestaurantOpen !== false, // Include the restaurant open/closed status
               // Add dynamic provider fields to daily data
               ...providers.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
@@ -516,43 +521,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
 
 
-  // Calculate weekly totals
-  const calculateWeeklyTotals = (weekData) => {
-    const totals = weekData.dailyData.reduce((acc, day) => {
-      const dayTotals = {
-        budgetedSales: acc.budgetedSales + (parseFloat(day.budgetedSales) || 0),
-        actualSalesInStore: acc.actualSalesInStore + (parseFloat(day.actualSalesInStore) || 0),
-        actualSalesAppOnline: acc.actualSalesAppOnline + (parseFloat(day.actualSalesAppOnline) || 0),
-      };
 
-      // Add dynamic provider totals
-      providers.forEach(provider => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        dayTotals[providerKey] = acc[providerKey] + (parseFloat(day[providerKey]) || 0);
-      });
-
-      return dayTotals;
-    }, {
-      budgetedSales: 0,
-      actualSalesInStore: 0,
-      actualSalesAppOnline: 0,
-      ...providers.reduce((acc, provider) => {
-        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        acc[providerKey] = 0;
-        return acc;
-      }, {})
-    });
-
-    // Calculate net sales actual as sum of all actual sales (including dynamic providers)
-    const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
-    providers.forEach(provider => {
-      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-      allSalesFields.push(providerKey);
-    });
-    
-    totals.netSalesActual = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
-    return totals;
-  };
 
   // Generate 7 days of data starting from a given date
   const generateDailyData = (startDate) => {
@@ -566,6 +535,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
+        isRestaurantOpen: true // Default to open for new days
       };
 
       // Add dynamic provider fields
@@ -595,6 +565,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         // Dynamic provider fields will be added here
       }
     });
+
+    // Check if a day is closed (restaurant not open)
+    const isDayClosed = (record) => {
+      return !record.isRestaurantOpen;
+    };
 
     useEffect(() => {
       if (editingWeek) {
@@ -694,7 +669,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate, weeklyGoals]);
 
-    const handleDailyDataChange = (dayIndex, field, value) => {
+    const handleDailyDataChange = (dayIndex, field, value, record) => {
+      if (isDayClosed(record)) {
+        message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
+        return;
+      }
+      
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
@@ -863,6 +843,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               size="small"
               rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
               scroll={{ x: 'max-content' }}
+              rowClassName={(record) => !record.isRestaurantOpen ? 'opacity-50 bg-gray-50' : ''}
               summary={(pageData) => {
                 const totals = pageData.reduce((acc, record) => {
                   acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
@@ -955,7 +936,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   fixed: 'left',
                   render: (text, record) => (
                     <div>
-                      <div className="font-medium">{text}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {text}
+                        {isDayClosed(record) && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                            CLOSED
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
@@ -971,9 +959,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Input
                       type='number'
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -986,9 +979,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Input
                       type='number'
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -1001,9 +999,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Input
                       type='number'
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -1014,13 +1017,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                   width: 150,
                   render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                      className="w-full"
-                    />
+                                          <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDayClosed(record)}
+                        style={{ 
+                          opacity: isDayClosed(record) ? 0.5 : 1,
+                          cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                        }}
+                      />
                   )
                 })),
                 {
@@ -1053,9 +1061,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Input
                       type='number'
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
                       placeholder="0"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -1148,22 +1161,30 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 />
               ) : (
                 <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
-                  {weeklyData.map((week) => {
-                    const totals = calculateWeeklyTotals(week);
-                    return (
-                      <Card 
-                        key={week.id || `week-${week.weekTitle}`} 
-                        size="small" 
-                       
-                       
-                      >
+                                     {weeklyData.map((week) => {
+                     return (
+                                             <Card 
+                         key={week.id || `week-${week.weekTitle}`} 
+                         size="small" 
+                         title={
+                           <div className="flex items-center justify-between">
+                             <span>Weekly Sales Data</span>
+                             {week.dailyData && (
+                               <span className="text-xs text-gray-500">
+                                 {week.dailyData.filter(day => !day.isRestaurantOpen).length} of 7 days closed
+                               </span>
+                             )}
+                           </div>
+                         }
+                       >
                         <div className="overflow-x-auto">
                           <Table
                             dataSource={week.dailyData || []}
                             pagination={false}
                             size="small"
-                            rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
-                            scroll={{ x: 'max-content' }}
+                                                         rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                             scroll={{ x: 'max-content' }}
+                             rowClassName={(record) => !record.isRestaurantOpen ? 'opacity-50 bg-gray-50' : ''}
                             summary={(pageData) => {
                               const totals = pageData.reduce((acc, record) => {
                                 acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
@@ -1248,21 +1269,28 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               );
                             }}
                             columns={[
-                              {
-                                title: 'Day',
-                                dataIndex: 'dayName',
-                                key: 'dayName',
-                                width: 120,
-                                fixed: 'left',
-                                render: (text, record) => (
-                                  <div>
-                                    <div className="font-medium">{text}</div>
-                                    <div style={{ fontSize: '12px', color: '#666' }}>
-                                      {record.date.format('MMM DD, YYYY')}
-                                    </div>
-                                  </div>
-                                )
-                              },
+                                                             {
+                                 title: 'Day',
+                                 dataIndex: 'dayName',
+                                 key: 'dayName',
+                                 width: 120,
+                                 fixed: 'left',
+                                 render: (text, record) => (
+                                   <div>
+                                     <div className="font-medium flex items-center gap-2">
+                                       {text}
+                                       {!record.isRestaurantOpen && (
+                                         <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                                           CLOSED
+                                         </span>
+                                       )}
+                                     </div>
+                                     <div style={{ fontSize: '12px', color: '#666' }}>
+                                       {record.date.format('MMM DD, YYYY')}
+                                     </div>
+                                   </div>
+                                 )
+                               },
                               {
                                 title: 'Budgeted Sales',
                                 dataIndex: 'budgetedSales',

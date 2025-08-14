@@ -34,9 +34,11 @@ const FoodCostDetailDropdown = ({
 
   // Get color for over/under values
   const getOverUnderColor = (value) => {
-    if (value > 0) return 'text-red-600';
-    if (value < 0) return 'text-green-600';
-    return 'text-gray-600';
+    console.log(value + " value");
+    
+    if (value > 0) return '!text-red-600';
+    if (value < 0) return '!text-green-600';
+    return '!text-gray-600';
   };
 
   // Format currency
@@ -122,21 +124,7 @@ const FoodCostDetailDropdown = ({
           </div>
         </div>
 
-        {/* Actual Daily Labor Rate */}
-        <div className="p-2 bg-red-50 rounded border border-red-200">
-          <div className="flex items-center justify-between">
-            <Text className="text-xs font-semibold text-gray-700">Actual Daily Labor Rate:</Text>
-            <Text className="text-xs font-bold text-red-600">
-              $25
-            </Text>
-          </div>
-        </div>
-              {/* Show message if no detailed food cost data available */}
-              <div className="text-center py-2 bg-gray-50 rounded border border-gray-200">
-                <Text className="text-xs text-gray-500 italic">
-                  Food cost details available on expansion
-                </Text>
-              </div>
+            
             </div>
           )}
         </div>

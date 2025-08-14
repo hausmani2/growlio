@@ -42,9 +42,9 @@ const LaborDetailDropdown = ({
 
   // Get color for over/under values
   const getOverUnderColor = (value) => {
-    if (value > 0) return 'text-red-600';
-    if (value < 0) return 'text-green-600';
-    return 'text-red-600';
+    if (value > 0) return '!text-red-600';
+    if (value < 0) return '!text-green-600';
+    return '!text-red-600';
   };
 
   // Format currency
