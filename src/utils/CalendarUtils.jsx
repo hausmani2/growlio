@@ -94,18 +94,72 @@ const CalendarUtils = ({
     }
   };
 
+  // Add event handlers for debugging calendar behavior
+  const handleOpenChange = (open) => {
+    console.log('CalendarUtils: Calendar opened/closed:', open);
+    if (open) {
+      console.log('CalendarUtils: Calendar is now open - checking for future months...');
+      
+      // Add a small delay to check for navigation elements
+      setTimeout(() => {
+        const nextButtons = document.querySelectorAll('.ant-picker-header-next, .ant-picker-header-super-next');
+        console.log('CalendarUtils: Found navigation buttons:', nextButtons.length);
+        nextButtons.forEach((btn, index) => {
+          console.log(`CalendarUtils: Button ${index}:`, {
+            visible: btn.offsetParent !== null,
+            display: window.getComputedStyle(btn).display,
+            visibility: window.getComputedStyle(btn).visibility,
+            opacity: window.getComputedStyle(btn).opacity
+          });
+        });
+        
+        // Also check if there are any hidden elements
+        const allButtons = document.querySelectorAll('.ant-picker-header button');
+        console.log('CalendarUtils: All header buttons:', allButtons.length);
+        allButtons.forEach((btn, index) => {
+          const style = window.getComputedStyle(btn);
+          console.log(`CalendarUtils: All button ${index}:`, {
+            className: btn.className,
+            display: style.display,
+            visibility: style.visibility,
+            opacity: style.opacity
+          });
+        });
+      }, 100);
+    }
+  };
+
+  // Debug function to check current date and available months
+  useEffect(() => {
+    const now = dayjs();
+    console.log('CalendarUtils: Current date:', now.format('YYYY-MM-DD'));
+    console.log('CalendarUtils: Current month:', now.month() + 1);
+    console.log('CalendarUtils: Current year:', now.year());
+    
+    // Test if we can create future dates
+    const futureDate = now.add(1, 'month');
+    console.log('CalendarUtils: Future date test:', futureDate.format('YYYY-MM-DD'));
+    
+    // Test multiple future dates
+    for (let i = 1; i <= 12; i++) {
+      const testDate = now.add(i, 'month');
+      console.log(`CalendarUtils: Future date ${i} month ahead:`, testDate.format('YYYY-MM-DD'));
+    }
+  }, []);
+
   // Handle group by change
   const handleGroupByChange = (value) => {
     onGroupByChange?.(value);
   };
 
   return (
-    <div className={`calendar-container ${className}`} style={style}>
+    <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
       <div className="flex items-center gap-3">
         {/* Date Range Picker */}
           <RangePicker
             value={displayDates}
             onChange={handleDateChange}
+            onOpenChange={handleOpenChange}
             format="MMM DD, YYYY"
             placeholder={['Start Date', 'End Date']}
             className="w-full"
@@ -121,19 +175,52 @@ const CalendarUtils = ({
             separator=" to "
             showTime={false}
             inputReadOnly={true}
-            disabledDate={() => {
-              // Allow all dates - no restrictions
-              return false;
-            }}
+            showToday={true}
+            picker="date"
+            popupStyle={{ zIndex: 1000 }}
+            getPopupContainer={(trigger) => trigger.parentNode}
+            // Allow all dates including future dates
+            disabledDate={() => false}
+            // Remove any default restrictions
+            ranges={{}}
+            // Force enable future navigation
+            showNow={false}
+            // Ensure no date restrictions
+            // Test: Add specific configuration to allow future navigation
+            // Test: Add specific configuration to force show navigation
+            open={undefined}
 
-            panelRender={(panelNode) => (
-              <div style={{ 
-                width: '280px',
-                padding: '8px'
-              }}>
-                {panelNode}
-              </div>
-            )}
+            panelRender={(panelNode) => {
+              console.log('CalendarUtils: Panel render called, panelNode:', panelNode);
+              return (
+                <div style={{ 
+                  width: '300px',
+                  padding: '8px',
+                  overflow: 'visible',
+                  position: 'relative',
+                  zIndex: 1000
+                }}>
+                  <style>
+                    {`
+                      /* Force show all navigation arrows */
+                      .ant-picker-header-next,
+                      .ant-picker-header-super-next {
+                        display: inline-block !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        pointer-events: auto !important;
+                        color: rgba(0, 0, 0, 0.85) !important;
+                      }
+                      .ant-picker-header-next:hover,
+                      .ant-picker-header-super-next:hover {
+                        color: #1890ff !important;
+                      }
+                    `}
+                  </style>
+                  {panelNode}
+                </div>
+              );
+            }}
           />
 
         {/* Group By Selector */}

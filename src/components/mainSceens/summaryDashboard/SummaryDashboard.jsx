@@ -60,11 +60,20 @@ const SummaryDashboard = () => {
   const lastDateRange = useRef(null);
   const hasHandledFailResponse = useRef(false);
 
-  // Simplified data validation function
+  // Enhanced data validation function with better logging
   const hasValidData = useCallback(() => {
-    return dashboardSummaryData?.status === 'success' && 
-           Array.isArray(dashboardSummaryData?.data) && 
-           dashboardSummaryData.data.length > 0;
+    const isValid = dashboardSummaryData?.status === 'success' && 
+                   Array.isArray(dashboardSummaryData?.data) && 
+                   dashboardSummaryData.data.length > 0;
+    
+    console.log('hasValidData check:', {
+      status: dashboardSummaryData?.status,
+      isArray: Array.isArray(dashboardSummaryData?.data),
+      dataLength: dashboardSummaryData?.data?.length,
+      isValid
+    });
+    
+    return isValid;
   }, [dashboardSummaryData]);
 
 
@@ -269,8 +278,25 @@ const SummaryDashboard = () => {
       
       const hasNoData = !hasValidData();
       
-      // Show modal when there's no data (fail response or empty data) and groupBy is daily
-      if (hasNoData && groupBy === 'daily' && !hasManuallyClosedModal && !isSalesModalVisible && !hasHandledFailResponse.current) {
+      // Debug log to understand the modal decision
+      console.log('SummaryDashboard: Modal decision factors:', {
+        hasNoData,
+        groupBy,
+        hasManuallyClosedModal,
+        isSalesModalVisible,
+        hasHandledFailResponse: hasHandledFailResponse.current,
+        apiStatus: dashboardSummaryData?.status,
+        isDataArray: Array.isArray(dashboardSummaryData?.data),
+        dataLength: dashboardSummaryData?.data?.length
+      });
+      
+      // Only show modal when there's truly no data (API failed or returned empty array) and groupBy is daily
+      // AND we haven't manually closed it AND it's not already visible AND we haven't handled this response yet
+      if (hasNoData && 
+          groupBy === 'daily' && 
+          !hasManuallyClosedModal && 
+          !isSalesModalVisible && 
+          !hasHandledFailResponse.current) {
         console.log('SummaryDashboard: Showing sales modal for no data (daily view)');
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
@@ -281,6 +307,11 @@ const SummaryDashboard = () => {
         console.log('SummaryDashboard: Showing flash message for valid data');
         setShowFlashMessage(true);
         setShowSuccessFlashMessage(false);
+        // Ensure modal is closed when we have valid data
+        if (isSalesModalVisible) {
+          console.log('SummaryDashboard: Closing sales modal because we have valid data');
+          setIsSalesModalVisible(false);
+        }
       }
       // Hide flash message when no data (to avoid showing both modal and flash)
       else if (hasNoData) {
