@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { message } from 'antd';
 import useStore from './store/store';
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
@@ -24,6 +25,16 @@ function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const token = useStore((state) => state.token);
+  
+  // Configure Ant Design message
+  useEffect(() => {
+    message.config({
+      top: 100,
+      duration: 3,
+      maxCount: 3,
+      rtl: false,
+    });
+  }, []);
   
   useEffect(() => {
     console.log('🚀 App component mounted - initializing auth...');

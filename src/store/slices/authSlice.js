@@ -101,6 +101,25 @@ const createAuthSlice = (set, get) => {
     // Logout function - clears all state and redirects to login
     logout: () => {
       
+      // Use the store's clearPersistedState function to completely reset all state
+      const currentState = get();
+      if (currentState.clearPersistedState) {
+        currentState.clearPersistedState();
+      }
+      
+      // Also call individual clear functions as backup
+      if (currentState.clearOnboarding) {
+        currentState.clearOnboarding();
+      }
+      
+      if (currentState.clearDashboard) {
+        currentState.clearDashboard();
+      }
+      
+      if (currentState.clearDashboardSummary) {
+        currentState.clearDashboardSummary();
+      }
+      
       // Clear all localStorage items related to the app
       const keysToRemove = [
         'token',
@@ -118,17 +137,6 @@ const createAuthSlice = (set, get) => {
       // Clear onboarding-specific session storage
       sessionStorage.removeItem('onboarding_completion_check_time');
       
-      // Reset onboarding state first
-      const currentState = get();
-      if (currentState.resetOnboarding) {
-        currentState.resetOnboarding();
-      }
-      
-      // Clear dashboard state
-      if (currentState.resetDashboard) {
-        currentState.resetDashboard();
-      }
-      
       // Clear all auth state
       set(() => ({ 
         user: null, 
@@ -137,11 +145,6 @@ const createAuthSlice = (set, get) => {
         error: null, 
         loading: false
       }));
-      
-      // Use the store's clearPersistedState function to completely reset all state
-      if (currentState.clearPersistedState) {
-        currentState.clearPersistedState();
-      }
       
     },
     
@@ -214,15 +217,23 @@ const createAuthSlice = (set, get) => {
     // - All dashboard state (dashboardData, loading, error, etc.)
     clearAllState: () => {
       
-      // Reset onboarding state first
+      // Use the store's clearPersistedState function to completely reset all state
       const currentState = get();
-      if (currentState.resetOnboarding) {
-        currentState.resetOnboarding();
+      if (currentState.clearPersistedState) {
+        currentState.clearPersistedState();
       }
       
-      // Clear dashboard state
-      if (currentState.resetDashboard) {
-        currentState.resetDashboard();
+      // Also call individual clear functions as backup
+      if (currentState.clearOnboarding) {
+        currentState.clearOnboarding();
+      }
+      
+      if (currentState.clearDashboard) {
+        currentState.clearDashboard();
+      }
+      
+      if (currentState.clearDashboardSummary) {
+        currentState.clearDashboardSummary();
       }
       
       // Clear all auth state
@@ -233,11 +244,6 @@ const createAuthSlice = (set, get) => {
         error: null, 
         loading: false
       }));
-      
-      // Use the store's clearPersistedState function to completely reset all state
-      if (currentState.clearPersistedState) {
-        currentState.clearPersistedState();
-      }
       
     },
     

@@ -201,6 +201,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return Math.round(netSales / dailyTickets);
   };
 
+  // Check if a day is closed (restaurant not open)
+  const isDayClosed = (record) => {
+    // Handle both boolean and integer values
+    if (typeof record.restaurant_open === 'boolean') {
+      return !record.restaurant_open;
+    }
+    return record.restaurant_open === 0;
+  };
+
 
 
   // Process dashboard data to extract sales information
@@ -256,7 +265,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualVsBudgetSales: entry['Sales Performance']?.actual_vs_budget_sales || 0,
         dailyTickets: entry['Sales Performance']?.daily_tickets || 0,
         averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0,
-        isRestaurantOpen: entry['Sales Performance']?.is_restaurant_open !== false // Default to true if not specified
+        restaurant_open: (() => {
+          const value = entry['Sales Performance']?.restaurant_open;
+          console.log('Restaurant open value from API:', value, typeof value);
+          // Handle both boolean and integer values
+          if (typeof value === 'boolean') {
+            return value ? 1 : 0;
+          }
+          // Handle null, undefined, or falsy values
+          if (value === null || value === undefined || value === false) {
+            return 0;
+          }
+          // Handle string values
+          if (typeof value === 'string') {
+            return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+          }
+          // Handle numeric values
+          return value !== 0 ? 1 : 0;
+        })() // Default to 1 (open) if not specified
       };
 
       // Add dynamic provider fields to daily data from third_party_sales object
@@ -298,7 +324,28 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           actualVsBudgetSales: 0,
           dailyTickets: 0,
           averageDailyTicket: 0,
-          isRestaurantOpen: true // Default to open for new days
+          restaurant_open: (() => {
+            // If we have existing data, use it and convert if needed
+            if (existingEntry?.restaurant_open !== undefined) {
+              const value = existingEntry.restaurant_open;
+              console.log('Restaurant open value from existing entry:', value, typeof value);
+              // Handle both boolean and integer values
+              if (typeof value === 'boolean') {
+                return value ? 1 : 0;
+              }
+              // Handle null, undefined, or falsy values
+              if (value === null || value === undefined || value === false) {
+                return 0;
+              }
+              // Handle string values
+              if (typeof value === 'string') {
+                return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+              }
+              // Handle numeric values
+              return value !== 0 ? 1 : 0;
+            }
+            return 1; // Default to open for new days
+          })()
         };
 
         // Add dynamic provider fields to default data
@@ -437,7 +484,21 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
               daily_tickets: parseFloat(day.dailyTickets) || 0,
               average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
-              is_restaurant_open: day.isRestaurantOpen !== false, // Include the restaurant open/closed status
+              restaurant_open: (() => {
+                const value = day.restaurant_open;
+                console.log('Sending restaurant_open to API from SalesTable:', value, typeof value);
+                // Ensure we always send integer values (0 or 1)
+                if (typeof value === 'boolean') {
+                  return value ? 1 : 0;
+                }
+                if (value === null || value === undefined || value === false) {
+                  return 0;
+                }
+                if (typeof value === 'string') {
+                  return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+                }
+                return value !== 0 ? 1 : 0;
+              })(), // Include the restaurant open/closed status
               // Add dynamic provider fields to daily data
               ...providers.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
@@ -535,7 +596,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
-        isRestaurantOpen: true // Default to open for new days
+        restaurant_open: 1 // Default to open for new days
       };
 
       // Add dynamic provider fields
@@ -566,10 +627,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       }
     });
 
-    // Check if a day is closed (restaurant not open)
-    const isDayClosed = (record) => {
-      return !record.isRestaurantOpen;
-    };
+      // Check if a day is closed (restaurant not open)
+  const isDayClosed = (record) => {
+    // Handle both boolean and integer values
+    if (typeof record.restaurant_open === 'boolean') {
+      return !record.restaurant_open;
+    }
+    return record.restaurant_open === 0;
+  };
 
     useEffect(() => {
       if (editingWeek) {
@@ -843,7 +908,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               size="small"
               rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
               scroll={{ x: 'max-content' }}
-              rowClassName={(record) => !record.isRestaurantOpen ? 'opacity-50 bg-gray-50' : ''}
+              rowClassName={(record) => isDayClosed(record) ? 'opacity-50 bg-gray-50' : ''}
               summary={(pageData) => {
                 const totals = pageData.reduce((acc, record) => {
                   acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
@@ -1171,7 +1236,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                              <span>Weekly Sales Data</span>
                              {week.dailyData && (
                                <span className="text-xs text-gray-500">
-                                 {week.dailyData.filter(day => !day.isRestaurantOpen).length} of 7 days closed
+                                 {week.dailyData.filter(day => day.restaurant_open === 0).length} of 7 days closed
                                </span>
                              )}
                            </div>
@@ -1184,7 +1249,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                             size="small"
                                                          rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
                              scroll={{ x: 'max-content' }}
-                             rowClassName={(record) => !record.isRestaurantOpen ? 'opacity-50 bg-gray-50' : ''}
+                             rowClassName={(record) => isDayClosed(record) ? 'opacity-50 bg-gray-50' : ''}
                             summary={(pageData) => {
                               const totals = pageData.reduce((acc, record) => {
                                 acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
@@ -1279,7 +1344,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                    <div>
                                      <div className="font-medium flex items-center gap-2">
                                        {text}
-                                       {!record.isRestaurantOpen && (
+                                       {record.restaurant_open === 0 && (
                                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
                                            CLOSED
                                          </span>

@@ -1117,7 +1117,15 @@ const createOnBoardingSlice = (set, get) => ({
                         variable_costs: []
                     }
                 }
-            }
+            },
+            // Clear restaurant goals state
+            restaurantGoalsLoading: false,
+            restaurantGoalsError: null,
+            restaurantGoals: null,
+            // Clear restaurant name check state
+            restaurantNameCheckLoading: false,
+            restaurantNameCheckError: null,
+            restaurantNameExists: false
         }));
         
     },
@@ -1648,6 +1656,149 @@ const createOnBoardingSlice = (set, get) => ({
             restaurantGoalsLoading: false,
             restaurantGoalsError: null,
             restaurantGoals: null
+        }));
+    },
+
+    // Clear all onboarding state (for logout)
+    clearOnboarding: () => {
+        // Clear restaurant_id from localStorage
+        localStorage.removeItem('restaurant_id');
+        
+        // Clear session storage timestamps
+        sessionStorage.removeItem('onboarding_completion_check_time');
+        
+        // Reset to initial state
+        set(() => ({ 
+            user: null,
+            isOnBoardingCompleted: false,
+            onboardingLoading: false,
+            onboardingError: null,
+            onboardingData: null,
+            completeOnboardingData: {
+                restaurant_id: null,
+                "Basic Information": {
+                    status: false,
+                    data: {
+                        restaurant_name: "",
+                        number_of_locations: 1,
+                        restaurant_type: "",
+                        menu_type: "",
+                        locations: [
+                            {
+                                location_name: "",
+                                address_1: "",
+                                country: "",
+                                state: "",
+                                zip_code: "",
+                                sqft: "",
+                                is_franchise: false
+                            }
+                        ]
+                    }
+                },
+                "Labour Information": {
+                    status: false,
+                    data: {
+                        goal: "",
+                        needs_attention: "",
+                        danger: "",
+                        avg_hourly_rate: 0,
+                        labor_record_method: "daily_hours_costs",
+                        daily_ticket_count: false,
+                        forward_prev_week_rate: false
+                    }
+                },
+                "Food Cost Details": {
+                    status: false,
+                    data: {
+                        cogs_goal: "",
+                        use_third_party_delivery: false,
+                        delivery_days: [],
+                        providers: []
+                    }
+                },
+                "Sales Channels": {
+                    status: false,
+                    data: {
+                        in_store: true,
+                        online: false,
+                        from_app: false,
+                        third_party: false
+                    }
+                },
+                "Expense": {
+                    status: false,
+                    data: {
+                        fixed_costs: [],
+                        variable_costs: []
+                    }
+                }
+            },
+            tempFormData: {
+                "Basic Information": {
+                    restaurantData: {
+                        restaurantName: "",
+                        numberOfLocations: undefined,
+                        locationName: "",
+                        otherLocationName: ""
+                    },
+                    addressData: {
+                        address1: "",
+                        address2: "",
+                        country: "",
+                        state: "",
+                        zipCode: ""
+                    },
+                    addressTypeData: {
+                        sqft: "",
+                        isFranchise: "",
+                        royaltyPercentage: "",
+                        advertisementFee: "",
+                        restaurantType: "",
+                        menuType: ""
+                    }
+                },
+                "Labour Information": {
+                    laborData: {
+                        goal: "",
+                        needs_attention: "",
+                        danger: "",
+                        avg_hourly_rate: 0,
+                        labor_record_method: "daily_hours_costs",
+                        daily_ticket_count: false,
+                        forward_prev_week_rate: false
+                    }
+                },
+                "Food Cost Details": {
+                    foodCostData: {
+                        cogs_goal: "",
+                        use_third_party_delivery: false,
+                        delivery_days: []
+                    }
+                },
+                "Sales Channels": {
+                    salesData: {
+                        in_store: true,
+                        online: false,
+                        from_app: false,
+                        third_party: false
+                    }
+                },
+                "Expense": {
+                    expenseData: {
+                        fixed_costs: [],
+                        variable_costs: []
+                    }
+                }
+            },
+            // Clear restaurant goals state
+            restaurantGoalsLoading: false,
+            restaurantGoalsError: null,
+            restaurantGoals: null,
+            // Clear restaurant name check state
+            restaurantNameCheckLoading: false,
+            restaurantNameCheckError: null,
+            restaurantNameExists: false
         }));
     },
 

@@ -1,61 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
-import { Card, Typography, Space, Spin, Empty, Button, message, notification } from 'antd';
+import { Card, Typography, Space, Spin, Empty, Button, message, notification, App } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
 import SummaryTableDashboard from './SummaryTableDashboard';
+import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
 import CalendarUtils from '../../../utils/CalendarUtils';
 import useCalendar from '../../../utils/useCalendar';
-import { apiGet } from '../../../utils/axiosInterceptors';
+
 
 const { Title } = Typography;
 
 const SummaryDashboard = () => {
   const navigate = useNavigate();
 
-  // Use the calendar utility hook (weekly-only)
-  const calendarState = useCalendar({
-    initialViewMode: 'weekly'
+  // Use the new calendar utility hook
+  const calendar = useCalendar({
+    autoSelectCurrentWeek: true,
+    initialDates: [] // Ensure no initial dates so auto-selection works
   });
 
   // Store integration for date selection persistence
   const {
     setSelectedYear,
     setSelectedMonth,
-    setSelectedWeek,
-    setAvailableWeeks
+    setSelectedWeek
   } = useStore();
 
   // Local state for group by selection
-  const [groupBy, setGroupBy] = useState('weekly');
-
-  // Sync calendar state with store state
-  useEffect(() => {
-    if (calendarState.selectedYear) {
-      setSelectedYear(calendarState.selectedYear);
-    }
-  }, [calendarState.selectedYear, setSelectedYear]);
-
-  useEffect(() => {
-    if (calendarState.selectedMonth) {
-      setSelectedMonth(calendarState.selectedMonth);
-    }
-  }, [calendarState.selectedMonth, setSelectedMonth]);
-
-  useEffect(() => {
-    if (calendarState.selectedWeek) {
-      setSelectedWeek(calendarState.selectedWeek);
-    }
-  }, [calendarState.selectedWeek, setSelectedWeek]);
-
-  useEffect(() => {
-    if (calendarState.availableWeeks.length > 0) {
-      setAvailableWeeks(calendarState.availableWeeks);
-    }
-  }, [calendarState.availableWeeks, setAvailableWeeks]);
+  const [groupBy, setGroupBy] = useState('daily');
 
   // Modal states
   const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
@@ -79,6 +55,11 @@ const SummaryDashboard = () => {
   // Auth functionality for restaurant ID
   const { ensureRestaurantId } = useStore();
 
+  // Use refs to prevent infinite loops
+  const isInitialized = useRef(false);
+  const lastDateRange = useRef(null);
+  const hasHandledFailResponse = useRef(false);
+
   // Simplified data validation function
   const hasValidData = useCallback(() => {
     return dashboardSummaryData?.status === 'success' && 
@@ -86,115 +67,73 @@ const SummaryDashboard = () => {
            dashboardSummaryData.data.length > 0;
   }, [dashboardSummaryData]);
 
-  // Fetch dashboard summary data for selected week
-  const fetchSummaryData = useCallback(async (weekKey) => {
-    if (!weekKey) return;
 
-    const selectedWeekData = calendarState.availableWeeks.find(week => week.key === weekKey);
-    if (!selectedWeekData) {
-      console.error('No selected week data found for key:', weekKey);
-      return;
-    }
 
-    // Reset the manual close flag when starting a new fetch
-    setHasManuallyClosedModal(false);
+  // Fetch dashboard summary data for selected date range
+  const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
+    if (!startDate || !endDate) return;
 
     try {
-      await fetchDashboardSummary(selectedWeekData.startDate);
+      console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
+      await fetchDashboardSummary(startDate, endDate, groupBy);
+      
+      // Add a small delay to ensure the data is processed
+      setTimeout(() => {
+        console.log('SummaryDashboard: Checking data after fetch');
+        if (dashboardSummaryData && hasValidData() && !showFlashMessage) {
+          console.log('SummaryDashboard: Triggering flash message after fetch for valid data');
+          setShowFlashMessage(true);
+        }
+      }, 500);
     } catch (error) {
       console.error('Error in fetchDashboardSummary:', error);
     }
-  }, [calendarState.availableWeeks, fetchDashboardSummary]);
+  }, [fetchDashboardSummary, dashboardSummaryData, hasValidData, showFlashMessage]);
 
-  // Parent-level fetch for calendar weeks
-  const fetchCalendarData = useCallback(async (year, month, shouldAutoSelectWeek = true) => {
-    if (!year || !month) return;
-    
-    try {
-      const response = await apiGet(`/restaurant/structured-calendar/?month=${month}&year=${year}`);
-      if (response?.data?.weeks) {
-        const weeks = Object.keys(response.data.weeks).map(weekKey => ({
-          key: weekKey,
-          weekNumber: response.data.weeks[weekKey].week_number,
-          startDate: response.data.weeks[weekKey].start_date,
-          endDate: response.data.weeks[weekKey].end_date,
-          data: response.data.weeks[weekKey]
-        }));
-
-        calendarState.setAvailableWeeks(weeks);
-
-        // Auto-select week
-        if (shouldAutoSelectWeek && weeks.length > 0) {
-          const now = dayjs();
-          const isCurrentMonth = (now.month() + 1) === month && now.year() === year;
-          let weekToSelect = null;
-          
-          if (isCurrentMonth) {
-            const todayStr = now.format('YYYY-MM-DD');
-            const found = weeks.find(w => 
-              todayStr >= dayjs(w.startDate).format('YYYY-MM-DD') && 
-              todayStr <= dayjs(w.endDate).format('YYYY-MM-DD')
-            );
-            weekToSelect = found ? found.key : null;
-          }
-          
-          if (!weekToSelect) {
-            weekToSelect = weeks[0].key;
-          }
-          calendarState.setSelectedWeek(weekToSelect);
-        } else if (!shouldAutoSelectWeek) {
-          calendarState.setSelectedWeek(null);
-        }
-      } else {
-        calendarState.setAvailableWeeks([]);
-        calendarState.setSelectedWeek(null);
-      }
-    } catch (error) {
-      console.error('Calendar weeks fetch failed:', error);
-      calendarState.setAvailableWeeks([]);
-      calendarState.setSelectedWeek(null);
+  // Handle date change from calendar
+  const handleDateChange = useCallback((dates) => {
+    console.log('SummaryDashboard: Date range changed:', dates?.map(d => d?.format('YYYY-MM-DD')));
+    if (dates && dates.length === 2) {
+      const startDate = dates[0].format('YYYY-MM-DD');
+      const endDate = dates[1].format('YYYY-MM-DD');
+      console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
+      
+      // Update calendar state first
+      calendar.handleDateChange(dates);
+      
+      // Fetch the data directly
+      fetchSummaryData(startDate, endDate, groupBy);
     }
-  }, [calendarState.setAvailableWeeks, calendarState.setSelectedWeek]);
-
-  // Handle year selection
-  const handleYearChange = (year) => {
-    calendarState.handleYearChange(year);
-  };
-
-  // Handle month selection
-  const handleMonthChange = (month) => {
-    calendarState.setSelectedMonth(month);
-    if (calendarState.selectedYear) {
-      fetchCalendarData(calendarState.selectedYear, month, true);
-    }
-  };
-
-  // Handle week selection
-  const handleWeekChange = (weekKey) => {
-    setHasManuallyClosedModal(false);
-    calendarState.handleWeekChange(weekKey);
-    
-    if (weekKey) {
-      const selectedWeekData = calendarState.availableWeeks.find(week => week.key === weekKey);
-      if (selectedWeekData) {
-        fetchDashboardSummary(selectedWeekData.startDate);
-      }
-    }
-  };
+  }, [fetchSummaryData, groupBy, calendar]);
 
   // Handle group by selection
-  const handleGroupByChange = (groupByValue) => {
+  const handleGroupByChange = useCallback((groupByValue) => {
     setGroupBy(groupByValue);
-  };
+    // Refetch data with new group by if we have a date range
+    if (calendar.dateRange && calendar.dateRange.length === 2) {
+      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
+      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+      fetchSummaryData(startDate, endDate, groupByValue);
+    }
+  }, [calendar.dateRange, fetchSummaryData]);
 
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
+    // Ensure we have a valid date range before opening the modal
+    if (!calendar.dateRange || calendar.dateRange.length !== 2) {
+      // If no date range is selected, use the current week
+      const currentWeekRange = calendar.selectThisWeek();
+      console.log('No date range selected, using current week:', currentWeekRange);
+    }
+    
     setIsSalesModalVisible(true);
   };
 
   const handleCloseSalesModal = () => {
     setIsSalesModalVisible(false);
     setHasManuallyClosedModal(true);
+    // Reset the fail response handler when modal is manually closed
+    hasHandledFailResponse.current = false;
   };
 
   // Handle data saved callback
@@ -202,8 +141,10 @@ const SummaryDashboard = () => {
     setHasManuallyClosedModal(false);
     setShowSuccessFlashMessage(true);
 
-    if (calendarState.selectedWeek) {
-      await fetchSummaryData(calendarState.selectedWeek);
+    if (calendar.dateRange && calendar.dateRange.length === 2) {
+      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
+      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+      await fetchSummaryData(startDate, endDate, groupBy);
     }
 
     message.success('Sales data added successfully! 🎉');
@@ -252,8 +193,7 @@ const SummaryDashboard = () => {
           width: 450,
           zIndex: 99999,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          borderRadius: '8px',
-          marginTop: '20px',
+          borderRadius: '8px'
         }
       });
     }, 1000);
@@ -261,118 +201,120 @@ const SummaryDashboard = () => {
 
   // Handle flash message button click
   const handleFlashMessageButtonClick = () => {
-    const selectedWeekData = getSelectedWeekData();
-
-    if (selectedWeekData) {
-      let budgetedSalesData = [];
-
-      if (hasValidData()) {
-        budgetedSalesData = dashboardSummaryData.data.map(day => ({
-          budgetedSales: parseFloat(day.budgeted_sales) || 0,
-          actualSalesInStore: parseFloat(day.actual_sales_in_store) || 0,
-          actualSalesAppOnline: parseFloat(day.actual_sales_app_online) || 0,
-          dailyTickets: parseFloat(day.daily_tickets) || 0,
-          averageDailyTicket: parseFloat(day.average_daily_ticket) || 0
-        }));
-      }
-
-      const navigationContext = {
-        selectedDate: selectedWeekData.startDate,
-        selectedWeek: calendarState.selectedWeek,
-        selectedYear: calendarState.selectedYear,
-        selectedMonth: calendarState.selectedMonth,
-        shouldOpenSalesModal: true,
-        source: 'summary-dashboard',
-        budgetedSalesData: budgetedSalesData
-      };
-
-      localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
-      localStorage.setItem('budgetedSalesData', JSON.stringify(budgetedSalesData));
-
-      message.success('Navigating to Dashboard...');
-      navigate('/dashboard');
-      setShowFlashMessage(false);
-    } else {
-      message.error('Unable to navigate: No week data selected');
-    }
+    setShowFlashMessage(false);
+    navigate('/dashboard');
   };
 
-  // Initialize dashboard
+  // Sync calendar state with store state (for backward compatibility)
   useEffect(() => {
+    if (calendar.dateRange && calendar.dateRange.length === 2) {
+      const startDate = calendar.dateRange[0];
+      setSelectedYear(startDate.year());
+      setSelectedMonth(startDate.month() + 1);
+      setSelectedWeek(`${startDate.year()}_${startDate.week()}`);
+    }
+  }, [calendar.dateRange, setSelectedYear, setSelectedMonth, setSelectedWeek]);
+
+  // Initialize restaurant ID and fetch initial data (only once)
+  useEffect(() => {
+    if (isInitialized.current) return;
+    
     const initializeDashboard = async () => {
       try {
-        if (calendarState.selectedYear && calendarState.selectedMonth) {
-          await fetchCalendarData(calendarState.selectedYear, calendarState.selectedMonth, true);
-        }
-        await fetchRestaurantGoals();
+        await ensureRestaurantId();
+        await getRestaurentGoal();
+        isInitialized.current = true;
       } catch (error) {
         console.error('Error initializing dashboard:', error);
       }
     };
 
-    const fetchRestaurantGoals = async () => {
-      try {
-        const restaurantId = await ensureRestaurantId();
-        if (!restaurantId) {
-          console.warn('No restaurant ID available. Skipping restaurant goals fetch.');
-          return;
-        }
-        await getRestaurentGoal(restaurantId);
-      } catch (error) {
-        if (!error.message.includes('Restaurant ID is required') && 
-            !error.message.includes('Restaurant goals not found')) {
-          console.error('Restaurant goals error:', error.message);
-        }
-      }
-    };
-
     initializeDashboard();
-  }, [ensureRestaurantId, getRestaurentGoal, calendarState.selectedYear, calendarState.selectedMonth, fetchCalendarData]);
+  }, [ensureRestaurantId, getRestaurentGoal]);
 
-  // Fetch summary data when selectedWeek changes
+  // Fetch data when date range changes (but not on initial load)
   useEffect(() => {
-    if (calendarState.selectedWeek && calendarState.availableWeeks.length > 0) {
-      fetchSummaryData(calendarState.selectedWeek);
-    }
-  }, [calendarState.selectedWeek, calendarState.availableWeeks, fetchSummaryData]);
-
-  // Consolidated flash message and modal logic
-  useEffect(() => {
-    if (!calendarState.selectedWeek || summaryLoading) {
-      setShowFlashMessage(false);
-      return;
-    }
-
-    const hasData = hasValidData();
+    if (!isInitialized.current) return;
     
-    if (!hasData && !isSalesModalVisible && !hasManuallyClosedModal) {
-      setIsSalesModalVisible(true);
+    const currentDateRange = calendar.dateRange && calendar.dateRange.length === 2 
+      ? `${calendar.dateRange[0].format('YYYY-MM-DD')}-${calendar.dateRange[1].format('YYYY-MM-DD')}`
+      : null;
+    
+    if (currentDateRange && currentDateRange !== lastDateRange.current) {
+      lastDateRange.current = currentDateRange;
+      // Reset the fail response handler for new date range
+      hasHandledFailResponse.current = false;
+      // Reset modal states for new date range
+      setHasManuallyClosedModal(false);
       setShowFlashMessage(false);
-    } else if (hasData && !hasManuallyClosedModal) {
-      setShowFlashMessage(true);
-    } else {
-      setShowFlashMessage(false);
+      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
+      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+      fetchSummaryData(startDate, endDate, groupBy);
     }
-  }, [calendarState.selectedWeek, dashboardSummaryData, isSalesModalVisible, hasManuallyClosedModal, summaryLoading, hasValidData]);
+  }, [calendar.dateRange, fetchSummaryData]);
 
-  // Get selected week data
-  const getSelectedWeekData = () => {
-    if (!calendarState.selectedWeek || !calendarState.availableWeeks.length) return null;
-    return calendarState.availableWeeks.find(week => week.key === calendarState.selectedWeek);
-  };
+  // Handle API response changes to show modal or flash message
+  useEffect(() => {
+    // Only run when we have a valid API response and we're not loading
+    if (!summaryLoading && dashboardSummaryData !== null && dashboardSummaryData !== undefined) {
+      console.log('SummaryDashboard: Processing API response:', {
+        status: dashboardSummaryData?.status,
+        message: dashboardSummaryData?.message,
+        dataLength: dashboardSummaryData?.data?.length,
+        hasValidData: hasValidData(),
+        hasManuallyClosedModal,
+        isSalesModalVisible,
+        hasHandledFailResponse: hasHandledFailResponse.current
+      });
+      
+      const hasNoData = !hasValidData();
+      
+      // Show modal when there's no data (fail response or empty data) and groupBy is daily
+      if (hasNoData && groupBy === 'daily' && !hasManuallyClosedModal && !isSalesModalVisible && !hasHandledFailResponse.current) {
+        console.log('SummaryDashboard: Showing sales modal for no data (daily view)');
+        hasHandledFailResponse.current = true;
+        setIsSalesModalVisible(true);
+        setShowFlashMessage(false);
+      }
+      // Show flash message when we have valid data
+      else if (hasValidData() && !showFlashMessage) {
+        console.log('SummaryDashboard: Showing flash message for valid data');
+        setShowFlashMessage(true);
+        setShowSuccessFlashMessage(false);
+      }
+      // Hide flash message when no data (to avoid showing both modal and flash)
+      else if (hasNoData) {
+        console.log('SummaryDashboard: Hiding flash message - no data');
+        setShowFlashMessage(false);
+      }
+    }
+  }, [dashboardSummaryData, summaryLoading, hasValidData, hasManuallyClosedModal, isSalesModalVisible, showFlashMessage, groupBy]);
 
-  return (
-    <div className="w-full">
-      {/* Success Flash Message for New Data Added */}
-      {showSuccessFlashMessage && (
-        <div className="mb-2 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm animate-pulse">
+  // Additional effect to ensure flash message shows when data is fetched and valid
+  useEffect(() => {
+    if (!summaryLoading && dashboardSummaryData !== null && dashboardSummaryData !== undefined) {
+      console.log('SummaryDashboard: Additional check for flash message');
+      
+      // If we have valid data, show flash message
+      if (hasValidData() && !showFlashMessage) {
+        console.log('SummaryDashboard: Triggering flash message from additional effect for valid data');
+        setShowFlashMessage(true);
+      }
+    }
+  }, [dashboardSummaryData, summaryLoading, hasValidData, showFlashMessage]);
+
+  // Success flash message
+  if (showSuccessFlashMessage) {
+    return (
+      <div className="w-full mx-auto">
+        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex justify-between items-start">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-800 flex items-center gap-2">
-                🎉 Sales Data Added Successfully!
+              <h3 className="text-lg font-semibold text-green-800">
+                ✅ Sales Data Added Successfully!
               </h3>
-              <p className="text-green-700 mt-1">
-                Your sales data has been saved and the dashboard has been updated. You can now view the updated information below.
+              <p className="text-green-700">
+                Your sales data has been saved. The dashboard will now reflect your updated information.
               </p>
             </div>
             <div className="flex gap-2 ml-4">
@@ -387,7 +329,7 @@ const SummaryDashboard = () => {
                   fontSize: '12px'
                 }}
               >
-                Add More Data
+                View Dashboard
                 <ArrowRightOutlined />
               </Button>
               <Button
@@ -399,85 +341,87 @@ const SummaryDashboard = () => {
             </div>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
+  return (
+    <App>
       <div className="w-full mx-auto">
-        <div className="mb-2">
-          <CalendarUtils
-            selectedYear={calendarState.selectedYear}
-            selectedMonth={calendarState.selectedMonth}
-            selectedWeek={calendarState.selectedWeek}
-            availableWeeks={calendarState.availableWeeks}
-            onYearChange={handleYearChange}
-            onMonthChange={handleMonthChange}
-            onWeekChange={handleWeekChange}
-            onGroupByChange={handleGroupByChange}
-            groupBy={groupBy}
-            loading={calendarState.loading}
-            error={null}
-            title="Weekly Budgeted Dashboard"
-            showFlashMessage={false}
-          />
-        </div>
+      <div className="mb-2">
+        <CalendarUtils
+          selectedDates={calendar.dateRange}
+          onDateChange={handleDateChange}
+          groupBy={groupBy}
+          onGroupByChange={handleGroupByChange}
+          title="Weekly Budgeted Dashboard"
+          description="Select a date range for your dashboard data"
+          loading={calendar.loading}
+          error={calendar.error}
+          autoSelectCurrentWeek={true}
+                />
+        
+      </div>
 
-        {/* Flash Message for Sales Budget */}
-        {showFlashMessage && (
-          <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-blue-800 ">
-                  📊 Keep Your Sales Data Updated
-                </h3>
-                <p className="text-blue-700 ">
-                  Enter your sales data daily to ensure your dashboard reflects accurate and up-to-date results. Use the button below to go to the Sales Data page.
-                </p>
-              </div>
-              <div className="flex gap-2 ml-4">
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<DollarOutlined />}
-                  onClick={handleFlashMessageButtonClick}
-                  style={{
-                    backgroundColor: '#1890ff',
-                    borderColor: '#1890ff',
-                    fontSize: '12px'
-                  }}
-                >
-                  Add Sales Budgets
-                  <ArrowRightOutlined />
-                </Button>
-                <Button
-                  size="small"
-                  onClick={() => setShowFlashMessage(false)}
-                >
-                  Dismiss
-                </Button>
-              </div>
+      {/* Flash Message for Sales Budget */}
+      {showFlashMessage && (
+        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-green-800 ">
+                📊 Keep Your Sales Data Updated
+              </h3>
+              <p className="text-green-700 ">
+              Enter your sales data daily to ensure your dashboard reflects accurate and up-to-date results. Use the button below to go to the Sales Data page.
+              </p>
+            </div>
+            <div className="flex gap-2 ml-4">
+              <Button
+                size="small"
+                type="primary"
+                icon={<DollarOutlined />}
+                onClick={handleFlashMessageButtonClick}
+                style={{
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a',
+                  fontSize: '12px'
+                }}
+              >
+                View Dashboard
+                <ArrowRightOutlined />
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setShowFlashMessage(false)}
+              >
+                Dismiss
+              </Button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {calendarState.selectedWeek ? (
-            <>
-              {summaryLoading ? (
-                <Card>
-                  <div className="text-center py-8">
-                    <Spin size="large" />
-                    <p className="mt-4 text-gray-600">Loading dashboard data...</p>
-                  </div>
-                </Card>
-              ) : !hasValidData() ? (
-                <Card>
-                  <div className="text-center py-8">
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description={
-                        <div>
-                          <p className="text-gray-600 mb-4">
-                            {dashboardSummaryData?.message || 'No weekly dashboard data found for the selected week.'}
-                          </p>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {calendar.dateRange && calendar.dateRange.length === 2 ? (
+          <>
+            {summaryLoading ? (
+              <Card>
+                <div className="text-center py-8">
+                  <Spin size="large" />
+                  <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+                </div>
+              </Card>
+            ) : !hasValidData() ? (
+              <Card>
+                <div className="text-center py-8">
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={
+                      <div>
+                        <p className="text-gray-600 mb-4">
+                          {dashboardSummaryData?.message || `No ${groupBy} dashboard data found for the selected date range.`}
+                        </p>
+                        {groupBy === 'daily' && (
                           <Button
                             type="primary"
                             icon={<PlusOutlined />}
@@ -486,69 +430,85 @@ const SummaryDashboard = () => {
                           >
                             Add Sales Data
                           </Button>
-                        </div>
-                      }
-                    />
-                  </div>
-                </Card>
-              ) : (
-                <>
+                        )}
+                      </div>
+                    }
+                  />
+                </div>
+              </Card>
+            ) : (
+              <>
+                {groupBy === 'week' ? (
+                  <WeeklySummaryTable
+                    dashboardSummaryData={dashboardSummaryData}
+                    loading={summaryLoading}
+                    error={summaryError}
+                  />
+                ) : (
                   <SummaryTableDashboard
                     dashboardSummaryData={dashboardSummaryData}
                     loading={summaryLoading}
                     error={summaryError}
-                    selectedWeekData={getSelectedWeekData()}
-                    viewMode={'weekly'}
+                    groupBy={groupBy}
+                    viewMode={groupBy === 'month' ? 'monthly' : groupBy === 'week' ? 'weekly' : 'daily'}
                   />
-                  
-                  <BudgetDashboard
-                    dashboardData={dashboardSummaryData}
-                    loading={summaryLoading}
-                    error={summaryError}
-                    onAddData={handleShowSalesModal}
-                    onEditData={() => {
-                      const selectedWeekData = getSelectedWeekData();
-                      if (selectedWeekData) {
-                        const navigationContext = {
-                          selectedDate: selectedWeekData.startDate,
-                          selectedWeek: calendarState.selectedWeek,
-                          selectedYear: calendarState.selectedYear,
-                          selectedMonth: calendarState.selectedMonth,
-                          shouldOpenSalesModal: true,
-                          source: 'summary-dashboard'
-                        };
-                        localStorage.setItem('dashboardNavigationContext', JSON.stringify(navigationContext));
-                        navigate('/dashboard');
-                      }
-                    }}
-                    viewMode={'weekly'}
-                  />
-                </>
-              )}
-            </>
-          ) : (
-            <Card>
-              <div className="text-center py-8">
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Please select a week to view dashboard data."
+                )}
+                <BudgetDashboard
+                  dashboardData={dashboardSummaryData}
+                  loading={summaryLoading}
+                  error={summaryError}
+                  onEditData={() => {
+                    // Navigate to dashboard for editing
+                    navigate('/dashboard');
+                  }}
                 />
-              </div>
-            </Card>
-          )}
-        </Space>
-      </div>
+              </>
+            )}
+          </>
+        ) : (
+          <Card>
+            <div className="text-center py-8">
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Please select a date range to view dashboard data"
+              />
+            </div>
+          </Card>
+        )}
+      </Space>
 
       {/* Sales Data Modal */}
       <SalesDataModal
         visible={isSalesModalVisible}
         onCancel={handleCloseSalesModal}
-        selectedWeekData={getSelectedWeekData()}
-        weekDays={[]}
         onDataSaved={handleDataSaved}
-        autoOpenFromSummary={!hasValidData()}
+        selectedWeekData={(() => {
+          // Always use the current calendar date range
+          if (calendar.dateRange && calendar.dateRange.length === 2) {
+            const weekData = {
+              startDate: calendar.dateRange[0].format('YYYY-MM-DD'),
+              endDate: calendar.dateRange[1].format('YYYY-MM-DD'),
+              weekNumber: calendar.dateRange[0].week()
+            };
+            console.log('SalesDataModal: Using calendar date range:', weekData);
+            return weekData;
+          } else {
+            // Fallback to current week if no date range is selected
+            const currentWeekStart = dayjs().startOf('week');
+            const currentWeekEnd = dayjs().endOf('week');
+            const weekData = {
+              startDate: currentWeekStart.format('YYYY-MM-DD'),
+              endDate: currentWeekEnd.format('YYYY-MM-DD'),
+              weekNumber: currentWeekStart.week()
+            };
+            console.log('SalesDataModal: Using fallback current week:', weekData);
+            return weekData;
+          }
+        })()}
+        autoOpenFromSummary={true}
       />
     </div>
+    </App>
   );
 };
 

@@ -97,14 +97,17 @@ const Dashboard = () => {
   const fetchDashboardData = async (weekStartDate) => {
     if (!weekStartDate) return;
     
+    console.log('📊 Dashboard: fetchDashboardData called with:', weekStartDate.format('YYYY-MM-DD'));
     setDashboardLoading(true);
     setDashboardMessage(null);
     
     try {
       const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
+      console.log('📊 Dashboard: fetchDashboardDataIfNeeded returned:', data);
       
       // If no data returned (null), this means no restaurant ID was found
       if (!data) {
+        console.log('📊 Dashboard: No data returned - no restaurant ID');
         setDashboardData(null);
         setDashboardMessage('Please complete your onboarding setup first to view dashboard data.');
         return;
@@ -112,14 +115,16 @@ const Dashboard = () => {
       
       // Check if the response indicates no data found
       if (data && data.status === "success" && data.message === "No weekly dashboard found for the given criteria." && data.data === null) {
+        console.log('📊 Dashboard: No weekly dashboard found for criteria');
         setDashboardData(null);
         setDashboardMessage(data.message);
       } else {
+        console.log('📊 Dashboard: Setting dashboard data:', data);
         setDashboardData(data);
         setDashboardMessage(null);
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('❌ Dashboard: Error fetching dashboard data:', error);
       setDashboardData(null);
       setDashboardMessage(null);
     } finally {
@@ -155,17 +160,25 @@ const Dashboard = () => {
 
   // Handle week selection
   const handleWeekChange = (weekKey) => {
+    console.log('📅 Week changed to:', weekKey); // Debug log
     setSelectedWeek(weekKey);
 
     // Find the selected week data and set the date to the start of the week
     if (availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === weekKey);
+      console.log('📅 Selected week data:', selectedWeekData);
+      
       if (selectedWeekData) {
         const weekStartDate = dayjs(selectedWeekData.startDate);
+        console.log('📅 Week start date:', weekStartDate.format('YYYY-MM-DD'));
         setSelectedDate(weekStartDate);
         // Fetch dashboard data for the selected week
         fetchDashboardData(weekStartDate);
+      } else {
+        console.log('❌ Week data not found for key:', weekKey);
       }
+    } else {
+      console.log('❌ No available weeks to select from');
     }
   };
 
@@ -232,6 +245,17 @@ const Dashboard = () => {
         if (!monthToUse) {
           monthToUse = dayjs().month() + 1; // dayjs months are 0-indexed
           setSelectedMonth(monthToUse);
+        }
+        
+        // Only clear selected week if we're initializing with current month
+        // This prevents clearing a valid selection when navigating back
+        const currentDate = dayjs();
+        const currentYear = currentDate.year();
+        const currentMonth = currentDate.month() + 1;
+        
+        if (yearToUse === currentYear && monthToUse === currentMonth) {
+          // Only clear if we're viewing the current month, to allow auto-selection of current week
+          setSelectedWeek(null);
         }
         
         // Fetch calendar data for the month
@@ -313,23 +337,45 @@ const Dashboard = () => {
       const currentDate = dayjs();
       const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
       
+      console.log('🔄 Auto-selection logic running:', { 
+        availableWeeks: availableWeeks.length, 
+        selectedWeek, 
+        selectedMonth, 
+        currentMonth,
+        currentDate: currentDate.format('YYYY-MM-DD')
+      });
+      
       // Check if current month is the same as selected month
       if (selectedMonth === currentMonth) {
         // If same month, find the week that contains the current date
         const currentWeek = availableWeeks.find(week => {
           const weekStart = dayjs(week.startDate);
           const weekEnd = dayjs(week.endDate);
+          console.log('🔍 Checking week:', {
+            weekKey: week.key,
+            weekStart: weekStart.format('YYYY-MM-DD'),
+            weekEnd: weekEnd.format('YYYY-MM-DD'),
+            currentDate: currentDate.format('YYYY-MM-DD'),
+            isCurrentWeek: currentDate.isSame(weekStart, 'day') || 
+                          currentDate.isSame(weekEnd, 'day') || 
+                          (currentDate.isAfter(weekStart, 'day') && currentDate.isBefore(weekEnd, 'day'))
+          });
+          
           // Check if current date is between week start and end (inclusive)
           return currentDate.isSame(weekStart, 'day') || 
                  currentDate.isSame(weekEnd, 'day') || 
                  (currentDate.isAfter(weekStart, 'day') && currentDate.isBefore(weekEnd, 'day'));
         });
         
+        console.log('🔍 Current week found:', currentWeek);
+        
         // If current week is found, select it; otherwise fall back to first week
         const weekToSelect = currentWeek || availableWeeks[0];
+        console.log('🔄 Auto-selecting week:', weekToSelect.key);
         setSelectedWeek(weekToSelect.key);
       } else {
         // If different month, select the first week
+        console.log('🔄 Auto-selecting first week for different month:', availableWeeks[0].key);
         setSelectedWeek(availableWeeks[0].key);
       }
     }
@@ -339,14 +385,33 @@ const Dashboard = () => {
   useEffect(() => {
     if (selectedWeek && availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
+      console.log('🔄 Dashboard data fetching useEffect triggered:', {
+        selectedWeek,
+        selectedWeekData: selectedWeekData ? {
+          key: selectedWeekData.key,
+          startDate: selectedWeekData.startDate,
+          endDate: selectedWeekData.endDate
+        } : null
+      });
+      
       if (selectedWeekData) {
         const weekStartDate = dayjs(selectedWeekData.startDate);
+        console.log('🔄 Fetching dashboard data for week:', selectedWeek, 'start date:', weekStartDate.format('YYYY-MM-DD'));
         setSelectedDate(weekStartDate);
         // Fetch dashboard data for the selected week
         fetchDashboardData(weekStartDate);
+      } else {
+        console.log('❌ Selected week data not found for key:', selectedWeek);
       }
+    } else {
+      console.log('🔄 Dashboard data fetching useEffect - conditions not met:', {
+        hasSelectedWeek: !!selectedWeek,
+        availableWeeksLength: availableWeeks.length
+      });
     }
   }, [selectedWeek, availableWeeks]);
+
+
 
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {

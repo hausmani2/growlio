@@ -68,10 +68,13 @@ const createDashboardSlice = (set, get) => {
         // Fetch dashboard data with caching
         fetchDashboardData: async (weekStart = null) => {
             try {
+                console.log('🚀 fetchDashboardData called with weekStart:', weekStart);
                 set({ loading: true, error: null });
                 
                 // Get restaurant ID
                 const restaurantId = await get().fetchRestaurantId();
+                console.log('🚀 Restaurant ID:', restaurantId);
+                
                 if (!restaurantId) {
                     // Don't throw error - just set loading to false and return
                     // This is expected for new users who haven't completed onboarding
@@ -93,7 +96,10 @@ const createDashboardSlice = (set, get) => {
                     url += `?${queryString}`;
                 }
                 
+                console.log('🚀 Making API call to:', url);
                 const response = await apiGet(url);
+                console.log('🚀 API response:', response.data);
+                
                 set({ 
                     dashboardData: response.data, 
                     loading: false,
@@ -105,6 +111,7 @@ const createDashboardSlice = (set, get) => {
                 
                 return response.data;
             } catch (error) {
+                console.error('❌ Error in fetchDashboardData:', error);
                 set({ error: error.message, loading: false });
                 throw error;
             }
@@ -113,24 +120,82 @@ const createDashboardSlice = (set, get) => {
         // Check if data needs to be refreshed
         shouldRefreshData: (weekStart) => {
             const { lastFetchedDate, dashboardData } = get();
-            if (!dashboardData || !lastFetchedDate) return true;
+            console.log('🔍 shouldRefreshData debug:', {
+                weekStart,
+                lastFetchedDate,
+                hasDashboardData: !!dashboardData,
+                dashboardDataKeys: dashboardData ? Object.keys(dashboardData) : null
+            });
+            
+            if (!dashboardData || !lastFetchedDate) {
+                console.log('✅ Should refresh: No cached data available');
+                return true;
+            }
             
             // If weekStart is provided, check if it matches the last fetched date
             if (weekStart) {
-                const lastFetchedWeek = dayjs(lastFetchedDate).startOf('week').format('YYYY-MM-DD');
-                const requestedWeek = dayjs(weekStart).startOf('week').format('YYYY-MM-DD');
-                return lastFetchedWeek !== requestedWeek;
+                // Use a more reliable week comparison that doesn't depend on dayjs week start configuration
+                // Compare the actual dates directly instead of using startOf('week')
+                const lastFetchedDateObj = dayjs(lastFetchedDate);
+                const requestedDateObj = dayjs(weekStart);
+                
+                // Check if the dates are in the same week by comparing their week numbers and years
+                const lastFetchedWeek = lastFetchedDateObj.week();
+                const lastFetchedYear = lastFetchedDateObj.year();
+                const requestedWeek = requestedDateObj.week();
+                const requestedYear = requestedDateObj.year();
+                
+                const shouldRefresh = lastFetchedWeek !== requestedWeek || lastFetchedYear !== requestedYear;
+                
+                console.log('🔍 Week comparison:', {
+                    lastFetchedDate: lastFetchedDateObj.format('YYYY-MM-DD'),
+                    lastFetchedWeek,
+                    lastFetchedYear,
+                    requestedDate: requestedDateObj.format('YYYY-MM-DD'),
+                    requestedWeek,
+                    requestedYear,
+                    shouldRefresh
+                });
+                
+                return shouldRefresh;
             }
             
+            console.log('✅ Should refresh: No weekStart provided');
             return false;
         },
 
         // Fetch data only if needed
         fetchDashboardDataIfNeeded: async (weekStart = null) => {
-            const shouldRefresh = get().shouldRefreshData(weekStart);
-            if (shouldRefresh) {
+            console.log('🔄 fetchDashboardDataIfNeeded called with:', weekStart);
+            
+            // Force refresh for current week to ensure we always get the latest data
+            const currentDate = dayjs();
+            const requestedDate = weekStart ? dayjs(weekStart) : null;
+            const isCurrentWeek = requestedDate && 
+                                 requestedDate.week() === currentDate.week() && 
+                                 requestedDate.year() === currentDate.year();
+            
+            console.log('🔄 Current week check:', {
+                isCurrentWeek,
+                currentDate: currentDate.format('YYYY-MM-DD'),
+                requestedDate: requestedDate ? requestedDate.format('YYYY-MM-DD') : null
+            });
+            
+            // Always fetch fresh data for current week
+            if (isCurrentWeek) {
+                console.log('🔄 Force refreshing data for current week...');
                 return await get().fetchDashboardData(weekStart);
             }
+            
+            const shouldRefresh = get().shouldRefreshData(weekStart);
+            console.log('🔄 Should refresh data:', shouldRefresh);
+            
+            if (shouldRefresh) {
+                console.log('🔄 Fetching fresh dashboard data...');
+                return await get().fetchDashboardData(weekStart);
+            }
+            
+            console.log('🔄 Using cached dashboard data');
             return get().dashboardData;
         },
 
@@ -664,6 +729,24 @@ const createDashboardSlice = (set, get) => {
                 loading: false,
                 error: null,
                 restaurantId: null,
+                lastFetchedDate: null,
+                selectedDate: null,
+                selectedYear: null,
+                selectedMonth: null,
+                selectedWeek: null,
+                availableWeeks: []
+            }));
+        },
+        
+        // Clear all dashboard state (for logout)
+        clearDashboard: () => {
+            set(() => ({
+                dashboardData: null,
+                goalsData: null,
+                loading: false,
+                error: null,
+                restaurantId: null,
+                lastFetchedDate: null,
                 selectedDate: null,
                 selectedYear: null,
                 selectedMonth: null,
