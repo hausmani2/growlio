@@ -3,7 +3,8 @@ import { Card, Spin, Alert, Empty } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../store/store';
 import CalendarUtils from '../../../../utils/CalendarUtils';
-import useCalendar from '../../../../utils/useCalendar';
+import dayjs from 'dayjs';
+
 import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
 
@@ -31,10 +32,34 @@ const ProfitLossDashboard = () => {
     fetchDashboardSummary
   } = useStore();
 
-  // Use the new calendar hook for state management
-  const calendar = useCalendar({
-    autoSelectCurrentWeek: true
-  });
+  // Use local state for calendar to prevent infinite loops
+  const [calendarDateRange, setCalendarDateRange] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState(null);
+
+  // Initialize with current week
+  useEffect(() => {
+    if (calendarDateRange.length === 0) {
+      const startOfWeek = dayjs().startOf('week');
+      const endOfWeek = dayjs().endOf('week');
+      setCalendarDateRange([startOfWeek, endOfWeek]);
+    }
+  }, [calendarDateRange.length]);
+
+  // Calendar functions
+  const handleCalendarDateChange = useCallback((dates) => {
+    setCalendarDateRange(dates);
+    setCalendarError(null);
+  }, []);
+
+  const selectThisWeek = useCallback(() => {
+    const startOfWeek = dayjs().startOf('week');
+    const endOfWeek = dayjs().endOf('week');
+    const newRange = [startOfWeek, endOfWeek];
+    setCalendarDateRange(newRange);
+    setCalendarError(null);
+    return newRange;
+  }, []);
 
   // Local states
   const [loading, setLoading] = useState(false);
@@ -69,7 +94,7 @@ const ProfitLossDashboard = () => {
     console.log('ProfitLossDashboard: handleDateChange called with:', dates?.map(d => d?.format('YYYY-MM-DD')));
     
     // Update the calendar state first
-    calendar.handleDateChange(dates);
+    handleCalendarDateChange(dates);
     
     if (dates && dates.length === 2) {
       const startDate = dates[0].format('YYYY-MM-DD');
@@ -77,18 +102,18 @@ const ProfitLossDashboard = () => {
       console.log('ProfitLossDashboard: Fetching data for:', startDate, 'to', endDate);
       fetchSummaryData(startDate, endDate, groupBy);
     }
-  }, [calendar, fetchSummaryData, groupBy]);
+  }, [handleCalendarDateChange, fetchSummaryData, groupBy]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
     setGroupBy(groupByValue);
     // Refetch data with new group by if we have a date range
-    if (calendar.dateRange && calendar.dateRange.length === 2) {
-      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
-      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+    if (calendarDateRange && calendarDateRange.length === 2) {
+      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupByValue);
     }
-  }, [calendar.dateRange, fetchSummaryData]);
+  }, [calendarDateRange, fetchSummaryData]);
 
 
 
@@ -120,24 +145,24 @@ const ProfitLossDashboard = () => {
         {errorAlert}
 
         {/* Calendar Component - new system */}
-        {console.log('ProfitLossDashboard render - calendar.dateRange:', calendar.dateRange?.map(d => d?.format('YYYY-MM-DD')))}
+        {console.log('ProfitLossDashboard render - calendarDateRange:', calendarDateRange?.map(d => d?.format('YYYY-MM-DD')))}
         <CalendarUtils
-          selectedDates={calendar.dateRange}
+          selectedDates={calendarDateRange}
           onDateChange={handleDateChange}
           groupBy={groupBy}
           onGroupByChange={handleGroupByChange}
           title="Profit & Loss Dashboard"
           description="Track your profit and loss performance"
           loading={loading}
-          error={calendar.error}
+          error={calendarError}
         />
 
         {/* Show dashboard components when a date range is selected */}
-        {calendar.dateRange && calendar.dateRange.length === 2 ? (
+        {calendarDateRange && calendarDateRange.length === 2 ? (
           <>
             {(() => {
               console.log('Conditional rendering check:', {
-                dateRange: calendar.dateRange,
+                dateRange: calendarDateRange,
                 summaryLoading,
                 hasNoData: hasValidData(),
                 shouldShowLoading: summaryLoading,

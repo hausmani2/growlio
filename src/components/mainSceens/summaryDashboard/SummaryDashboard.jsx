@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { Card, Typography, Space, Spin, Empty, Button, message, notification, App } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
@@ -9,7 +9,7 @@ import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
 import CalendarUtils from '../../../utils/CalendarUtils';
-import useCalendar from '../../../utils/useCalendar';
+
 
 
 const { Title } = Typography;
@@ -17,11 +17,34 @@ const { Title } = Typography;
 const SummaryDashboard = () => {
   const navigate = useNavigate();
 
-  // Use the new calendar utility hook
-  const calendar = useCalendar({
-    autoSelectCurrentWeek: true,
-    initialDates: [] // Ensure no initial dates so auto-selection works
-  });
+  // Use local state for calendar to prevent infinite loops
+  const [calendarDateRange, setCalendarDateRange] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState(null);
+
+  // Initialize with current week
+  useEffect(() => {
+    if (calendarDateRange.length === 0) {
+      const startOfWeek = dayjs().startOf('week');
+      const endOfWeek = dayjs().endOf('week');
+      setCalendarDateRange([startOfWeek, endOfWeek]);
+    }
+  }, [calendarDateRange.length]);
+
+  // Calendar functions
+  const handleCalendarDateChange = useCallback((dates) => {
+    setCalendarDateRange(dates);
+    setCalendarError(null);
+  }, []);
+
+  const selectThisWeek = useCallback(() => {
+    const startOfWeek = dayjs().startOf('week');
+    const endOfWeek = dayjs().endOf('week');
+    const newRange = [startOfWeek, endOfWeek];
+    setCalendarDateRange(newRange);
+    setCalendarError(null);
+    return newRange;
+  }, []);
 
   // Store integration for date selection persistence
   const {
@@ -85,19 +108,10 @@ const SummaryDashboard = () => {
     try {
       console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
       await fetchDashboardSummary(startDate, endDate, groupBy);
-      
-      // Add a small delay to ensure the data is processed
-      setTimeout(() => {
-        console.log('SummaryDashboard: Checking data after fetch');
-        if (dashboardSummaryData && hasValidData() && !showFlashMessage) {
-          console.log('SummaryDashboard: Triggering flash message after fetch for valid data');
-          setShowFlashMessage(true);
-        }
-      }, 500);
     } catch (error) {
       console.error('Error in fetchDashboardSummary:', error);
     }
-  }, [fetchDashboardSummary, dashboardSummaryData, hasValidData, showFlashMessage]);
+  }, [fetchDashboardSummary]);
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
@@ -108,30 +122,30 @@ const SummaryDashboard = () => {
       console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
       
       // Update calendar state first
-      calendar.handleDateChange(dates);
+      handleCalendarDateChange(dates);
       
       // Fetch the data directly
       fetchSummaryData(startDate, endDate, groupBy);
     }
-  }, [fetchSummaryData, groupBy, calendar]);
+  }, [fetchSummaryData, groupBy, handleCalendarDateChange]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
     setGroupBy(groupByValue);
     // Refetch data with new group by if we have a date range
-    if (calendar.dateRange && calendar.dateRange.length === 2) {
-      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
-      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+    if (calendarDateRange && calendarDateRange.length === 2) {
+      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupByValue);
     }
-  }, [calendar.dateRange, fetchSummaryData]);
+  }, [calendarDateRange, fetchSummaryData]);
 
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
     // Ensure we have a valid date range before opening the modal
-    if (!calendar.dateRange || calendar.dateRange.length !== 2) {
+    if (!calendarDateRange || calendarDateRange.length !== 2) {
       // If no date range is selected, use the current week
-      const currentWeekRange = calendar.selectThisWeek();
+      const currentWeekRange = selectThisWeek();
       console.log('No date range selected, using current week:', currentWeekRange);
     }
     
@@ -150,9 +164,9 @@ const SummaryDashboard = () => {
     setHasManuallyClosedModal(false);
     setShowSuccessFlashMessage(true);
 
-    if (calendar.dateRange && calendar.dateRange.length === 2) {
-      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
-      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+    if (calendarDateRange && calendarDateRange.length === 2) {
+      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       await fetchSummaryData(startDate, endDate, groupBy);
     }
 
@@ -216,13 +230,13 @@ const SummaryDashboard = () => {
 
   // Sync calendar state with store state (for backward compatibility)
   useEffect(() => {
-    if (calendar.dateRange && calendar.dateRange.length === 2) {
-      const startDate = calendar.dateRange[0];
+    if (calendarDateRange && calendarDateRange.length === 2) {
+      const startDate = calendarDateRange[0];
       setSelectedYear(startDate.year());
       setSelectedMonth(startDate.month() + 1);
       setSelectedWeek(`${startDate.year()}_${startDate.week()}`);
     }
-  }, [calendar.dateRange, setSelectedYear, setSelectedMonth, setSelectedWeek]);
+  }, [calendarDateRange, setSelectedYear, setSelectedMonth, setSelectedWeek]);
 
   // Initialize restaurant ID and fetch initial data (only once)
   useEffect(() => {
@@ -245,8 +259,8 @@ const SummaryDashboard = () => {
   useEffect(() => {
     if (!isInitialized.current) return;
     
-    const currentDateRange = calendar.dateRange && calendar.dateRange.length === 2 
-      ? `${calendar.dateRange[0].format('YYYY-MM-DD')}-${calendar.dateRange[1].format('YYYY-MM-DD')}`
+    const currentDateRange = calendarDateRange && calendarDateRange.length === 2 
+      ? `${calendarDateRange[0].format('YYYY-MM-DD')}-${calendarDateRange[1].format('YYYY-MM-DD')}`
       : null;
     
     if (currentDateRange && currentDateRange !== lastDateRange.current) {
@@ -256,11 +270,11 @@ const SummaryDashboard = () => {
       // Reset modal states for new date range
       setHasManuallyClosedModal(false);
       setShowFlashMessage(false);
-      const startDate = calendar.dateRange[0].format('YYYY-MM-DD');
-      const endDate = calendar.dateRange[1].format('YYYY-MM-DD');
+      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupBy);
     }
-  }, [calendar.dateRange, fetchSummaryData]);
+  }, [calendarDateRange, fetchSummaryData, groupBy]);
 
   // Handle API response changes to show modal or flash message
   useEffect(() => {
@@ -319,20 +333,9 @@ const SummaryDashboard = () => {
         setShowFlashMessage(false);
       }
     }
-  }, [dashboardSummaryData, summaryLoading, hasValidData, hasManuallyClosedModal, isSalesModalVisible, showFlashMessage, groupBy]);
+  }, [dashboardSummaryData, summaryLoading, hasValidData, groupBy]);
 
-  // Additional effect to ensure flash message shows when data is fetched and valid
-  useEffect(() => {
-    if (!summaryLoading && dashboardSummaryData !== null && dashboardSummaryData !== undefined) {
-      console.log('SummaryDashboard: Additional check for flash message');
-      
-      // If we have valid data, show flash message
-      if (hasValidData() && !showFlashMessage) {
-        console.log('SummaryDashboard: Triggering flash message from additional effect for valid data');
-        setShowFlashMessage(true);
-      }
-    }
-  }, [dashboardSummaryData, summaryLoading, hasValidData, showFlashMessage]);
+
 
   // Success flash message
   if (showSuccessFlashMessage) {
@@ -380,17 +383,17 @@ const SummaryDashboard = () => {
     <App>
       <div className="w-full mx-auto">
       <div className="mb-2">
-        <CalendarUtils
-          selectedDates={calendar.dateRange}
+                <CalendarUtils
+          selectedDates={calendarDateRange}
           onDateChange={handleDateChange}
           groupBy={groupBy}
           onGroupByChange={handleGroupByChange}
           title="Weekly Budgeted Dashboard"
           description="Select a date range for your dashboard data"
-          loading={calendar.loading}
-          error={calendar.error}
+          loading={calendarLoading}
+          error={calendarError}
           autoSelectCurrentWeek={true}
-                />
+        />
         
       </div>
 
@@ -433,7 +436,7 @@ const SummaryDashboard = () => {
       )}
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        {calendar.dateRange && calendar.dateRange.length === 2 ? (
+        {calendarDateRange && calendarDateRange.length === 2 ? (
           <>
             {summaryLoading ? (
               <Card>
@@ -515,11 +518,11 @@ const SummaryDashboard = () => {
         onDataSaved={handleDataSaved}
         selectedWeekData={(() => {
           // Always use the current calendar date range
-          if (calendar.dateRange && calendar.dateRange.length === 2) {
+          if (calendarDateRange && calendarDateRange.length === 2) {
             const weekData = {
-              startDate: calendar.dateRange[0].format('YYYY-MM-DD'),
-              endDate: calendar.dateRange[1].format('YYYY-MM-DD'),
-              weekNumber: calendar.dateRange[0].week()
+              startDate: calendarDateRange[0].format('YYYY-MM-DD'),
+              endDate: calendarDateRange[1].format('YYYY-MM-DD'),
+              weekNumber: calendarDateRange[0].week()
             };
             console.log('SalesDataModal: Using calendar date range:', weekData);
             return weekData;
