@@ -100,6 +100,19 @@ body {
   font-family: var(--font-family-primary) !important;
 }
 
+/* Ensure Ant Design messages are visible */
+.ant-message {
+  z-index: 1010 !important;
+}
+
+.ant-message-notice {
+  z-index: 1010 !important;
+}
+
+.ant-message-notice-content {
+  z-index: 1010 !important;
+}
+
 .ant-layout {
   font-family: var(--font-family-primary) !important;
 }

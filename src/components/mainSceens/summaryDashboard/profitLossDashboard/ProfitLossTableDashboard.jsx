@@ -33,6 +33,44 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return isNaN(parsed) ? 0 : parsed;
   }, []);
 
+  // Helper function to determine if data is weekly format
+  const isWeeklyData = useCallback((data) => {
+    if (!Array.isArray(data) || data.length === 0) return false;
+    const firstEntry = data[0];
+    return Object.prototype.hasOwnProperty.call(firstEntry, 'week_start') && Object.prototype.hasOwnProperty.call(firstEntry, 'week_end');
+  }, []);
+
+  // Helper function to format date for display
+  const formatDateForDisplay = useCallback((dateString, isWeekly = false) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = dayjs(dateString);
+      if (isWeekly) {
+        return {
+          day: `Week ${date.format('MMM DD')}`,
+          date: `${date.format('MMM DD')} - ${dayjs(dateString).add(6, 'day').format('MMM DD, YYYY')}`,
+          shortDate: date.format('MMM DD'),
+          fullDate: `${date.format('MMM DD')} - ${dayjs(dateString).add(6, 'day').format('MMM DD, YYYY')}`
+        };
+      } else {
+        return {
+          day: date.format('ddd'),
+          date: date.format('MMM DD'),
+          shortDate: date.format('MMM DD'),
+          fullDate: date.format('MMM DD, YYYY')
+        };
+      }
+    } catch (error) {
+      return {
+        day: 'Invalid Date',
+        date: 'Invalid Date',
+        shortDate: 'Invalid',
+        fullDate: 'Invalid Date'
+      };
+    }
+  }, []);
+
   // Toggle row expansion - Optimized for performance
   const toggleRowExpansion = useCallback((recordKey) => {
     setExpandedRows(prev => {
@@ -63,24 +101,28 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       return;
     }
 
-    let weekEntries = [];
+    let entries = [];
     
     // Extract data based on structure
     if (Array.isArray(dataToProcess.data)) {
-      weekEntries = dataToProcess.data;
+      entries = dataToProcess.data;
     } else if (Array.isArray(dataToProcess)) {
-      weekEntries = dataToProcess;
+      entries = dataToProcess;
     } else if (dataToProcess.daily_entries) {
-      weekEntries = dataToProcess.daily_entries;
+      entries = dataToProcess.daily_entries;
     }
 
-    if (weekEntries.length === 0) {
+    if (entries.length === 0) {
       setTableData([]);
       setProcessedData({});
       return;
     }
 
-    // Process the data - Updated to match new API response structure with profit columns
+    // Determine if this is weekly data
+    const isWeekly = isWeeklyData(entries);
+    console.log('ProfitLossTableDashboard: Processing data format:', isWeekly ? 'weekly' : 'daily');
+
+    // Process the data - Updated to handle both daily and weekly structures
     const processed = {
       sales_budget: {},
       sales_budeget_profit: {},
@@ -96,9 +138,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       variableCost: {}
     };
 
-    weekEntries.forEach((entry) => {
-      // Use full date as key for better data organization
-      const dateKey = entry.date || entry.day || 'N/A';
+    entries.forEach((entry, index) => {
+      // Create appropriate date key based on data format
+      let dateKey;
+      if (isWeekly) {
+        // For weekly data, use week_start as the key
+        dateKey = entry.week_start || `week-${index}`;
+      } else {
+        // For daily data, use date or day field
+        dateKey = entry.date || entry.day || `day-${index}`;
+      }
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
       processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
@@ -127,8 +176,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     });
 
     setProcessedData(processed);
-    setTableData(weekEntries);
-  }, [dashboardData, dashboardSummaryData, parseNumericValue]);
+    setTableData(entries);
+  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData]);
 
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
@@ -259,25 +308,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return formattedValue;
   }, [formatCurrency]);
 
-  // Format date for display
-  const formatDateForDisplay = useCallback((dateString) => {
-    if (!dateString) return 'N/A';
-    
-    try {
-      const date = dayjs(dateString);
-      return {
-        day: date.format('ddd'),
-        date: date.format('MMM DD'),
-        fullDate: date.format('MMM DD, YYYY')
-      };
-    } catch {
-      return {
-        day: 'N/A',
-        date: 'N/A',
-        fullDate: 'N/A'
-      };
-    }
-  }, []);
+
 
   // Generate grouped columns with multi-level headers
   const generateGroupedColumns = useMemo(() => {
