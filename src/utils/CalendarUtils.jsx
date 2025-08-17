@@ -160,13 +160,14 @@ const CalendarUtils = ({
             value={displayDates}
             onChange={handleDateChange}
             onOpenChange={handleOpenChange}
-            format="MMM DD, YYYY"
+            format="MMMM DD, YYYY"
             placeholder={['Start Date', 'End Date']}
             className="w-full"
             disabled={disabled || loading}
             style={{
               borderRadius: '6px',
-              width: '30%',
+              width: 'auto',
+              minWidth: '280px',
               height: '40px',
               cursor: 'pointer'
             }}

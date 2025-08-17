@@ -1426,32 +1426,34 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   }
 
   return (
+
+    
     <Card className="shadow-lg border-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
-        <div>
-          <Title level={4} className="mb-0 text-lg sm:text-xl">
-          Profit & Loss Dashboard
-          </Title>
-        </div>
-        <Space className="flex sm:flex-row gap-2">
-          <Button 
-            icon={<PrinterOutlined />} 
-            onClick={handlePrint}
-            className="flex items-center text-xs sm:text-sm"
-            size="small"
-          >
-            <span className="hidden sm:inline">Print</span>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 mb-0">
+            Profit & Loss Dashboard
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button 
+              icon={<PrinterOutlined />} 
+              onClick={handlePrint}
+              size="middle"
+              className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
+            >
+              <span className="hidden sm:inline">Print Report</span>
           </Button>
           <Button 
             icon={<DownloadOutlined />} 
             onClick={handleExport}
-            className="flex items-center text-xs sm:text-sm"
-            size="small"
+            size="middle"
+            className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
           >
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">Export Data</span>
           </Button>
-        </Space>
+        </div>
       </div>
+    </div>
 
       {/* Desktop table with expandable rows and grouped columns */}
       <div className="hidden sm:block">

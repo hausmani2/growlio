@@ -416,7 +416,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
       {/* Profit Trend */}
       <Row gutter={[16, 16]}>
         <Col xs={24}>
-          <Card title="Daily Profit/Loss Trend" className="h-full">
+          <Card className="h-full">
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800 mb-0">
+                  Daily Profit/Loss Trend
+                </h2>
+              </div>
+            </div>
             <div style={{ height: '300px' }}>
               <Line data={profitChartData} options={chartOptions} />
             </div>

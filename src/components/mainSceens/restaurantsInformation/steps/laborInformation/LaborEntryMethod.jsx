@@ -169,12 +169,16 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                                 />
                             </div>
                         </div>
-                        <div className={`flex items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white`}>
+                        <div 
+                            onClick={handleToggleSwitch}
+                            className={`flex items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200`}
+                        >
                             <span className={`text-sm sm:text-base`}>{getToggleText()}</span>
                             <ToggleSwitch
                                 isOn={isToggleEnabled()}
                                 setIsOn={handleToggleSwitch}
                                 disabled={false}
+                                size="large"
                             />
                         </div>
                     </div>

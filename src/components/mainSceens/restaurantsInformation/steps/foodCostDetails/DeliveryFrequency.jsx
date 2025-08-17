@@ -74,7 +74,12 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                         {days.map((day, index) => (
                             <div
                                 key={index}
-                                className={`flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border border-gray-200 rounded-lg sm:rounded-xl bg-white ${day.disabled ? 'opacity-60 cursor-not-allowed' : ''} mb-2 sm:mb-3`}
+                                onClick={() => !day.disabled && handleDayToggle(day.name)}
+                                className={`flex items-center justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border border-gray-200 rounded-lg sm:rounded-xl bg-white mb-2 sm:mb-3 ${
+                                    day.disabled 
+                                        ? 'opacity-60 cursor-not-allowed' 
+                                        : 'cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200'
+                                }`}
                             >
                                 <span className={`text-xs sm:text-sm lg:text-base ${day.disabled ? 'text-gray-400' : 'text-neutral-600'}`}>
                                     {day.name}
@@ -83,6 +88,7 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
                                     isOn={data.selectedDays[day.name] || false}
                                     setIsOn={() => !day.disabled && handleDayToggle(day.name)}
                                     disabled={day.disabled}
+                                    size="large"
                                 />
                             </div>
                         ))}

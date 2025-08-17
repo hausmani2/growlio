@@ -77,7 +77,8 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                         {salesChannels.map((channel, index) => (
                             <div
                                 key={index}
-                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white mb-3 gap-3 sm:gap-0 ${
+                                onClick={() => handleToggle(channel.key)}
+                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white mb-3 gap-3 sm:gap-0 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 ${
                                     errors.sales_channels ? 'border-red-500' : ''
                                 }`}
                             >
@@ -88,6 +89,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                                 <ToggleSwitch
                                     isOn={channel.enabled}
                                     setIsOn={() => handleToggle(channel.key)}
+                                    size="large"
                                 />
                             </div>
                         ))}

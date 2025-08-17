@@ -9,6 +9,7 @@ import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
 import CalendarUtils from '../../../utils/CalendarUtils';
+import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 
 
 
@@ -61,8 +62,10 @@ const SummaryDashboard = () => {
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
 
   // Flash message state
-  const [showFlashMessage, setShowFlashMessage] = useState(false);
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
+  
+  // Sales data popup hook
+  const { shouldShowPopup, isLoading: popupLoading, markPopupAsShown } = useSalesDataPopup();
 
   // Dashboard summary functionality
   const {
@@ -224,7 +227,7 @@ const SummaryDashboard = () => {
 
   // Handle flash message button click
   const handleFlashMessageButtonClick = () => {
-    setShowFlashMessage(false);
+    dismissPopup();
     navigate('/dashboard');
   };
 
@@ -269,7 +272,6 @@ const SummaryDashboard = () => {
       hasHandledFailResponse.current = false;
       // Reset modal states for new date range
       setHasManuallyClosedModal(false);
-      setShowFlashMessage(false);
       const startDate = calendarDateRange[0].format('YYYY-MM-DD');
       const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupBy);
@@ -314,23 +316,12 @@ const SummaryDashboard = () => {
         console.log('SummaryDashboard: Showing sales modal for no data (daily view)');
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
-        setShowFlashMessage(false);
       }
-      // Show flash message when we have valid data
-      else if (hasValidData() && !showFlashMessage) {
-        console.log('SummaryDashboard: Showing flash message for valid data');
-        setShowFlashMessage(true);
-        setShowSuccessFlashMessage(false);
-        // Ensure modal is closed when we have valid data
-        if (isSalesModalVisible) {
-          console.log('SummaryDashboard: Closing sales modal because we have valid data');
-          setIsSalesModalVisible(false);
-        }
-      }
-      // Hide flash message when no data (to avoid showing both modal and flash)
-      else if (hasNoData) {
-        console.log('SummaryDashboard: Hiding flash message - no data');
-        setShowFlashMessage(false);
+      // Flash message is now controlled by the hook - no need to manually manage it
+      // Ensure modal is closed when we have valid data
+      if (hasValidData() && isSalesModalVisible) {
+        console.log('SummaryDashboard: Closing sales modal because we have valid data');
+        setIsSalesModalVisible(false);
       }
     }
   }, [dashboardSummaryData, summaryLoading, hasValidData, groupBy]);
@@ -341,34 +332,36 @@ const SummaryDashboard = () => {
   if (showSuccessFlashMessage) {
     return (
       <div className="w-full mx-auto">
-        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex justify-between items-start">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-800">
-                ✅ Sales Data Added Successfully!
-              </h3>
-              <p className="text-green-700">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-green-100 p-2 rounded-lg">
+                  <span className="text-2xl">✅</span>
+                </div>
+                <h3 className="text-xl font-bold text-green-800">
+                  Sales Data Added Successfully!
+                </h3>
+              </div>
+              <p className="text-green-700 text-lg leading-relaxed">
                 Your sales data has been saved. The dashboard will now reflect your updated information.
               </p>
             </div>
-            <div className="flex gap-2 ml-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                size="small"
+                size="large"
                 type="primary"
                 icon={<DollarOutlined />}
                 onClick={handleFlashMessageButtonClick}
-                style={{
-                  backgroundColor: '#52c41a',
-                  borderColor: '#52c41a',
-                  fontSize: '12px'
-                }}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
               >
                 View Dashboard
                 <ArrowRightOutlined />
               </Button>
               <Button
-                size="small"
+                size="large"
                 onClick={() => setShowSuccessFlashMessage(false)}
+                className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
               >
                 Dismiss
               </Button>
@@ -382,51 +375,65 @@ const SummaryDashboard = () => {
   return (
     <App>
       <div className="w-full mx-auto">
-      <div className="mb-2">
-                <CalendarUtils
-          selectedDates={calendarDateRange}
-          onDateChange={handleDateChange}
-          groupBy={groupBy}
-          onGroupByChange={handleGroupByChange}
-          title="Weekly Budgeted Dashboard"
-          description="Select a date range for your dashboard data"
-          loading={calendarLoading}
-          error={calendarError}
-          autoSelectCurrentWeek={true}
-        />
-        
-      </div>
-
-      {/* Flash Message for Sales Budget */}
-      {showFlashMessage && (
-        <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex justify-between items-start">
+        {/* Enhanced Header Section */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+            {/* Left Side - Title and Description */}
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-green-800 ">
-                📊 Keep Your Sales Data Updated
-              </h3>
-              <p className="text-green-700 ">
-              Enter your sales data daily to ensure your dashboard reflects accurate and up-to-date results. Use the button below to go to the Sales Data page.
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                Weekly Budgeted Dashboard
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Monitor your restaurant's financial performance and track budget vs. actual results
               </p>
             </div>
-            <div className="flex gap-2 ml-4">
+            
+            {/* Right Side - Date Picker and Controls */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <CalendarUtils
+                selectedDates={calendarDateRange}
+                onDateChange={handleDateChange}
+                groupBy={groupBy}
+                onGroupByChange={handleGroupByChange}
+                title=""
+                description=""
+                loading={calendarLoading}
+                error={calendarError}
+                autoSelectCurrentWeek={true}
+              />
+            </div>
+          </div>
+        </div>
+
+      {/* Enhanced Flash Message for Sales Budget */}
+      {shouldShowPopup && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-4 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-bold text-green-800">
+                  Keep Your Sales Data Updated
+                </h3>
+              </div>
+              <p className="text-green-700 text-base leading-relaxed">
+                Enter your sales data daily to ensure your dashboard reflects accurate and up-to-date results. Use the button below to go to the Sales Data page.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
-                size="small"
+                size="middle"
                 type="primary"
                 icon={<DollarOutlined />}
                 onClick={handleFlashMessageButtonClick}
-                style={{
-                  backgroundColor: '#52c41a',
-                  borderColor: '#52c41a',
-                  fontSize: '12px'
-                }}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
               >
                 View Dashboard
                 <ArrowRightOutlined />
               </Button>
               <Button
-                size="small"
-                onClick={() => setShowFlashMessage(false)}
+                size="middle"
+                onClick={markPopupAsShown}
+                className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
               >
                 Dismiss
               </Button>
@@ -472,6 +479,15 @@ const SummaryDashboard = () => {
               </Card>
             ) : (
               <>
+                <BudgetDashboard
+                  dashboardData={dashboardSummaryData}
+                  loading={summaryLoading}
+                  error={summaryError}
+                  onEditData={() => {
+                    // Navigate to dashboard for editing
+                    navigate('/dashboard');
+                  }}
+                />
                 {groupBy === 'week' ? (
                   <WeeklySummaryTable
                     dashboardSummaryData={dashboardSummaryData}
@@ -487,15 +503,6 @@ const SummaryDashboard = () => {
                     viewMode={groupBy === 'month' ? 'monthly' : groupBy === 'week' ? 'weekly' : 'daily'}
                   />
                 )}
-                <BudgetDashboard
-                  dashboardData={dashboardSummaryData}
-                  loading={summaryLoading}
-                  error={summaryError}
-                  onEditData={() => {
-                    // Navigate to dashboard for editing
-                    navigate('/dashboard');
-                  }}
-                />
               </>
             )}
           </>

@@ -144,18 +144,34 @@ const ProfitLossDashboard = () => {
         {/* Error Alert - show at top if there's an error */}
         {errorAlert}
 
-        {/* Calendar Component - new system */}
-        {console.log('ProfitLossDashboard render - calendarDateRange:', calendarDateRange?.map(d => d?.format('YYYY-MM-DD')))}
-        <CalendarUtils
-          selectedDates={calendarDateRange}
-          onDateChange={handleDateChange}
-          groupBy={groupBy}
-          onGroupByChange={handleGroupByChange}
-          title="Profit & Loss Dashboard"
-          description="Track your profit and loss performance"
-          loading={loading}
-          error={calendarError}
-        />
+        {/* Enhanced Header Section */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {/* Left Side - Title and Description */}
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                Profit & Loss Dashboard
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Track your profit and loss performance with comprehensive financial insights
+              </p>
+            </div>
+            
+            {/* Right Side - Date Picker and Controls */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <CalendarUtils
+                selectedDates={calendarDateRange}
+                onDateChange={handleDateChange}
+                groupBy={groupBy}
+                onGroupByChange={handleGroupByChange}
+                title=""
+                description=""
+                loading={loading}
+                error={calendarError}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Show dashboard components when a date range is selected */}
         {calendarDateRange && calendarDateRange.length === 2 ? (
@@ -204,32 +220,29 @@ const ProfitLossDashboard = () => {
               } else {
                 return (
                   <div className="space-y-4">
-                  {/* Profit Loss Table - First */}
+                  {/* Budget Dashboard - First (Graph) */}
                   <div>
-
-                  <ProfitLossTableDashboard
-                    dashboardData={dashboardSummaryData}
-                    loading={summaryLoading}
-                    error={summaryError}
-                    viewMode={'weekly'}
-                  />
+                    <BudgetDashboard
+                      dashboardData={dashboardSummaryData}
+                      loading={summaryLoading}
+                      error={summaryError}
+                      onEditData={() => {
+                        // Navigate to dashboard for editing
+                        navigate('/dashboard');
+                      }}
+                      viewMode={'weekly'}
+                    />
                   </div>
                   <div>
-
-                  
-                       {/* Budget Dashboard - Second */}
-                       <BudgetDashboard
-                       dashboardData={dashboardSummaryData}
-                       loading={summaryLoading}
-                       error={summaryError}
-                       onEditData={() => {
-                         // Navigate to dashboard for editing
-                         navigate('/dashboard');
-                       }}
-                       viewMode={'weekly'}
-                     />
-                     </div>
-                   </div>
+                    {/* Profit Loss Table - Second */}
+                    <ProfitLossTableDashboard
+                      dashboardData={dashboardSummaryData}
+                      loading={summaryLoading}
+                      error={summaryError}
+                      viewMode={'weekly'}
+                    />
+                  </div>
+                </div>
                 );
               }
             })()}
