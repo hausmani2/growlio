@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../../assets/logo.png';
+import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Dropdown, Menu } from 'antd';
@@ -39,6 +39,7 @@ const Header = ({ onMenuClick }) => {
                     <span className="text-sm font-medium">Profile</span>
                 </div>
             ),
+            onClick: () => navigate('/profile'),
             className: 'hover:bg-gray-50'
         },
         {
@@ -68,10 +69,10 @@ const Header = ({ onMenuClick }) => {
                 
                 {/* Logo */}
                 <div className="flex items-center">
-                    <img 
-                        src={logo} 
-                        alt="Growlio Logo" 
-                        className="h-8 sm:h-10 w-auto object-contain"
+                    <GrowlioLogo 
+                        width={96} 
+                        height={32} 
+                        className="h-8 sm:h-10 w-auto"
                     />
                 </div>
             </div>

@@ -430,171 +430,185 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full">
-      <div className="w-full mx-auto">
-        <div className="mb-2">
-          <Title level={3} className="mb-2 sm:mb-4 text-lg sm:text-xl lg:text-2xl">
-            Cash Flow Dashboard
-          </Title>
-
-          <Card className="p-4 sm:p-6">
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-
-              {/* Calendar Dropdowns */}
-              <div className="space-y-1">
-                  <p>You can change dates to insert or update weekly costing data.</p>
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                  {/* Year Dropdown */}
-                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Year
-                    </label>
-                    <Select
-                      placeholder="Select Year"
-                      value={selectedYear}
-                      onChange={handleYearChange}
-                      style={{ width: '100%' }}
-                      className="w-full"
-                    >
-                      {years.map(year => (
-                        <Option key={year} value={year}>
-                          {year}
-                        </Option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  {/* Month Dropdown */}
-                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Month
-                    </label>
-                    <Select
-                      placeholder="Select Month"
-                      value={selectedMonth}
-                      onChange={handleMonthChange}
-                      style={{ width: '100%' }}
-                      disabled={!selectedYear}
-                      loading={loading}
-                      className="w-full"
-                    >
-                      {months.map(month => (
-                        <Option key={month.key} value={month.key}>
-                          {month.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  {/* Week Dropdown */}
-                  <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Week
-                    </label>
-                    <Select
-                      placeholder="Select Week"
-                      value={selectedWeek}
-                      onChange={handleWeekChange}
-                      style={{ width: '100%' }}
-                      disabled={!selectedMonth}
-                      loading={loading}
-                    >
-                      {availableWeeks.map(week => (
-                        <Option key={week.key} value={week.key}>
-                          Week {week.weekNumber} ({dayjs(week.startDate).format('MMM DD')} - {dayjs(week.endDate).format('MMM DD')})
-                        </Option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Loading indicator for weeks */}
-                {selectedMonth && loading && availableWeeks.length === 0 && (
-                  <div className="text-center py-4">
-                    <Spin size="small" /> Loading weeks...
-                  </div>
-                )}
-
-                {/* No weeks available message */}
-                {selectedMonth && !loading && availableWeeks.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    No weeks available for the selected month.
-                  </div>
-                )}
-              </div>
-            </Space>
-          </Card>
+    <div className="w-full mx-auto">
+      {/* Header Section with same styling as other dashboard pages */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              Enter Weekly Data
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Manage your restaurant's weekly financial data including sales, costs, and labor information
+            </p>
+          </div>
         </div>
+      </div>
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Debug Component - Remove this in production */}
-          
-          {/* Restaurant Information Card */}
-          <RestaurantInfoCard />
-          
-          {/* Only show dashboard components when a week is selected and dashboard data is available */}
-          {selectedWeek && dashboardData ? (
-            <>
-              
-              {/* Data Tables - Pass dashboard data to all components */}
-              <SalesTable
-                selectedDate={getDateSelection().weekStartDate}
-                weekDays={getWeekDays()}
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <CogsTable 
-                selectedDate={getDateSelection().weekStartDate} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <LabourTable 
-                selectedDate={getDateSelection().weekStartDate} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              {/* <ProfitCogsTable 
-                selectedDate={getDateSelection().weekStartDate} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <FixedExpensesTable 
-                selectedDate={getDateSelection().weekStartDate} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
-              <NetProfitTable 
-                selectedDate={getDateSelection().weekStartDate} 
-                weekDays={getWeekDays()} 
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              /> */}
-            </>
-          ) : (
-            <Card>
-              <div className="text-center py-8">
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    !selectedWeek 
-                      ? "Please select a week to view dashboard data." 
-                      : dashboardMessage || "No dashboard data available for the selected week."
-                  }
-                />
-              </div>
-              <SalesTable
-                selectedDate={getDateSelection().weekStartDate}
-                weekDays={getWeekDays()}
-                dashboardData={dashboardData}
-                refreshDashboardData={refreshDashboardData}
-              />
+      {/* Content Section */}
+      <div className="w-full">
+        <div className="w-full mx-auto">
+          <div className="mb-2">
+            <Card className="p-4 sm:p-6">
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+
+                {/* Calendar Dropdowns */}
+                <div className="space-y-1">
+                    <p>You can change dates to insert or update weekly costing data.</p>
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    {/* Year Dropdown */}
+                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Year
+                      </label>
+                      <Select
+                        placeholder="Select Year"
+                        value={selectedYear}
+                        onChange={handleYearChange}
+                        style={{ width: '100%' }}
+                        className="w-full"
+                      >
+                        {years.map(year => (
+                          <Option key={year} value={year}>
+                            {year}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    {/* Month Dropdown */}
+                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Month
+                      </label>
+                      <Select
+                        placeholder="Select Month"
+                        value={selectedMonth}
+                        onChange={handleMonthChange}
+                        style={{ width: '100%' }}
+                        disabled={!selectedYear}
+                        loading={loading}
+                        className="w-full"
+                      >
+                        {months.map(month => (
+                          <Option key={month.key} value={month.key}>
+                            {month.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    {/* Week Dropdown */}
+                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Week
+                      </label>
+                      <Select
+                        placeholder="Select Week"
+                        value={selectedWeek}
+                        onChange={handleWeekChange}
+                        style={{ width: '100%' }}
+                        disabled={!selectedMonth}
+                        loading={loading}
+                      >
+                        {availableWeeks.map(week => (
+                          <Option key={week.key} value={week.key}>
+                            Week {week.weekNumber} ({dayjs(week.startDate).format('MMM DD')} - {dayjs(week.endDate).format('MMM DD')})
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Loading indicator for weeks */}
+                  {selectedMonth && loading && availableWeeks.length === 0 && (
+                    <div className="text-center py-4">
+                      <Spin size="small" /> Loading weeks...
+                    </div>
+                  )}
+
+                  {/* No weeks available message */}
+                  {selectedMonth && !loading && availableWeeks.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      No weeks available for the selected month.
+                    </div>
+                  )}
+                </div>
+              </Space>
             </Card>
-          )}
-        </Space>
+          </div>
+
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Debug Component - Remove this in production */}
+            
+            {/* Restaurant Information Card */}
+            <RestaurantInfoCard />
+            
+            {/* Only show dashboard components when a week is selected and dashboard data is available */}
+            {selectedWeek && dashboardData ? (
+              <>
+                
+                {/* Data Tables - Pass dashboard data to all components */}
+                <SalesTable
+                  selectedDate={getDateSelection().weekStartDate}
+                  weekDays={getWeekDays()}
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+                <CogsTable 
+                  selectedDate={getDateSelection().weekStartDate} 
+                  weekDays={getWeekDays()} 
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+                <LabourTable 
+                  selectedDate={getDateSelection().weekStartDate} 
+                  weekDays={getWeekDays()} 
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+                {/* <ProfitCogsTable 
+                  selectedDate={getDateSelection().weekStartDate} 
+                  weekDays={getWeekDays()} 
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+                <FixedExpensesTable 
+                  selectedDate={getDateSelection().weekStartDate} 
+                  weekDays={getWeekDays()} 
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+                <NetProfitTable 
+                  selectedDate={getDateSelection().weekStartDate} 
+                  weekDays={getWeekDays()} 
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                /> */}
+              </>
+            ) : (
+              <Card>
+                <div className="text-center py-8">
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={
+                      !selectedWeek 
+                        ? "Please select a week to view dashboard data." 
+                        : dashboardMessage || "No dashboard data available for the selected week."
+                    }
+                  />
+                </div>
+                <SalesTable
+                  selectedDate={getDateSelection().weekStartDate}
+                  weekDays={getWeekDays()}
+                  dashboardData={dashboardData}
+                  refreshDashboardData={refreshDashboardData}
+                />
+              </Card>
+            )}
+          </Space>
+        </div>
       </div>
     </div>
   );

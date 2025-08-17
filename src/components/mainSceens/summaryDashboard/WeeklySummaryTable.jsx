@@ -376,13 +376,10 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
 
   return (
     <Card className="shadow-lg border-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                 <div className="flex items-center gap-3">
-           <CalendarOutlined className="text-blue-500 text-xl" />
-           <Title level={4} className="mb-0 text-xl sm:text-2xl font-bold text-gray-800">
-             {getDynamicTitle()}
-           </Title>
-         </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
+                <Title level={4} className="mb-0 text-xl sm:text-2xl font-bold text-orange-600">
+                    {getDynamicTitle()}
+                </Title>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             icon={<PrinterOutlined />} 

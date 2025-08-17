@@ -9,6 +9,8 @@ import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
+import LoadingSpinner from "../../../../layout/LoadingSpinner";
+import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
@@ -328,46 +330,46 @@ const ExpenseWrapperContent = () => {
     };
 
     return (
-        <div>
-            {/* Show prominent error message when no expenses are added */}
-            {validationErrors.no_expenses && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Expense Required</h3>
-                    <p className="text-red-700">
-                        {validationErrors.no_expenses}
-                    </p>
-                </div>
-            )}
-            
-            <FixedCost 
-                data={expenseData} 
-                updateData={updateExpenseData}
-                errors={validationErrors}
-            />
-            <VariableFixed 
-                ref={variableFixedRef}
-                data={expenseData} 
-                updateData={updateExpenseData}
-                errors={validationErrors}
-            />
-            <TotalExpense 
-                data={expenseData} 
-                onSave={handleSave}
-                loading={loading}
-            />
-            
-            <div className="flex justify-end mt-6">
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Expense"
+                    description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
+                />
+            </div>
 
-                {isUpdateMode && (
+            {/* Content Section */}
+            <div className="space-y-6">
+                <FixedCost
+                    data={expenseData}
+                    updateData={updateExpenseData}
+                    errors={validationErrors}
+                />
+                <VariableFixed
+                    ref={variableFixedRef}
+                    data={expenseData}
+                    updateData={updateExpenseData}
+                    errors={validationErrors}
+                />
+                <TotalExpense
+                    data={expenseData}
+                    onSave={handleSave}
+                    loading={loading}
+                />
+            </div>
+
+            {isUpdateMode && (
+                <div className="flex justify-end mt-8 pt-6">
                     <button
                         onClick={handleSave}
-                        className="bg-orange-300 text-white px-6 py-2 rounded-lg hover:bg-orange-500 transition-colors"
+                        className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
                         disabled={loading}
                     >
                         {loading ? "Saving..." : "Save Changes"}
                     </button>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

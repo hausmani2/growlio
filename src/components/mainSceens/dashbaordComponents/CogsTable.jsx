@@ -587,7 +587,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   return (
     <div className="w-full">
-      <Title level={3} className="pl-2 pb-2">COGS Performance</Title>
+      <div className="pb-3 border-b border-gray-200">
+        <h3 className="text-xl font-bold text-orange-600">COGS Performance</h3>
+      </div>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">

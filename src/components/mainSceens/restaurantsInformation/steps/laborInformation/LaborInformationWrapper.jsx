@@ -8,6 +8,7 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
+import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const LaborInformationWrapperContent = () => {
     const location = useLocation();
@@ -216,28 +217,30 @@ const LaborInformationWrapperContent = () => {
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            {isUpdateMode && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                    <p className="text-blue-700">
-                        You are updating your labour information. Changes will be saved when you click "Save & Continue".
-                    </p>
-                </div>
-            )}
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Labour Information"
+                    description="Configure your labor management settings including goals, hourly rates, and recording methods."
+                />
+            </div>
 
-            <LaborInformation
-                data={laborData}
-                updateData={updateLaborData}
-                errors={validationErrors}
-            />
-            <LaborEntryMethod
-                data={laborData}
-                updateData={updateLaborData}
-                errors={validationErrors}
-                onSaveAndContinue={handleSaveAndContinue}
-                loading={loading}
-            />
+            {/* Content Section */}
+            <div className="space-y-6">
+                <LaborInformation
+                    data={laborData}
+                    updateData={updateLaborData}
+                    errors={validationErrors}
+                />
+                <LaborEntryMethod
+                    data={laborData}
+                    updateData={updateLaborData}
+                    errors={validationErrors}
+                    onSaveAndContinue={handleSaveAndContinue}
+                    loading={loading}
+                />
+            </div>
 
             <div className="flex justify-between mt-6">
                 {isUpdateMode && (

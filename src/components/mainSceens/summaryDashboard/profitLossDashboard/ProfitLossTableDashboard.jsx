@@ -1431,7 +1431,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     <Card className="shadow-lg border-0">
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-0">
+          <h2 className="text-xl font-bold text-orange-600 mb-0">
             Profit & Loss Dashboard
           </h2>
           <div className="flex flex-col sm:flex-row gap-4">

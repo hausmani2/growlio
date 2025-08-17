@@ -144,33 +144,19 @@ const ProfitLossDashboard = () => {
         {/* Error Alert - show at top if there's an error */}
         {errorAlert}
 
-        {/* Enhanced Header Section */}
+        {/* Header Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Left Side - Title and Description */}
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                Profit & Loss Dashboard
-              </h1>
-              <p className="text-gray-600 text-lg">
-                Track your profit and loss performance with comprehensive financial insights
-              </p>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+                {/* Left Side - Title and Description */}
+                <div className="flex-1">
+                    <h1 className="text-3xl font-bold text-orange-600 mb-2">
+                        Profit & Loss Dashboard
+                    </h1>
+                    <p className="text-gray-600 text-lg">
+                        Track your profit and loss performance with comprehensive financial insights
+                    </p>
+                </div>
             </div>
-            
-            {/* Right Side - Date Picker and Controls */}
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <CalendarUtils
-                selectedDates={calendarDateRange}
-                onDateChange={handleDateChange}
-                groupBy={groupBy}
-                onGroupByChange={handleGroupByChange}
-                title=""
-                description=""
-                loading={loading}
-                error={calendarError}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Show dashboard components when a date range is selected */}

@@ -25,6 +25,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/expense': 'expense',
+    '/profile': 'profile',
   };
   
   // Determine selected key based on current path
@@ -224,7 +225,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
         <div className="flex-1 flex flex-col h-[calc(90vh-100px)] overflow-hidden">
           <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <nav className="space-y-1 px-2">
-              {menuItems.map((item) => renderMenuItem(item))}
+              {/* Main menu items */}
+              {menuItems.slice(0, -1).map((item) => renderMenuItem(item))}
+            </nav>
+          </div>
+          
+          {/* Settings section at the bottom */}
+          <div className="border-t border-gray-200 pt-4 px-2 bg-gray-50">
+            <div className="px-2 mb-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Settings</span>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.slice(-1).map((item) => renderMenuItem(item))}
             </nav>
           </div>
         </div>

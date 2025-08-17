@@ -81,6 +81,19 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+      children: [
+        {
+          key: 'profile',
+          icon: <UserOutlined />,
+          label: 'Profile',
+          onClick: () => navigate('/profile'),
+        },
+      ],
+    },
   ];
 
   const handleMenuClick = () => {

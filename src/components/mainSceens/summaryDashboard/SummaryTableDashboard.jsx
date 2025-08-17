@@ -437,12 +437,10 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
   return (
     <Card className="shadow-lg border-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 pb-3 border-b border-gray-200">
-        <div>
-          <Title level={4} className="mb-0 text-xl sm:text-2xl font-bold text-gray-800">
-            {isMonthlyView && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : 'Budget Dashboard'}
-          </Title>
-        </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
+        <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
+            {viewMode === 'monthly' && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : "Budget Dashboard"}
+        </h2>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             icon={<PrinterOutlined />} 

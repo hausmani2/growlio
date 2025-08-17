@@ -9,6 +9,7 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
+import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const FoodCostWrapperContent = () => {
     const location = useLocation();
@@ -328,33 +329,35 @@ const FoodCostWrapperContent = () => {
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            {isUpdateMode && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                    <p className="text-blue-700">
-                        You are updating your food cost details. Changes will be saved when you click "Save & Continue".
-                    </p>
-                </div>
-            )}
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Food Cost Details"
+                    description="Set up your food cost management including COGS goals, delivery schedules, and third-party provider settings."
+                />
+            </div>
             
-            <FoodCostDetails 
-                data={foodCostData}
-                updateData={updateFoodCostData}
-                errors={validationErrors}
-            />
-            <ThirdPartyProviders
-                data={thirdPartyData}
-                updateData={updateThirdPartyData}
-                errors={validationErrors}
-            />
-            <DeliveryFrequency 
-                data={deliveryData}
-                updateData={updateDeliveryData}
-                onSaveAndContinue={handleSaveAndContinue}
-                errors={validationErrors}
-                loading={loading}
-            />
+            {/* Content Section */}
+            <div className="space-y-6">
+                <FoodCostDetails 
+                    data={foodCostData}
+                    updateData={updateFoodCostData}
+                    errors={validationErrors}
+                />
+                <ThirdPartyProviders
+                    data={thirdPartyData}
+                    updateData={updateThirdPartyData}
+                    errors={validationErrors}
+                />
+                <DeliveryFrequency 
+                    data={deliveryData}
+                    updateData={updateDeliveryData}
+                    onSaveAndContinue={handleSaveAndContinue}
+                    errors={validationErrors}
+                    loading={loading}
+                />
+            </div>
             
             <div className="flex justify-between mt-6">
                 {isUpdateMode && (
