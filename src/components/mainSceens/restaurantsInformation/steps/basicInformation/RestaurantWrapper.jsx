@@ -72,11 +72,15 @@ const RestaurantWrapperContent = () => {
             const data = basicInfoData.data;
             
             // Load restaurant data
+            console.log("🔍 Loading restaurant data:", data.restaurant_name);
             if (data.restaurant_name) {
                 setRestaurantData(prev => ({
                     ...prev,
                     restaurantName: data.restaurant_name
                 }));
+                console.log("✅ Restaurant name set to:", data.restaurant_name);
+            } else {
+                console.log("❌ No restaurant_name found in API data");
             }
             
             if (data.number_of_locations) {

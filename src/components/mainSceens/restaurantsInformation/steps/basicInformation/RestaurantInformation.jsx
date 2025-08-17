@@ -16,7 +16,17 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     // Check if Basic Information step is completed
     const isBasicInfoCompleted = completeOnboardingData["Basic Information"]?.status === true;
     
-    const [localRestaurantName, setLocalRestaurantName] = useState(data.restaurantName || "");
+    const [localRestaurantName, setLocalRestaurantName] = useState("");
+    
+    // Initialize local state with data when component mounts or data changes
+    useEffect(() => {
+        console.log("🔍 RestaurantInformation received data:", data);
+        console.log("🔍 Restaurant name in data:", data.restaurantName);
+        if (data.restaurantName) {
+            setLocalRestaurantName(data.restaurantName);
+            console.log("✅ Local restaurant name set to:", data.restaurantName);
+        }
+    }, [data.restaurantName]);
     const [debounceTimer, setDebounceTimer] = useState(null);
 
     // Clear restaurant name validation state when in update mode
@@ -103,7 +113,17 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                             className={`w-full h-11 rounded-lg text-sm ${
                                 combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
                             } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                            value={localRestaurantName}
+                            value={(() => {
+                                const displayValue = isUpdateMode || isBasicInfoCompleted ? (data.restaurantName || "") : localRestaurantName;
+                                console.log("🔍 Restaurant name display value:", {
+                                    isUpdateMode,
+                                    isBasicInfoCompleted,
+                                    dataRestaurantName: data.restaurantName,
+                                    localRestaurantName,
+                                    finalValue: displayValue
+                                });
+                                return displayValue;
+                            })()}
                             onChange={(e) => handleRestaurantNameChange(e.target.value)}
                             onBlur={handleRestaurantNameBlur}
                             status={combinedErrors.restaurantName ? 'error' : ''}

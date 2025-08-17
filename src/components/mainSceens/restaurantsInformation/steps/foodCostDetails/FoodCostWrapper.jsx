@@ -302,26 +302,22 @@ const FoodCostWrapperContent = () => {
                             loading={loading}
                         />
                         
-                        <div className="flex justify-between mt-6">
-                            {isUpdateMode && (
-                                <>
-                                    <div className="ml-auto">
-                                        <button
-                                            onClick={handleSaveAndContinue}
-                                            disabled={loading}
-                                            className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                            }`}
-                                        >
-                                            {loading && (
-                                                <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                            )}
-                                            {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        {isUpdateMode && (
+                            <div className="flex justify-end mt-8 pt-6">
+                                <button
+                                    onClick={handleSaveAndContinue}
+                                    disabled={loading}
+                                    className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
+                                    }`}
+                                >
+                                    {loading && (
+                                        <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                    )}
+                                    Save Changes
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -359,26 +355,22 @@ const FoodCostWrapperContent = () => {
                 />
             </div>
             
-            <div className="flex justify-between mt-6">
-                {isUpdateMode && (
-                    <>
-                        <div className="ml-auto">
-                            <button
-                                onClick={handleSaveAndContinue}
-                                disabled={loading}
-                                className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                }`}
-                            >
-                                {loading && (
-                                    <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                )}
-                                {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                            </button>
-                        </div>
-                    </>
-                )}
-            </div>
+            {isUpdateMode && (
+                <div className="flex justify-end mt-8 pt-6">
+                    <button
+                        onClick={handleSaveAndContinue}
+                        disabled={loading}
+                        className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
+                        }`}
+                    >
+                        {loading && (
+                            <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                        )}
+                        Save Changes
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

@@ -223,7 +223,7 @@ const SalesDataModal = ({
   //   }, 2000);
   // };
 
-  // Handle daily data changes with debounced budgeted sales feedback
+  // Handle daily data changes without immediate popups
   const handleDailyDataChange = (dayIndex, field, value) => {
     const newDailyData = [...formData.dailyData];
     newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
@@ -252,13 +252,15 @@ const SalesDataModal = ({
         }, 1000);
       }
       
-      // Show success message immediately when value is greater than 0
-      if (value > 0) {
-        message.success(`Budgeted sales of $${value} added for ${changedDay.dayName}`);
-      }
-      
       // Update the last value for this day
       lastBudgetedSalesValueRef.current[dayKey] = value;
+    }
+  };
+
+  // Handle input blur for budgeted sales - show success message only when done editing
+  const handleBudgetedSalesBlur = (dayIndex, value, record) => {
+    if (value > 0 && !isDayClosed(record)) {
+      message.success(`Budgeted sales of $${value} added for ${record.dayName}`);
     }
   };
 
@@ -747,14 +749,14 @@ const SalesDataModal = ({
                   title: 'Day',
                   dataIndex: 'dayName',
                   key: 'dayName',
-                  width: 120,
+                  width: 160,
                   fixed: 'left',
                   render: (text, record) => (
-                    <div>
+                    <div className="min-w-[160px]">
                       <div className="font-medium flex items-center gap-2">
                         {text}
                         {isDayClosed(record) && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
                             CLOSED
                           </span>
                         )}
@@ -769,20 +771,17 @@ const SalesDataModal = ({
                   title: 'Days Open',
                   dataIndex: 'restaurant_open',
                   key: 'restaurant_open',
-                  width: 120,
+                  width: 140,
                   render: (isOpen, record, index) => (
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-2">
-                        <ToggleSwitch
-                          isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
-                          setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
-                          size="small"
-                        />
-                        <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
-                          {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500">{record.dayName}</span>
+                    <div className="flex items-center gap-3 min-w-[140px]">
+                      <ToggleSwitch
+                        isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
+                        setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
+                        size="large"
+                      />
+                      <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
+                        {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
+                      </span>
                     </div>
                   )
                 },
@@ -790,12 +789,13 @@ const SalesDataModal = ({
                    title: 'Budgeted Sales',
                    dataIndex: 'budgetedSales',
                    key: 'budgetedSales',
-                   width: 120,
+                   width: 140,
                    render: (value, record, index) => (
                      <Input
                        type="number"
                        value={value}
                        onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                       onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                        placeholder="0.00"
                        className="w-full"
                        disabled={isDayClosed(record)}
@@ -812,14 +812,14 @@ const SalesDataModal = ({
                   title: 'Day',
                   dataIndex: 'dayName',
                   key: 'dayName',
-                  width: 120,
+                  width: 160,
                   fixed: 'left',
                   render: (text, record) => (
-                    <div>
+                    <div className="min-w-[160px]">
                       <div className="font-medium flex items-center gap-2">
                         {text}
                         {isDayClosed(record) && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
                             CLOSED
                           </span>
                         )}
@@ -834,20 +834,17 @@ const SalesDataModal = ({
                   title: 'Days Open',
                   dataIndex: 'restaurant_open',
                   key: 'restaurant_open',
-                  width: 120,
+                  width: 140,
                   render: (isOpen, record, index) => (
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-2">
-                        <ToggleSwitch
-                          isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
-                          setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
-                          size="small"
-                        />
-                        <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
-                          {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500">{record.dayName}</span>
+                    <div className="flex items-center gap-3 min-w-[140px]">
+                      <ToggleSwitch
+                        isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
+                        setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
+                        size="large"
+                      />
+                      <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
+                        {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
+                      </span>
                     </div>
                   )
                 },
@@ -855,12 +852,13 @@ const SalesDataModal = ({
                   title: 'Budgeted Sales',
                   dataIndex: 'budgetedSales',
                   key: 'budgetedSales',
-                  width: 120,
+                  width: 140,
                   render: (value, record, index) => (
                     <Input
                       type="number"
                       value={value}
                       onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                      onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
                       disabled={isDayClosed(record)}
