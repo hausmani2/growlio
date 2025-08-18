@@ -353,6 +353,9 @@ const Profile = () => {
 
         </Tabs>
       </Card>
+      
+      {/* Bottom spacing to prevent content from sticking to screen bottom */}
+      <div className="h-8"></div>
 
       {/* Delete Account Modal */}
       <Modal

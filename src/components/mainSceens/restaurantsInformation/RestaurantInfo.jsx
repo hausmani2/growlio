@@ -37,7 +37,7 @@ const RestaurantContent = () => {
                     <DetailsTab />
                 </div>
                 <div className="w-full bg-gray-100 h-full">
-                    <div className="flex flex-col gap-2 mx-auto p-2 container   max-w-[1400px] px-10">
+                    <div className="flex flex-col gap-2 mx-auto p-2 container max-w-[1400px] px-10 pb-8">
                         
                         {loading && onboardingStatus !== 'incomplete' && onboardingStatus !== null ? (
                             <div className="flex justify-center items-center h-64">
@@ -46,6 +46,9 @@ const RestaurantContent = () => {
                         ) : (
                             renderActiveContent()
                         )}
+                        
+                        {/* Bottom spacing to prevent content from sticking to screen bottom */}
+                        <div className="h-8"></div>
                     </div>
                 </div>
             </div>

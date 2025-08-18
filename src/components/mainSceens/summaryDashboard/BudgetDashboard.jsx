@@ -475,6 +475,9 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
           </Card>
         </Col> */}
       </Row>
+      
+      {/* Bottom spacing to prevent content from sticking to screen bottom */}
+      <div className="h-8"></div>
     </div>
   );
 };

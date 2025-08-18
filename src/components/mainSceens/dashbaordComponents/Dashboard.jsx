@@ -608,6 +608,9 @@ const Dashboard = () => {
               </Card>
             )}
           </Space>
+          
+          {/* Bottom spacing to prevent content from sticking to screen bottom */}
+          <div className="h-8"></div>
         </div>
       </div>
     </div>
