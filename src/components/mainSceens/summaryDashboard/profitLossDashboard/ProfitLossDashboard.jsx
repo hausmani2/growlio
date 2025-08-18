@@ -106,22 +106,31 @@ const ProfitLossDashboard = () => {
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
+    console.log('ProfitLossDashboard: handleGroupByChange called with:', groupByValue);
     setGroupBy(groupByValue);
     // Refetch data with new group by if we have a date range
     if (calendarDateRange && calendarDateRange.length === 2) {
       const startDate = calendarDateRange[0].format('YYYY-MM-DD');
       const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+      console.log('ProfitLossDashboard: Refetching data for groupBy:', groupByValue, 'dates:', startDate, 'to', endDate);
       fetchSummaryData(startDate, endDate, groupByValue);
     }
   }, [calendarDateRange, fetchSummaryData]);
 
 
 
-  // Initialize dashboard (only once)
+  // Initialize dashboard and fetch initial data
   useEffect(() => {
     if (isInitialized.current) return;
     isInitialized.current = true;
-  }, []);
+    
+    // Fetch initial data for current week
+    if (calendarDateRange && calendarDateRange.length === 2) {
+      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+      fetchSummaryData(startDate, endDate, groupBy);
+    }
+  }, [calendarDateRange, groupBy, fetchSummaryData]);
 
 
 
@@ -144,19 +153,30 @@ const ProfitLossDashboard = () => {
         {/* Error Alert - show at top if there's an error */}
         {errorAlert}
 
-        {/* Header Section */}
+        {/* Header Section with Calendar (match Budget page) */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
-                {/* Left Side - Title and Description */}
-                <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-orange-600 mb-2">
-                        Profit & Loss Dashboard
-                    </h1>
-                    <p className="text-gray-600 text-lg">
-                        Track your profit and loss performance with comprehensive financial insights
-                    </p>
-                </div>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+            {/* Left Side - Title and Description */}
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-orange-600 mb-2">Profit & Loss Dashboard</h1>
+              <p className="text-gray-600 text-lg">Track your profit and loss performance with comprehensive financial insights</p>
             </div>
+
+            {/* Right Side - Date Picker and Controls */}
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <CalendarUtils
+                selectedDates={calendarDateRange}
+                onDateChange={handleDateChange}
+                groupBy={groupBy}
+                onGroupByChange={handleGroupByChange}
+                title=""
+                description=""
+                loading={calendarLoading}
+                error={calendarError}
+                autoSelectCurrentWeek={true}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Show dashboard components when a date range is selected */}
