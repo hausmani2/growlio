@@ -243,9 +243,6 @@ const ProfitLossDashboard = () => {
             </div>
           </Card>
         )}
-        
-        {/* Bottom spacing to prevent content from sticking to screen bottom */}
-        <div className="h-8"></div>
 
       </div>
     </div>

@@ -218,7 +218,7 @@ const OnboardingWrapper = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+        <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col lg:flex-row bg-gray-50">
                 {/* Content Section - Improved responsive design */}
                 <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0">
                     <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">

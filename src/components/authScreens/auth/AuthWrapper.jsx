@@ -3,7 +3,7 @@ import orderBooker from "../../../assets/auth/happy-man.png"
 
 const AuthWrapper = ({ children }) => {
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col lg:flex-row bg-gradient-to-br from-gray-50 to-white">
       {/* Left Section - Form */}
       <div className="w-full lg:w-1/2 min-h-screen flex items-center justify-center p-4 lg:p-8">
         <div className="w-full max-w-md">

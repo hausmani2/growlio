@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Input, Button, message } from 'antd';
+import { Input, Button, message, Card } from 'antd';
 import { LockOutlined, KeyOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { apiPost } from '../../../utils/axiosInterceptors';
 import GrowlioLogo from '../../common/GrowlioLogo';
@@ -82,152 +82,129 @@ const ResetPassword = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          {/* Logo Section - Outside the form box */}
-          <div className="text-center mb-8">
-            <GrowlioLogo width={180} height={60} className="mx-auto" />
-          </div>
-          
-          <div className="w-full bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-            <div className="text-center mb-8">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl border-0">
+          <div className="text-center">
+            <div className="mb-6">
+              <GrowlioLogo width={120} height={40} className="mx-auto" />
+            </div>
+            
+            <div className="mb-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <LockOutlined className="text-2xl text-green-600" />
               </div>
-              <h1 className="text-3xl font-bold text-orange-600 mb-3">
-                Password Reset Successful! 🎉
-              </h1>
-              <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Password Reset Successful!</h2>
+              <p className="text-gray-600">
                 Your password has been successfully reset. You can now login with your new password.
               </p>
             </div>
             
-            <div className="mt-6">
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleBackToLogin}
-                className="w-full h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
-              >
-                Go to Login
-              </Button>
-            </div>
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleBackToLogin}
+              className="w-full bg-orange-500 hover:bg-orange-600 border-0"
+            >
+              Go to Login
+            </Button>
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo Section - Outside the form box */}
-        <div className="text-center mb-8">
-          <GrowlioLogo width={180} height={60} className="mx-auto" />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0">
+        <div className="text-center mb-6">
+          <GrowlioLogo width={120} height={40} className="mx-auto" />
         </div>
         
-        <form
-          onSubmit={handleSubmit}
-          className="w-full bg-white p-8 rounded-xl shadow-lg border border-gray-100"
-        >
-          {/* Header Section */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-orange-600 mb-3">
-              Reset Your Password 🔐
-            </h1>
-            <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto">
-              Enter the reset token from your email and create a new password.
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Reset Your Password</h2>
+          <p className="text-gray-600">
+            Enter the reset token from your email and create a new password.
+          </p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 text-left">
+              Reset Token
+            </label>
+            <Input
+              name="token"
+              value={form.token}
+              onChange={handleChange}
+              placeholder="Enter the reset token from your email"
+              prefix={<KeyOutlined className="text-gray-400" />}
+              size="large"
+              className="h-11 rounded-lg"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1 text-left">
+              Check your email for the reset token
             </p>
           </div>
           
-          {/* Form Fields */}
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="token">
-                Reset Token
-              </label>
-              <Input
-                id="token"
-                name="token"
-                value={form.token}
-                onChange={handleChange}
-                placeholder="Enter the reset token from your email"
-                prefix={<KeyOutlined className="text-gray-400" />}
-                size="large"
-                className="!h-11 rounded-lg text-base transition-all duration-200 !border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1 text-left">
-                Check your email for the reset token
-              </p>
-            </div>
-            
-            <div className="space-y-1">
-              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="new_password">
-                New Password
-              </label>
-              <Input.Password
-                id="new_password"
-                name="new_password"
-                value={form.new_password}
-                onChange={handleChange}
-                placeholder="Enter your new password"
-                prefix={<LockOutlined className="text-gray-400" />}
-                size="large"
-                className="!h-11 rounded-lg text-base transition-all duration-200 !border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1 text-left">
-                Password must be at least 8 characters long
-              </p>
-            </div>
-            
-            <div className="space-y-1">
-              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="confirm_password">
-                Confirm New Password
-              </label>
-              <Input.Password
-                id="confirm_password"
-                name="confirm_password"
-                value={form.confirm_password}
-                onChange={handleChange}
-                placeholder="Confirm your new password"
-                prefix={<LockOutlined className="text-gray-400" />}
-                size="large"
-                className="!h-11 rounded-lg text-base transition-all duration-200 !border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 text-left">
+              New Password
+            </label>
+            <Input.Password
+              name="new_password"
+              value={form.new_password}
+              onChange={handleChange}
+              placeholder="Enter your new password"
+              prefix={<LockOutlined className="text-gray-400" />}
+              size="large"
+              className="h-11 rounded-lg"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1 text-left">
+              Password must be at least 8 characters long
+            </p>
           </div>
           
-          {/* Submit Button */}
-          <div className="mt-6">
-            <Button
-              type="primary"
-              htmlType="submit"
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2 text-left">
+              Confirm New Password
+            </label>
+            <Input.Password
+              name="confirm_password"
+              value={form.confirm_password}
+              onChange={handleChange}
+              placeholder="Confirm your new password"
+              prefix={<LockOutlined className="text-gray-400" />}
               size="large"
-              loading={isSubmitting}
-              className="w-full h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
-            >
-              {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
-            </Button>
+              className="h-11 rounded-lg"
+              required
+            />
           </div>
+          
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            loading={isSubmitting}
+            className="w-full h-11 bg-orange-500 hover:bg-orange-600 border-0"
+          >
+            {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
+          </Button>
         </form>
         
-        {/* Back to Login Link */}
-        <div className="text-center mt-8">
+        <div className="mt-6 text-center">
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
             onClick={handleBackToLogin}
-            className="text-orange-600 hover:text-orange-700 transition-colors duration-200 hover:underline"
+            className="text-orange-600 hover:text-orange-700"
           >
             Back to Login
           </Button>
         </div>
         
-        {/* Request New Token Link */}
-        <div className="text-center mt-4">
+        <div className="mt-4 text-center">
           <p className="text-sm text-gray-500">
             Don't have a token?{' '}
             <Link 
@@ -238,7 +215,7 @@ const ResetPassword = () => {
             </Link>
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
