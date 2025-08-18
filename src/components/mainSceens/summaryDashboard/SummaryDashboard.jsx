@@ -483,6 +483,8 @@ const SummaryDashboard = () => {
                   dashboardData={dashboardSummaryData}
                   loading={summaryLoading}
                   error={summaryError}
+                  startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
+                  endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
                   onEditData={() => {
                     // Navigate to dashboard for editing
                     navigate('/dashboard');

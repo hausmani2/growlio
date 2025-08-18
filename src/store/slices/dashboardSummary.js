@@ -84,6 +84,36 @@ const createDashboardSummarySlice = (set, get) => {
             }
         },
 
+        // Fetch profit/loss category summary for pie chart
+        fetchProfitLossCategorySummary: async (startDate, endDate, restaurantId = null) => {
+            try {
+                // Resolve restaurant id if not provided
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (e) {
+                        targetRestaurantId = null;
+                    }
+                    if (!targetRestaurantId) return null;
+                }
+
+                let url = '/restaurant/profit-loss-summary/';
+                const params = new URLSearchParams({
+                    restaurant_id: targetRestaurantId,
+                    start_date: startDate,
+                    end_date: endDate,
+                }).toString();
+                url += `?${params}`;
+                const response = await apiGet(url);
+                // Return full payload so caller can access categories as well
+                return response?.data || null;
+            } catch (error) {
+                console.error('Error fetching profit/loss category summary:', error);
+                return null;
+            }
+        },
+
         // Legacy method for backward compatibility (converts week_start to start_date/end_date)
         fetchDashboardSummaryLegacy: async (weekStart = null, restaurantId = null) => {
             if (!weekStart) {

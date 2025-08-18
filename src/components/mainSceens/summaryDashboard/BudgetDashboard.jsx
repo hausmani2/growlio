@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, Row, Col, Typography, Progress, Button, Space, Spin, Alert } from 'antd';
 import {
   Chart as ChartJS,
@@ -21,6 +21,7 @@ import {
   PlusOutlined,
   EditOutlined
 } from '@ant-design/icons';
+import useStore from '../../../store/store';
 
 // Register Chart.js components
 ChartJS.register(
@@ -38,11 +39,17 @@ ChartJS.register(
 
 const { Title: AntTitle, Text } = Typography;
 
-const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData }) => {
+const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData, startDate, endDate }) => {
   const [chartData, setChartData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
+  const [categorySummary, setCategorySummary] = useState(null);
+  const [dynamicCategories, setDynamicCategories] = useState([]);
+  const lastFetchKeyRef = useRef('');
+  const fetchDebounceRef = useRef(null);
+  const fetchProfitLossCategorySummary = useStore((s) => s.fetchProfitLossCategorySummary);
 
   // Process data for charts
+  // 1) Process incoming dashboard data (compute chartData + summaryData)
   useEffect(() => {
     if (!dashboardData || !dashboardData.data) {
       setChartData([]);
@@ -79,6 +86,42 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
 
     setSummaryData(summary);
   }, [dashboardData]);
+
+  // 2) Fetch category summary from backend when date range changes (debounced + deduped)
+  useEffect(() => {
+    const start = startDate;
+    const end = endDate;
+    // Reset local state when dates not ready
+    if (!start || !end) {
+      setCategorySummary(null);
+      setDynamicCategories([]);
+      return;
+    }
+    const key = `${start}|${end}`;
+    if (lastFetchKeyRef.current === key) return; // dedupe identical requests
+
+    // Debounce to avoid rapid re-requests during range selection
+    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    fetchDebounceRef.current = setTimeout(() => {
+      lastFetchKeyRef.current = key;
+      fetchProfitLossCategorySummary(start, end).then((res) => {
+        if (res) {
+          const payload = res.data || res;
+          const payloadCategories = res.categories || res.data?.categories;
+          setCategorySummary(payload);
+          if (Array.isArray(payloadCategories)) {
+            setDynamicCategories(payloadCategories);
+          } else {
+            setDynamicCategories([]);
+          }
+        }
+      });
+    }, 250);
+
+    return () => {
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+    };
+  }, [startDate, endDate, fetchProfitLossCategorySummary]);
 
   // Calculate progress percentages
   const progressData = useMemo(() => {
@@ -213,32 +256,42 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
     ]
   };
 
-  // Budget distribution pie chart data
-  const pieChartData = {
-    labels: ['Sales Budget', 'Food Cost Budget', 'Labor Budget'],
+  // Profit/Loss breakdown by category (Sales, Labor, Food Cost)
+  const categoryNet = useMemo(() => {
+    return {
+      sales: (summaryData.totalSalesActual || 0) - (summaryData.totalSalesBudget || 0),
+      // For costs, being under budget is positive towards profit
+      labor: (summaryData.totalLaborBudget || 0) - (summaryData.totalLaborActual || 0),
+      food: (summaryData.totalFoodCostBudget || 0) - (summaryData.totalFoodCostActual || 0),
+    };
+  }, [summaryData]);
+
+  // Build dynamic categories either from backend or fallback to three categories
+  const computedCategories = dynamicCategories.length
+    ? dynamicCategories
+    : [
+        { key: 'sales', label: 'Sales', value: (summaryData.totalSalesActual || 0) - (summaryData.totalSalesBudget || 0) },
+        { key: 'labor', label: 'Labor', value: (summaryData.totalLaborBudget || 0) - (summaryData.totalLaborActual || 0) },
+        { key: 'food', label: 'Food Cost', value: (summaryData.totalFoodCostBudget || 0) - (summaryData.totalFoodCostActual || 0) },
+      ];
+
+  // Ensure at least minimal slice for very small values
+  const categoryPieData = {
+    labels: computedCategories.map((c) => c.label),
     datasets: [
       {
-        data: [
-          summaryData.totalSalesBudget,
-          summaryData.totalFoodCostBudget,
-          summaryData.totalLaborBudget
-        ],
-        backgroundColor: [
-          'rgba(24, 144, 255, 0.8)',
-          'rgba(250, 173, 20, 0.8)',
-          'rgba(114, 46, 209, 0.8)'
-        ],
-        borderColor: [
-          'rgba(24, 144, 255, 1)',
-          'rgba(250, 173, 20, 1)',
-          'rgba(114, 46, 209, 1)'
-        ],
+        data: computedCategories.map((c) => {
+          const v = Math.abs(Number(c.value) || 0);
+          return v === 0 ? 0.0001 : v;
+        }),
+        backgroundColor: computedCategories.map((c) => (Number(c.value) >= 0 ? 'rgba(82, 196, 26, 0.8)' : 'rgba(255, 77, 79, 0.8)')),
+        borderColor: computedCategories.map((c) => (Number(c.value) >= 0 ? 'rgba(82, 196, 26, 1)' : 'rgba(255, 77, 79, 1)')),
         borderWidth: 2,
-      }
-    ]
+      },
+    ],
   };
 
-  const pieChartOptions = {
+  const categoryPieOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -248,9 +301,13 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
       tooltip: {
         callbacks: {
           label: function(context) {
-            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const idx = context.dataIndex;
+            const signedValues = computedCategories.map((c) => c.value);
+            const total = context.dataset.data.reduce((a, b) => a + b, 0) || 1;
+            const value = signedValues[idx];
             const percentage = ((context.parsed / total) * 100).toFixed(1);
-            return `${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
+            const sign = value >= 0 ? '+' : '-';
+            return `${context.label}: ${sign}${formatCurrency(Math.abs(value))} (${percentage}%)`;
           }
         }
       }
@@ -413,9 +470,9 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
         </Col> */}
       {/* </Row> */}
 
-      {/* Profit Trend */}
+      {/* Profit Trend + Category Breakdown */}
       <Row gutter={[16, 16]}>
-        <Col xs={24}>
+        <Col xs={24} lg={14}>
           <Card className="h-full">
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
@@ -424,6 +481,21 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData 
             </div>
             <div style={{ height: '300px' }}>
               <Line data={profitChartData} options={chartOptions} />
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Card className="h-full">
+            <div className="mb-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-orange-600">Profit/Loss by Category</h2>
+              </div>
+            </div>
+            <div style={{ height: '300px' }}>
+              <Pie data={categoryPieData} options={categoryPieOptions} />
+            </div>
+            <div className="mt-3 text-sm text-gray-600">
+              <p><span className="font-medium">Green</span>: positive contribution to profit; <span className="font-medium">Red</span>: negative impact.</p>
             </div>
           </Card>
         </Col>
