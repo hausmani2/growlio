@@ -6,10 +6,11 @@ import Address2Information from "./Address2Information";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
-import useStepValidation from "../useStepValidation";
+import useFormValidation from "./useFormValidation";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
+import StepDataManager from "../../StepDataManager";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -22,7 +23,7 @@ const RestaurantWrapperContent = () => {
         getTempFormData,
         updateTempFormData
     } = useStore();
-    const { validationErrors, clearFieldError, validateAllForms } = useStepValidation();
+    const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -185,9 +186,9 @@ const RestaurantWrapperContent = () => {
     const handleSaveAndContinue = async () => {
         try {
             // Step 1: Validate all forms
-            const validationResult = validateAllForms(restaurantData, addressData, addressTypeData);
-            
-            if (!validationResult || Object.keys(validationResult).length > 0) {
+            const isValid = validateAllForms(restaurantData, addressData, addressTypeData);
+
+            if (!isValid) {
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
