@@ -3,6 +3,7 @@ import { Table, Button, Space, Typography, Card, Spin, Alert } from 'antd';
 import { PrinterOutlined, DownloadOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
+
 const { Title, Text } = Typography;
 
 const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, error }) => {
