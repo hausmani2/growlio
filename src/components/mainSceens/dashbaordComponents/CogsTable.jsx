@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
+dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 
@@ -588,7 +590,20 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   return (
     <div className="w-full">
       <div className="pb-3 border-b border-gray-200">
-        <h3 className="text-xl font-bold text-orange-600">COGS Performance</h3>
+        <h3 className="text-xl font-bold text-orange-600">
+          COGS Performance
+          {(() => {
+            const start = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+            if (!start) return null;
+            const end = dayjs(start).add(6, 'day');
+            const wk = dayjs(start).week();
+            return (
+              <span className="ml-2 text-orange-600 text-sm font-semibold">
+                Week {wk} ({dayjs(start).format('MMM DD')} - {end.format('MMM DD')})
+              </span>
+            );
+          })()}
+        </h3>
       </div>
       
       {storeError && (

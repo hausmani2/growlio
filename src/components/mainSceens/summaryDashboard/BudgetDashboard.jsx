@@ -23,7 +23,40 @@ import {
 } from '@ant-design/icons';
 import useStore from '../../../store/store';
 
-// Register Chart.js components
+// Custom plugin to draw labels inside pie chart slices without extra deps
+const SliceLabelsPlugin = {
+  id: 'sliceLabels',
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    const { ctx } = chart;
+    const dataset = chart.data?.datasets?.[0];
+    if (!dataset) return;
+    const meta = chart.getDatasetMeta(0);
+    const total = (dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+    ctx.save();
+    meta.data.forEach((arc, index) => {
+      const value = Number(dataset.data[index]) || 0;
+      if (!value) return;
+      const percentage = (value / total) * 100;
+      // Skip very small slices to avoid overlap
+      if (percentage < 3) return;
+      const label = chart.data?.labels?.[index] || '';
+      const props = arc.getProps(['startAngle', 'endAngle', 'innerRadius', 'outerRadius', 'x', 'y'], true);
+      const angle = (props.startAngle + props.endAngle) / 2;
+      const r = props.innerRadius + (props.outerRadius - props.innerRadius) * 0.6;
+      const x = props.x + Math.cos(angle) * r;
+      const y = props.y + Math.sin(angle) * r;
+      ctx.fillStyle = pluginOptions?.color || '#fff';
+      ctx.font = pluginOptions?.font || 'bold 11px Inter, system-ui, -apple-system, Segoe UI, Roboto';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const text = `${label} ${percentage.toFixed(1)}%`;
+      ctx.fillText(text, x, y);
+    });
+    ctx.restore();
+  }
+};
+
+// Register Chart.js components and custom plugin
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -34,7 +67,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  SliceLabelsPlugin
 );
 
 const { Title: AntTitle, Text } = Typography;
@@ -326,6 +360,40 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         { key: 'food', label: 'Food Cost', value: (summaryData.totalFoodCostBudget || 0) - (summaryData.totalFoodCostActual || 0) },
       ];
 
+  // Generate different shades for positive (green) and negative (red) categories
+  const positiveIndices = computedCategories
+    .map((c, i) => ({ i, c }))
+    .filter(({ c }) => Number(c.value) >= 0)
+    .map(({ i }) => i);
+  const negativeIndices = computedCategories
+    .map((c, i) => ({ i, c }))
+    .filter(({ c }) => Number(c.value) < 0)
+    .map(({ i }) => i);
+
+  const generateShade = (index, count, isPositive) => {
+    const hue = isPositive ? 130 : 0; // green vs red
+    const saturation = 70;
+    const lightStart = isPositive ? 35 : 40; // darker start
+    const lightEnd = isPositive ? 65 : 70; // lighter end
+    const lightness = count > 1 ? lightStart + (lightEnd - lightStart) * (index / (count - 1)) : 50;
+    const bg = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    const border = `hsl(${hue}, ${saturation}%, ${Math.max(lightness - 10, 25)}%)`;
+    return { bg, border };
+  };
+
+  const backgroundColors = new Array(computedCategories.length);
+  const borderColors = new Array(computedCategories.length);
+  positiveIndices.forEach((idx, order) => {
+    const { bg, border } = generateShade(order, positiveIndices.length, true);
+    backgroundColors[idx] = bg;
+    borderColors[idx] = border;
+  });
+  negativeIndices.forEach((idx, order) => {
+    const { bg, border } = generateShade(order, negativeIndices.length, false);
+    backgroundColors[idx] = bg;
+    borderColors[idx] = border;
+  });
+
   // Ensure at least minimal slice for very small values
   const categoryPieData = {
     labels: computedCategories.map((c) => c.label),
@@ -335,8 +403,8 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           const v = Math.abs(Number(c.value) || 0);
           return v === 0 ? 0.0001 : v;
         }),
-        backgroundColor: computedCategories.map((c) => (Number(c.value) >= 0 ? 'rgba(82, 196, 26, 0.8)' : 'rgba(255, 77, 79, 0.8)')),
-        borderColor: computedCategories.map((c) => (Number(c.value) >= 0 ? 'rgba(82, 196, 26, 1)' : 'rgba(255, 77, 79, 1)')),
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
         borderWidth: 2,
       },
     ],
@@ -361,6 +429,11 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
             return `${context.label}: ${sign}${formatCurrency(Math.abs(value))} (${percentage}%)`;
           }
         }
+      },
+      // options for our custom slice label plugin
+      sliceLabels: {
+        color: '#ffffff',
+        font: 'bold 11px Inter, system-ui, -apple-system, Segoe UI, Roboto'
       }
     }
   };

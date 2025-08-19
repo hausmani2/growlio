@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { Card, Typography, Space, Spin, Empty, Button, message, notification, App } from 'antd';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
+dayjs.extend(weekOfYear);
+import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -8,7 +10,7 @@ import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
-import CalendarUtils from '../../../utils/CalendarUtils';
+// CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 
 
@@ -22,6 +24,7 @@ const SummaryDashboard = () => {
   const [calendarDateRange, setCalendarDateRange] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(null);
+  const [weekPickerValue, setWeekPickerValue] = useState(null);
 
   // Initialize with current week
   useEffect(() => {
@@ -29,6 +32,7 @@ const SummaryDashboard = () => {
       const startOfWeek = dayjs().startOf('week');
       const endOfWeek = dayjs().endOf('week');
       setCalendarDateRange([startOfWeek, endOfWeek]);
+      setWeekPickerValue(dayjs());
     }
   }, [calendarDateRange.length]);
 
@@ -131,6 +135,16 @@ const SummaryDashboard = () => {
       fetchSummaryData(startDate, endDate, groupBy);
     }
   }, [fetchSummaryData, groupBy, handleCalendarDateChange]);
+
+  // New: Week Picker change handler (single week selection like Enter Weekly Data)
+  const handleWeekPickerChange = useCallback((date) => {
+    if (!date) return;
+    const start = dayjs(date).startOf('week');
+    const end = dayjs(date).endOf('week');
+    setWeekPickerValue(date);
+    setCalendarDateRange([start, end]);
+    fetchSummaryData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), groupBy);
+  }, [fetchSummaryData, groupBy]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
@@ -388,18 +402,21 @@ const SummaryDashboard = () => {
               </p>
             </div>
             
-            {/* Right Side - Date Picker and Controls */}
+            {/* Right Side - Week Picker */}
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <CalendarUtils
-                selectedDates={calendarDateRange}
-                onDateChange={handleDateChange}
-                groupBy={groupBy}
-                onGroupByChange={handleGroupByChange}
-                title=""
-                description=""
-                loading={calendarLoading}
-                error={calendarError}
-                autoSelectCurrentWeek={true}
+              <DatePicker
+                picker="week"
+                value={weekPickerValue}
+                onChange={handleWeekPickerChange}
+                style={{ width: 220 }}
+                allowClear={false}
+                format={(value) => {
+                  if (!value) return 'Select week';
+                  const start = dayjs(value).startOf('week');
+                  const end = dayjs(value).endOf('week');
+                  const wk = dayjs(value).week();
+                  return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
+                }}
               />
             </div>
           </div>
