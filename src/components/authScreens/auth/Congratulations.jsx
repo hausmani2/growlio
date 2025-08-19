@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 const Congratulations = () => {
     const navigate = useNavigate();
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row">
+        <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col lg:flex-row">
             {/* Content Section */}
             <div className="w-full h-screen lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8">
                 <div className="w-full max-w-sm mx-auto">

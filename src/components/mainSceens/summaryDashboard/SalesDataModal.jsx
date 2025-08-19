@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 
 const { Title, Text } = Typography;
 
@@ -10,7 +11,6 @@ const SalesDataModal = ({
   visible, 
   onCancel, 
   selectedWeekData, 
-  weekDays = [], 
   onDataSaved,
   autoOpenFromSummary = false
 }) => {
@@ -18,7 +18,6 @@ const SalesDataModal = ({
   const { 
     saveDashboardData, 
     loading: storeLoading, 
-    error: storeError,
     completeOnboardingData
   } = useStore();
 
@@ -30,9 +29,7 @@ const SalesDataModal = ({
     return completeOnboardingData['Food Cost Details'].data.providers || [];
   };
 
-  const [providers, setProviders] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedDayForSales, setSelectedDayForSales] = useState(null);
   const [formData, setFormData] = useState({
     weeklyTotals: {
       salesBudget: 0,
@@ -44,22 +41,43 @@ const SalesDataModal = ({
     dailyData: []
   });
 
-  // Update providers when onboarding data changes
-  useEffect(() => {
-    const currentProviders = getProviders();
-    setProviders(currentProviders);
-  }, [completeOnboardingData]);
+  // Add refs for debouncing budgeted sales changes
+  const budgetedSalesTimeoutRef = useRef({});
+  const lastBudgetedSalesValueRef = useRef({});
+
+
 
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
       initializeFormData();
     }
-  }, [visible, selectedWeekData, weekDays, providers]);
+  }, [visible, selectedWeekData]);
+
+  // Cleanup timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear all timeouts when component unmounts
+      Object.values(budgetedSalesTimeoutRef.current).forEach(timeoutId => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+    };
+  }, []);
 
   // Initialize form data based on selected week
   const initializeFormData = () => {
-    const startDate = selectedWeekData?.startDate ? dayjs(selectedWeekData.startDate) : dayjs();
+    // Ensure we always have a valid start date from selectedWeekData
+    if (!selectedWeekData?.startDate) {
+      console.error('selectedWeekData.startDate is missing:', selectedWeekData);
+      message.error('Week data is missing. Please try again.');
+      return;
+    }
+    
+    const startDate = dayjs(selectedWeekData.startDate);
+    console.log('Initializing form data with start date:', startDate.format('YYYY-MM-DD'));
+    
     const currentProviders = getProviders();
     const dailyData = generateDailyData(startDate, currentProviders);
     
@@ -83,7 +101,7 @@ const SalesDataModal = ({
   };
 
   // Generate 7 days of data starting from a given date
-  const generateDailyData = (startDate, currentProviders = providers) => {
+  const generateDailyData = (startDate, currentProviders) => {
     const days = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
@@ -95,7 +113,34 @@ const SalesDataModal = ({
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
         dailyTickets: 0,
-        averageDailyTicket: 0
+        averageDailyTicket: 0,
+        restaurant_open: (() => {
+          // If we have existing data, use it and convert if needed
+          if (selectedWeekData?.dailyData && selectedWeekData.dailyData.length > 0) {
+            const existingDay = selectedWeekData.dailyData.find(d => 
+              d.date?.format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD')
+            );
+            if (existingDay?.restaurant_open !== undefined) {
+              const value = existingDay.restaurant_open;
+              console.log('Restaurant open value from existing data:', value, typeof value);
+              // Handle both boolean and integer values
+              if (typeof value === 'boolean') {
+                return value ? 1 : 0;
+              }
+              // Handle null, undefined, or falsy values
+              if (value === null || value === undefined || value === false) {
+                return 0;
+              }
+              // Handle string values
+              if (typeof value === 'string') {
+                return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+              }
+              // Handle numeric values
+              return value !== 0 ? 1 : 0;
+            }
+          }
+          return 1; // Default to open for all days
+        })()
       };
 
       // Add dynamic provider fields
@@ -110,76 +155,75 @@ const SalesDataModal = ({
   };
 
   // Show top popup notification
-  const showTopPopupNotification = (selectedDay) => {
-    notification.info({
-      message: (
-        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-          🎉 Budgeted Sales Added Successfully!
-        </div>
-      ),
-      description: (
-        <div style={{ marginTop: '8px' }}>
-          <p style={{ marginBottom: '8px' }}>
-            <strong>${selectedDay.budgetedSales}</strong> has been added for <strong>{selectedDay.dayName}</strong> ({selectedDay.date.format('MMM DD, YYYY')}).
-          </p>
-          <p style={{ marginBottom: '12px', color: '#666' }}>
-            Would you like to add net actual sales for this date?
-          </p>
-          <Button 
-            type="primary" 
-            size="small" 
-            icon={<DollarOutlined />}
-            onClick={() => handleNavigateToDashboardSales(selectedDay)}
-            style={{ 
-              marginTop: '8px',
-              backgroundColor: '#52c41a',
-              borderColor: '#52c41a'
-            }}
-          >
-            Add Sales Performance
-            <ArrowRightOutlined />
-          </Button>
-        </div>
-      ),
-      duration: 0, // Don't auto-close
-      placement: 'top',
-      style: {
-        width: 450,
-        zIndex: 99999,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        borderRadius: '8px',
-        marginTop: '20px',
-      },
-      onClose: () => {
-        console.log('Top popup notification closed');
-        setSelectedDayForSales(null);
-      }
-    });
-  };
+  // const showTopPopupNotification = (selectedDay) => {
+  //   notification.info({
+  //     message: (
+  //       <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+  //         🎉 Budgeted Sales Added Successfully!
+  //       </div>
+  //     ),
+  //     description: (
+  //       <div style={{ marginTop: '8px' }}>
+  //         <p style={{ marginBottom: '8px' }}>
+  //           <strong>${selectedDay.budgetedSales}</strong> has been added for <strong>{selectedDay.dayName}</strong> ({selectedDay.date.format('MMM DD, YYYY')}).
+  //         </p>
+  //         <p style={{ marginBottom: '12px', color: '#666' }}>
+  //           Would you like to add net actual sales for this date?
+  //         </p>
+  //         <Button 
+  //           type="primary" 
+  //           size="small" 
+  //           icon={<DollarOutlined />}
+  //           onClick={() => handleNavigateToDashboardSales(selectedDay)}
+  //           style={{ 
+  //             marginTop: '8px',
+  //             backgroundColor: '#52c41a',
+  //             borderColor: '#52c41a'
+  //           }}
+  //         >
+  //           Add Sales Performance
+  //           <ArrowRightOutlined />
+  //         </Button>
+  //       </div>
+  //     ),
+  //     duration: 0, // Don't auto-close
+  //     placement: 'top',
+  //     style: {
+  //       width: 450,
+  //       zIndex: 99999,
+  //       boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  //       borderRadius: '8px',
+  //       marginTop: '20px',
+  //     },
+  //     onClose: () => {
+  //       console.log('Top popup notification closed');
+  //     }
+  //   });
+  // };
 
   // Handle navigation to dashboard sales modal
-  const handleNavigateToDashboardSales = (selectedDay) => {
-    // Close current modal
-    onCancel();
+  // const handleNavigateToDashboardSales = (selectedDay) => {
+  //   // Close current modal
+  //   onCancel();
     
-    // Close the notification
-    notification.destroy();
+  //   // Close the notification
+  //   notification.destroy();
     
-    // Navigate to dashboard with selected date
-    // You can implement navigation logic here
-    console.log('Navigating to dashboard sales with date:', selectedDay.date.format('YYYY-MM-DD'));
+  //   // Navigate to dashboard with selected date
+  //   // You can implement navigation logic here
+  //   console.log('Navigating to dashboard sales with date:', selectedDay.date.format('YYYY-MM-DD'));
     
-    // Show success message
-    message.success(`Opening sales performance for ${selectedDay.dayName} (${selectedDay.date.format('MMM DD, YYYY')})`);
+  //   // Show success message
+  //   message.success(`Opening sales performance for ${selectedDay.dayName} (${selectedDay.date.format('MMM DD, YYYY')})`);
     
-    // You can emit an event or use a callback to navigate to the dashboard
-    // For now, we'll just show a message
-    setTimeout(() => {
-      message.info('Please navigate to Dashboard > Sales Performance to add/edit sales data');
-    }, 2000);
-  };
+  //   // You can emit an event or use a callback to navigate to the dashboard
+  //   // For now, we'll just show a message
+  //   setTimeout(() => {
+  //     message.info('Please navigate to Dashboard > Sales Performance to add/edit sales data');
+  //   }, 2000);
+  // };
 
-  // Handle daily data changes
+  // Handle daily data changes without immediate popups
   const handleDailyDataChange = (dayIndex, field, value) => {
     const newDailyData = [...formData.dailyData];
     newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
@@ -189,19 +233,34 @@ const SalesDataModal = ({
       dailyData: newDailyData
     });
 
-    // Track budgeted sales changes
-    if (field === 'budgetedSales' && value > 0) {
+    // Handle budgeted sales changes with debouncing for console log only
+    if (field === 'budgetedSales') {
       const changedDay = newDailyData[dayIndex];
-      console.log('Budgeted sales changed:', { field, value, changedDay }); // Debug log
+      const dayKey = changedDay.key;
+      const previousValue = lastBudgetedSalesValueRef.current[dayKey] || 0;
       
-      // Show immediate feedback
-      message.success(`Budgeted sales of $${value} added for ${changedDay.dayName}`);
+      // Clear existing timeout for this day
+      if (budgetedSalesTimeoutRef.current[dayKey]) {
+        clearTimeout(budgetedSalesTimeoutRef.current[dayKey]);
+      }
       
-      // Show top popup notification after 2 seconds
-      setTimeout(() => {
-        setSelectedDayForSales(changedDay);
-        showTopPopupNotification(changedDay);
-      }, 2000);
+      // Only show console log if value is greater than 0 and has actually changed significantly
+      if (value > 0 && Math.abs(value - previousValue) >= 1) {
+        // Set timeout to show console log after user stops typing (1 second delay)
+        budgetedSalesTimeoutRef.current[dayKey] = setTimeout(() => {
+          console.log('Budgeted sales changed:', { field, value, changedDay }); // Debug log
+        }, 1000);
+      }
+      
+      // Update the last value for this day
+      lastBudgetedSalesValueRef.current[dayKey] = value;
+    }
+  };
+
+  // Handle input blur for budgeted sales - show success message only when done editing
+  const handleBudgetedSalesBlur = (dayIndex, value, record) => {
+    if (value > 0 && !isDayClosed(record)) {
+      message.success(`Budgeted sales of $${value} added for ${record.dayName}`);
     }
   };
 
@@ -283,8 +342,24 @@ const SalesDataModal = ({
         return;
       }
 
+             // Check if budgeted sales are entered
+       if (!hasBudgetedSales()) {
+         message.warning('Please add budgeted sales data before saving.');
+         return;
+       }
+
       const weeklyTotals = calculateWeeklyTotals();
-      const startDate = selectedWeekData?.startDate ? dayjs(selectedWeekData.startDate) : dayjs();
+      
+      // Ensure we always have a valid start date from selectedWeekData
+      if (!selectedWeekData?.startDate) {
+        console.error('selectedWeekData.startDate is missing in handleSubmit:', selectedWeekData);
+        message.error('Week data is missing. Please try again.');
+        return;
+      }
+      
+      const startDate = dayjs(selectedWeekData.startDate);
+      console.log('Submitting data with start date:', startDate.format('YYYY-MM-DD'));
+      
       const currentProviders = getProviders();
 
       // Transform data to API format with proper null checks
@@ -314,6 +389,21 @@ const SalesDataModal = ({
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
               daily_tickets: parseFloat(day.dailyTickets) || 0,
+              restaurant_open: (() => {
+                const value = day.restaurant_open;
+                console.log('Sending restaurant_open to API:', value, typeof value);
+                // Ensure we always send integer values (0 or 1)
+                if (typeof value === 'boolean') {
+                  return value ? 1 : 0;
+                }
+                if (value === null || value === undefined || value === false) {
+                  return 0;
+                }
+                if (typeof value === 'string') {
+                  return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+                }
+                return value !== 0 ? 1 : 0;
+              })(), // Include the new field
               // Add dynamic provider fields to daily data
               ...currentProviders.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
@@ -364,6 +454,39 @@ const SalesDataModal = ({
     return Math.round(netSales / dailyTickets);
   };
 
+  // Check if a day is closed (restaurant not open)
+  const isDayClosed = (record) => {
+    // Handle both boolean and integer values
+    if (typeof record.restaurant_open === 'boolean') {
+      return !record.restaurant_open;
+    }
+    return record.restaurant_open === 0;
+  };
+
+  // Handle input change with closed day validation
+  const handleInputChange = (dayIndex, field, value, record) => {
+    if (isDayClosed(record)) {
+      message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
+      return;
+    }
+    handleDailyDataChange(dayIndex, field, value);
+  };
+
+  // Check if all days are closed
+  const areAllDaysClosed = () => {
+    return formData.dailyData.every(day => day.restaurant_open === 0);
+  };
+
+  // Check if any budgeted sales are entered
+  const hasBudgetedSales = () => {
+    return formData.dailyData.some(day => day.budgetedSales && day.budgetedSales > 0);
+  };
+
+  // Check if save button should be disabled
+  const isSaveButtonDisabled = () => {
+    return !hasBudgetedSales();
+  };
+
   return (
     <Modal
       title={
@@ -378,19 +501,20 @@ const SalesDataModal = ({
         <Button key="cancel" onClick={onCancel}>
           Cancel
         </Button>,
-        <Button 
-          key="submit" 
-          type="primary" 
-          icon={<SaveOutlined />}
-          onClick={handleSubmit} 
-          loading={isSubmitting || storeLoading}
-        >
-          Save Sales Data
-        </Button>
+                 <Button 
+           key="submit" 
+           type="primary" 
+           icon={<SaveOutlined />}
+           onClick={handleSubmit} 
+           loading={isSubmitting || storeLoading}
+           disabled={isSaveButtonDisabled()}
+         >
+           Save Sales Data
+         </Button>
       ]}
       width="90vw"
       style={{ maxWidth: '1200px' }}
-      destroyOnClose
+      destroyOnHidden
     >
       {(isSubmitting || storeLoading) && (
         <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center rounded-lg">
@@ -404,7 +528,18 @@ const SalesDataModal = ({
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         {/* Weekly Totals Section - Only show when not auto-opened from summary */}
         {!autoOpenFromSummary && (
-          <Card title="Weekly Totals" size="small">
+          <Card 
+            title="Weekly Totals" 
+            size="small"
+            extra={
+              <div className="text-xs text-gray-500">
+                {formData.dailyData.filter(day => day.restaurant_open === 1).length} of 7 days open
+                {areAllDaysClosed() && (
+                  <span className="text-red-500 ml-2">⚠️ All days are closed</span>
+                )}
+              </div>
+            }
+          >
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={8} lg={6}>
                 <div>
@@ -492,6 +627,14 @@ const SalesDataModal = ({
         <Card 
           title="Daily Sales Data"
           size="small"
+                     extra={
+             <div className="text-xs text-gray-500 flex items-center gap-2">
+               <span>💡 Toggle switches control restaurant open/closed status for each day</span>
+               {!hasBudgetedSales() && (
+                 <span className="text-red-500 ml-2">⚠️ Budgeted sales required to save</span>
+               )}
+             </div>
+           }
         >
           <div className="overflow-x-auto">
             <Table
@@ -500,6 +643,7 @@ const SalesDataModal = ({
               size="small"
               rowKey={(record) => record.key}
               scroll={{ x: 'max-content' }}
+                             rowClassName={(record) => isDayClosed(record) ? 'opacity-50 bg-gray-50' : ''}
               summary={(pageData) => {
                 const currentProviders = getProviders();
                 const totals = pageData.reduce((acc, record) => {
@@ -541,6 +685,9 @@ const SalesDataModal = ({
                         <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={1}>
+                        <Text strong style={{ color: '#1890ff' }}>-</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={2}>
                         <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                       </Table.Summary.Cell>
                     </Table.Summary.Row>
@@ -554,36 +701,39 @@ const SalesDataModal = ({
                       <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>-</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={2}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={3}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4}>
                       <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     {currentProviders.map((provider, index) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return (
-                        <Table.Summary.Cell key={providerKey} index={4 + index}>
+                        <Table.Summary.Cell key={providerKey} index={5 + index}>
                           <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
                         </Table.Summary.Cell>
                       );
                     })}
-                    <Table.Summary.Cell index={4 + currentProviders.length}>
+                    <Table.Summary.Cell index={5 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={5 + currentProviders.length}>
+                    <Table.Summary.Cell index={6 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={6 + currentProviders.length}>
+                    <Table.Summary.Cell index={7 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.budgetedSales > 0 && netSalesActualTotal > 0 
                           ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
                           : '0.0'}%
                       </Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={7 + currentProviders.length}>
+                    <Table.Summary.Cell index={8 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.dailyTickets > 0 
                           ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
@@ -594,48 +744,86 @@ const SalesDataModal = ({
                 );
               }}
               columns={autoOpenFromSummary ? [
-                // Only show Day and Budgeted Sales when auto-opened from summary
+                // Only show Day, Days Open, and Budgeted Sales when auto-opened from summary
                 {
                   title: 'Day',
                   dataIndex: 'dayName',
                   key: 'dayName',
-                  width: 120,
+                  width: 160,
                   fixed: 'left',
                   render: (text, record) => (
-                    <div>
-                      <div className="font-medium">{text}</div>
+                    <div className="min-w-[160px]">
+                      <div className="font-medium flex items-center gap-2">
+                        {text}
+                        {isDayClosed(record) && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
+                            CLOSED
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
                     </div>
                   )
                 },
-                {
-                  title: 'Budgeted Sales',
-                  dataIndex: 'budgetedSales',
-                  key: 'budgetedSales',
-                  width: 120,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
-                      placeholder="0.00"
-                      className="w-full"
-                    />
+                                {
+                  title: 'Days Open',
+                  dataIndex: 'restaurant_open',
+                  key: 'restaurant_open',
+                  width: 140,
+                  render: (isOpen, record, index) => (
+                    <div className="flex items-center gap-3 min-w-[140px]">
+                      <ToggleSwitch
+                        isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
+                        setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
+                        size="large"
+                      />
+                      <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
+                        {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
+                      </span>
+                    </div>
                   )
-                }
-              ] : [
+                },
+                 {
+                   title: 'Budgeted Sales',
+                   dataIndex: 'budgetedSales',
+                   key: 'budgetedSales',
+                   width: 140,
+                   render: (value, record, index) => (
+                     <Input
+                       type="number"
+                       value={value}
+                       onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                       onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
+                       placeholder="0.00"
+                       className="w-full"
+                       disabled={isDayClosed(record)}
+                       style={{ 
+                         opacity: isDayClosed(record) ? 0.5 : 1,
+                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                       }}
+                     />
+                   )
+                 }
+               ] : [
                 // Show all columns when not auto-opened from summary
                 {
                   title: 'Day',
                   dataIndex: 'dayName',
                   key: 'dayName',
-                  width: 120,
+                  width: 160,
                   fixed: 'left',
                   render: (text, record) => (
-                    <div>
-                      <div className="font-medium">{text}</div>
+                    <div className="min-w-[160px]">
+                      <div className="font-medium flex items-center gap-2">
+                        {text}
+                        {isDayClosed(record) && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
+                            CLOSED
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
@@ -643,17 +831,41 @@ const SalesDataModal = ({
                   )
                 },
                 {
+                  title: 'Days Open',
+                  dataIndex: 'restaurant_open',
+                  key: 'restaurant_open',
+                  width: 140,
+                  render: (isOpen, record, index) => (
+                    <div className="flex items-center gap-3 min-w-[140px]">
+                      <ToggleSwitch
+                        isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
+                        setIsOn={(checked) => handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0)}
+                        size="large"
+                      />
+                      <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
+                        {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
+                      </span>
+                    </div>
+                  )
+                },
+                {
                   title: 'Budgeted Sales',
                   dataIndex: 'budgetedSales',
                   key: 'budgetedSales',
-                  width: 120,
+                  width: 140,
                   render: (value, record, index) => (
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                      onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -666,9 +878,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -681,9 +898,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },
@@ -697,9 +919,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 })),
@@ -729,9 +956,14 @@ const SalesDataModal = ({
                     <Input
                       type="number"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
                       placeholder="0"
                       className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{ 
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
                     />
                   )
                 },

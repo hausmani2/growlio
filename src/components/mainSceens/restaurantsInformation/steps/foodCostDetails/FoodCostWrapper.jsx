@@ -9,6 +9,7 @@ import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
+import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const FoodCostWrapperContent = () => {
     const location = useLocation();
@@ -301,26 +302,22 @@ const FoodCostWrapperContent = () => {
                             loading={loading}
                         />
                         
-                        <div className="flex justify-between mt-6">
-                            {isUpdateMode && (
-                                <>
-                                    <div className="ml-auto">
-                                        <button
-                                            onClick={handleSaveAndContinue}
-                                            disabled={loading}
-                                            className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                            }`}
-                                        >
-                                            {loading && (
-                                                <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                            )}
-                                            {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                        {isUpdateMode && (
+                            <div className="flex justify-end mt-8 pt-6">
+                                <button
+                                    onClick={handleSaveAndContinue}
+                                    disabled={loading}
+                                    className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
+                                    }`}
+                                >
+                                    {loading && (
+                                        <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                    )}
+                                    Save Changes
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -328,54 +325,52 @@ const FoodCostWrapperContent = () => {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Food Cost Details"
+                    description="Set up your food cost management including COGS goals, delivery schedules, and third-party provider settings."
+                />
+            </div>
+            
+            {/* Content Section */}
+            <div className="space-y-6">
+                <FoodCostDetails 
+                    data={foodCostData}
+                    updateData={updateFoodCostData}
+                    errors={validationErrors}
+                />
+                <ThirdPartyProviders
+                    data={thirdPartyData}
+                    updateData={updateThirdPartyData}
+                    errors={validationErrors}
+                />
+                <DeliveryFrequency 
+                    data={deliveryData}
+                    updateData={updateDeliveryData}
+                    onSaveAndContinue={handleSaveAndContinue}
+                    errors={validationErrors}
+                    loading={loading}
+                />
+            </div>
+            
             {isUpdateMode && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                    <p className="text-blue-700">
-                        You are updating your food cost details. Changes will be saved when you click "Save & Continue".
-                    </p>
+                <div className="flex justify-end mt-8 pt-6">
+                    <button
+                        onClick={handleSaveAndContinue}
+                        disabled={loading}
+                        className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
+                        }`}
+                    >
+                        {loading && (
+                            <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                        )}
+                        Save Changes
+                    </button>
                 </div>
             )}
-            
-            <FoodCostDetails 
-                data={foodCostData}
-                updateData={updateFoodCostData}
-                errors={validationErrors}
-            />
-            <ThirdPartyProviders
-                data={thirdPartyData}
-                updateData={updateThirdPartyData}
-                errors={validationErrors}
-            />
-            <DeliveryFrequency 
-                data={deliveryData}
-                updateData={updateDeliveryData}
-                onSaveAndContinue={handleSaveAndContinue}
-                errors={validationErrors}
-                loading={loading}
-            />
-            
-            <div className="flex justify-between mt-6">
-                {isUpdateMode && (
-                    <>
-                        <div className="ml-auto">
-                            <button
-                                onClick={handleSaveAndContinue}
-                                disabled={loading}
-                                className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                }`}
-                            >
-                                {loading && (
-                                    <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                )}
-                                {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                            </button>
-                        </div>
-                    </>
-                )}
-            </div>
         </div>
     );
 };

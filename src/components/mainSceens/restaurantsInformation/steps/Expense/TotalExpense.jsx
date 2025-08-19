@@ -35,40 +35,43 @@ const TotalExpense = ({ data,  onSave }) => {
     const totalExpenses = calculateTotalExpenses();
        
     return (
-        <div>
-            <div className="flex mt-5">
-                <div className="w-[40%]">
-                    <div className="flex flex-col gap-2">
-                        <h4 className="text-lg !font-bold !mb-0">Total Expenses</h4>
-                        <span className="text-base text-neutral-600">
-                           Your total expenses are calculated by adding your variable and fixed costs.
-                        </span>
-                    </div>
-                </div>
-                <div className="w-[60%]">
-                    <div className="flex flex-col gap-3 p-6 bg-white rounded-xl" >
-                        <div className="flex items-center justify-between pt-4">
-                            <label htmlFor="totalVariableCost" className="text-base !font-bold text-neutral-600">
-                            Total Expenses:
-                            </label>
-                            <span className="text-base !font-bold ">
-                                ${totalExpenses}
-                            </span>
-                        </div>
-                        {!isUpdateMode && (
-                            <div className="flex justify-between items-center my-5">
-                                <PrimaryBtn icon={LeftArrow} title="Go Back" className="bg-gray-200 text-black h-[40px]" onClick={handleBack} />
-                                <PrimaryBtn 
-                                    title="Save & Continue" 
-                                    className="btn-brand"
-                                    onClick={onSave}
-                                />
-                            </div>
-                        )}
-                        </div>
-                        
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Total Expenses</h3>
+                <p className="text-gray-600 text-sm">
+                   Your total expenses are calculated by adding your variable and fixed costs.
+                </p>
+            </div>
+            
+            {/* Total Display */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                    <label className="text-base font-semibold text-gray-700">
+                        Total Expenses:
+                    </label>
+                    <span className="text-2xl font-bold text-gray-900">
+                        ${totalExpenses}
+                    </span>
                 </div>
             </div>
+            
+            {/* Navigation Buttons */}
+            {!isUpdateMode && (
+                <div className="flex justify-between items-center mt-6 pt-6">
+                    <PrimaryBtn 
+                        icon={LeftArrow} 
+                        title="Go Back" 
+                        className="bg-gray-200 text-black h-11" 
+                        onClick={handleBack} 
+                    />
+                    <PrimaryBtn 
+                        title="Save & Continue" 
+                        className="btn-brand h-11"
+                        onClick={onSave}
+                    />
+                </div>
+            )}
         </div>
     )
 }

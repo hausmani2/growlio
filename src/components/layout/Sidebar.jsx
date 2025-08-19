@@ -16,7 +16,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
-    '/dashboard/summary': 'dashboard summary',
+    '/dashboard/budget': 'budget',
+    '/dashboard/profit-loss': 'profit-loss',
     '/dashboard': 'dashboard',
     '/dashboard/onboarding': 'onboarding',
     '/dashboard/basic-information': 'basic-information',
@@ -24,8 +25,17 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/expense': 'expense',
+    '/profile': 'profile',
   };
-  const selectedKey = pathKeyMap[location.pathname] || 'dashboard summary';
+  
+  // Determine selected key based on current path
+  let selectedKey = pathKeyMap[location.pathname] || 'dashboard';
+  
+  // If we're on a dashboard sub-page, also mark the parent as selected
+  if (location.pathname === '/dashboard/budget' || location.pathname === '/dashboard/profit-loss') {
+    // For dashboard sub-pages, we want to show the parent as expanded and the child as selected
+    selectedKey = pathKeyMap[location.pathname];
+  }
 
   // Close sidebar on window resize if desktop
   useEffect(() => {
@@ -40,6 +50,22 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [onMobileMenuToggle]);
+
+  // Auto-expand parent menu items when child is selected
+  useEffect(() => {
+    const newExpandedItems = new Set(expandedItems);
+    
+    // Find parent items that should be expanded based on current selection
+    menuItems.forEach(item => {
+      if (item.children && item.children.some(child => selectedKey === child.key)) {
+        newExpandedItems.add(item.key);
+      }
+    });
+    
+    if (newExpandedItems.size !== expandedItems.size) {
+      setExpandedItems(newExpandedItems);
+    }
+  }, [selectedKey, menuItems]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -85,8 +111,11 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   const renderMenuItem = (item, level = 0) => {
     const isSelected = selectedKey === item.key;
-    const isExpanded = expandedItems.has(item.key);
     const hasChildren = item.children && item.children.length > 0;
+    
+    // Auto-expand parent if any child is selected
+    const shouldAutoExpand = hasChildren && item.children.some(child => selectedKey === child.key);
+    const isExpanded = expandedItems.has(item.key) || shouldAutoExpand;
 
     return (
       <div key={item.key} className="relative">
@@ -196,7 +225,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
         <div className="flex-1 flex flex-col h-[calc(90vh-100px)] overflow-hidden">
           <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <nav className="space-y-1 px-2">
-              {menuItems.map((item) => renderMenuItem(item))}
+              {/* Main menu items */}
+              {menuItems.slice(0, -1).map((item) => renderMenuItem(item))}
+            </nav>
+          </div>
+          
+          {/* Settings section at the bottom */}
+          <div className="border-t border-gray-200 pt-4 px-2 bg-gray-50">
+            <div className="px-2 mb-2">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Settings</span>
+            </div>
+            <nav className="space-y-1">
+              {menuItems.slice(-1).map((item) => renderMenuItem(item))}
             </nav>
           </div>
         </div>

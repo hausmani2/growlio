@@ -15,13 +15,13 @@ import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
     const [isChecking, setIsChecking] = useState(false);
-    const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
     const { 
-        checkOnboardingStatus, 
+        checkOnboardingCompletion, 
         loadExistingOnboardingData, 
         onboardingStatus,
         onboardingLoading,
-        isNewUser
+        isNewUser,
+        isOnBoardingCompleted
     } = useStore();
 
     // Check if we should show loading state
@@ -53,8 +53,26 @@ const OnboardingWrapper = () => {
             
             // Use cached status from store
             console.log('✅ Using cached onboarding status from store');
-            const result = await checkOnboardingStatus();
-            onboardingData = result;
+            
+            // Check if we already have onboarding data in the store
+            if (isOnBoardingCompleted !== undefined) {
+                console.log('✅ Using existing onboarding status from store');
+                onboardingData = {
+                    success: true,
+                    isComplete: isOnBoardingCompleted,
+                    message: isOnBoardingCompleted ? 'Onboarding completed' : 'Onboarding not complete'
+                };
+            } else if (onboardingLoading) {
+                // If loading is in progress, wait for it to complete
+                console.log('⏳ Onboarding check in progress, waiting...');
+                message.info("Please wait while we check your status...");
+                return;
+            } else {
+                // Only make API call if we don't have the data and not loading
+                console.log('🔄 Making API call to check onboarding status');
+                const result = await checkOnboardingCompletion();
+                onboardingData = result;
+            }
             
             console.log('Onboarding Status Check - Raw data:', onboardingData);
             
@@ -78,7 +96,7 @@ const OnboardingWrapper = () => {
                     console.log('✅ User has restaurants with completed onboarding - redirecting to dashboard');
                     message.success("Welcome back! Redirecting to your dashboard...");
                     setTimeout(() => {
-                        navigate('/dashboard/summary');
+                        navigate('/dashboard/budget');
                     }, 1000);
                     return;
                 } else {
@@ -168,18 +186,16 @@ const OnboardingWrapper = () => {
     useEffect(() => {
         if (onboardingStatus === 'complete') {
             console.log('✅ Onboarding already complete - redirecting to dashboard');
-            navigate('/dashboard/summary');
+            navigate('/dashboard/budget');
         } else if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
             console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
             
-            // Only show welcome message for truly new users (no restaurants)
+            // Welcome message logic for new users
             if (isNewUser) {
                 console.log('🆕 New user detected - showing welcome message');
-                setShowWelcomeMessage(true);
                 message.info("Welcome! Let's set up your restaurant.");
             } else {
                 console.log('📝 Existing user with incomplete onboarding - no welcome message needed');
-                setShowWelcomeMessage(false);
             }
         }
     }, [onboardingStatus, isNewUser, navigate]);
@@ -202,7 +218,7 @@ const OnboardingWrapper = () => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row bg-gray-50">
+        <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col lg:flex-row bg-gray-50">
                 {/* Content Section - Improved responsive design */}
                 <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0">
                     <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">

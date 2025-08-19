@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap');
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* CSS Custom Properties for consistent theming */
 :root {
@@ -76,6 +78,9 @@ html {
   -webkit-text-size-adjust: 100%;
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 body {
@@ -87,6 +92,15 @@ body {
   text-rendering: optimizeLegibility;
   margin: 0;
   padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+#root, #app, .app-root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 /* Ant Design Overrides - These will work with important: true in Tailwind */
@@ -96,6 +110,19 @@ body {
 
 .ant-btn {
   font-family: var(--font-family-primary) !important;
+}
+
+/* Ensure Ant Design messages are visible */
+.ant-message {
+  z-index: 1010 !important;
+}
+
+.ant-message-notice {
+  z-index: 1010 !important;
+}
+
+.ant-message-notice-content {
+  z-index: 1010 !important;
 }
 
 .ant-layout {

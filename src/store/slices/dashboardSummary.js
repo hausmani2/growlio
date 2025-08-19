@@ -7,8 +7,8 @@ const createDashboardSummarySlice = (set, get) => {
         dashboardSummaryData: null,
         loading: false,
         error: null,
-        lastFetchedWeek: null,
-        lastFetchedMonth: null,
+        lastFetchedDateRange: null,
+        lastFetchedGroupBy: null,
         currentViewMode: 'weekly', // Add view mode tracking
 
         // Actions
@@ -18,26 +18,41 @@ const createDashboardSummarySlice = (set, get) => {
         setViewMode: (mode) => set({ currentViewMode: mode }),
         getViewMode: () => get().currentViewMode,
 
-        // Fetch dashboard summary data (weekly)
-        fetchDashboardSummary: async (weekStart = null, restaurantId = null) => {
+        // Fetch dashboard summary data with new API format
+        fetchDashboardSummary: async (startDate = null, endDate = null, groupBy = 'daily', restaurantId = null) => {
             try {
                 set({ loading: true, error: null });
                 
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
                 if (!targetRestaurantId) {
-                    targetRestaurantId = await get().fetchRestaurantId();
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.log('⚠️ Error fetching restaurant ID:', error);
+                        targetRestaurantId = null;
+                    }
+                    
                     if (!targetRestaurantId) {
-                        throw new Error('Restaurant ID not found');
+                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        set({ loading: false, error: null });
+                        return null;
                     }
                 }
                 
-                // Build URL with parameters
+                // Build URL with new parameters
                 let url = '/restaurant/dashboard-summary/';
-                let params = { restaurant_id: targetRestaurantId };
+                let params = { 
+                    restaurant_id: targetRestaurantId,
+                    group_by: groupBy
+                };
                 
-                if (weekStart) {
-                    params.week_start = weekStart;
+                if (startDate) {
+                    params.start_date = startDate;
+                }
+                
+                if (endDate) {
+                    params.end_date = endDate;
                 }
                 
                 // Convert params to query string
@@ -46,7 +61,8 @@ const createDashboardSummarySlice = (set, get) => {
                     url += `?${queryString}`;
                 }
                 
-                console.log('Fetching weekly dashboard summary from:', url);
+                console.log('Fetching dashboard summary from:', url);
+                console.log('Parameters:', params);
                 
                 const response = await apiGet(url);
                 console.log('Dashboard summary API response:', response);
@@ -55,8 +71,9 @@ const createDashboardSummarySlice = (set, get) => {
                 set({ 
                     dashboardSummaryData: response.data, 
                     loading: false,
-                    lastFetchedWeek: weekStart || new Date().toISOString(),
-                    currentViewMode: 'weekly'
+                    lastFetchedDateRange: `${startDate}-${endDate}`,
+                    lastFetchedGroupBy: groupBy,
+                    currentViewMode: groupBy === 'weekly' ? 'weekly' : 'daily'
                 });
                 
                 return response.data;
@@ -67,91 +84,149 @@ const createDashboardSummarySlice = (set, get) => {
             }
         },
 
-        // Fetch monthly dashboard summary data
-        fetchMonthlyDashboardSummary: async (year = null, month = null, restaurantId = null) => {
+        // Fetch profit/loss category summary for pie chart
+        fetchProfitLossCategorySummary: async (startDate, endDate, restaurantId = null) => {
             try {
-                set({ loading: true, error: null });
-                
-                // Get restaurant ID if not provided
+                // Resolve restaurant id if not provided
                 let targetRestaurantId = restaurantId;
                 if (!targetRestaurantId) {
-                    targetRestaurantId = await get().fetchRestaurantId();
-                    if (!targetRestaurantId) {
-                        throw new Error('Restaurant ID not found');
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (e) {
+                        targetRestaurantId = null;
                     }
+                    if (!targetRestaurantId) return null;
                 }
-                
-                // Use current year and month if not provided
-                const currentDate = dayjs();
-                const targetYear = year || currentDate.year();
-                const targetMonth = month || currentDate.month() + 1;
-                
-                // Format month as "YYYY-MM" for the API
-                const monthParam = `${targetYear}-${targetMonth.toString().padStart(2, '0')}`;
-                
-                // Build URL with parameters
-                let url = '/restaurant/dashboard-summary/';
-                let params = { 
+
+                let url = '/restaurant/profit-loss-summary/';
+                const params = new URLSearchParams({
                     restaurant_id: targetRestaurantId,
-                    month: monthParam
-                };
-                
-                // Convert params to query string
-                const queryString = new URLSearchParams(params).toString();
-                if (queryString) {
-                    url += `?${queryString}`;
-                }
-                
-                console.log('Fetching monthly dashboard summary from:', url);
-                
+                    start_date: startDate,
+                    end_date: endDate,
+                }).toString();
+                url += `?${params}`;
                 const response = await apiGet(url);
-                console.log('Monthly dashboard summary API response:', response);
-                console.log('Response data:', response.data);
-                
-                set({ 
-                    dashboardSummaryData: response.data, 
-                    loading: false,
-                    lastFetchedMonth: monthParam,
-                    currentViewMode: 'monthly'
-                });
-                
-                return response.data;
+                // Return full payload so caller can access categories as well
+                return response?.data || null;
             } catch (error) {
-                console.error('Error fetching monthly dashboard summary:', error);
-                set({ error: error.message, loading: false });
-                throw error;
+                console.error('Error fetching profit/loss category summary:', error);
+                return null;
             }
         },
 
-        // Check if data needs to be refreshed
-        shouldRefreshSummaryData: (weekStart) => {
-            const { lastFetchedWeek, dashboardSummaryData } = get();
-            if (!dashboardSummaryData || !lastFetchedWeek) return true;
-            
-            // If weekStart is provided, check if it matches the last fetched week
-            if (weekStart) {
-                const lastFetchedWeekStr = dayjs(lastFetchedWeek).startOf('week').format('YYYY-MM-DD');
-                const requestedWeekStr = dayjs(weekStart).startOf('week').format('YYYY-MM-DD');
-                return lastFetchedWeekStr !== requestedWeekStr;
+        // Fetch budget allocation summary (Total Budget breakdown) for Budget page pie chart
+        fetchBudgetAllocationSummary: async (startDate, endDate, restaurantId = null) => {
+            try {
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (e) {
+                        targetRestaurantId = null;
+                    }
+                    if (!targetRestaurantId) return null;
+                }
+
+                let url = '/restaurant/budget-allocation-summary/';
+                const params = new URLSearchParams({
+                    restaurant_id: targetRestaurantId,
+                    start_date: startDate,
+                    end_date: endDate,
+                }).toString();
+                url += `?${params}`;
+                const response = await apiGet(url);
+                return response?.data || null;
+            } catch (error) {
+                console.error('Error fetching budget allocation summary:', error);
+                return null;
+            }
+        },
+
+        // Legacy method for backward compatibility (converts week_start to start_date/end_date)
+        fetchDashboardSummaryLegacy: async (weekStart = null, restaurantId = null) => {
+            if (!weekStart) {
+                return await get().fetchDashboardSummary(null, null, 'daily', restaurantId);
             }
             
-            return false;
+            // Convert week_start to start_date and end_date
+            const startDate = dayjs(weekStart).format('YYYY-MM-DD');
+            const endDate = dayjs(weekStart).add(6, 'day').format('YYYY-MM-DD');
+            
+            return await get().fetchDashboardSummary(startDate, endDate, 'daily', restaurantId);
+        },
+
+        // Fetch weekly data (Sunday to Saturday)
+        fetchWeeklyDashboardSummary: async (startDate = null, restaurantId = null) => {
+            if (!startDate) {
+                // Use current week if no start date provided
+                const currentWeekStart = dayjs().startOf('week').format('YYYY-MM-DD');
+                const currentWeekEnd = dayjs().endOf('week').format('YYYY-MM-DD');
+                return await get().fetchDashboardSummary(currentWeekStart, currentWeekEnd, 'daily', restaurantId);
+            }
+            
+            // Calculate end date (7 days from start date)
+            const endDate = dayjs(startDate).add(6, 'day').format('YYYY-MM-DD');
+            
+            return await get().fetchDashboardSummary(startDate, endDate, 'daily', restaurantId);
+        },
+
+        // Fetch monthly data
+        fetchMonthlyDashboardSummary: async (year = null, month = null, restaurantId = null) => {
+            // Use current year and month if not provided
+            const currentDate = dayjs();
+            const targetYear = year || currentDate.year();
+            const targetMonth = month || currentDate.month() + 1;
+            
+            // Calculate start and end dates for the month
+            const startDate = dayjs(`${targetYear}-${targetMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD');
+            const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
+            
+            return await get().fetchDashboardSummary(startDate, endDate, 'daily', restaurantId);
+        },
+
+        // Check if data needs to be refreshed
+        shouldRefreshSummaryData: (startDate, endDate, groupBy = 'daily') => {
+            const { lastFetchedDateRange, lastFetchedGroupBy, dashboardSummaryData } = get();
+            if (!dashboardSummaryData || !lastFetchedDateRange || !lastFetchedGroupBy) return true;
+            
+            const currentRange = `${startDate}-${endDate}`;
+            return lastFetchedDateRange !== currentRange || lastFetchedGroupBy !== groupBy;
+        },
+
+        // Check if weekly data needs to be refreshed
+        shouldRefreshWeeklyData: (startDate) => {
+            if (!startDate) return true;
+            
+            const endDate = dayjs(startDate).add(6, 'day').format('YYYY-MM-DD');
+            return get().shouldRefreshSummaryData(startDate, endDate, 'daily');
         },
 
         // Check if monthly data needs to be refreshed
         shouldRefreshMonthlyData: (year, month) => {
-            const { lastFetchedMonth, dashboardSummaryData, currentViewMode } = get();
-            if (!dashboardSummaryData || currentViewMode !== 'monthly') return true;
+            const currentDate = dayjs();
+            const targetYear = year || currentDate.year();
+            const targetMonth = month || currentDate.month() + 1;
             
-            const requestedMonth = `${year}-${month.toString().padStart(2, '0')}`;
-            return lastFetchedMonth !== requestedMonth;
+            const startDate = dayjs(`${targetYear}-${targetMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD');
+            const endDate = dayjs(startDate).endOf('month').format('YYYY-MM-DD');
+            
+            return get().shouldRefreshSummaryData(startDate, endDate, 'daily');
         },
 
         // Fetch summary data only if needed
-        fetchDashboardSummaryIfNeeded: async (weekStart = null, restaurantId = null) => {
-            const shouldRefresh = get().shouldRefreshSummaryData(weekStart);
+        fetchDashboardSummaryIfNeeded: async (startDate = null, endDate = null, groupBy = 'daily', restaurantId = null) => {
+            const shouldRefresh = get().shouldRefreshSummaryData(startDate, endDate, groupBy);
             if (shouldRefresh) {
-                return await get().fetchDashboardSummary(weekStart, restaurantId);
+                return await get().fetchDashboardSummary(startDate, endDate, groupBy, restaurantId);
+            }
+            return get().dashboardSummaryData;
+        },
+
+        // Fetch weekly summary data only if needed
+        fetchWeeklyDashboardSummaryIfNeeded: async (startDate = null, restaurantId = null) => {
+            const shouldRefresh = get().shouldRefreshWeeklyData(startDate);
+            if (shouldRefresh) {
+                return await get().fetchWeeklyDashboardSummary(startDate, restaurantId);
             }
             return get().dashboardSummaryData;
         },
@@ -189,8 +264,20 @@ const createDashboardSummarySlice = (set, get) => {
                 dashboardSummaryData: null,
                 loading: false,
                 error: null,
-                lastFetchedWeek: null,
-                lastFetchedMonth: null,
+                lastFetchedDateRange: null,
+                lastFetchedGroupBy: null,
+                currentViewMode: 'weekly'
+            }));
+        },
+        
+        // Clear all dashboard summary state (for logout)
+        clearDashboardSummary: () => {
+            set(() => ({
+                dashboardSummaryData: null,
+                loading: false,
+                error: null,
+                lastFetchedDateRange: null,
+                lastFetchedGroupBy: null,
                 currentViewMode: 'weekly'
             }));
         }

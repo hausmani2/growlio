@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
-import { SiExpensify } from 'react-icons/si';
+import { SiActualbudget, SiExpensify } from 'react-icons/si';
 const { Content } = Layout;
 
 /**
@@ -20,10 +20,23 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const menuItems = [
     {
-      key: 'dashboard summary',
+      key: 'dashboard-summary',
       icon: <FaChartLine />,
       label: 'Dashboard',
-      onClick: () => navigate('/dashboard/summary'),
+      children: [
+        {
+          key: 'budget',
+          icon: <SiActualbudget />,
+          label: 'Budget',
+          onClick: () => navigate('/dashboard/budget'),
+        },
+        {
+          key: 'profit-loss',
+          icon: <ArrowUpOutlined />,
+          label: 'Profit & Loss',
+          onClick: () => navigate('/dashboard/profit-loss'),
+        },
+      ],
     },
     {
       key: 'dashboard',
@@ -65,6 +78,19 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           icon: <SiExpensify  />,
           label: 'Expense',
           onClick: () => navigate('/dashboard/expense'),
+        },
+      ],
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+      children: [
+        {
+          key: 'profile',
+          icon: <UserOutlined />,
+          label: 'Profile',
+          onClick: () => navigate('/profile'),
         },
       ],
     },

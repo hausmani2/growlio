@@ -17,13 +17,8 @@ const VariableCostDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the variable cost data structure
-  console.log('Variable Cost Detail Dropdown Data:', { dayData, variableCostData });
 
-  // Calculate values - handle different possible field names
-  const variableCostBudget = parseFloat(variableCostData.variable_cost) || 
-                            parseFloat(variableCostData.variable_cost_budget) || 
-                            parseFloat(variableCostData.budgeted_variable_cost) || 0;
+
   
   // Calculate actual from variable_costs array
   const variableCostActual = Array.isArray(variableCostData.variable_costs) 
@@ -31,15 +26,7 @@ const VariableCostDetailDropdown = ({
     : parseFloat(variableCostData.variable_cost_actual) || 
       parseFloat(variableCostData.actual_variable_cost) || 0;
   
-  const amtOverUnder = variableCostActual - variableCostBudget;
-  const percentOverUnder = variableCostBudget > 0 ? ((amtOverUnder / variableCostBudget) * 100) : 0;
 
-  // Get color for over/under values
-  const getOverUnderColor = (value) => {
-    if (value > 0) return 'text-red-600';
-    if (value < 0) return 'text-green-600';
-    return 'text-gray-600';
-  };
 
   // Format currency
   const formatCurrency = (value) => {
@@ -51,10 +38,7 @@ const VariableCostDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage
-  const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
-  };
+
 
   // Toggle section expansion
   const toggleSection = (section) => {

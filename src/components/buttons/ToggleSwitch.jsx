@@ -2,21 +2,21 @@ import React from 'react';
 
 const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '' }) => {
     const sizeClasses = {
-        small: 'w-[20px] h-[20px]',
-        default: 'w-[24px] h-[24px]',
-        large: 'w-[32px] h-[32px]'
+        small: 'w-[28px] h-[28px]',
+        default: 'w-[36px] h-[24px]',
+        large: 'w-[44px] h-[28px]'
     };
 
     const sliderSizes = {
-        small: 'w-[8px] h-[16px]',
-        default: 'w-[11px] h-[20px]',
-        large: 'w-[14px] h-[26px]'
+        small: 'w-[12px] h-[20px]',
+        default: 'w-[16px] h-[18px]',
+        large: 'w-[20px] h-[20px]'
     };
 
     const sliderMargins = {
-        small: { on: 'ml-[10px]', off: 'ml-[2px]' },
-        default: { on: 'ml-[12px]', off: 'ml-[2px]' },
-        large: { on: 'ml-[16px]', off: 'ml-[2px]' }
+        small: { on: 'ml-[14px]', off: 'ml-[2px]' },
+        default: { on: 'ml-[18px]', off: 'ml-[2px]' },
+        large: { on: 'ml-[22px]', off: 'ml-[2px]' }
     };
 
     return (

@@ -102,9 +102,32 @@ const useStore = create(
             onboardingData: null,
             isOnBoardingCompleted: false,
             
+            // Restaurant goals state reset
+            restaurantGoalsLoading: false,
+            restaurantGoalsError: null,
+            restaurantGoals: null,
+            
+            // Restaurant name check state reset
+            restaurantNameCheckLoading: false,
+            restaurantNameCheckError: null,
+            restaurantNameExists: false,
+            
             // Dashboard slice reset
             dashboardData: null,
-            restaurantId: null
+            goalsData: null,
+            restaurantId: null,
+            lastFetchedDate: null,
+            selectedDate: null,
+            selectedYear: null,
+            selectedMonth: null,
+            selectedWeek: null,
+            availableWeeks: [],
+            
+            // Dashboard summary slice reset
+            dashboardSummaryData: null,
+            lastFetchedWeek: null,
+            lastFetchedMonth: null,
+            currentViewMode: 'weekly'
           }));
           
           console.log('✅ All persisted state cleared');

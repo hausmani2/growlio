@@ -59,60 +59,65 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
     };
 
     return (
-        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
-            <div className="w-full lg:w-[40%]">
-                <div className="flex flex-col gap-2">
-                    <h4 className="text-lg !font-bold !mb-0">Sales Channels</h4>
-                    <span className="text-sm sm:text-base text-neutral-600">
-                        Define your active sales channels to accurately track your restaurant's financial performance.
-                    </span>
-                </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Sales Channels</h3>
+                <p className="text-gray-600 text-sm">
+                    Define your active sales channels to accurately track your restaurant's financial performance.
+                </p>
             </div>
-            <div className="w-full lg:w-[60%]">
-                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl">
-                    <div className="flex flex-col gap-4">
-                        <label className="text-sm sm:text-base !font-bold text-neutral-600 flex items-center">
-                            Sales Channels <span className="text-red-500">*</span>
-                        </label>
-                        {salesChannels.map((channel, index) => (
-                            <div
-                                key={index}
-                                className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border border-gray-200 rounded-xl bg-white mb-3 gap-3 sm:gap-0 ${
-                                    errors.sales_channels ? 'border-red-500' : ''
-                                }`}
-                            >
-                                <div className='flex flex-col gap-1 flex-1'>
-                                    <span className="text-sm sm:text-base !font-bold text-neutral-600">{channel.title}</span>
-                                    <span className="text-xs sm:text-base font-regular text-neutral-600">{channel.description}</span>
-                                </div>
-                                <ToggleSwitch
-                                    isOn={channel.enabled}
-                                    setIsOn={() => handleToggle(channel.key)}
-                                />
+            
+            {/* Form Fields */}
+            <div className="space-y-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Sales Channels <span className="text-red-500">*</span>
+                </label>
+                
+                <div className="space-y-3">
+                    {salesChannels.map((channel, index) => (
+                        <div
+                            key={index}
+                            onClick={() => handleToggle(channel.key)}
+                            className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 gap-3 sm:gap-0 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 ${
+                                errors.sales_channels ? 'border-red-500' : ''
+                            }`}
+                        >
+                            <div className='flex flex-col gap-1 flex-1'>
+                                <span className="text-sm font-semibold text-gray-700">{channel.title}</span>
+                                <span className="text-xs text-gray-600">{channel.description}</span>
                             </div>
-                        ))}
-                        {errors.sales_channels && (
-                            <span className="text-red-500 text-xs sm:text-sm">{errors.sales_channels}</span>
-                        )}
-                    </div>
+                            <ToggleSwitch
+                                isOn={channel.enabled}
+                                setIsOn={() => handleToggle(channel.key)}
+                                size="large"
+                            />
+                        </div>
+                    ))}
                 </div>
-                {!isUpdateMode && (
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 my-5">
-                        <PrimaryButton 
-                            title="Back" 
-                            className="border-none w-full sm:w-auto"
-                            onClick={handleGoBack}
-                            disabled={loading}
-                        />
-                        <PrimaryButton 
-                            title={loading ? "Saving..." : "Save & Continue"} 
-                            className="btn-brand w-full sm:w-auto"
-                            onClick={handleSaveAndContinueClick}
-                            disabled={loading}
-                        />
-                    </div>
+                
+                {errors.sales_channels && (
+                    <span className="text-red-500 text-xs mt-1">{errors.sales_channels}</span>
                 )}
             </div>
+            
+            {/* Navigation Buttons */}
+            {!isUpdateMode && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6">
+                    <PrimaryButton 
+                        title="Back" 
+                        className="border-none w-full sm:w-auto"
+                        onClick={handleGoBack}
+                        disabled={loading}
+                    />
+                    <PrimaryButton 
+                        title={loading ? "Saving..." : "Save & Continue"} 
+                        className="btn-brand w-full sm:w-auto"
+                        onClick={handleSaveAndContinueClick}
+                        disabled={loading}
+                    />
+                </div>
+            )}
         </div>
     );
 };

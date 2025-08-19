@@ -19,10 +19,6 @@ const SalesDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the sales data structure
-  console.log('Sales Detail Dropdown Data:', { dayData, salesData });
-  console.log('Available salesData fields:', Object.keys(salesData || {}));
-  console.log('In-store sales value:', salesData?.in_store_sales, salesData?.['in-store_sales']);
   
   // Note: sales_actual comes directly from API response, not calculated
   // Only fixed_costs and variable_costs arrays should be summed
@@ -65,7 +61,12 @@ const SalesDetailDropdown = ({
   const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
   const percentOverUnder = parseFloat(salesData.sales_amount_percent) || 0;
 
-  // Color for over/under values is now hardcoded to red
+  // Get color for over/under values
+  const getOverUnderColor = (value) => {
+    if (value > 0) return '!text-red-600';
+    if (value < 0) return '!text-green-600';
+    return '!text-red-600';
+  };
 
   // Format currency
   const formatCurrency = (value) => {
@@ -77,9 +78,9 @@ const SalesDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage - API already provides the percentage value
+  // Format percentage - API provides the value, format to 1 decimal place
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value}%`;
+    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
   };
 
   // Toggle section expansion
@@ -117,7 +118,7 @@ const SalesDetailDropdown = ({
           >
             <div className="flex items-center gap-2">
               <ShoppingOutlined className="text-green-600 text-sm" />
-              <Text className="text-sm font-semibold text-green-800">Sales Actual:</Text>
+              <Text className="text-sm font-semibold text-green-800">Net Sales</Text>
             </div>
             <div className="flex items-center gap-2">
               <Text strong className="text-sm text-green-900">{formatCurrency(totalActualSales)}</Text>
@@ -243,13 +244,13 @@ const SalesDetailDropdown = ({
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <Text className="text-xs font-semibold text-gray-700">Amt Over/Under:</Text>
-              <Text className={`text-xs font-bold !text-red-600`}>
+              <Text className={`text-xs font-bold ${getOverUnderColor(amtOverUnder)}`}>
                 {formatCurrency(amtOverUnder)}
               </Text>
             </div>
             <div className="flex items-center justify-between">
               <Text className="text-xs font-semibold text-gray-700">% Over/Under:</Text>
-              <Text className={`text-xs font-bold !text-red-600`}>
+              <Text className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </Text>
             </div>

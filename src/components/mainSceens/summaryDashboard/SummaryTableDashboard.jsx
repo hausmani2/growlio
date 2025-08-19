@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
-const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode }) => {
+const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
 
@@ -25,6 +25,29 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     const parsed = parseFloat(value);
     return isNaN(parsed) ? 0 : parsed;
   }, []);
+
+  // Helper function to get month display name from data
+  const getMonthDisplayName = useCallback(() => {
+    if (!tableData || tableData.length === 0) return '';
+    
+    try {
+      const firstEntry = tableData[0];
+      // Check for monthly data structure
+      if (firstEntry.month_start) {
+        const startDate = dayjs(firstEntry.month_start);
+        return startDate.format('MMMM YYYY');
+      }
+      // Fallback to date/day fields
+      const firstDate = firstEntry.date || firstEntry.day;
+      if (firstDate) {
+        const date = dayjs(firstDate);
+        return date.format('MMMM YYYY');
+      }
+    } catch (error) {
+      console.error('Error formatting month display:', error);
+    }
+    return '';
+  }, [tableData]);
 
   // Process data
   useEffect(() => {
@@ -75,8 +98,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     };
 
     weekEntries.forEach((entry) => {
-      // Use full date as key for better data organization
-      const dateKey = entry.date || entry.day || 'N/A';
+      // Use appropriate key based on data structure
+      let dateKey;
+      if (entry.month_start) {
+        // Monthly data structure
+        dateKey = entry.month_start;
+      } else {
+        // Daily data structure
+        dateKey = entry.date || entry.day || 'N/A';
+      }
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
@@ -224,6 +254,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     window.print();
   }, []);
 
+  // Check if we have data
+  const hasData = tableData.length > 0;
+  const dataToProcess = dashboardSummaryData || dashboardData;
+  const isFailStatus = dataToProcess?.status === 'fail';
+
+  // Determine if we're in monthly view
+  const isMonthlyView = viewMode === 'monthly' || groupBy === 'month' || dataToProcess?.group_by === 'month';
+  const monthDisplayName = getMonthDisplayName();
+
   // Table columns configuration
   const tableColumns = useMemo(() => [
     {
@@ -240,8 +279,24 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       responsive: ['md']
     },
     ...tableData.map((entry, index) => {
-      const dateInfo = formatDateForDisplay(entry.date || entry.day);
-      const uniqueKey = `${dateInfo.fullDate}-${index}`;
+      let dateInfo, uniqueKey, dateKey;
+      
+      // Handle monthly data structure
+      if (entry.month_start) {
+        const startDate = dayjs(entry.month_start);
+        dateInfo = {
+          day: startDate.format('MMM'),
+          date: startDate.format('YYYY'),
+          fullDate: startDate.format('MMMM YYYY')
+        };
+        uniqueKey = `month-${entry.month_start}-${index}`;
+        dateKey = entry.month_start;
+      } else {
+        // Handle daily data structure
+        dateInfo = formatDateForDisplay(entry.date || entry.day);
+        uniqueKey = `${dateInfo.fullDate}-${index}`;
+        dateKey = entry.date || entry.day || 'N/A';
+      }
       
       return {
         title: (
@@ -249,7 +304,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             <div className="font-semibold text-xs text-gray-800">
               {dateInfo.day}
             </div>
-            { viewMode === 'monthly' && (
+            { isMonthlyView && (
               <div className="text-xs text-gray-600">
                 {dateInfo.date}
               </div>
@@ -265,7 +320,6 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         
         render: (value, record) => {
           const categoryKey = record.key;
-          const dateKey = entry.date || entry.day || 'N/A';
           const rawValue = processedData[categoryKey]?.[dateKey] || 0;
           
           // Check if the original value was None/null/undefined
@@ -304,7 +358,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         }
       };
     })
-  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor]);
+  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor, isMonthlyView]);
 
   // Table data source
   const tableDataSource = useMemo(() => 
@@ -312,18 +366,35 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       key: category.key,
       category: category.label,
       ...tableData.reduce((acc, entry, index) => {
-        const dateInfo = formatDateForDisplay(entry.date || entry.day);
-        const uniqueKey = `${dateInfo.fullDate}-${index}`;
-        const dateKey = entry.date || entry.day || 'N/A';
+        let uniqueKey, dateKey;
+        
+        // Handle monthly data structure
+        if (entry.month_start) {
+          uniqueKey = `month-${entry.month_start}-${index}`;
+          dateKey = entry.month_start;
+        } else {
+          // Handle daily data structure
+          const dateInfo = formatDateForDisplay(entry.date || entry.day);
+          uniqueKey = `${dateInfo.fullDate}-${index}`;
+          dateKey = entry.date || entry.day || 'N/A';
+        }
+        
         acc[uniqueKey] = processedData[category.key]?.[dateKey] || 0;
         return acc;
       }, {})
     })), [categories, tableData, processedData, formatDateForDisplay]);
-
-  // Check if we have data
-  const hasData = tableData.length > 0;
-  const dataToProcess = dashboardSummaryData || dashboardData;
-  const isFailStatus = dataToProcess?.status === 'fail';
+  
+  // Debug logging
+  console.log('SummaryTableDashboard Debug:', {
+    viewMode,
+    groupBy,
+    dataGroupBy: dataToProcess?.group_by,
+    isMonthlyView,
+    monthDisplayName,
+    hasData: tableData.length > 0,
+    firstEntry: tableData[0],
+    dataToProcess
+  });
 
   // Loading state
   if (loading) {
@@ -366,30 +437,28 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
   return (
     <Card className="shadow-lg border-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
-        <div>
-          <Title level={4} className="mb-0 text-lg sm:text-xl">
-            Weekly Summary Dashboard
-          </Title>
-        </div>
-        <Space className="flex sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
+        <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
+            {viewMode === 'monthly' && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : "Budget Dashboard"}
+        </h2>
+        <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
-            className="flex items-center text-xs sm:text-sm"
-            size="small"
+            size="middle"
+            className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
           >
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">Print Report</span>
           </Button>
           <Button 
             icon={<DownloadOutlined />} 
             onClick={handleExport}
-            className="flex items-center text-xs sm:text-sm"
-            size="small"
+            size="middle"
+            className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
           >
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">Export Data</span>
           </Button>
-        </Space>
+        </div>
       </div>
 
       {/* Desktop table */}
@@ -415,9 +484,25 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {tableData.map((entry, index) => {
-                  const dateInfo = formatDateForDisplay(entry.date || entry.day);
-                  const uniqueKey = `${dateInfo.fullDate}-${index}`;
-                  const dateKey = entry.date || entry.day || 'N/A';
+                  let dateInfo, uniqueKey, dateKey;
+                  
+                  // Handle monthly data structure
+                  if (entry.month_start) {
+                    const startDate = dayjs(entry.month_start);
+                    dateInfo = {
+                      day: startDate.format('MMM'),
+                      date: startDate.format('YYYY'),
+                      fullDate: startDate.format('MMMM YYYY')
+                    };
+                    uniqueKey = `month-${entry.month_start}-${index}`;
+                    dateKey = entry.month_start;
+                  } else {
+                    // Handle daily data structure
+                    dateInfo = formatDateForDisplay(entry.date || entry.day);
+                    uniqueKey = `${dateInfo.fullDate}-${index}`;
+                    dateKey = entry.date || entry.day || 'N/A';
+                  }
+                  
                   const rawValue = processedData[row.key]?.[dateKey] || 0;
                   const originalValue = entry[row.key];
                   const displayValue = handleValue(originalValue);

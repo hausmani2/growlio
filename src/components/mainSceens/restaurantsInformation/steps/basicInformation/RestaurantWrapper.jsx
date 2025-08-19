@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { message } from "antd";
 import RestaurantInformation from "./RestaurantInformation";
 import AddressInformation from "./AddressInformation";
-import AddressType from "./Address2Information";
+import Address2Information from "./Address2Information";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
-import useFormValidation from "./useFormValidation";
+import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
-import StepDataManager from "../../StepDataManager";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
+import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -22,7 +22,7 @@ const RestaurantWrapperContent = () => {
         getTempFormData,
         updateTempFormData
     } = useStore();
-    const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
+    const { validationErrors, clearFieldError, validateAllForms } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -72,11 +72,15 @@ const RestaurantWrapperContent = () => {
             const data = basicInfoData.data;
             
             // Load restaurant data
+            console.log("🔍 Loading restaurant data:", data.restaurant_name);
             if (data.restaurant_name) {
                 setRestaurantData(prev => ({
                     ...prev,
                     restaurantName: data.restaurant_name
                 }));
+                console.log("✅ Restaurant name set to:", data.restaurant_name);
+            } else {
+                console.log("❌ No restaurant_name found in API data");
             }
             
             if (data.number_of_locations) {
@@ -304,7 +308,7 @@ const RestaurantWrapperContent = () => {
                                 updateData={updateAddressData}
                                 errors={validationErrors}
                             />
-                            <AddressType 
+                            <Address2Information 
                                 data={addressTypeData}
                                 updateData={updateAddressTypeData}
                                 onSaveAndContinue={handleSaveAndContinue}
@@ -340,59 +344,53 @@ const RestaurantWrapperContent = () => {
     }
 
     return (
-        <StepDataManager stepName="Basic Information">
-            <div className="flex flex-col gap-6">
-                {isUpdateMode && (
-                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                        <p className="text-blue-700">
-                            You are updating your basic restaurant information. Changes will be saved when you click "Save & Continue".
-                        </p>
-                    </div>
-                )}
-                
-                <RestaurantInformation 
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Basic Information"
+                    description="Set up your restaurant's basic details including location, contact information, and business specifications."
+                />
+            </div>
+
+            {/* Content Section */}
+            <div className="space-y-6">
+                <RestaurantInformation
                     data={restaurantData}
                     updateData={updateRestaurantData}
                     errors={validationErrors}
-                    isUpdateMode={isUpdateMode}
                 />
-
-                <AddressInformation 
+                <AddressInformation
                     data={addressData}
                     updateData={updateAddressData}
                     errors={validationErrors}
                 />
-                <AddressType 
+                <Address2Information
                     data={addressTypeData}
                     updateData={updateAddressTypeData}
                     onSaveAndContinue={handleSaveAndContinue}
                     errors={validationErrors}
                     loading={loading}
                 />
-                
-                <div className="flex justify-between mt-6">
-                    {isUpdateMode && (
-                        <>
-                            <div className="ml-auto">
-                                <button
-                                    onClick={handleSaveAndContinue}
-                                    disabled={loading}
-                                    className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                    }`}
-                                >
-                                    {loading && (
-                                        <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                    )}
-                                    {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                                </button>
-                            </div>
-                        </>
-                    )}
-                </div>
             </div>
-        </StepDataManager>
+
+            {isUpdateMode && (
+                <div className="flex justify-end mt-8 pt-6">
+                    <button
+                        onClick={handleSaveAndContinue}
+                        disabled={loading}
+                        className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
+                        }`}
+                    >
+                        {loading && (
+                            <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                        )}
+                        Save Changes
+                    </button>
+                </div>
+            )}
+        </div>
     );
 };
 

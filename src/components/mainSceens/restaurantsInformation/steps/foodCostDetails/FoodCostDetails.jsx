@@ -37,35 +37,32 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
-            {/* Left Section - Title and Description */}
-            <div className="w-full lg:w-[40%]">
-                <div className="flex flex-col gap-2">
-                    <h4 className="text-lg !font-bold !mb-0">
-                        Food Cost Details 
-                    </h4>
-                    <span className="text-sm sm:text-base text-neutral-600">
-                        Share your average food cost and pricing structure to help us better support your business planning.
-                    </span>
-                </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Food Cost Details</h3>
+                <p className="text-gray-600 text-sm">
+                    Share your average food cost and pricing structure to help us better support your business planning.
+                </p>
             </div>
-            <div className="w-full lg:w-[60%]">
-                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl" >
-                    <div>
-                        <span className="text-base sm:text-lg lg:text-xl font-bold leading-tight">
-                            Cost of Goods (COGS) Goals
-                        </span>
-                    </div>
+            
+            {/* Form Fields */}
+            <div className="space-y-4">
+                {/* COGS Goals Section */}
+                <div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                        Cost of Goods (COGS) Goals
+                    </h4>
                     
-                    <div className="flex flex-col gap-2 sm:gap-3">
-                        <label htmlFor="cogs" className="text-xs sm:text-sm lg:text-base !font-bold text-neutral-600 flex items-center gap-1 sm:gap-2 flex-wrap">
+                    <div className="space-y-3">
+                        <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                             What is your COGS goal as a percentage of sales?
                             <span className="text-red-500">*</span>
                             <Tooltip placement="bottomLeft" title="Select the percentage of sales that you want to achieve as your COGS goal">
                                 <img 
                                     src={SubTrack} 
                                     alt="SubTrack" 
-                                    className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 flex-shrink-0" 
+                                    className="w-4 h-4" 
                                 />
                             </Tooltip>
                         </label>
@@ -76,22 +73,21 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                             value={data?.cogs_goal || undefined}
                             onChange={handleCogsChange}
                             options={generatePercentageOptions()}
-                            style={{
-                                height: '40px',
-                                fontSize: '14px'
-                            }}
-                            className={`w-full text-xs sm:text-sm lg:text-base ${errors.cogs_goal ? 'border-red-500' : 'border-gray-300'}`}
+                            className={`w-full h-11 rounded-lg text-sm ${
+                                errors.cogs_goal ? 'border-red-500' : ''
+                            }`}
                             status={errors.cogs_goal ? 'error' : ''}
                         />
                         
                         {errors.cogs_goal && (
-                            <span className="text-red-500 text-xs sm:text-sm lg:text-base">{errors.cogs_goal}</span>
+                            <span className="text-red-500 text-xs mt-1">{errors.cogs_goal}</span>
                         )}
                         
-                        <div className='text-xs sm:text-sm lg:text-base font-regular text-neutral-600 leading-relaxed'>
-                            <span className="text-green-600 font-semibold">Green Zone (Goal): 31%</span> | 
-                            <span className="text-yellow-600 font-semibold"> Yellow Zone (Needs Attention): 33%</span> | 
-                            <span className="text-red-600 font-semibold"> Red Zone (Danger): 36%</span>
+                        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                            <span className="font-medium">Zone Guidelines:</span><br/>
+                            <span className="text-green-600">🟢 Green Zone (Goal): 31%</span> | 
+                            <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 33%</span> | 
+                            <span className="text-red-600">🔴 Red Zone (Danger): 36%</span>
                         </div>
                     </div>
                 </div>

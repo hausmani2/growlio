@@ -40,25 +40,28 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row mt-5 gap-4 lg:gap-0">
-            <div className="w-full lg:w-[40%]">
-                <div className="flex flex-col gap-2">
-                    <h4 className="text-lg !font-bold !mb-0">Labor Information </h4>
-                    <span className="text-sm sm:text-base text-neutral-600">Add basic labor details so we can help you manage operations more effectively.</span>
-                </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Information</h3>
+                <p className="text-gray-600 text-sm">
+                    Add basic labor details so we can help you manage operations more effectively.
+                </p>
             </div>
-            <div className="w-full lg:w-[60%]">
-                <div className="flex flex-col gap-3 p-4 sm:p-6 bg-white rounded-xl" >
-                    <div className='flex flex-col '>
-                        <h4 className='text-lg text-neutral !font-bold !mb-0'>
-                            Labor Goals
-                        </h4>
-                        <span className='text-sm sm:text-base text-neutral font-regular mb-0'>
-                            What are your Labor Goals as a Percentage of Sales?
-                        </span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="labour_goal" className="text-sm sm:text-base !font-bold text-neutral-600">
+            
+            {/* Form Fields */}
+            <div className="space-y-4">
+                {/* Labor Goals Section */}
+                <div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                        Labor Goals
+                    </h4>
+                    <p className="text-gray-600 text-sm mb-4">
+                        What are your Labor Goals as a Percentage of Sales?
+                    </p>
+                    
+                    <div className="space-y-3">
+                        <label htmlFor="labour_goal" className="block text-sm font-semibold text-gray-700">
                             Labor Goal as Percentage of Sales <span className="text-red-500">*</span>
                         </label>
                         <Select
@@ -67,17 +70,20 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                             value={data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : undefined}
                             onChange={handleLaborGoalChange}
                             options={generateLaborPercentageOptions()}
-                            style={{
-                                height: '40px',
-                                fontSize: '16px'
-                            }}
-                            className={`w-full ${errors.labour_goal ? 'border-red-500' : ''}`}
+                            className={`w-full h-11 rounded-lg text-sm ${
+                                errors.labour_goal ? 'border-red-500' : ''
+                            }`}
                             status={errors.labour_goal ? 'error' : ''}
                         />
                         {errors.labour_goal && (
-                            <span className="text-red-500 text-xs sm:text-sm">{errors.labour_goal}</span>
+                            <span className="text-red-500 text-xs mt-1">{errors.labour_goal}</span>
                         )}
-                        <span className='text-xs sm:text-base font-regular text-neutral-600'>Green Zone (Goal): 25% | Yellow Zone (Needs Attention): 27% | Red Zone (Danger): 30%</span>
+                        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                            <span className="font-medium">Zone Guidelines:</span><br/>
+                            <span className="text-green-600">🟢 Green Zone (Goal): 25%</span> | 
+                            <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 27%</span> | 
+                            <span className="text-red-600">🔴 Red Zone (Danger): 30%</span>
+                        </div>
                     </div>
                 </div>
             </div>

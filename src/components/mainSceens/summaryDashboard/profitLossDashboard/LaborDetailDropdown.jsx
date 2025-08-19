@@ -17,8 +17,6 @@ const LaborDetailDropdown = ({
     return children;
   }
 
-  // Debug: Log the labor data structure
-  console.log('Labor Detail Dropdown Data:', { dayData, laborData });
 
   // Calculate values - handle different possible field names
   const laborBudget = parseFloat(laborData.labour) || 
@@ -44,9 +42,9 @@ const LaborDetailDropdown = ({
 
   // Get color for over/under values
   const getOverUnderColor = (value) => {
-    if (value > 0) return 'text-red-600';
-    if (value < 0) return 'text-green-600';
-    return 'text-red-600';
+    if (value > 0) return '!text-red-600';
+    if (value < 0) return '!text-green-600';
+    return '!text-red-600';
   };
 
   // Format currency

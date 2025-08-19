@@ -68,12 +68,19 @@ const createDashboardSlice = (set, get) => {
         // Fetch dashboard data with caching
         fetchDashboardData: async (weekStart = null) => {
             try {
+                console.log('🚀 fetchDashboardData called with weekStart:', weekStart);
                 set({ loading: true, error: null });
                 
                 // Get restaurant ID
                 const restaurantId = await get().fetchRestaurantId();
+                console.log('🚀 Restaurant ID:', restaurantId);
+                
                 if (!restaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    // Don't throw error - just set loading to false and return
+                    // This is expected for new users who haven't completed onboarding
+                    set({ loading: false, error: null });
+                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                    return null;
                 }
                 
                 let url = '/restaurant/dashboard/';
@@ -89,7 +96,10 @@ const createDashboardSlice = (set, get) => {
                     url += `?${queryString}`;
                 }
                 
+                console.log('🚀 Making API call to:', url);
                 const response = await apiGet(url);
+                console.log('🚀 API response:', response.data);
+                
                 set({ 
                     dashboardData: response.data, 
                     loading: false,
@@ -101,6 +111,7 @@ const createDashboardSlice = (set, get) => {
                 
                 return response.data;
             } catch (error) {
+                console.error('❌ Error in fetchDashboardData:', error);
                 set({ error: error.message, loading: false });
                 throw error;
             }
@@ -109,24 +120,82 @@ const createDashboardSlice = (set, get) => {
         // Check if data needs to be refreshed
         shouldRefreshData: (weekStart) => {
             const { lastFetchedDate, dashboardData } = get();
-            if (!dashboardData || !lastFetchedDate) return true;
+            console.log('🔍 shouldRefreshData debug:', {
+                weekStart,
+                lastFetchedDate,
+                hasDashboardData: !!dashboardData,
+                dashboardDataKeys: dashboardData ? Object.keys(dashboardData) : null
+            });
+            
+            if (!dashboardData || !lastFetchedDate) {
+                console.log('✅ Should refresh: No cached data available');
+                return true;
+            }
             
             // If weekStart is provided, check if it matches the last fetched date
             if (weekStart) {
-                const lastFetchedWeek = dayjs(lastFetchedDate).startOf('week').format('YYYY-MM-DD');
-                const requestedWeek = dayjs(weekStart).startOf('week').format('YYYY-MM-DD');
-                return lastFetchedWeek !== requestedWeek;
+                // Use a more reliable week comparison that doesn't depend on dayjs week start configuration
+                // Compare the actual dates directly instead of using startOf('week')
+                const lastFetchedDateObj = dayjs(lastFetchedDate);
+                const requestedDateObj = dayjs(weekStart);
+                
+                // Check if the dates are in the same week by comparing their week numbers and years
+                const lastFetchedWeek = lastFetchedDateObj.week();
+                const lastFetchedYear = lastFetchedDateObj.year();
+                const requestedWeek = requestedDateObj.week();
+                const requestedYear = requestedDateObj.year();
+                
+                const shouldRefresh = lastFetchedWeek !== requestedWeek || lastFetchedYear !== requestedYear;
+                
+                console.log('🔍 Week comparison:', {
+                    lastFetchedDate: lastFetchedDateObj.format('YYYY-MM-DD'),
+                    lastFetchedWeek,
+                    lastFetchedYear,
+                    requestedDate: requestedDateObj.format('YYYY-MM-DD'),
+                    requestedWeek,
+                    requestedYear,
+                    shouldRefresh
+                });
+                
+                return shouldRefresh;
             }
             
+            console.log('✅ Should refresh: No weekStart provided');
             return false;
         },
 
         // Fetch data only if needed
         fetchDashboardDataIfNeeded: async (weekStart = null) => {
-            const shouldRefresh = get().shouldRefreshData(weekStart);
-            if (shouldRefresh) {
+            console.log('🔄 fetchDashboardDataIfNeeded called with:', weekStart);
+            
+            // Force refresh for current week to ensure we always get the latest data
+            const currentDate = dayjs();
+            const requestedDate = weekStart ? dayjs(weekStart) : null;
+            const isCurrentWeek = requestedDate && 
+                                 requestedDate.week() === currentDate.week() && 
+                                 requestedDate.year() === currentDate.year();
+            
+            console.log('🔄 Current week check:', {
+                isCurrentWeek,
+                currentDate: currentDate.format('YYYY-MM-DD'),
+                requestedDate: requestedDate ? requestedDate.format('YYYY-MM-DD') : null
+            });
+            
+            // Always fetch fresh data for current week
+            if (isCurrentWeek) {
+                console.log('🔄 Force refreshing data for current week...');
                 return await get().fetchDashboardData(weekStart);
             }
+            
+            const shouldRefresh = get().shouldRefreshData(weekStart);
+            console.log('🔄 Should refresh data:', shouldRefresh);
+            
+            if (shouldRefresh) {
+                console.log('🔄 Fetching fresh dashboard data...');
+                return await get().fetchDashboardData(weekStart);
+            }
+            
+            console.log('🔄 Using cached dashboard data');
             return get().dashboardData;
         },
 
@@ -138,7 +207,11 @@ const createDashboardSlice = (set, get) => {
                 // Get restaurant ID if not provided
                 const targetRestaurantId = restaurantId || await get().fetchRestaurantId();
                 if (!targetRestaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    // Don't throw error - just set loading to false and return
+                    // This is expected for new users who haven't completed onboarding
+                    set({ loading: false, error: null });
+                    console.log('ℹ️ No restaurant ID available for goals - user needs to complete onboarding first');
+                    return null;
                 }
                 
                 const url = `/restaurant/goals/?restaurant_id=${targetRestaurantId}`;
@@ -286,7 +359,9 @@ const createDashboardSlice = (set, get) => {
                     const restaurantId = await get().fetchRestaurantId();
                     
                     if (!restaurantId) {
-                        throw new Error('Restaurant ID not found');
+                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        set({ loading: false, error: null });
+                        return null;
                     }
                     
                     // Add restaurant_id to the new payload format
@@ -312,7 +387,9 @@ const createDashboardSlice = (set, get) => {
                 const restaurantId = await get().fetchRestaurantId();
 
                 if (!restaurantId) {
-                    throw new Error('Restaurant ID not found');
+                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                    set({ loading: false, error: null });
+                    return null;
                 }
 
                 // First, get existing data to merge with new data
@@ -555,34 +632,94 @@ const createDashboardSlice = (set, get) => {
             return restaurantId;
         },
 
-        // Fetch restaurant ID from onboarding data or localStorage
+        // Fetch restaurant ID from localStorage or store
         fetchRestaurantId: async () => {
-            const state = get();
-            const storeRestaurantId = state.restaurantId;
-            
-            if (storeRestaurantId) {
-                return storeRestaurantId;
+            try {
+                const state = get();
+                const storeRestaurantId = state.restaurantId;
+                
+                console.log('🔍 fetchRestaurantId - storeRestaurantId:', storeRestaurantId);
+                
+                if (storeRestaurantId) {
+                    console.log('✅ Using restaurant ID from store:', storeRestaurantId);
+                    return storeRestaurantId;
+                }
+                
+                // Try localStorage as fallback
+                const localRestaurantId = localStorage.getItem('restaurant_id');
+                console.log('🔍 fetchRestaurantId - localRestaurantId:', localRestaurantId);
+                
+                if (localRestaurantId) {
+                    console.log('✅ Using restaurant ID from localStorage:', localRestaurantId);
+                    set({ restaurantId: localRestaurantId });
+                    return localRestaurantId;
+                }
+                
+                // Try to get restaurant ID from onboarding slice if available
+                try {
+                    const onboardingState = get();
+                    if (onboardingState.completeOnboardingData?.restaurant_id) {
+                        const onboardingRestaurantId = onboardingState.completeOnboardingData.restaurant_id;
+                        console.log('✅ Using restaurant ID from onboarding data:', onboardingRestaurantId);
+                        set({ restaurantId: onboardingRestaurantId });
+                        localStorage.setItem('restaurant_id', onboardingRestaurantId.toString());
+                        return onboardingRestaurantId;
+                    }
+                } catch (error) {
+                    console.log('⚠️ Could not get restaurant ID from onboarding data:', error);
+                }
+                
+                // If no restaurant ID found, this means the user is new and hasn't completed onboarding
+                // Don't make API calls - just return null and let the onboarding flow handle it
+                console.log('ℹ️ No restaurant ID found - user needs to complete onboarding first');
+                return null;
+            } catch (error) {
+                console.error('❌ Error in fetchRestaurantId:', error);
+                return null;
             }
-            
-            // Try to get from onboarding slice
-            const onboardingRestaurantId = state.getRestaurantIdWithFallback?.();
-            if (onboardingRestaurantId) {
-                set({ restaurantId: onboardingRestaurantId });
-                return onboardingRestaurantId;
-            }
-            
-            // Try localStorage as last resort
-            const localRestaurantId = localStorage.getItem('restaurant_id');
-            if (localRestaurantId) {
-                set({ restaurantId: localRestaurantId });
-                return localRestaurantId;
-            }
-            
-            return null;
         },
 
         // Set restaurant ID
         setRestaurantId: (id) => set({ restaurantId: id }),
+        
+        // Manually set restaurant ID and save to localStorage
+        setRestaurantIdAndPersist: (id) => {
+            if (id) {
+                console.log('🔧 Manually setting restaurant ID:', id);
+                set({ restaurantId: id });
+                localStorage.setItem('restaurant_id', id.toString());
+                console.log('✅ Restaurant ID saved to localStorage:', id);
+            }
+        },
+        
+        // Debug function to check restaurant ID status
+        debugRestaurantId: () => {
+            const state = get();
+            const storeRestaurantId = state.restaurantId;
+            const localRestaurantId = localStorage.getItem('restaurant_id');
+            
+            console.log('🔍 Restaurant ID Debug Info:');
+            console.log('  - Store restaurantId:', storeRestaurantId);
+            console.log('  - localStorage restaurant_id:', localRestaurantId);
+            console.log('  - Store state keys:', Object.keys(state));
+            
+            // Check onboarding slice if available
+            try {
+                if (state.completeOnboardingData?.restaurant_id) {
+                    console.log('  - Onboarding data restaurant_id:', state.completeOnboardingData.restaurant_id);
+                }
+            } catch (error) {
+                console.log('  - Could not access onboarding data');
+            }
+            
+            return {
+                storeRestaurantId,
+                localRestaurantId,
+                hasStoreId: !!storeRestaurantId,
+                hasLocalId: !!localRestaurantId,
+                onboardingRestaurantId: state.completeOnboardingData?.restaurant_id
+            };
+        },
         
         // Reset dashboard state (for logout)
         resetDashboard: () => {
@@ -592,6 +729,24 @@ const createDashboardSlice = (set, get) => {
                 loading: false,
                 error: null,
                 restaurantId: null,
+                lastFetchedDate: null,
+                selectedDate: null,
+                selectedYear: null,
+                selectedMonth: null,
+                selectedWeek: null,
+                availableWeeks: []
+            }));
+        },
+        
+        // Clear all dashboard state (for logout)
+        clearDashboard: () => {
+            set(() => ({
+                dashboardData: null,
+                goalsData: null,
+                loading: false,
+                error: null,
+                restaurantId: null,
+                lastFetchedDate: null,
                 selectedDate: null,
                 selectedYear: null,
                 selectedMonth: null,

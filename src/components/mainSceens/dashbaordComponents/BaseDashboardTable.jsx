@@ -238,7 +238,9 @@ const BaseDashboardTable = ({
     <div className="w-full">
       <Card className="w-full mx-auto shadow-lg">
         <div className="flex justify-between items-center mb-4">
-          <Title level={3} className="mb-0">{title}</Title>
+          <div className="pb-3 border-b border-gray-200">
+            <h3 className="text-xl font-bold text-orange-600">{title}</h3>
+          </div>
           <Space>
             <Button 
               icon={<ReloadOutlined />} 

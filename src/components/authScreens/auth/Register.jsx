@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
-import logo from '../../../assets/logo.png';
+import GrowlioLogo from '../../common/GrowlioLogo';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
@@ -152,49 +152,62 @@ const Register = () => {
   };
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full max-w-md">
+      {/* Logo Section - Outside the form box */}
+      <div className="text-center mb-8">
+        <GrowlioLogo width={180} height={60} className="mx-auto" />
+      </div>
+      
       <form
         onSubmit={handleSubmit}
-        className="w-full bg-white p-8 space-y-2"
+        className="w-full bg-white p-8 rounded-xl shadow-lg border border-gray-100"
       >
-        <img src={logo} alt="logo" className="mb-6" />
-        <div className='flex flex-col mt-4 gap-3'>
-          <h2 className="text-lg !font-black text-start text-neutral !mb-0">
-            Join Growlio Today
-          </h2>
-          <p className="text-base text-neutral mb-2" >
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-orange-600 mb-3">
+            Join Growlio Today! <span role="img" aria-label="rocket" className="text-2xl">🚀</span>
+          </h1>
+          <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto">
             Get discovered, manage bookings, and showcase your menu — all in one place.
           </p>
         </div>
         
-        <div className="flex flex-col gap-4">
-          <div>
-            <label className="block text-base font-bold mb-2" htmlFor="name">
+        {/* Form Fields */}
+        <div className="space-y-4">
+          {/* Full Name Field */}
+          <div className="space-y-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="full_name">
               Full Name
             </label>
             <Input
               id="full_name"
               name="full_name"
               type="text"
-              autoComplete="full_name"
+              autoComplete="name"
               required
               value={form.full_name}
               onChange={handleChange}
-              placeholder="Enter Full Name"
-              prefix={<img src={User} alt="User" className="h-4 w-4" />}
+              placeholder="Enter your full name"
+              prefix={<img src={User} alt="User" className="h-5 w-5 text-gray-400" />}
               size="large"
-              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
-                formErrors.full_name ? 'border-red-500' : ''
+              className={`!h-11 rounded-lg text-base transition-all duration-200 ${
+                formErrors.full_name 
+                  ? '!border-red-500 !shadow-sm !shadow-red-100' 
+                  : '!border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100'
               }`}
               status={formErrors.full_name ? 'error' : ''}
             />
             {formErrors.full_name && (
-              <div className="text-red-500 text-sm mt-1">{formErrors.full_name}</div>
+              <div className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                {formErrors.full_name}
+              </div>
             )}
           </div>
           
-          <div>
-            <label className="block text-base font-bold mb-2" htmlFor="email">
+          {/* Email Field */}
+          <div className="space-y-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="email">
               Email Address
             </label>
             <Input
@@ -205,21 +218,27 @@ const Register = () => {
               required
               value={form.email}
               onChange={handleChange}
-              placeholder="Enter Email Address"
-              prefix={<img src={Message} alt="Message" className="h-4 w-4" />}
+              placeholder="Enter your email address"
+              prefix={<img src={Message} alt="Email" className="h-5 w-5 text-gray-400" />}
               size="large"
-              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
-                formErrors.email ? 'border-red-500' : ''
+              className={`!h-11 rounded-lg text-base transition-all duration-200 ${
+                formErrors.email 
+                  ? '!border-red-500 !shadow-sm !shadow-red-100' 
+                  : '!border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100'
               }`}
               status={formErrors.email ? 'error' : ''}
             />
             {formErrors.email && (
-              <div className="text-red-500 text-sm mt-1">{formErrors.email}</div>
+              <div className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                {formErrors.email}
+              </div>
             )}
           </div>
           
-          <div>
-            <label className="block text-base font-bold mb-2" htmlFor="username">
+          {/* Username Field */}
+          <div className="space-y-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="username">
               Username
             </label>
             <Input
@@ -230,21 +249,27 @@ const Register = () => {
               required
               value={form.username}
               onChange={handleChange}
-              placeholder="Enter Username"
-              prefix={<img src={User} alt="User" className="h-4 w-4" />}
+              placeholder="Choose a username"
+              prefix={<img src={User} alt="User" className="h-5 w-5 text-gray-400" />}
               size="large"
-              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
-                formErrors.username ? 'border-red-500' : ''
+              className={`!h-11 rounded-lg text-base transition-all duration-200 ${
+                formErrors.username 
+                  ? '!border-red-500 !shadow-sm !shadow-red-100' 
+                  : '!border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100'
               }`}
               status={formErrors.username ? 'error' : ''}
             />
             {formErrors.username && (
-              <div className="text-red-500 text-sm mt-1">{formErrors.username}</div>
+              <div className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                {formErrors.username}
+              </div>
             )}
           </div>
           
-          <div>
-            <label className="block text-base font-bold mb-2" htmlFor="password">
+          {/* Password Field */}
+          <div className="space-y-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="password">
               Password
             </label>
             <Input.Password
@@ -254,75 +279,93 @@ const Register = () => {
               required
               value={form.password}
               onChange={handleChange}
-              placeholder="Enter Password"
-              prefix={<img src={Lock} alt="Lock" className="h-4 w-4" />}
+              placeholder="Create a strong password"
+              prefix={<img src={Lock} alt="Lock" className="h-5 w-5 text-gray-400" />}
               size="large"
-              className={`!h-[40px] rounded-md text-base tw-input input-brand ${
-                formErrors.password ? 'border-red-500' : ''
+              className={`!h-11 rounded-lg text-base transition-all duration-200 ${
+                formErrors.password 
+                  ? '!border-red-500 !shadow-sm !shadow-red-100' 
+                  : '!border-gray-300 hover:!border-orange-400 focus:!border-orange-500 focus:!shadow-lg focus:!shadow-orange-100'
               }`}
               status={formErrors.password ? 'error' : ''}
             />
             {formErrors.password && (
-              <div className="text-red-500 text-sm mt-1">{formErrors.password}</div>
+              <div className="text-red-500 text-sm mt-1 flex items-center">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                {formErrors.password}
+              </div>
             )}
           </div>
           
-          <div className="flex items-start gap-2 mt-4">
-            <Checkbox
-              checked={disclaimerAccepted}
-              onChange={(e) => setDisclaimerAccepted(e.target.checked)}
-              disabled={!disclaimerAccepted && !showDisclaimerModal}
-            />
-            <div className="flex-1">
-              <p className="text-sm text-neutral-600">
-                I have read and agree to the{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowDisclaimerModal(true)}
-                  className="text-[#FF8132] font-bold hover:text-[#EB5B00] underline"
-                >
-                  Terms and Conditions
-                </button>
-                {' '}and{' '}
-                <button
-                  type="button"
-                  onClick={() => setShowDisclaimerModal(true)}
-                  className="text-[#FF8132] font-bold hover:text-[#EB5B00] underline"
-                >
-                  Privacy Policy
-                </button>
-              </p>
+          {/* Terms and Conditions */}
+          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                checked={disclaimerAccepted}
+                onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                disabled={!disclaimerAccepted && !showDisclaimerModal}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  I have read and agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowDisclaimerModal(true)}
+                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                  >
+                    Terms and Conditions
+                  </button>
+                  {' '}and{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowDisclaimerModal(true)}
+                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                  >
+                    Privacy Policy
+                  </button>
+                </p>
+              </div>
             </div>
-          </div>
-          
-          <div className='flex justify-end items-center'>
-            <p className='text-neutral-900 text-sm font-bold'>Forgot Password?</p>
           </div>
         </div>
         
-        {/* Global error display */}
+        {/* Global Error Display */}
         {error && (
-          <div className="text-red-500 text-center text-sm bg-red-50 p-3 rounded-md border border-red-200">
-            {error}
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <span className="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
+              <p className="text-red-700 text-sm font-medium">{error}</p>
+            </div>
           </div>
         )}
         
-        <Button
-          type="primary"
-          htmlType="submit"
-          size="large"
-          loading={isLoading}
-          disabled={!isFormValid}
-          className="w-full h-[48px] bg-[#FF8132] border-[#FF8132] hover:bg-[#EB5B00] hover:border-[#EB5B00] text-white font-bold text-base rounded-md"
-          icon={isLoading ? <LoadingOutlined /> : null}
-        >
-          {isLoading ? 'Creating account...' : 'Create Account'}
-        </Button>
+        {/* Submit Button */}
+        <div className="mt-6">
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            loading={isLoading}
+            disabled={!isFormValid}
+            className="w-full h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+            icon={isLoading ? <LoadingOutlined /> : null}
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </Button>
+        </div>
       </form>
       
-      <div className='flex justify-center items-center mt-6'>
-        <p className='text-neutral-600 text-base font-bold'>
-          Already have an account? <Link to="/login" className='text-[#FF8132] font-bold hover:text-[#EB5B00]'>Login</Link>
+      {/* Login Link */}
+      <div className="text-center mt-8">
+        <p className="text-gray-600 text-base">
+          Already have an account?{' '}
+          <Link 
+            to="/login" 
+            className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 hover:underline"
+          >
+            Sign In
+          </Link>
         </p>
       </div>
 
