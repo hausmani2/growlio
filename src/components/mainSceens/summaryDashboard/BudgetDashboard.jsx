@@ -51,26 +51,70 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   // Process data for charts
   // 1) Process incoming dashboard data (compute chartData + summaryData)
   useEffect(() => {
+    console.log('BudgetDashboard: Processing dashboard data:', dashboardData);
+    
     if (!dashboardData || !dashboardData.data) {
+      console.log('BudgetDashboard: No dashboard data available');
       setChartData([]);
       setSummaryData({});
       return;
     }
 
     const data = dashboardData.data;
+    console.log('BudgetDashboard: Raw data array:', data);
     
     // Process data for charts
-    const processedData = data.map(entry => ({
-      day: entry.day || entry.date,
-      salesBudget: parseFloat(entry.sales_budget) || 0,
-      salesActual: parseFloat(entry.actual_sales) || 0,
-      foodCostBudget: parseFloat(entry.food_cost_budget) || 0,
-      foodCostActual: parseFloat(entry.food_cost) || 0,
-      laborBudget: parseFloat(entry.labor_budget) || 0,
-      laborActual: parseFloat(entry.labor) || 0,
-      profit: parseFloat(entry.profit_loss) || 0
-    }));
+    const processedData = data.map(entry => {
+      console.log('BudgetDashboard: Processing entry:', entry);
+      
+      // Handle daily, weekly, and monthly data structures
+      let dayLabel;
+      if (entry.day || entry.date) {
+        // Daily data
+        dayLabel = entry.day || entry.date;
+      } else if (entry.week_start && entry.week_end) {
+        // Weekly data - create a readable label
+        const startDate = new Date(entry.week_start);
+        const endDate = new Date(entry.week_end);
+        const startDay = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endDay = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        dayLabel = `${startDay} - ${endDay}`;
+      } else if (entry.month_start && entry.month_end) {
+        // Monthly data - create a readable label
+        const startDate = new Date(entry.month_start);
+        const monthName = startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        dayLabel = monthName;
+      } else {
+        // Fallback
+        dayLabel = 'Unknown Period';
+      }
+      
+      const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
+      const salesActual = parseFloat(entry.sales_actual ?? entry.actual_sales ?? entry.salesActual ?? 0) || 0;
+      const foodCostBudget = parseFloat(entry.food_cost ?? entry.food_cost_budget ?? entry.foodCostBudget ?? 0) || 0;
+      const foodCostActual = parseFloat(entry.food_cost_actual ?? entry.food_cost_actuals ?? entry.foodCostActual ?? 0) || 0;
+      const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
+      const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
+      const profitValue =
+        parseFloat(entry.profit_loss ?? entry.profit ?? 0) ||
+        (salesActual - (foodCostActual + laborActual));
 
+      const processedEntry = {
+        day: dayLabel,
+        salesBudget,
+        salesActual,
+        foodCostBudget,
+        foodCostActual,
+        laborBudget,
+        laborActual,
+        profit: profitValue
+      };
+      
+      console.log('BudgetDashboard: Processed entry:', processedEntry);
+      return processedEntry;
+    });
+
+    console.log('BudgetDashboard: Final processed data:', processedData);
     setChartData(processedData);
 
     // Calculate summary data
@@ -84,6 +128,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       totalProfit: processedData.reduce((sum, item) => sum + item.profit, 0)
     };
 
+    console.log('BudgetDashboard: Summary data:', summary);
     setSummaryData(summary);
   }, [dashboardData]);
 
@@ -255,6 +300,12 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       }
     ]
   };
+  
+  console.log('BudgetDashboard: Chart data for profit chart:', {
+    labels: profitChartData.labels,
+    data: profitChartData.datasets[0].data,
+    chartDataLength: chartData.length
+  });
 
   // Profit/Loss breakdown by category (Sales, Labor, Food Cost)
   const categoryNet = useMemo(() => {

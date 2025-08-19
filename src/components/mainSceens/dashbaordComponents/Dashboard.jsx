@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import weekOfYear from 'dayjs/plugin/weekOfYear';
+dayjs.extend(weekOfYear);
 import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import SalesTable from './SalesTable';
@@ -38,6 +40,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardMessage, setDashboardMessage] = useState(null);
+  const [weekPickerValue, setWeekPickerValue] = useState(null);
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
@@ -182,6 +185,43 @@ const Dashboard = () => {
     }
   };
 
+  // New: Single Week Picker handler (replaces Year/Month/Week dropdowns)
+  const handleWeekPickerChange = (date) => {
+    if (!date) {
+      setSelectedWeek(null);
+      setAvailableWeeks([]);
+      return;
+    }
+
+    // Compute start and end of the selected week
+    const weekStart = dayjs(date).startOf('week');
+    const weekEnd = dayjs(date).endOf('week');
+    const weekKey = `${weekStart.format('YYYY-MM-DD')}_${weekEnd.format('YYYY-MM-DD')}`;
+
+    // Show value in picker
+    setWeekPickerValue(date);
+
+    // Sync store state for backwards compatibility
+    setSelectedYear(weekStart.year());
+    setSelectedMonth(weekStart.month() + 1);
+
+    // Provide a minimal availableWeeks entry so existing logic continues to work
+    setAvailableWeeks([
+      {
+        key: weekKey,
+        weekNumber: weekStart.week(),
+        startDate: weekStart.format('YYYY-MM-DD'),
+        endDate: weekEnd.format('YYYY-MM-DD'),
+        data: null
+      }
+    ]);
+
+    // Select week and fetch
+    setSelectedWeek(weekKey);
+    setSelectedDate(weekStart);
+    fetchDashboardData(weekStart);
+  };
+
   // Generate week days based on selected week
   const getWeekDays = () => {
     if (!selectedWeek || !availableWeeks.length) {
@@ -260,6 +300,25 @@ const Dashboard = () => {
         
         // Fetch calendar data for the month
         await fetchCalendarData(yearToUse, monthToUse);
+
+        // Default: select current week in picker and state
+        const now = dayjs();
+        setWeekPickerValue(now);
+        const weekStart = now.startOf('week');
+        const weekEnd = now.endOf('week');
+        const weekKey = `${weekStart.format('YYYY-MM-DD')}_${weekEnd.format('YYYY-MM-DD')}`;
+        setAvailableWeeks([
+          {
+            key: weekKey,
+            weekNumber: now.week(),
+            startDate: weekStart.format('YYYY-MM-DD'),
+            endDate: weekEnd.format('YYYY-MM-DD'),
+            data: null
+          }
+        ]);
+        setSelectedWeek(weekKey);
+        setSelectedDate(weekStart);
+        await fetchDashboardData(weekStart);
         
         // Fetch restaurant goals
         await fetchRestaurantGoals();
@@ -443,101 +502,33 @@ const Dashboard = () => {
               Manage your restaurant's weekly financial data including sales, costs, and labor information
             </p>
           </div>
+          {/* Right Side - Week Picker */}
+          <div className="w-full lg:w-auto">
+            <div className="min-w-[220px] w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Week Picker</label>
+              <DatePicker
+                picker="week"
+                style={{ width: '100%' }}
+                value={weekPickerValue}
+                format={(value) => {
+                  if (!value) return 'Select week';
+                  const start = dayjs(value).startOf('week');
+                  const end = dayjs(value).endOf('week');
+                  const wk = dayjs(value).week();
+                  return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
+                }}
+                onChange={handleWeekPickerChange}
+                allowClear
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Content Section */}
       <div className="w-full">
         <div className="w-full mx-auto">
-          <div className="mb-2">
-            <Card className="p-4 sm:p-6">
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-
-                {/* Calendar Dropdowns */}
-                <div className="space-y-1">
-                    <p>You can change dates to insert or update weekly costing data.</p>
-                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                    {/* Year Dropdown */}
-                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Year
-                      </label>
-                      <Select
-                        placeholder="Select Year"
-                        value={selectedYear}
-                        onChange={handleYearChange}
-                        style={{ width: '100%' }}
-                        className="w-full"
-                      >
-                        {years.map(year => (
-                          <Option key={year} value={year}>
-                            {year}
-                          </Option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    {/* Month Dropdown */}
-                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Month
-                      </label>
-                      <Select
-                        placeholder="Select Month"
-                        value={selectedMonth}
-                        onChange={handleMonthChange}
-                        style={{ width: '100%' }}
-                        disabled={!selectedYear}
-                        loading={loading}
-                        className="w-full"
-                      >
-                        {months.map(month => (
-                          <Option key={month.key} value={month.key}>
-                            {month.name}
-                          </Option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    {/* Week Dropdown */}
-                    <div className="flex-1 min-w-[150px] w-full sm:w-auto">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Week
-                      </label>
-                      <Select
-                        placeholder="Select Week"
-                        value={selectedWeek}
-                        onChange={handleWeekChange}
-                        style={{ width: '100%' }}
-                        disabled={!selectedMonth}
-                        loading={loading}
-                      >
-                        {availableWeeks.map(week => (
-                          <Option key={week.key} value={week.key}>
-                            Week {week.weekNumber} ({dayjs(week.startDate).format('MMM DD')} - {dayjs(week.endDate).format('MMM DD')})
-                          </Option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Loading indicator for weeks */}
-                  {selectedMonth && loading && availableWeeks.length === 0 && (
-                    <div className="text-center py-4">
-                      <Spin size="small" /> Loading weeks...
-                    </div>
-                  )}
-
-                  {/* No weeks available message */}
-                  {selectedMonth && !loading && availableWeeks.length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      No weeks available for the selected month.
-                    </div>
-                  )}
-                </div>
-              </Space>
-            </Card>
-          </div>
+          {/* Week picker moved to header */}
 
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Debug Component - Remove this in production */}
