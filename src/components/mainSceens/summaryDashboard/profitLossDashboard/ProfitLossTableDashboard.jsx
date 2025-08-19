@@ -203,7 +203,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   const categories = useMemo(() => [
     { 
       key: 'sales_budget', 
-      label: 'Sales Budget', 
+      label: 'Net Sales', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Sales Details',
@@ -214,12 +214,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     },
     { 
       key: 'labour', 
-      label: 'Labor', 
-      type: 'number',
+      label: 'Labor Cost', 
+      type: 'currency',
       hasDetails: true,
       detailLabel: 'Labor Details',
       detailFields: [
-        { key: 'labour', label: 'Labor Hours', type: 'number' },
+        { key: 'labour', label: 'Labor Hours', type: 'currency' },
         { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
         { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
       ]
@@ -700,7 +700,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               className="text-sm text-gray-700 flex items-center gap-1"
               title="Click to view labor details"
             >
-              {formatNumber(rawValue)} 
+              {formatCurrency(rawValue)} 
             </span>
             {profitPercentage && (
               <LaborDetailDropdown dayData={dayData} laborData={entry}>
