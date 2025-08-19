@@ -7,6 +7,8 @@ import dayjs from 'dayjs';
 
 import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
+import ProfitLossCategoryPie from './ProfitLossCategoryPie';
+import ProfitLossTrendLine from './ProfitLossTrendLine';
 
 /**
  * ProfitLossDashboard Component
@@ -226,18 +228,12 @@ const ProfitLossDashboard = () => {
               } else {
                 return (
                   <div className="space-y-4">
-                  {/* Budget Dashboard - First (Graph) */}
-                  <div>
-                    <BudgetDashboard
-                      dashboardData={dashboardSummaryData}
-                      loading={summaryLoading}
-                      error={summaryError}
+                  {/* Profit & Loss Line + Category Pie side-by-side */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <ProfitLossTrendLine dashboardData={dashboardSummaryData} />
+                    <ProfitLossCategoryPie
                       startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
                       endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
-                      onEditData={() => {
-                        navigate('/dashboard');
-                      }}
-                      viewMode={'weekly'}
                     />
                   </div>
                   <div>

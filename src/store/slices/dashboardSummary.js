@@ -114,6 +114,34 @@ const createDashboardSummarySlice = (set, get) => {
             }
         },
 
+        // Fetch budget allocation summary (Total Budget breakdown) for Budget page pie chart
+        fetchBudgetAllocationSummary: async (startDate, endDate, restaurantId = null) => {
+            try {
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (e) {
+                        targetRestaurantId = null;
+                    }
+                    if (!targetRestaurantId) return null;
+                }
+
+                let url = '/restaurant/budget-allocation-summary/';
+                const params = new URLSearchParams({
+                    restaurant_id: targetRestaurantId,
+                    start_date: startDate,
+                    end_date: endDate,
+                }).toString();
+                url += `?${params}`;
+                const response = await apiGet(url);
+                return response?.data || null;
+            } catch (error) {
+                console.error('Error fetching budget allocation summary:', error);
+                return null;
+            }
+        },
+
         // Legacy method for backward compatibility (converts week_start to start_date/end_date)
         fetchDashboardSummaryLegacy: async (weekStart = null, restaurantId = null) => {
             if (!weekStart) {

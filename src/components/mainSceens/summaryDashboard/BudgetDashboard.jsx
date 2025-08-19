@@ -76,11 +76,10 @@ const { Title: AntTitle, Text } = Typography;
 const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData, startDate, endDate }) => {
   const [chartData, setChartData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
-  const [categorySummary, setCategorySummary] = useState(null);
   const [dynamicCategories, setDynamicCategories] = useState([]);
+  const fetchBudgetAllocationSummary = useStore((s) => s.fetchBudgetAllocationSummary);
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
-  const fetchProfitLossCategorySummary = useStore((s) => s.fetchProfitLossCategorySummary);
 
   // Process data for charts
   // 1) Process incoming dashboard data (compute chartData + summaryData)
@@ -166,41 +165,34 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     setSummaryData(summary);
   }, [dashboardData]);
 
-  // 2) Fetch category summary from backend when date range changes (debounced + deduped)
+  // Note: Removed Profit/Loss category fetch here to avoid overwriting Budget pie data.
+
+  // 2b) Fetch budget allocation summary for Total Budget pie (only Budget page)
   useEffect(() => {
     const start = startDate;
     const end = endDate;
-    // Reset local state when dates not ready
-    if (!start || !end) {
-      setCategorySummary(null);
-      setDynamicCategories([]);
-      return;
-    }
-    const key = `${start}|${end}`;
-    if (lastFetchKeyRef.current === key) return; // dedupe identical requests
-
-    // Debounce to avoid rapid re-requests during range selection
-    if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    fetchDebounceRef.current = setTimeout(() => {
-      lastFetchKeyRef.current = key;
-      fetchProfitLossCategorySummary(start, end).then((res) => {
-        if (res) {
-          const payload = res.data || res;
-          const payloadCategories = res.categories || res.data?.categories;
-          setCategorySummary(payload);
-          if (Array.isArray(payloadCategories)) {
-            setDynamicCategories(payloadCategories);
-          } else {
-            setDynamicCategories([]);
-          }
-        }
-      });
-    }, 250);
-
-    return () => {
-      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
-    };
-  }, [startDate, endDate, fetchProfitLossCategorySummary]);
+    if (!start || !end) return;
+    const key = `budget|${start}|${end}`;
+    if (lastFetchKeyRef.current === key) return;
+    lastFetchKeyRef.current = key;
+    fetchBudgetAllocationSummary(start, end).then((res) => {
+      if (res) {
+        const baseCats = Array.isArray(res.categories) ? res.categories : [];
+        const labor = baseCats.find((c) => c.key === 'labor_budget');
+        const food = baseCats.find((c) => c.key === 'food_cost');
+        const fixed = baseCats.find((c) => c.key === 'fixed');
+        const variable = baseCats.find((c) => c.key === 'variable');
+        const categories = [
+          { key: 'sales_budget', label: 'Sales Budget', value: Number(res.sales_budget || 0) },
+          { key: 'labor_budget', label: 'Labor Budget', value: Number(labor?.value || 0) },
+          { key: 'food_cost', label: 'Food Cost', value: Number(food?.value || 0) },
+          { key: 'fixed_cost', label: 'Fixed Cost', value: Number(fixed?.value || 0) },
+          { key: 'variable_cost', label: 'Variable Cost', value: Number(variable?.value || 0) },
+        ];
+        setDynamicCategories(categories);
+      }
+    });
+  }, [startDate, endDate, fetchBudgetAllocationSummary]);
 
   // Calculate progress percentages
   const progressData = useMemo(() => {
@@ -351,48 +343,23 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     };
   }, [summaryData]);
 
-  // Build dynamic categories either from backend or fallback to three categories
+  // Build categories for Total Budget allocation pie (Labor, Food, Fixed, Variable, Sale Cost)
   const computedCategories = dynamicCategories.length
     ? dynamicCategories
-    : [
-        { key: 'sales', label: 'Sales', value: (summaryData.totalSalesActual || 0) - (summaryData.totalSalesBudget || 0) },
-        { key: 'labor', label: 'Labor', value: (summaryData.totalLaborBudget || 0) - (summaryData.totalLaborActual || 0) },
-        { key: 'food', label: 'Food Cost', value: (summaryData.totalFoodCostBudget || 0) - (summaryData.totalFoodCostActual || 0) },
-      ];
+    : [];
 
-  // Generate different shades for positive (green) and negative (red) categories
-  const positiveIndices = computedCategories
-    .map((c, i) => ({ i, c }))
-    .filter(({ c }) => Number(c.value) >= 0)
-    .map(({ i }) => i);
-  const negativeIndices = computedCategories
-    .map((c, i) => ({ i, c }))
-    .filter(({ c }) => Number(c.value) < 0)
-    .map(({ i }) => i);
-
-  const generateShade = (index, count, isPositive) => {
-    const hue = isPositive ? 130 : 0; // green vs red
-    const saturation = 70;
-    const lightStart = isPositive ? 35 : 40; // darker start
-    const lightEnd = isPositive ? 65 : 70; // lighter end
-    const lightness = count > 1 ? lightStart + (lightEnd - lightStart) * (index / (count - 1)) : 50;
-    const bg = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    const border = `hsl(${hue}, ${saturation}%, ${Math.max(lightness - 10, 25)}%)`;
-    return { bg, border };
+  // Themed colors (matching orange brand) for budget categories (not profit/loss)
+  const palette = {
+    sales_budget: { bg: '#f97316', border: '#ea580c' }, // orange
+    labor_budget: { bg: '#6366f1', border: '#4f46e5' }, // indigo
+    food_cost: { bg: '#ef4444', border: '#dc2626' }, // red
+    fixed_cost: { bg: '#94a3b8', border: '#64748b' }, // slate
+    variable_cost: { bg: '#0ea5e9', border: '#0284c7' }, // sky
   };
 
-  const backgroundColors = new Array(computedCategories.length);
-  const borderColors = new Array(computedCategories.length);
-  positiveIndices.forEach((idx, order) => {
-    const { bg, border } = generateShade(order, positiveIndices.length, true);
-    backgroundColors[idx] = bg;
-    borderColors[idx] = border;
-  });
-  negativeIndices.forEach((idx, order) => {
-    const { bg, border } = generateShade(order, negativeIndices.length, false);
-    backgroundColors[idx] = bg;
-    borderColors[idx] = border;
-  });
+  const fallback = { bg: '#22c55e', border: '#16a34a' }; // green fallback
+  const backgroundColors = computedCategories.map(c => (palette[c.key]?.bg) || fallback.bg);
+  const borderColors = computedCategories.map(c => (palette[c.key]?.border) || fallback.border);
 
   // Ensure at least minimal slice for very small values
   const categoryPieData = {
@@ -612,14 +579,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           <Card className="h-full">
             <div className="mb-2">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-orange-600">Profit/Loss by Category</h2>
+                <h2 className="text-xl font-bold text-orange-600">Total Budget Allocation</h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
               <Pie data={categoryPieData} options={categoryPieOptions} />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p><span className="font-medium">Green</span>: positive contribution to profit; <span className="font-medium">Red</span>: negative impact.</p>
+              <p>This chart shows how your weekly budget is allocated across Labor, Food, Fixed and Variable costs. Remaining amount appears as Sale Cost.</p>
             </div>
           </Card>
         </Col>
