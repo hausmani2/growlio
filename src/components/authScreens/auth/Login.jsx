@@ -153,7 +153,7 @@ const Login = () => {
       
       {/* Logo Section - Outside the form box */}
       <div className="text-center mb-8">
-        <GrowlioLogo width={180} height={60} className="mx-auto" />
+        <GrowlioLogo width={220} height={80} className="mx-auto" />
       </div>
       
       <form
