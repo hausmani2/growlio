@@ -709,7 +709,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </LaborDetailDropdown>
             )}
-            
           </div>
         );
       }
