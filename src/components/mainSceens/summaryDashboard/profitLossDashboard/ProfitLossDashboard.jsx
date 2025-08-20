@@ -230,7 +230,14 @@ const ProfitLossDashboard = () => {
                   <div className="space-y-4">
                   {/* Profit & Loss Line + Category Pie side-by-side */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <ProfitLossTrendLine dashboardData={dashboardSummaryData} />
+                    {(() => {
+                      console.log('ProfitLossDashboard: Rendering ProfitLossTrendLine with:', {
+                        dashboardSummaryData,
+                        groupBy,
+                        hasData: dashboardSummaryData?.data?.length > 0
+                      });
+                      return <ProfitLossTrendLine dashboardData={dashboardSummaryData} viewMode={groupBy} />;
+                    })()}
                     <ProfitLossCategoryPie
                       startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
                       endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
@@ -242,7 +249,7 @@ const ProfitLossDashboard = () => {
                       dashboardData={dashboardSummaryData}
                       loading={summaryLoading}
                       error={summaryError}
-                      viewMode={'weekly'}
+                      viewMode={groupBy}
                     />
                   </div>
                 </div>
