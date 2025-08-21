@@ -194,13 +194,7 @@ const CalendarUtils = ({
             panelRender={(panelNode) => {
               console.log('CalendarUtils: Panel render called, panelNode:', panelNode);
               return (
-                <div style={{ 
-                  width: '300px',
-                  padding: '8px',
-                  overflow: 'visible',
-                  position: 'relative',
-                  zIndex: 1000
-                }}>
+                <div>
                   <style>
                     {`
                       /* Force show all navigation arrows */

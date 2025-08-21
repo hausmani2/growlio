@@ -33,7 +33,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'profit-loss',
           icon: <ArrowUpOutlined />,
-          label: 'Profit & Loss',
+          label: 'Budget vs Actual Sales',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
       ],
