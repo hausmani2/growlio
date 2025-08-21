@@ -424,8 +424,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         groupedColumns.push({
           title: (
-            <div className="text-center">
-              <div className="font-semibold text-xs text-gray-800">
+            <div className="">
+              <div className="font-semibold text-sm text-gray-800">
                 {dateInfo.day}
               </div>
               {viewMode === 'monthly' && (
@@ -447,7 +447,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           
           return {
             title: (
-              <div className="text-center">
+              <div className="">
                 <div className="font-semibold text-xs text-gray-800">
                   {dateInfo.day}
                 </div>
@@ -465,7 +465,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
         groupedColumns.push({
           title: (
-            <div className="text-center">
+            <div className="">
               <div className="font-semibold text-xs text-gray-800">
                 {weekGroup.weekLabel}
               </div>
@@ -709,7 +709,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </LaborDetailDropdown>
             )}
-            
           </div>
         );
       }

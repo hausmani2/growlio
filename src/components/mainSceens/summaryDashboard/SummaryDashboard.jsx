@@ -398,7 +398,7 @@ const SummaryDashboard = () => {
                 Weekly Budgeted Dashboard
               </h1>
               <p className="text-gray-600 text-lg">
-                Monitor your restaurant's financial performance and track budget vs. actual results
+                Track your performance with comprehensive financial insights.
               </p>
             </div>
             
