@@ -136,7 +136,7 @@ const LaborInformationWrapperContent = () => {
                     // In onboarding mode, navigate to next step
                     console.log("🔄 Onboarding mode - navigating to next step");
                     message.success("Labor information saved successfully!");
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
             console.log("submitStepData result:", result);

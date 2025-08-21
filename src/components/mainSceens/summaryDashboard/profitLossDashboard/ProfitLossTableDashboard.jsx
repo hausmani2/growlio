@@ -142,10 +142,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Process the data - Updated to handle both daily and weekly structures
     const processed = {
       sales_budget: {},
+      sales_actual: {},
       sales_budeget_profit: {},
       labour: {},
+      labour_actual: {},
       labour_profit: {},
       food_cost: {},
+      food_cost_actual: {},
       food_cost_profit: {},
       hours: {},
       amount: {},
@@ -170,10 +173,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
+      processed.sales_actual[dateKey] = parseNumericValue(entry.sales_actual);
       processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
+      processed.labour_actual[dateKey] = parseNumericValue(entry.labour_actual);
       processed.labour_profit[dateKey] = parseNumericValue(entry.labour_profit);
       processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
+      processed.food_cost_actual[dateKey] = parseNumericValue(entry.food_cost_actual);
       processed.food_cost_profit[dateKey] = parseNumericValue(entry.food_cost_profit);
       processed.hours[dateKey] = parseNumericValue(entry.hours);
       processed.amount[dateKey] = parseNumericValue(entry.amount);
@@ -202,7 +208,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
     { 
-      key: 'sales_budget', 
+      key: 'sales_actual', 
       label: 'Net Sales', 
       type: 'currency',
       hasDetails: true,
@@ -213,7 +219,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       ]
     },
     { 
-      key: 'labour', 
+      key: 'labour_actual', 
       label: 'Labor Cost', 
       type: 'currency',
       hasDetails: true,
@@ -225,7 +231,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       ]
     },
     { 
-      key: 'food_cost', 
+      key: 'food_cost_actual', 
       label: 'Food Cost', 
       type: 'currency',
       hasDetails: true,
@@ -511,16 +517,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     // Get profit percentage for inline display
     let profitPercentage = null;
-    if (categoryKey === 'sales_budget' && entry.sales_budeget_profit) {
+    if (categoryKey === 'sales_actual' && entry.sales_budeget_profit) {
       profitPercentage = formatPercentage(entry.sales_budeget_profit);
-    } else if (categoryKey === 'labour' && entry.labour_profit) {
+    } else if (categoryKey === 'labour_actual' && entry.labour_profit) {
       profitPercentage = formatPercentage(entry.labour_profit);
-    } else if (categoryKey === 'food_cost' && entry.food_cost_profit) {
+    } else if (categoryKey === 'food_cost_actual' && entry.food_cost_profit) {
       profitPercentage = formatPercentage(entry.food_cost_profit);
     }
     
     // Debug logging for weekly/monthly data
-    if ((isWeeklyData(tableData) || isMonthlyData(tableData)) && (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost')) {
+    if ((isWeeklyData(tableData) || isMonthlyData(tableData)) && (categoryKey === 'sales_actual' || categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual')) {
       const dataType = isMonthlyData(tableData) ? 'Monthly' : 'Weekly';
       console.log(`${dataType} data - ${categoryKey}:`, {
         entry,
@@ -535,7 +541,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     // Handle currency fields
-    if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
+    if (categoryKey === 'sales_actual' || categoryKey === 'food_cost_actual' || 
         categoryKey === 'fixedCost' || categoryKey === 'variableCost' ||
         categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
         categoryKey === 'profit_loss') {
@@ -543,7 +549,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
       
       // Make sales budget clickable with dropdown
-      if (categoryKey === 'sales_budget' && rawValue > 0) {
+      if (categoryKey === 'sales_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -570,7 +576,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       // Make food cost clickable with dropdown
-      if (categoryKey === 'food_cost' && rawValue > 0) {
+      if (categoryKey === 'food_cost_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -686,9 +692,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     // Handle number fields
-    if (categoryKey === 'labour' || categoryKey === 'hours') {
+    if (categoryKey === 'labour_actual' || categoryKey === 'hours') {
       // Make labor clickable with dropdown
-      if (categoryKey === 'labour' && rawValue > 0) {
+      if (categoryKey === 'labour_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -974,7 +980,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </div>
           </div>
         );
-      case 'food_cost':
+      case 'food_cost_actual':
         return (
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center">
@@ -1458,11 +1464,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render detailed content for expandable rows - Optimized with memoization
   const renderDetailedContent = useCallback((categoryKey, entry) => {
     switch (categoryKey) {
-      case 'sales_budget':
+      case 'sales_actual':
         return renderSalesDetails(entry);
-      case 'labour':
+      case 'labour_actual':
         return renderLaborDetails(entry);
-      case 'food_cost':
+      case 'food_cost_actual':
         return renderFoodCostDetails(entry);
       case 'fixedCost':
         return renderFixedCostDetails(entry);

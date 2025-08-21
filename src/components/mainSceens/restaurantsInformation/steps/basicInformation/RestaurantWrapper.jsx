@@ -257,7 +257,7 @@ const RestaurantWrapperContent = () => {
                         // Debug: Check current state
                         const currentState = useStore.getState();
                         
-                        navigateToNextStep();
+                        navigateToNextStep(true); // Skip completion check since we just saved successfully
                     }, 200); // Increased delay to ensure state update
                 }
             });

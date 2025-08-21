@@ -242,7 +242,7 @@ const FoodCostWrapperContent = () => {
                 } else {
                     // In onboarding mode, navigate to next step
                     message.success("Food cost details saved successfully!");
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
             

@@ -314,7 +314,7 @@ const ExpenseWrapperContent = () => {
                     message.success("Expense information updated successfully!");
                 } else {
                     // Onboarding mode: navigate to next step
-                    await navigateToNextStep();
+                    await navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
 

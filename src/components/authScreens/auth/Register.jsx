@@ -6,7 +6,7 @@ import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button, Spin, Checkbox } from 'antd';
+import { Input, message, Button, Spin, Checkbox, Tooltip } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import DisclaimerModal from './DisclaimerModal';
 
@@ -118,7 +118,6 @@ const Register = () => {
       if (result.success) {
         message.success('Registration successful! Please login to continue.');
         if (result.needsLogin) {
-          message.success('Registration successful! Please login to continue.');
           // Navigate to login after successful registration
           setTimeout(() => {
             navigate('/login');
@@ -300,12 +299,15 @@ const Register = () => {
           {/* Terms and Conditions */}
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
             <div className="flex items-start gap-3">
+            <Tooltip title="Please read the Terms and Conditions and Privacy Policy before you continue">
               <Checkbox
                 checked={disclaimerAccepted}
                 onChange={(e) => setDisclaimerAccepted(e.target.checked)}
                 disabled={!disclaimerAccepted && !showDisclaimerModal}
                 className="mt-1"
               />
+                          </Tooltip>
+
               <div className="flex-1">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   I have read and agree to the{' '}
@@ -325,8 +327,8 @@ const Register = () => {
                     Privacy Policy
                   </button>
                 </p>
+                </div>
               </div>
-            </div>
           </div>
         </div>
         

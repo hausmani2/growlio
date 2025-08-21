@@ -53,7 +53,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
             const result = await onSaveAndContinue();
             if (result?.success) {
                 // Navigate to next step after successful save
-                navigateToNextStep();
+                navigateToNextStep(true); // Skip completion check since we just saved successfully
             }
         }
     };

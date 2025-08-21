@@ -163,14 +163,21 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
 
       // Extract all daily entries into one consolidated table
-      const allDailyEntries = dashboardData.daily_entries?.map((entry) => ({
-        key: `day-${entry.date}`,
-        date: dayjs(entry.date),
-        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-        budget: entry['COGS Performance']?.cogs_budget || 0,
-        actual: entry['COGS Performance']?.cogs_actual || 0,
-        weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0
-      })) || [];
+      const allDailyEntries = dashboardData.daily_entries?.map((entry) => {
+        // Check if restaurant is open for this day
+        const isRestaurantOpen = entry['Sales Performance']?.restaurant_open !== false && 
+                                entry['Sales Performance']?.restaurant_open !== 0;
+        
+        return {
+          key: `day-${entry.date}`,
+          date: dayjs(entry.date),
+          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          budget: isRestaurantOpen ? (entry['COGS Performance']?.cogs_budget || 0) : 0,
+          actual: isRestaurantOpen ? (entry['COGS Performance']?.cogs_actual || 0) : 0,
+          weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0,
+          restaurantOpen: isRestaurantOpen
+        };
+      }) || [];
 
       // If weekDays are provided, use them to create the daily data structure
       let dailyData = allDailyEntries;
@@ -188,7 +195,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             dayName: day.dayName.toLowerCase(),
             budget: 0,
             actual: 0,
-            weeklyRemainingCog: 0
+            weeklyRemainingCog: 0,
+            restaurantOpen: true // Default to open for new days
           };
         });
       } else {
@@ -300,8 +308,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           },
           daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
-            cogs_budget: parseFloat(day.budget) || 0,
-            cogs_actual: parseFloat(day.actual) || 0,
+            cogs_budget: day.restaurantOpen === false ? 0 : (parseFloat(day.budget) || 0),
+            cogs_actual: day.restaurantOpen === false ? 0 : (parseFloat(day.actual) || 0),
             weekly_remaining_cog: parseFloat(finalTotals.weeklyRemainingCog) || 0
           }))
         }
@@ -337,7 +345,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         date: currentDate,
         dayName: currentDate.format('dddd'),
         budget: 0,
-        actual: 0
+        actual: 0,
+        restaurantOpen: true // Default to open for new days
       });
     }
     return days;
@@ -571,11 +580,13 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   render: (value, record, index) => (
                     <Input
                       type="number"
-                      value={value}
+                      value={record.restaurantOpen === false ? 0 : value}
                       onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0)}
                       prefix="$"
                       placeholder="0.00"
                       className="w-full"
+                      disabled={record.restaurantOpen === false}
+                      style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                     />
                   )
                 }
@@ -707,6 +718,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
+                                    {record.restaurantOpen === false && (
+                                      <div style={{ fontSize: '10px', color: '#ff4d4f', fontWeight: 'bold' }}>
+                                        CLOSED
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               },
@@ -715,20 +731,33 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 dataIndex: 'budget',
                                 key: 'budget',
                                 width: 140,
-                                render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                }
                               },
                               {
                                 title: 'COGS Actual',
                                 dataIndex: 'actual',
                                 key: 'actual',
                                 width: 140,
-                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                }
                               },
                               {
                                 title: 'COGS %',
                                 key: 'percentage',
                                 width: 120,
                                 render: (_, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
                                   const budget = parseFloat(record.budget) || 0;
                                   const actual = parseFloat(record.actual) || 0;
                                   const percentage = budget > 0 ? (actual / budget) * 100 : 0;

@@ -93,7 +93,7 @@ export const TabProvider = ({ children }) => {
     };
 
     // Check if user can navigate to a specific tab
-    const canNavigateToTab = (targetTabId) => {
+    const canNavigateToTab = (targetTabId, showMessage = true) => {
         
         // Always allow navigation to Basic Information (tab 0)
         if (targetTabId === 0) { 
@@ -104,7 +104,9 @@ export const TabProvider = ({ children }) => {
         const basicInfoCompleted = isStepCompleted('Basic Information');
         
         if (!basicInfoCompleted) {
-            message.error('Please complete Basic Information before proceeding to other steps.');
+            if (showMessage) {
+                message.error('Please complete Basic Information before proceeding to other steps.');
+            }
             return false;
         }
 
@@ -116,7 +118,9 @@ export const TabProvider = ({ children }) => {
             const stepCompleted = isStepCompleted(stepName);
             
             if (!stepCompleted) {
-                message.error(`Please complete ${stepName} before proceeding.`);
+                if (showMessage) {
+                    message.error(`Please complete ${stepName} before proceeding.`);
+                }
                 return false;
             }
         }
@@ -130,7 +134,7 @@ export const TabProvider = ({ children }) => {
         if (!tab) return { completed: false, accessible: false };
 
         const completed = isStepCompleted(tab.title);
-        const accessible = canNavigateToTab(tabId);
+        const accessible = canNavigateToTab(tabId, false); // Don't show messages for UI status checks
 
         return { completed, accessible };
     };
@@ -194,8 +198,8 @@ export const TabProvider = ({ children }) => {
         if (pathToTabId[lastSegment] !== undefined) {
             const targetTabId = pathToTabId[lastSegment];
             
-            // Check if user can navigate to this tab
-            if (canNavigateToTab(targetTabId)) {
+            // Check if user can navigate to this tab (don't show messages for URL-based navigation)
+            if (canNavigateToTab(targetTabId, false)) {
                 setActiveTab(targetTabId);
             } else {
                 // Redirect to Basic Information if not accessible
@@ -211,7 +215,10 @@ export const TabProvider = ({ children }) => {
 
     const handleTabClick = (tabId) => {
         
-        // SIMPLIFIED: Allow navigation to any tab without checking completion status
+        // Check if user can navigate to this tab (show message for explicit user clicks)
+        if (!canNavigateToTab(tabId, true)) {
+            return; // Don't proceed if navigation is not allowed
+        }
 
         // Load saved data into temporary form data for the target step
         const targetTab = tabs.find(t => t.id === tabId);
@@ -231,16 +238,33 @@ export const TabProvider = ({ children }) => {
     };
 
     // Navigate to next step (used by Save & Continue buttons)
-    const navigateToNextStep = async () => {
+    const navigateToNextStep = async (skipCompletionCheck = false) => {
         const nextTabId = activeTab + 1;
         
         // Debug: Check current state before navigation
         
         if (nextTabId < tabs.length) {
             
-            // SIMPLIFIED LOGIC: Just navigate to the next step if we have a next step
-            // Don't check completion status of other steps - just go to the next one
-            handleTabClick(nextTabId);
+            if (skipCompletionCheck) {
+                // Skip completion check when called from successful save operation
+                const targetTab = tabs.find(t => t.id === nextTabId);
+                if (targetTab) {
+                    loadStepData(targetTab.title);
+                }
+                
+                setActiveTab(nextTabId);
+                
+                const tab = tabs.find(t => t.id === nextTabId);
+                if (tab) {
+                    const targetPath = `/onboarding/${tab.path}`;
+                    navigate(targetPath);
+                } else {
+                    console.error(`❌ Tab not found for id: ${nextTabId}`);
+                }
+            } else {
+                // Check completion status for manual navigation
+                handleTabClick(nextTabId);
+            }
         } else {
             // All local steps completed - check if onboarding is actually complete
             

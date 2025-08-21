@@ -241,7 +241,7 @@ const SummaryDashboard = () => {
 
   // Handle flash message button click
   const handleFlashMessageButtonClick = () => {
-    dismissPopup();
+    markPopupAsShown();
     navigate('/dashboard');
   };
 

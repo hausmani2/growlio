@@ -17,7 +17,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 const result = await onSaveAndContinue();
                 if (result?.success) {
                     // Navigate to next step after successful save
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             } catch (error) {
                 console.error('Error in handleSaveAndContinueClick:', error);
