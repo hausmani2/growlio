@@ -135,8 +135,8 @@ const OnboardingWrapper = () => {
                                 case 'Sales Channels':
                                     navigate('/onboarding/sales-channels');
                                     break;
-                                case 'Expense':
-                                    navigate('/onboarding/expense');
+                                case 'Expenses':
+                                    navigate('/onboarding/expenses');
                                     break;
                                 default:
                                     navigate('/onboarding/basic-information');

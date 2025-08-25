@@ -13,7 +13,7 @@ const SalesChannelsWrapperContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
-    const { validationErrors, clearFieldError, validateSalesChannels } = useStepValidation();
+    const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -24,7 +24,8 @@ const SalesChannelsWrapperContent = () => {
         in_store: true,
         online: false,
         from_app: false,
-        third_party: false
+        third_party: false,
+        providers: []
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -38,7 +39,8 @@ const SalesChannelsWrapperContent = () => {
                 in_store: data.in_store || true,
                 online: data.online || false,
                 from_app: data.from_app || false,
-                third_party: data.third_party || false
+                third_party: data.third_party || false,
+                providers: data.providers || []
             }));
         }
     }, [completeOnboardingData]);
@@ -68,8 +70,12 @@ const SalesChannelsWrapperContent = () => {
     const handleSaveAndContinue = async () => {
         try {
             // Step 1: Validate form
-            if (!validateSalesChannels(salesChannelsData)) {
-                message.error("Please select at least one sales channel");
+            const isValid = validateStep("Sales Channels", salesChannelsData);
+            if (!isValid) {
+                console.log("Validation errors:", validationErrors);
+                // Show the first validation error message
+                const firstError = Object.values(validationErrors)[0];
+                message.error(firstError);
                 return { success: false, error: "Validation failed" };
             }
 
@@ -80,6 +86,20 @@ const SalesChannelsWrapperContent = () => {
                 from_app: salesChannelsData.from_app,
                 third_party: salesChannelsData.third_party
             };
+
+            // Add providers data if third-party sales is enabled
+            if (salesChannelsData.third_party && salesChannelsData.providers) {
+                const providersForAPI = salesChannelsData.providers
+                    .filter(provider => provider.providerName && provider.providerFee) // Only include providers with both name and fee
+                    .map(provider => ({
+                        provider_name: provider.providerName,
+                        provider_fee: provider.providerFee
+                    }));
+                
+                if (providersForAPI.length > 0) {
+                    stepData.providers = providersForAPI;
+                }
+            }
 
             console.log("Submitting Sales Channels data:", stepData);
 

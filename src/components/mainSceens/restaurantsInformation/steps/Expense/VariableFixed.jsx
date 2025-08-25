@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
+import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -129,9 +131,14 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Variable Costs <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center gap-2">
+                    <label className="block text-sm font-semibold text-gray-700 ">
+                        Variable Costs <span className="text-red-500">*</span>
+                    </label>
+                    <Tooltip placement="topLeft" title="Variable costs are costs that change with the number of guests served.">
+                        <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
+                    </Tooltip>
+                </div>
                 
                 <div className="space-y-3">
                     {dynamicFields.map((field) => (

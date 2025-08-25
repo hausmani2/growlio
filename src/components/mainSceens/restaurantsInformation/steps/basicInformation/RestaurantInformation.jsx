@@ -101,9 +101,9 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* Restaurant Name */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                        <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700">
                             Company Name <span className="text-red-500">*</span>
                         </label>
                         <Tooltip placement="topLeft" title="Enter the name of the company">
@@ -140,6 +140,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                             </div>
                         )}
                     </div>
+                    <div className="flex gap-2 items-center">
                     {combinedErrors.restaurantName && !isUpdateMode && (
                         <span className="text-red-500 text-xs mt-1">{combinedErrors.restaurantName}</span>
                     )}
@@ -152,13 +153,16 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     {isUpdateMode && (
                         <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked in update mode</span>
                     )}
+                    </div>
                 </div>
                 
                 {/* Number of Locations */}
-                <div>
-                    <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                    <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700">
                         Number of Locations <span className="text-red-500">*</span>
                     </label>
+                    </div>
                     <Select 
                         id="numberOfLocations" 
                         placeholder="Select Locations" 
@@ -182,10 +186,10 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 </div>
                 
                 {/* Location Name */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
 
-                    <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700">
                         Location Name <span className="text-red-500">*</span>
                     </label>
                     <Tooltip placement="topLeft" title="Enter the name of the location where the restaurant is located">

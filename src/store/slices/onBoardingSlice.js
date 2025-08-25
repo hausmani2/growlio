@@ -37,8 +37,9 @@ const createOnBoardingSlice = (set, get) => ({
                 goal: "",
                 needs_attention: "",
                 danger: "",
+                labour_goal: 0,
                 avg_hourly_rate: 0,
-                labor_record_method: "daily_hours_costs",
+                labor_record_method: "daily-hours-costs",
                 daily_ticket_count: false,
                 forward_prev_week_rate: false
             }
@@ -47,9 +48,7 @@ const createOnBoardingSlice = (set, get) => ({
             status: false,
             data: {
                 cogs_goal: "",
-                use_third_party_delivery: false,
-                delivery_days: [],
-                providers: []
+                delivery_days: []
             }
         },
         "Sales Channels": {
@@ -58,7 +57,8 @@ const createOnBoardingSlice = (set, get) => ({
                 in_store: true,
                 online: false,
                 from_app: false,
-                third_party: false
+                third_party: false,
+                providers: []
             }
         },
         "Expense": {
@@ -100,8 +100,9 @@ const createOnBoardingSlice = (set, get) => ({
                 goal: "",
                 needs_attention: "",
                 danger: "",
+                labour_goal: 0,
                 avg_hourly_rate: 0,
-                labor_record_method: "daily_hours_costs",
+                labor_record_method: "daily-hours-costs",
                 daily_ticket_count: false,
                 forward_prev_week_rate: false
             }
@@ -109,7 +110,6 @@ const createOnBoardingSlice = (set, get) => ({
         "Food Cost Details": {
             foodCostData: {
                 cogs_goal: "",
-                use_third_party_delivery: false,
                 delivery_days: []
             }
         },
@@ -202,8 +202,9 @@ const createOnBoardingSlice = (set, get) => ({
                     goal: parseFloat(laborData.goal) || 0,
                     attention: parseFloat(laborData.needs_attention) || 0, // API expects 'attention'
                     danger: parseFloat(laborData.danger) || 0,
+                    labour_goal: parseFloat(laborData.labour_goal) || 0,
                     avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
-                    labor_record_method: laborData.labor_record_method || "daily_hours_costs",
+                    labor_record_method: laborData.labor_record_method || "daily-hours-costs",
                     daily_ticket_count: laborData.daily_ticket_count || false,
                     forward_previous_week_rate: laborData.forward_prev_week_rate || false // API expects 'forward_previous_week_rate'
                 };
@@ -302,8 +303,9 @@ const createOnBoardingSlice = (set, get) => ({
                         goal: savedData.goal?.toString() || "",
                         needs_attention: savedData.attention?.toString() || savedData.needs_attention?.toString() || "",
                         danger: savedData.danger?.toString() || "",
+                        labour_goal: savedData.labour_goal || 0,
                         avg_hourly_rate: savedData.avg_hourly_rate || 0,
-                        labor_record_method: savedData.labor_record_method || "daily_hours_costs",
+                        labor_record_method: savedData.labor_record_method || "daily-hours-costs",
                         daily_ticket_count: savedData.daily_ticket_count || false,
                         forward_prev_week_rate: savedData.forward_prev_week_rate || savedData.forward_previous_week_rate || false
                     }
@@ -321,9 +323,7 @@ const createOnBoardingSlice = (set, get) => ({
                 const tempData = {
                     foodCostData: {
                         cogs_goal: savedData.cogs_goal?.toString() || "",
-                        use_third_party_delivery: savedData.use_third_party_delivery || savedData.uses_third_party_delivery || false,
-                        delivery_days: savedData.delivery_days || [],
-                        providers: savedData.providers || []
+                        delivery_days: savedData.delivery_days || []
                     }
                 };
                 
@@ -341,7 +341,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: savedData.in_store !== undefined ? savedData.in_store : true,
                         online: savedData.online || false,
                         from_app: savedData.from_app || false,
-                        third_party: savedData.third_party || false
+                        third_party: savedData.third_party || false,
+                        providers: savedData.providers || []
                     }
                 };
                 
@@ -701,7 +702,6 @@ const createOnBoardingSlice = (set, get) => ({
             // If no restaurant ID, this means the user is new and hasn't completed onboarding
             // Don't make API calls - just return early
             if (!restaurantId) {
-                console.log('ℹ️ No restaurant ID found - user is new and needs to complete onboarding');
                 set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { 
                     success: false, 
@@ -711,7 +711,6 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             if (!restaurantId) {
-                console.log('⚠️ No restaurant ID available, skipping onboarding data load');
                 set(() => ({ onboardingLoading: false, onboardingError: null }));
                 return { success: false, message: 'No restaurant ID available' };
             }
@@ -759,6 +758,7 @@ const createOnBoardingSlice = (set, get) => ({
                         goal: "",
                         needs_attention: "",
                         danger: "",
+                        labour_goal: 0,
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
@@ -769,9 +769,7 @@ const createOnBoardingSlice = (set, get) => ({
                     status: false,
                     data: {
                         cogs_goal: "",
-                        use_third_party_delivery: false,
-                        delivery_days: [],
-                        providers: []
+                        delivery_days: []
                     }
                 },
                 "Sales Channels": {
@@ -780,7 +778,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: true,
                         online: false,
                         from_app: false,
-                        third_party: false
+                        third_party: false,
+                        providers: []
                     }
                 },
                 "Expense": {
@@ -794,12 +793,23 @@ const createOnBoardingSlice = (set, get) => ({
             
             // Handle array format response
             let stepsData = [];
+            console.log('🔍 Store - apiData type:', typeof apiData, 'isArray:', Array.isArray(apiData));
+            console.log('🔍 Store - apiData:', apiData);
+            
             if (Array.isArray(apiData)) {
                 // If it's a nested array, flatten it
                 if (apiData.length > 0 && Array.isArray(apiData[0])) {
                     stepsData = apiData[0];
+                    console.log('🔍 Store - First level nested array detected, stepsData:', stepsData);
                 } else {
                     stepsData = apiData;
+                    console.log('🔍 Store - Single level array, stepsData:', stepsData);
+                }
+                
+                // Additional check for double-nested arrays (like [[{...}]])
+                if (stepsData.length > 0 && Array.isArray(stepsData[0])) {
+                    stepsData = stepsData[0];
+                    console.log('🔍 Store - Double nested array detected, stepsData:', stepsData);
                 }
             } else {
                 // Handle object format (fallback)
@@ -808,6 +818,7 @@ const createOnBoardingSlice = (set, get) => ({
                     status: data.status,
                     data: data.data
                 }));
+                console.log('🔍 Store - Object format, stepsData:', stepsData);
             }
             
             // Process each step from the API response
@@ -833,23 +844,24 @@ const createOnBoardingSlice = (set, get) => ({
                         locations: data.locations || []
                     };
                 } else if (stepName === "Labor Information" && data) {
+                    console.log('🔍 Store - Processing Labor Information data:', data);
                     // Handle Labour Information data mapping
                     processedData = {
                         goal: data.labour_goal || data.goal || "",
                         needs_attention: data.attention || "", // API uses 'attention', we expect 'needs_attention'
                         danger: data.danger || "",
+                        labour_goal: data.labour_goal || 0,
                         avg_hourly_rate: data.avg_hourly_rate || 0,
-                        labor_record_method: data.labor_record_method || "daily_hours_costs",
+                        labor_record_method: data.labor_record_method || "daily-hours-costs",
                         daily_ticket_count: data.daily_ticket_count || false,
-                        forward_prev_week_rate: data.forward_previous_week_rate || false // API uses 'forward_previous_week_rate'
+                        forward_prev_week_rate: data.forward_previous_week_rate || data.forward_prev_week_rate || false // Handle both field names
                     };
+                    console.log('🔍 Store - Processed Labor Information data:', processedData);
                 } else if (stepName === "Food Cost Details" && data) {
                     // Handle Food Cost Details data mapping
                     processedData = {
                         cogs_goal: data.cogs_goal || "",
-                        use_third_party_delivery: data.uses_third_party_delivery || false, // API uses 'uses_third_party_delivery'
-                        delivery_days: data.delivery_days || [],
-                        providers: data.providers || []
+                        delivery_days: data.delivery_days || []
                     };
                 } else if (stepName === "Sales Channels" && data) {
                     // Handle Sales Channels data mapping
@@ -857,10 +869,11 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: data.in_store !== undefined ? data.in_store : true,
                         online: data.online || false,
                         from_app: data.from_app || false,
-                        third_party: data.third_party || false
+                        third_party: data.third_party || false,
+                        providers: data.providers || []
                     };
                 } else if (stepName === "Expense" && data) {
-                    // Handle Expense data mapping
+                    // Handle Expenses data mapping
                     processedData = {
                         fixed_costs: data.fixed_costs || [],
                         variable_costs: data.variable_costs || []
@@ -876,6 +889,7 @@ const createOnBoardingSlice = (set, get) => ({
             });
             
             // Update the store with the loaded data
+            console.log('🔍 Store - Final updatedOnboardingData:', updatedOnboardingData);
             set(() => ({
                 completeOnboardingData: updatedOnboardingData,
                 onboardingLoading: false,
@@ -912,7 +926,6 @@ const createOnBoardingSlice = (set, get) => ({
                 // 404 is not an error - it just means no data exists yet
                 errorMessage = 'No onboarding data found. Starting fresh setup.';
                 shouldSetError = false;
-                console.log('ℹ️ No onboarding data found (404) - this is normal for new users');
             } else if (error.response?.status === 401) {
                 errorMessage = 'Authentication required. Please log in again.';
             } else if (error.response?.data?.message) {
@@ -1029,6 +1042,7 @@ const createOnBoardingSlice = (set, get) => ({
                         goal: "",
                         needs_attention: "",
                         danger: "",
+                        labour_goal: 0,
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
@@ -1039,9 +1053,7 @@ const createOnBoardingSlice = (set, get) => ({
                     status: false,
                     data: {
                         cogs_goal: "",
-                        use_third_party_delivery: false,
-                        delivery_days: [],
-                        providers: []
+                        delivery_days: []
                     }
                 },
                 "Sales Channels": {
@@ -1050,7 +1062,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: true,
                         online: false,
                         from_app: false,
-                        third_party: false
+                        third_party: false,
+                        providers: []
                     }
                 },
                 "Expense": {
@@ -1090,8 +1103,9 @@ const createOnBoardingSlice = (set, get) => ({
                         goal: "",
                         needs_attention: "",
                         danger: "",
+                        labour_goal: 0,
                         avg_hourly_rate: 0,
-                        labor_record_method: "daily_hours_costs",
+                        labor_record_method: "daily-hours-costs",
                         daily_ticket_count: false,
                         forward_prev_week_rate: false
                     }
@@ -1099,7 +1113,6 @@ const createOnBoardingSlice = (set, get) => ({
                 "Food Cost Details": {
                     foodCostData: {
                         cogs_goal: "",
-                        use_third_party_delivery: false,
                         delivery_days: []
                     }
                 },
@@ -1108,7 +1121,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: true,
                         online: false,
                         from_app: false,
-                        third_party: false
+                        third_party: false,
+                        providers: []
                     }
                 },
                 "Expense": {
@@ -1233,6 +1247,7 @@ const createOnBoardingSlice = (set, get) => ({
                                 goal: "",
                                 needs_attention: "",
                                 danger: "",
+                                labour_goal: 0,
                                 avg_hourly_rate: 0,
                                 labor_record_method: "daily_hours_costs",
                                 daily_ticket_count: false,
@@ -1245,9 +1260,7 @@ const createOnBoardingSlice = (set, get) => ({
                             status: false,
                             data: {
                                 cogs_goal: "",
-                                use_third_party_delivery: false,
-                                delivery_days: [],
-                                providers: []
+                                delivery_days: []
                             }
                         };
                         break;
@@ -1258,7 +1271,8 @@ const createOnBoardingSlice = (set, get) => ({
                                 in_store: true,
                                 online: false,
                                 from_app: false,
-                                third_party: false
+                                third_party: false,
+                                providers: []
                             }
                         };
                         break;
@@ -1298,12 +1312,9 @@ const createOnBoardingSlice = (set, get) => ({
     // Check if onboarding is complete by calling the restaurants-onboarding API
     checkOnboardingCompletion: async () => {
         const currentState = get();
-        console.log('🔍 checkOnboardingCompletion called');
-        console.log('🔍 Current onboardingLoading state:', currentState.onboardingLoading);
         
         // Check if we're already loading to prevent multiple simultaneous calls
         if (currentState.onboardingLoading) {
-            console.log('⏳ Onboarding completion check already in progress...');
             return {
                 success: false,
                 isComplete: false,
@@ -1316,11 +1327,9 @@ const createOnBoardingSlice = (set, get) => ({
         const now = Date.now();
         const timeSinceLastCheck = lastCheckTime ? now - parseInt(lastCheckTime) : Infinity;
         
-        console.log('🔍 Time since last check:', timeSinceLastCheck, 'ms');
         
         // If we checked within the last 10 seconds, use cached result
         if (timeSinceLastCheck < 10000) {
-            console.log('⏱️ Using recent onboarding completion check result (checked', Math.round(timeSinceLastCheck / 1000), 'seconds ago)');
             return {
                 success: true,
                 isComplete: currentState.isOnBoardingCompleted || false,
@@ -1335,14 +1344,11 @@ const createOnBoardingSlice = (set, get) => ({
         
         // Add timeout to prevent stuck loading state
         const timeoutId = setTimeout(() => {
-            console.log('⚠️ Onboarding check timeout - resetting loading state');
             set(() => ({ onboardingLoading: false }));
         }, 30000); // 30 second timeout
         
         try {
-            console.log('🔍 Making API call to /restaurant/restaurants-onboarding/');
             const response = await apiGet('/restaurant/restaurants-onboarding/');
-            console.log('🔍 API response received:', response);
             const onboardingData = response.data;
 
             
@@ -1357,8 +1363,7 @@ const createOnBoardingSlice = (set, get) => ({
                     restaurant.onboarding_complete === true
                 );
                 
-                console.log('🔍 Found restaurants:', onboardingData.restaurants);
-                console.log('🔍 Has completed onboarding:', hasCompletedOnboarding);
+
                 
                 // Extract restaurant ID from the first restaurant (or the completed one)
                 let restaurantId = null;
@@ -1373,12 +1378,10 @@ const createOnBoardingSlice = (set, get) => ({
                     restaurantId = onboardingData.restaurants[0]?.restaurant_id;
                 }
                 
-                console.log('🔍 Extracted restaurant ID:', restaurantId);
                 
                 // Store restaurant ID in localStorage and store if found
                 if (restaurantId) {
                     localStorage.setItem('restaurant_id', restaurantId.toString());
-                    console.log('✅ Restaurant ID saved to localStorage:', restaurantId);
                 }
                 
                 if (hasCompletedOnboarding) {
@@ -1605,7 +1608,6 @@ const createOnBoardingSlice = (set, get) => ({
 
             // If no restaurant ID found, this means the user is new and hasn't completed onboarding
             if (!finalRestaurantId) {
-                console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
                 set(() => ({
                     restaurantGoalsLoading: false,
                     restaurantGoalsError: 'Restaurant ID is required - please complete onboarding first',
@@ -1702,6 +1704,7 @@ const createOnBoardingSlice = (set, get) => ({
                         goal: "",
                         needs_attention: "",
                         danger: "",
+                        labour_goal: 0,
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
@@ -1712,9 +1715,7 @@ const createOnBoardingSlice = (set, get) => ({
                     status: false,
                     data: {
                         cogs_goal: "",
-                        use_third_party_delivery: false,
-                        delivery_days: [],
-                        providers: []
+                        delivery_days: []
                     }
                 },
                 "Sales Channels": {
@@ -1723,7 +1724,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: true,
                         online: false,
                         from_app: false,
-                        third_party: false
+                        third_party: false,
+                        providers: []
                     }
                 },
                 "Expense": {
@@ -1772,7 +1774,6 @@ const createOnBoardingSlice = (set, get) => ({
                 "Food Cost Details": {
                     foodCostData: {
                         cogs_goal: "",
-                        use_third_party_delivery: false,
                         delivery_days: []
                     }
                 },
@@ -1781,7 +1782,8 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: true,
                         online: false,
                         from_app: false,
-                        third_party: false
+                        third_party: false,
+                        providers: []
                     }
                 },
                 "Expense": {

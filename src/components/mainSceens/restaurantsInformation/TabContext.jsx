@@ -195,6 +195,9 @@ export const TabProvider = ({ children }) => {
         const pathSegments = pathname.split('/');
         const lastSegment = pathSegments[pathSegments.length - 1];
 
+        // Check if this is update mode (dashboard flow) or onboarding mode
+        const isUpdateMode = pathname.includes('/dashboard/');
+
         if (pathToTabId[lastSegment] !== undefined) {
             const targetTabId = pathToTabId[lastSegment];
 
@@ -202,12 +205,18 @@ export const TabProvider = ({ children }) => {
             if (canNavigateToTab(targetTabId, false)) {
                 setActiveTab(targetTabId);
             } else {
-                // Redirect to Basic Information if not accessible
-                setActiveTab(0);
-                navigate('/onboarding/basic-information', { replace: true });
+                // In update mode, don't redirect to onboarding - just set to first tab
+                if (isUpdateMode) {
+                    console.log('✅ Update mode detected - staying on current page');
+                    setActiveTab(0);
+                } else {
+                    // Only redirect to onboarding in onboarding mode
+                    setActiveTab(0);
+                    navigate('/onboarding/basic-information', { replace: true });
+                }
             }
-        } else if (pathname.includes('/onboarding')) {
-            // Default to basic information if no specific tab in URL
+        } else if (pathname.includes('/onboarding') && !isUpdateMode) {
+            // Only redirect to onboarding if we're in onboarding mode
             setActiveTab(0);
             navigate('/onboarding/basic-information', { replace: true });
         }
@@ -228,10 +237,19 @@ export const TabProvider = ({ children }) => {
 
         setActiveTab(tabId);
 
+        // Check if this is update mode (dashboard flow) or onboarding mode
+        const isUpdateMode = location.pathname.includes('/dashboard/');
+
         const tab = tabs.find(t => t.id === tabId);
         if (tab) {
-            const targetPath = `/onboarding/${tab.path}`;
-            navigate(targetPath);
+            if (isUpdateMode) {
+                // In update mode, stay on the same page - don't navigate
+                console.log('✅ Update mode detected - staying on current page for tab:', tab.title);
+            } else {
+                // In onboarding mode, navigate to onboarding path
+                const targetPath = `/onboarding/${tab.path}`;
+                navigate(targetPath);
+            }
         } else {
             console.error(`❌ Tab not found for id: ${tabId}`);
         }
@@ -254,10 +272,19 @@ export const TabProvider = ({ children }) => {
 
                 setActiveTab(nextTabId);
 
+                // Check if this is update mode (dashboard flow) or onboarding mode
+                const isUpdateMode = location.pathname.includes('/dashboard/');
+
                 const tab = tabs.find(t => t.id === nextTabId);
                 if (tab) {
-                    const targetPath = `/onboarding/${tab.path}`;
-                    navigate(targetPath);
+                    if (isUpdateMode) {
+                        // In update mode, stay on the same page - don't navigate
+                        console.log('✅ Update mode detected - staying on current page for next step:', tab.title);
+                    } else {
+                        // In onboarding mode, navigate to onboarding path
+                        const targetPath = `/onboarding/${tab.path}`;
+                        navigate(targetPath);
+                    }
                 } else {
                     console.error(`❌ Tab not found for id: ${nextTabId}`);
                 }

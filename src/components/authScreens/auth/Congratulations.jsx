@@ -51,7 +51,7 @@ const Congratulations = () => {
         };
 
         checkAuthAndOnboarding();
-    }, [isAuthenticated, checkOnboardingCompletion, navigate]);
+    }, [isAuthenticated, navigate]);
 
     // Show loading spinner while checking authentication and onboarding status
     if (isChecking) {

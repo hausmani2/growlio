@@ -334,7 +334,7 @@ const ExpenseWrapperContent = () => {
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
-                    currentStep="Expense"
+                    currentStep="Expenses"
                     description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
                 />
             </div>

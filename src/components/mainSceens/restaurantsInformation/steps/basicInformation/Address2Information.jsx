@@ -42,10 +42,10 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* SQFT */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
 
-                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700 mb-2 ">
+                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700">
                         How many SQFT is your location? <span className="text-red-500">*</span>
                         </label>
                         <Tooltip placement="topLeft" title="Enter the total square footage of your restaurant location">
@@ -69,9 +69,9 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
                 
                 {/* Franchise */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                        <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700">
                             Is this location a franchise? <span className="text-red-500">*</span>
                         </label>
                         <Tooltip placement="topLeft" title="Select whether this restaurant location is part of a franchise or independently owned">
@@ -97,10 +97,12 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
 
                 {/* Restaurant Type */}
-                <div>
-                    <label htmlFor="restaurantType" className="block text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                    <label htmlFor="restaurantType" className="block text-sm font-semibold text-gray-700">
                         Restaurant Type <span className="text-red-500">*</span>
                     </label>
+                    </div>
                     <Select 
                         id="restaurantType" 
                         placeholder="Select Restaurant Type" 
@@ -127,10 +129,12 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
                 
                 {/* Menu Type */}
-                <div>
-                    <label htmlFor="menuType" className="block text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                    <label htmlFor="menuType" className="block text-sm font-semibold text-gray-700">
                         Menu Type <span className="text-red-500">*</span>
                     </label>
+                    </div>
                     <Select 
                         id="menuType" 
                         placeholder="Select Menu Type" 

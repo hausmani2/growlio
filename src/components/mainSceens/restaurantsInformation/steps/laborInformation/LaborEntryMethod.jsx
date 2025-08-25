@@ -110,10 +110,10 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
             {/* Form Fields */}
             <div className="space-y-6">
                 {/* Average Hourly Rate */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
 
-                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700 mb-2 ">
+                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700">
                         What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
                         </label>
                         <Tooltip placement="topLeft" title="Select whether you would like to record daily ticket count">
@@ -144,9 +144,9 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Labor Recording Method */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        <label className="block text-sm font-semibold text-gray-700">
                             How would you like to record your labor?
                         </label>
                         <Tooltip placement="topLeft" title="Select whether you would like to record your labor">
@@ -199,10 +199,10 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div> */}
                 
                 {/* Daily Ticket Count */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
 
-                    <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700">
                     Would you like to enter your daily ticket count?
                     </label>
                     <Tooltip placement="topLeft"  title="Enable this option to record the number of tickets created each day.">
@@ -223,9 +223,9 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Forward Previous Week Rate */}
-                <div>
+                <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                    <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700">
                         Forward previous week's actual labor rate?
                     </label>
                     <Tooltip placement="topLeft" title="Enable this option to carry forward the previous week's actual labor rate.">

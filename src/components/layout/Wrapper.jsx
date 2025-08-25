@@ -56,6 +56,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/basic-information'),
         },
         {
+          key: 'sales-channels',
+          icon: <FaStore  />,
+          label: 'Sales Channels',
+          onClick: () => navigate('/dashboard/sales-channels'),
+        },
+        {
           key: 'labor-information',
           icon: <FaPeopleCarry/>,
           label: 'Labor Information',
@@ -66,12 +72,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           icon: <MdOutlineFoodBank  />,
           label: 'Food Cost Details',
           onClick: () => navigate('/dashboard/food-cost-details'),
-        },
-        {
-          key: 'sales-channels',
-          icon: <FaStore  />,
-          label: 'Sales Channels',
-          onClick: () => navigate('/dashboard/sales-channels'),
         },
         {
           key: 'expense',
