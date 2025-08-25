@@ -36,7 +36,8 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
     // Provider name options
     const providerOptions = [
         { value: 'Door Dash', label: 'Door Dash' },
-        { value: 'Skip/ Dishes', label: 'Skip/ Dishes' },
+        { value: 'Skip The Dishes', label: 'Skip The Dishes' }, 
+        { value: 'Grubhub', label: 'Grubhub' }, 
         { value: 'Uber Eats', label: 'Uber Eats' },
         { value: 'Other', label: 'Other' }
     ];
@@ -108,9 +109,6 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Third-Party Providers</h3>
-                <p className="text-gray-600 text-sm">
-                    Does this Location use hired party delivery?
-                </p>
             </div>
             
             {/* Form Fields */}

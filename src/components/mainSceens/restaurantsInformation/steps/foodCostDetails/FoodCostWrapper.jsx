@@ -289,11 +289,7 @@ const FoodCostWrapperContent = () => {
                             updateData={updateFoodCostData}
                             errors={validationErrors}
                         />
-                        <ThirdPartyProviders
-                            data={thirdPartyData}
-                            updateData={updateThirdPartyData}
-                            errors={validationErrors}
-                        />
+
                         <DeliveryFrequency 
                             data={deliveryData}
                             updateData={updateDeliveryData}
@@ -330,7 +326,7 @@ const FoodCostWrapperContent = () => {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
                     currentStep="Food Cost Details"
-                    description="Set up your food cost management including COGS goals, delivery schedules, and third-party provider settings."
+                    description="Set up your food cost management including COGS goals, delivery schedules."
                 />
             </div>
             
@@ -341,11 +337,7 @@ const FoodCostWrapperContent = () => {
                     updateData={updateFoodCostData}
                     errors={validationErrors}
                 />
-                <ThirdPartyProviders
-                    data={thirdPartyData}
-                    updateData={updateThirdPartyData}
-                    errors={validationErrors}
-                />
+
                 <DeliveryFrequency 
                     data={deliveryData}
                     updateData={updateDeliveryData}

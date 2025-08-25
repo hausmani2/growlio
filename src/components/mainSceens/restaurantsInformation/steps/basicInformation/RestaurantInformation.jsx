@@ -1,6 +1,8 @@
-import { Input, Select } from "antd";
+import { Input, Select, Tooltip } from "antd";
 import { useEffect, useState } from "react";
 import useStore from "../../../../../store/store";
+import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+
 
 const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false }) => {
     const { 
@@ -93,23 +95,26 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Restaurant Information</h3>
-                <p className="text-gray-600 text-sm">
-                    Tell us about your restaurant — name, category, and a short description to help customers get to know you.
-                </p>
+               
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* Restaurant Name */}
                 <div>
-                    <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Restaurant Name <span className="text-red-500">*</span>
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
+                            Company Name <span className="text-red-500">*</span>
+                        </label>
+                        <Tooltip placement="topLeft" title="Enter the name of the company">
+                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
+                        </Tooltip>
+                    </div>
                     <div className="relative">
                         <Input 
                             type="text" 
                             id="restaurantName" 
-                            placeholder="Enter your restaurant name" 
+                            placeholder="Enter your company name" 
                             className={`w-full h-11 rounded-lg text-sm ${
                                 combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
                             } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -139,13 +144,13 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                         <span className="text-red-500 text-xs mt-1">{combinedErrors.restaurantName}</span>
                     )}
                     {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
-                        <span className="text-green-500 text-xs mt-1">✓ Restaurant name is available</span>
+                        <span className="text-green-500 text-xs mt-1">✓ Company name is available</span>
                     )}
                     {isBasicInfoCompleted && !isUpdateMode && (
-                        <span className="text-blue-500 text-xs mt-1">🔒 Restaurant name is locked (cannot be changed after completion)</span>
+                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked (cannot be changed after completion)</span>
                     )}
                     {isUpdateMode && (
-                        <span className="text-blue-500 text-xs mt-1">🔒 Restaurant name is locked in update mode</span>
+                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked in update mode</span>
                     )}
                 </div>
                 
@@ -178,9 +183,15 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 
                 {/* Location Name */}
                 <div>
+                    <div className="flex items-center gap-2">
+
                     <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700 mb-2">
                         Location Name <span className="text-red-500">*</span>
                     </label>
+                    <Tooltip placement="topLeft" title="Enter the name of the location where the restaurant is located">
+                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
+                        </Tooltip>
+                    </div>
                     <Input 
                         type="text" 
                         id="locationName" 

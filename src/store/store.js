@@ -59,7 +59,7 @@ const useStore = create(
                   ]
                 }
               },
-              "Labour Information": {
+              "Labor Information": {
                 status: false,
                 data: {
                   goal: "",

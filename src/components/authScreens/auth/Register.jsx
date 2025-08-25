@@ -90,6 +90,15 @@ const Register = () => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
     
+    // Auto-populate username with email name when email is entered
+    if (name === 'email' && value.includes('@')) {
+      const emailName = value.split('@')[0];
+      // Only auto-populate if username is empty or if user hasn't manually edited it
+      if (!form.username || form.username === form.email?.split('@')[0]) {
+        setForm(prev => ({ ...prev, username: emailName }));
+      }
+    }
+    
     // Clear field-specific error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: '' }));

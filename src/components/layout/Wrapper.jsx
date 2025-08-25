@@ -56,10 +56,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/basic-information'),
         },
         {
-          key: 'labour-information',
+          key: 'labor-information',
           icon: <FaPeopleCarry/>,
-          label: 'Labour Information',
-          onClick: () => navigate('/dashboard/labour-information'),
+          label: 'Labor Information',
+          onClick: () => navigate('/dashboard/labor-information'),
         },
         {
           key: 'food-cost-details',

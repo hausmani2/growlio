@@ -60,7 +60,7 @@ const useStepValidation = () => {
 
     // Labour Information Validation
     const validateLabourInformation = useCallback((data) => {
-        console.log("=== Labour Information Validation ===");
+        console.log("=== Labor Information Validation ===");
         console.log("Validating data:", data);
         
         const errors = {};
@@ -372,7 +372,7 @@ const useStepValidation = () => {
             case 'Basic Information':
                 errors = validateBasicInformation(data);
                 break;
-            case 'Labour Information':
+            case 'Labor Information':
                 errors = validateLabourInformation(data);
                 break;
             case 'Food Cost Details':

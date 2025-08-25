@@ -12,7 +12,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
     // Generate percentage options from 15% to 40% with color coding
     const generateLaborPercentageOptions = () => {
         const options = [];
-        for (let i = 1; i <= 40; i++) {
+        for (let i = 1; i <= 30; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             
@@ -44,9 +44,9 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Information</h3>
-                <p className="text-gray-600 text-sm">
+                {/* <p className="text-gray-600 text-sm">
                     Add basic labor details so we can help you manage operations more effectively.
-                </p>
+                </p> */}
             </div>
             
             {/* Form Fields */}
@@ -78,12 +78,6 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                         {errors.labour_goal && (
                             <span className="text-red-500 text-xs mt-1">{errors.labour_goal}</span>
                         )}
-                        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium">Zone Guidelines:</span><br/>
-                            <span className="text-green-600">🟢 Green Zone (Goal): 25%</span> | 
-                            <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 27%</span> | 
-                            <span className="text-red-600">🔴 Red Zone (Danger): 30%</span>
-                        </div>
                     </div>
                 </div>
             </div>

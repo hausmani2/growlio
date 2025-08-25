@@ -54,9 +54,6 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Delivery Frequency</h3>
-                <p className="text-gray-600 text-sm">
-                    How many times per week are you receiving deliveries from your suppliers?
-                </p>
             </div>
             
             {/* Form Fields */}

@@ -52,5 +52,6 @@ export const VALIDATION_MESSAGES = {
     SQFT: 'Square footage is required',
     FRANCHISE: 'Please select if this is a franchise',
     RESTAURANT_TYPE: 'Restaurant type is required',
-    MENU_TYPE: 'Menu type is required'
+    MENU_TYPE: 'Menu type is required',
+    CITY: 'City is required'
 }; 

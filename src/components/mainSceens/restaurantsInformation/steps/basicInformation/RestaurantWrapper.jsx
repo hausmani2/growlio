@@ -216,6 +216,8 @@ const RestaurantWrapperContent = () => {
                     {
                         location_name: restaurantData.locationName, // API expects 'location_name'
                         address_1: addressData.address1,
+                        address_2: addressData.address2,
+                        city: addressData.city,
                         country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
                         state: addressData.state === "1" ? "CA" : addressData.state === "2" ? "NY" : "TX",
                         zip_code: addressData.zipCode,

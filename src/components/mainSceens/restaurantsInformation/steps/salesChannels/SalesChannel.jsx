@@ -63,9 +63,9 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Sales Channels</h3>
-                <p className="text-gray-600 text-sm">
+                {/* <p className="text-gray-600 text-sm">
                     Define your active sales channels to accurately track your restaurant's financial performance.
-                </p>
+                </p> */}
             </div>
             
             {/* Form Fields */}

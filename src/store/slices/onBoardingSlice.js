@@ -31,7 +31,7 @@ const createOnBoardingSlice = (set, get) => ({
                 ]
             }
         },
-        "Labour Information": {
+        "Labor Information": {
             status: false,
             data: {
                 goal: "",
@@ -95,7 +95,7 @@ const createOnBoardingSlice = (set, get) => ({
                 menuType: ""
             }
         },
-        "Labour Information": {
+        "Labor Information": {
             laborData: {
                 goal: "",
                 needs_attention: "",
@@ -196,7 +196,7 @@ const createOnBoardingSlice = (set, get) => ({
                 };
                 break;
             }
-            case "Labour Information": {
+            case "Labor Information": {
                 const { laborData } = tempData;
                 apiData = {
                     goal: parseFloat(laborData.goal) || 0,
@@ -296,7 +296,7 @@ const createOnBoardingSlice = (set, get) => ({
                 }));
                 break;
             }
-            case "Labour Information": {
+            case "Labor Information": {
                 const tempData = {
                     laborData: {
                         goal: savedData.goal?.toString() || "",
@@ -505,7 +505,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             // Add other steps with status: false if they're not the active step
-            const otherSteps = ["Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
+            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
             otherSteps.forEach(step => {
                 if (step !== stepName) {
                     payload[step] = {
@@ -753,7 +753,7 @@ const createOnBoardingSlice = (set, get) => ({
                         ]
                     }
                 },
-                "Labour Information": {
+                "Labor Information": {
                     status: false,
                     data: {
                         goal: "",
@@ -832,7 +832,7 @@ const createOnBoardingSlice = (set, get) => ({
                         menu_type: data.menu_type || "",
                         locations: data.locations || []
                     };
-                } else if (stepName === "Labour Information" && data) {
+                } else if (stepName === "Labor Information" && data) {
                     // Handle Labour Information data mapping
                     processedData = {
                         goal: data.labour_goal || data.goal || "",
@@ -883,7 +883,7 @@ const createOnBoardingSlice = (set, get) => ({
             }));
             
             // Return information about completed and incomplete steps
-            const steps = ["Basic Information", "Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
+            const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
             const completedSteps = steps.filter(stepName => 
                 updatedOnboardingData[stepName]?.status === true
             );
@@ -1023,7 +1023,7 @@ const createOnBoardingSlice = (set, get) => ({
                         ]
                     }
                 },
-                "Labour Information": {
+                "Labor Information": {
                     status: false,
                     data: {
                         goal: "",
@@ -1085,7 +1085,7 @@ const createOnBoardingSlice = (set, get) => ({
                         menuType: ""
                     }
                 },
-                "Labour Information": {
+                "Labor Information": {
                     laborData: {
                         goal: "",
                         needs_attention: "",
@@ -1194,7 +1194,7 @@ const createOnBoardingSlice = (set, get) => ({
         const currentData = state.completeOnboardingData;
         
         // Check if all required steps exist in the data structure
-        const requiredSteps = ["Basic Information", "Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
         let needsUpdate = false;
         
         const updatedData = { ...currentData };
@@ -1226,7 +1226,7 @@ const createOnBoardingSlice = (set, get) => ({
                             }
                         };
                         break;
-                    case "Labour Information":
+                    case "Labor Information":
                         updatedData[stepName] = {
                             status: false,
                             data: {
@@ -1462,7 +1462,7 @@ const createOnBoardingSlice = (set, get) => ({
         const state = get();
         const data = state.completeOnboardingData;
         
-        const steps = ["Basic Information", "Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
         const stepStatus = {};
         
         steps.forEach(stepName => {
@@ -1493,7 +1493,7 @@ const createOnBoardingSlice = (set, get) => ({
         const state = get();
         const data = state.completeOnboardingData;
         
-        const requiredSteps = ["Basic Information", "Labour Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
         const completedSteps = requiredSteps.filter(stepName => 
             data[stepName] && data[stepName].status === true
         );
@@ -1696,7 +1696,7 @@ const createOnBoardingSlice = (set, get) => ({
                         ]
                     }
                 },
-                "Labour Information": {
+                "Labor Information": {
                     status: false,
                     data: {
                         goal: "",
@@ -1758,7 +1758,7 @@ const createOnBoardingSlice = (set, get) => ({
                         menuType: ""
                     }
                 },
-                "Labour Information": {
+                "Labor Information": {
                     laborData: {
                         goal: "",
                         needs_attention: "",
