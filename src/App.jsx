@@ -24,6 +24,8 @@ import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
+import UsersAdmin from './components/admin/UsersAdmin';
+import TooltipsAdmin from './components/admin/TooltipsAdmin';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -85,6 +87,9 @@ function App() {
           <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
+          {/* Admin */}
+          <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
+          <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

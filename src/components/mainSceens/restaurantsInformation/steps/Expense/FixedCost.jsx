@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -90,6 +92,8 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         }
     };
 
+    const tooltips = useTooltips('onboarding-expense');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -104,6 +108,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Fixed Costs <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips['fixed_costs']} />
                 </label>
                 
                 <div className="space-y-3">

@@ -4,6 +4,8 @@ import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import PrimaryButton from '../../../../buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
 import { useLocation } from 'react-router-dom';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = false, errors = {} }) => {
     const location = useLocation();
@@ -49,6 +51,8 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
         }
     };
 
+    const tooltips = useTooltips('onboarding-food');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -63,6 +67,7 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Select your delivery days <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips['delivery_days']} />
                 </label>
                 
                 <div className="space-y-3">

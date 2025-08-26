@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Input, Select, Tooltip } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
@@ -97,6 +99,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         return data.labor_record_method === 'daily-hours-costs';
     };
 
+    const tooltips = useTooltips('onboarding-labor');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -113,9 +117,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                         What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
-                        <Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
+                        <TooltipIcon text={tooltips['avg_hourly_rate']} />
                     </label>
                     <div className="relative">
                         <Input 
@@ -144,6 +146,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
                         How would you like to record your labor?
+                        <TooltipIcon text={tooltips['labor_record_method']} />
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <PrimaryButton 
@@ -194,6 +197,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
                         Would you like to daily ticket count?
+                        <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
                     <Select 
                         id="daily_ticket_count" 
@@ -211,6 +215,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
                         Forward previous week's actual labor rate?
+                        <TooltipIcon text={tooltips['forward_prev_week_rate']} />
                     </label>
                     <Select 
                         id="forward_prev_week_rate" 

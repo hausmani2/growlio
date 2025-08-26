@@ -1,5 +1,7 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import { Select, Tooltip } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     const handleCogsChange = (value) => {
@@ -36,6 +38,8 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
         return options;
     };
 
+    const tooltips = useTooltips('onboarding-food');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -58,13 +62,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                         <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                             What is your COGS goal as a percentage of sales?
                             <span className="text-red-500">*</span>
-                            <Tooltip placement="bottomLeft" title="Select the percentage of sales that you want to achieve as your COGS goal">
-                                <img 
-                                    src={SubTrack} 
-                                    alt="SubTrack" 
-                                    className="w-4 h-4" 
-                                />
-                            </Tooltip>
+                            <TooltipIcon text={tooltips['cogs_goal']} />
                         </label>
                         
                         <Select

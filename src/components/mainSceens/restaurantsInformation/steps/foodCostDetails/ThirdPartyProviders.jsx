@@ -1,9 +1,12 @@
 import { Input, Select } from 'antd';
 import { useState, useEffect } from 'react';
 import PrimaryButton from '../../../../buttons/Buttons';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 
 const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
+    const tooltips = useTooltips('onboarding-food');
 
     // State to manage multiple providers
     const [providers, setProviders] = useState([
@@ -110,6 +113,7 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Third-Party Providers</h3>
                 <p className="text-gray-600 text-sm">
                     Does this Location use hired party delivery?
+                    <TooltipIcon tooltipText={tooltips.hired_party_delivery} />
                 </p>
             </div>
             
@@ -119,6 +123,7 @@ const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Does this Location use third party delivery?
+                        <TooltipIcon tooltipText={tooltips.third_party_delivery} />
                         <span className="text-red-500">*</span>
                     </label>
                     <Select

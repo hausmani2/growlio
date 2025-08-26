@@ -161,11 +161,7 @@ const ProfitLossDashboard = () => {
             {/* Left Side - Title and Description */}
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-red-600 mb-2">Profit & Loss Dashboard</h1>
-<<<<<<< HEAD
-              <p className="text-gray-600 text-lg">Track your profit and loss performance with comprehensive financial insights</p>
-=======
               <p className="text-gray-600 text-lg">Monitor your restaurant's financial performance and track budget vs. actual results</p>
->>>>>>> b885e75410cd2b2eac6f0f2f52e866d6bfbd6f54
             </div>
 
             {/* Right Side - Date Picker and Controls */}

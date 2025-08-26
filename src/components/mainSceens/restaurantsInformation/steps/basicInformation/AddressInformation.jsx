@@ -1,6 +1,10 @@
 import { Input, Select } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const AddressInformation = ({ data, updateData, errors = {} }) => {
+    const tooltips = useTooltips('onboarding-basic');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -17,6 +21,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                 <div>
                     <label htmlFor="address1" className="block text-sm font-semibold text-gray-700 mb-2">
                         Address 1 <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['address_1']} />
                     </label>
                     <Input.TextArea 
                         id="address1" 
@@ -37,6 +42,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                 <div>
                     <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
                         Country <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['country']} />
                     </label>
                     <Select 
                         id="country" 
@@ -62,6 +68,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                 <div>
                     <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
                         State <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['state']} />
                     </label>
                     <Select 
                         id="state" 
@@ -87,6 +94,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                 <div>
                     <label htmlFor="zipCode" className="block text-sm font-semibold text-gray-700 mb-2">
                         Zip Code <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['zip_code']} />
                     </label>
                     <Input 
                         type="text" 

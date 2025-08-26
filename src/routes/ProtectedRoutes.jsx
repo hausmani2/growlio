@@ -15,6 +15,7 @@ const ProtectedRoutes = () => {
   // Check authentication from store and fallback to localStorage
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const storeToken = useStore((state) => state.token);
+  const user = useStore((state) => state.user);
   const localStorageToken = localStorage.getItem('token');
   const token = storeToken || localStorageToken;
   
@@ -35,6 +36,10 @@ const ProtectedRoutes = () => {
     }
 
     try {
+      // Skip onboarding checks for admin area
+      if (location.pathname.startsWith('/admin')) {
+        return;
+      }
       console.log('🔄 ProtectedRoutes - Checking onboarding status...');
       console.log('🔍 Current pathname:', location.pathname);
       console.log('🔍 About to call checkOnboardingCompletion...');
@@ -183,6 +188,13 @@ const ProtectedRoutes = () => {
   if (isCheckingOnboarding) {
     console.log('⏳ Showing loading spinner');
     return <LoadingSpinner message="Checking your setup..." />;
+  }
+
+  // Admin route guard
+  const isAdminPath = location.pathname.startsWith('/admin');
+  const isAdminUser = ((user?.role || '').toUpperCase() === 'ADMIN') || user?.is_staff;
+  if (isAdminPath && !isAdminUser) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   console.log('✅ Rendering protected route content');
