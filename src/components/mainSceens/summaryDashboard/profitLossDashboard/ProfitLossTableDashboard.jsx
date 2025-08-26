@@ -40,13 +40,27 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return Object.prototype.hasOwnProperty.call(firstEntry, 'week_start') && Object.prototype.hasOwnProperty.call(firstEntry, 'week_end');
   }, []);
 
+  // Helper function to determine if data is monthly format
+  const isMonthlyData = useCallback((data) => {
+    if (!Array.isArray(data) || data.length === 0) return false;
+    const firstEntry = data[0];
+    return Object.prototype.hasOwnProperty.call(firstEntry, 'month_start') && Object.prototype.hasOwnProperty.call(firstEntry, 'month_end');
+  }, []);
+
   // Helper function to format date for display
-  const formatDateForDisplay = useCallback((dateString, isWeekly = false) => {
+  const formatDateForDisplay = useCallback((dateString, isWeekly = false, isMonthly = false) => {
     if (!dateString) return 'N/A';
     
     try {
       const date = dayjs(dateString);
-      if (isWeekly) {
+      if (isMonthly) {
+        return {
+          day: `Month ${date.format('MMM')}`,
+          date: `${date.format('MMM YYYY')}`,
+          shortDate: date.format('MMM'),
+          fullDate: `${date.format('MMM YYYY')}`
+        };
+      } else if (isWeekly) {
         return {
           day: `Week ${date.format('MMM DD')}`,
           date: `${date.format('MMM DD')} - ${dayjs(dateString).add(6, 'day').format('MMM DD, YYYY')}`,
@@ -118,9 +132,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       return;
     }
 
-    // Determine if this is weekly data
+    // Determine data format
     const isWeekly = isWeeklyData(entries);
-    console.log('ProfitLossTableDashboard: Processing data format:', isWeekly ? 'weekly' : 'daily');
+    const isMonthly = isMonthlyData(entries);
+    const dataFormat = isMonthly ? 'monthly' : (isWeekly ? 'weekly' : 'daily');
+    console.log('ProfitLossTableDashboard: Processing data format:', dataFormat);
+    console.log('ProfitLossTableDashboard: Sample entry:', entries[0]);
 
     // Process the data - Updated to handle both daily and weekly structures
     const processed = {
@@ -141,7 +158,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     entries.forEach((entry, index) => {
       // Create appropriate date key based on data format
       let dateKey;
-      if (isWeekly) {
+      if (isMonthly) {
+        // For monthly data, use month_start as the key
+        dateKey = entry.month_start || `month-${index}`;
+      } else if (isWeekly) {
         // For weekly data, use week_start as the key
         dateKey = entry.week_start || `week-${index}`;
       } else {
@@ -177,13 +197,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
     setProcessedData(processed);
     setTableData(entries);
-  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData]);
+  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData, isMonthlyData]);
 
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
     { 
       key: 'sales_budget', 
-      label: 'Sales Budget', 
+      label: 'Net Sales', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Sales Details',
@@ -194,12 +214,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     },
     { 
       key: 'labour', 
-      label: 'Labor', 
-      type: 'number',
+      label: 'Labor Cost', 
+      type: 'currency',
       hasDetails: true,
       detailLabel: 'Labor Details',
       detailFields: [
-        { key: 'labour', label: 'Labor Hours', type: 'number' },
+        { key: 'labour', label: 'Labor Hours', type: 'currency' },
         { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
         { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
       ]
@@ -314,16 +334,30 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   const generateGroupedColumns = useMemo(() => {
     if (!tableData || tableData.length === 0) return [];
 
+    // Determine data format
+    const isWeekly = isWeeklyData(tableData);
+    const isMonthly = isMonthlyData(tableData);
+
     // Group dates by week if monthly view
     const groupedDates = viewMode === 'monthly' ? 
       tableData.reduce((groups, entry, index) => {
-        const dateInfo = formatDateForDisplay(entry.date || entry.day);
-        const weekKey = dayjs(entry.date || entry.day).format('YYYY-[W]WW');
+        // Use appropriate date field based on data format
+        let dateField;
+        if (isMonthly) {
+          dateField = entry.month_start;
+        } else if (isWeekly) {
+          dateField = entry.week_start;
+        } else {
+          dateField = entry.date || entry.day;
+        }
+        
+        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+        const weekKey = dayjs(dateField).format('YYYY-[W]WW');
         
         if (!groups[weekKey]) {
           groups[weekKey] = {
             weekKey,
-            weekLabel: `Week ${dayjs(entry.date || entry.day).format('WW')}`,
+            weekLabel: isMonthly ? `Month ${dayjs(dateField).format('MMM')}` : `Week ${dayjs(dateField).format('WW')}`,
             dates: []
           };
         }
@@ -337,7 +371,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         return groups;
       }, {}) : 
       tableData.map((entry, index) => {
-        const dateInfo = formatDateForDisplay(entry.date || entry.day);
+        // Use appropriate date field based on data format
+        let dateField;
+        if (isMonthly) {
+          dateField = entry.month_start;
+        } else if (isWeekly) {
+          dateField = entry.week_start;
+        } else {
+          dateField = entry.date || entry.day;
+        }
+        
+        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
         return {
           weekKey: `day-${index}`,
           weekLabel: dateInfo.day,
@@ -380,8 +424,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         groupedColumns.push({
           title: (
-            <div className="text-center">
-              <div className="font-semibold text-xs text-gray-800">
+            <div className="">
+              <div className="font-semibold text-sm text-gray-800">
                 {dateInfo.day}
               </div>
               {viewMode === 'monthly' && (
@@ -403,7 +447,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           
           return {
             title: (
-              <div className="text-center">
+              <div className="">
                 <div className="font-semibold text-xs text-gray-800">
                   {dateInfo.day}
                 </div>
@@ -421,7 +465,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
         groupedColumns.push({
           title: (
-            <div className="text-center">
+            <div className="">
               <div className="font-semibold text-xs text-gray-800">
                 {weekGroup.weekLabel}
               </div>
@@ -432,13 +476,24 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
     });
 
+    console.log('Generated columns:', groupedColumns);
     return groupedColumns;
-  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories]);
+  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData]);
 
   // Render cell value with proper formatting
   const renderCellValue = useCallback((value, record, entry, dateInfo) => {
     const categoryKey = record.key;
-    const dateKey = entry.date || entry.day || 'N/A';
+    // Determine data format and use appropriate date key
+    const isWeekly = isWeeklyData(tableData);
+    const isMonthly = isMonthlyData(tableData);
+    let dateKey;
+    if (isMonthly) {
+      dateKey = entry.month_start || 'N/A';
+    } else if (isWeekly) {
+      dateKey = entry.week_start || 'N/A';
+    } else {
+      dateKey = entry.date || entry.day || 'N/A';
+    }
     const rawValue = processedData[categoryKey]?.[dateKey] || 0;
     
     // Check if the original value was None/null/undefined
@@ -462,6 +517,21 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       profitPercentage = formatPercentage(entry.labour_profit);
     } else if (categoryKey === 'food_cost' && entry.food_cost_profit) {
       profitPercentage = formatPercentage(entry.food_cost_profit);
+    }
+    
+    // Debug logging for weekly/monthly data
+    if ((isWeeklyData(tableData) || isMonthlyData(tableData)) && (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost')) {
+      const dataType = isMonthlyData(tableData) ? 'Monthly' : 'Weekly';
+      console.log(`${dataType} data - ${categoryKey}:`, {
+        entry,
+        profitPercentage,
+        sales_budeget_profit: entry.sales_budeget_profit,
+        labour_profit: entry.labour_profit,
+        food_cost_profit: entry.food_cost_profit,
+        dateKey,
+        rawValue,
+        hasData: !!entry
+      });
     }
     
     // Handle currency fields
@@ -494,6 +564,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </SalesDetailDropdown>
             )}
+          
           </div>
         );
       }
@@ -629,7 +700,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               className="text-sm text-gray-700 flex items-center gap-1"
               title="Click to view labor details"
             >
-              {formatNumber(rawValue)} 
+              {formatCurrency(rawValue)} 
             </span>
             {profitPercentage && (
               <LaborDetailDropdown dayData={dayData} laborData={entry}>
@@ -655,57 +726,112 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     return <span className="text-sm text-gray-700">{rawValue}</span>;
-  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor]);
+  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData]);
 
   // Generate expandable row data
   const generateExpandableData = useMemo(() => {
+    // Determine data format
+    const isWeekly = isWeeklyData(tableData);
+    const isMonthly = isMonthlyData(tableData);
+    
     return categories.map(category => {
       const baseRow = {
         key: category.key,
         category: category.label,
         ...tableData.reduce((acc, entry, index) => {
-          const dateInfo = formatDateForDisplay(entry.date || entry.day);
+          // Use appropriate date field based on data format
+          let dateField;
+          if (isMonthly) {
+            dateField = entry.month_start;
+          } else if (isWeekly) {
+            dateField = entry.week_start;
+          } else {
+            dateField = entry.date || entry.day;
+          }
+          
+          const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
           const uniqueKey = `${dateInfo.fullDate}-${index}`;
-          const dateKey = entry.date || entry.day || 'N/A';
+          
+          let dateKey;
+          if (isMonthly) {
+            dateKey = entry.month_start || 'N/A';
+          } else if (isWeekly) {
+            dateKey = entry.week_start || 'N/A';
+          } else {
+            dateKey = entry.date || entry.day || 'N/A';
+          }
+          
           acc[uniqueKey] = processedData[category.key]?.[dateKey] || 0;
           return acc;
         }, {})
       };
 
-      // Add expandable details if category has them
-      if (category.hasDetails) {
-        baseRow.children = category.detailFields.map(field => ({
-          key: `${category.key}_${field.key}`,
-          category: `  ${field.label}`,
-          isDetail: true,
-          ...tableData.reduce((acc, entry, index) => {
-            const dateInfo = formatDateForDisplay(entry.date || entry.day);
-            const uniqueKey = `${dateInfo.fullDate}-${index}`;
-            const dateKey = entry.date || entry.day || 'N/A';
-            
-            let value;
-            if (field.key === 'fixedCost' || field.key === 'variableCost') {
-              value = processedData[field.key]?.[dateKey] || 0;
-            } else {
-              value = entry[field.key] || 0;
-            }
-            
-            acc[uniqueKey] = value;
-            return acc;
-          }, {})
-        }));
-      }
+                // Add expandable details if category has them
+          if (category.hasDetails) {
+            baseRow.children = category.detailFields.map(field => ({
+              key: `${category.key}_${field.key}`,
+              category: `  ${field.label}`,
+              isDetail: true,
+              ...tableData.reduce((acc, entry, index) => {
+                // Use appropriate date field based on data format
+                let dateField;
+                if (isMonthly) {
+                  dateField = entry.month_start;
+                } else if (isWeekly) {
+                  dateField = entry.week_start;
+                } else {
+                  dateField = entry.date || entry.day;
+                }
+                
+                const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+                const uniqueKey = `${dateInfo.fullDate}-${index}`;
+                
+                let dateKey;
+                if (isMonthly) {
+                  dateKey = entry.month_start || 'N/A';
+                } else if (isWeekly) {
+                  dateKey = entry.week_start || 'N/A';
+                } else {
+                  dateKey = entry.date || entry.day || 'N/A';
+                }
+                
+                let value;
+                if (field.key === 'fixedCost' || field.key === 'variableCost') {
+                  value = processedData[field.key]?.[dateKey] || 0;
+                } else {
+                  value = entry[field.key] || 0;
+                }
+                
+                acc[uniqueKey] = value;
+                return acc;
+              }, {})
+            }));
+          }
 
       return baseRow;
     });
-  }, [categories, tableData, processedData, formatDateForDisplay]);
+  }, [categories, tableData, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData]);
 
   // CSV generation
   const generateCSV = useCallback(() => {
     if (!tableData || tableData.length === 0) return '';
     
+    // Determine data format
+    const isWeekly = isWeeklyData(tableData);
+    const isMonthly = isMonthlyData(tableData);
+    
     const dates = tableData.map(entry => {
-      const dateInfo = formatDateForDisplay(entry.date || entry.day);
+      // Use appropriate date field based on data format
+      let dateField;
+      if (isMonthly) {
+        dateField = entry.month_start;
+      } else if (isWeekly) {
+        dateField = entry.week_start;
+      } else {
+        dateField = entry.date || entry.day;
+      }
+      
+      const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
       return dateInfo.fullDate;
     });
     const headers = ['Category', ...dates];
@@ -713,14 +839,21 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       const rowData = [category.label];
       dates.forEach((_, index) => {
         const entry = tableData[index];
-        const dateKey = entry.date || entry.day || 'N/A';
+        let dateKey;
+        if (isMonthly) {
+          dateKey = entry.month_start || 'N/A';
+        } else if (isWeekly) {
+          dateKey = entry.week_start || 'N/A';
+        } else {
+          dateKey = entry.date || entry.day || 'N/A';
+        }
         const value = processedData[category.key]?.[dateKey] || 0;
         rowData.push(value.toString());
       });
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay]);
+  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -792,7 +925,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return totals;
   }, [tableData]);
 
-  // Render weekly summary - Optimized for performance
+  // Render period summary - Optimized for performance
   const renderWeeklySummary = useCallback((categoryKey, totals) => {
     switch (categoryKey) {
       case 'sales_budget':
@@ -1340,36 +1473,57 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
   }, [renderSalesDetails, renderLaborDetails, renderFoodCostDetails, renderFixedCostDetails, renderVariableCostDetails]);
 
-  // Render weekly detailed content for all days - Optimized with memoization
+  // Render weekly/monthly detailed content for all periods - Optimized with memoization
   const renderWeeklyDetailedContent = useCallback((categoryKey) => {
     if (!tableData || tableData.length === 0) return null;
 
     // Use memoized weekly totals
     const weeklyTotals = calculateWeeklyTotals;
+    const isWeekly = isWeeklyData(tableData);
+    const isMonthly = isMonthlyData(tableData);
+    const periodType = isMonthly ? 'Monthly' : (isWeekly ? 'Weekly' : 'Daily');
 
     return (
-      <div className="space-y-6">
-        {/* Weekly Summary */}
+      <div className="space-y-3">
+        {/* Period Summary */}
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h5 className="font-semibold text-blue-800 text-sm mb-3">Weekly Summary</h5>
+          <h5 className="font-semibold text-blue-800 text-sm mb-3">{periodType} Summary</h5>
           {renderWeeklySummary(categoryKey, weeklyTotals)}
         </div>
 
-        {/* Daily Breakdown */}
-        <div className="space-y-4">
-          <h5 className="font-semibold text-gray-800 text-sm">Daily Breakdown</h5>
+        {/* Period Breakdown */}
+        <div className="flex flex-row gap-4 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {tableData.map((entry, index) => {
-            const dateInfo = formatDateForDisplay(entry.date || entry.day);
-            const detailKey = `${categoryKey}_${entry.date || entry.day || index}`;
+            // Determine data format
+            let dateField;
+            if (isMonthly) {
+              dateField = entry.month_start;
+            } else if (isWeekly) {
+              dateField = entry.week_start;
+            } else {
+              dateField = entry.date || entry.day;
+            }
+            
+            const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+            const detailKey = `${categoryKey}_${dateField || index}`;
+            
+            let periodLabel;
+            if (isMonthly) {
+              periodLabel = `Month ${index + 1}`;
+            } else if (isWeekly) {
+              periodLabel = `Week ${index + 1}`;
+            } else {
+              periodLabel = `Day ${index + 1}`;
+            }
             
             return (
-              <div key={detailKey} className="bg-white p-4 rounded-lg border border-gray-200">
+              <div key={detailKey} className="bg-white p-4 rounded-lg border border-gray-200 min-w-[280px] flex-shrink-0">
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
                   <h5 className="font-semibold text-gray-800 text-sm">
                     {dateInfo.day} - {dateInfo.fullDate}
                   </h5>
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    Day {index + 1}
+                    {periodLabel}
                   </span>
                 </div>
                 {renderDetailedContent(categoryKey, entry)}
@@ -1379,12 +1533,22 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary]);
+  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary, isWeeklyData, isMonthlyData]);
 
   // Check if we have data
   const hasData = tableData.length > 0;
   const dataToProcess = dashboardSummaryData || dashboardData;
   const isFailStatus = dataToProcess?.status === 'fail';
+  
+  // Debug logging
+  console.log('ProfitLossTableDashboard render:', {
+    hasData,
+    tableDataLength: tableData.length,
+    isWeekly: isWeeklyData(tableData),
+    isMonthly: isMonthlyData(tableData),
+    processedDataKeys: Object.keys(processedData),
+    generateExpandableDataLength: generateExpandableData.length
+  });
 
   // Loading state
   if (loading) {
@@ -1528,9 +1692,31 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 {/* Main row data */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {tableData.map((entry, index) => {
-                    const dateInfo = formatDateForDisplay(entry.date || entry.day);
+                    // Determine data format
+                    const isWeekly = isWeeklyData(tableData);
+                    const isMonthly = isMonthlyData(tableData);
+                    
+                    let dateField;
+                    if (isMonthly) {
+                      dateField = entry.month_start;
+                    } else if (isWeekly) {
+                      dateField = entry.week_start;
+                    } else {
+                      dateField = entry.date || entry.day;
+                    }
+                    
+                    const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
                     const uniqueKey = `${dateInfo.fullDate}-${index}`;
-                    const dateKey = entry.date || entry.day || 'N/A';
+                    
+                    let dateKey;
+                    if (isMonthly) {
+                      dateKey = entry.month_start || 'N/A';
+                    } else if (isWeekly) {
+                      dateKey = entry.week_start || 'N/A';
+                    } else {
+                      dateKey = entry.date || entry.day || 'N/A';
+                    }
+                    
                     const rawValue = processedData[row.key]?.[dateKey] || 0;
                     
                     return (

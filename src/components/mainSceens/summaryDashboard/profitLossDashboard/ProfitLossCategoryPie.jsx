@@ -113,7 +113,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     <Card className="h-full">
       <div className="mb-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-orange-600">Profit/Loss by Category</h2>
+          <h2 className="text-xl font-bold text-orange-600"> Budget vs Actual Sales</h2>
         </div>
       </div>
       <div style={{ height: '300px' }}>
