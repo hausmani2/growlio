@@ -26,6 +26,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/expense': 'expense',
     '/profile': 'profile',
+    '/admin/users': 'admin-users',
+    '/admin/tooltips': 'admin-tooltips',
   };
   
   // Determine selected key based on current path
