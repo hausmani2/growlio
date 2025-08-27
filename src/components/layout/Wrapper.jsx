@@ -115,7 +115,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           key: 'profile',
           icon: <UserOutlined />,
           label: 'Profile',
-          onClick: () => navigate('/profile'),
+          onClick: () => navigate('/dashboard/profile'),
         },
       ],
     },

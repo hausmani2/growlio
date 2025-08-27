@@ -48,6 +48,7 @@ const RestaurantWrapperContent = () => {
             address1: "",
             address2: "",
             country: "",
+            city: "",
             state: "",
             zipCode: ""
         }
@@ -102,7 +103,9 @@ const RestaurantWrapperContent = () => {
                 setAddressData(prev => ({
                     ...prev,
                     address1: location.address_1 || "",
+                    address2: location.address_2 || "",
                     country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "3",
+                    city: location.city || "",
                     state: location.state === "CA" ? "1" : location.state === "NY" ? "2" : "3",
                     zipCode: location.zip_code || ""
                 }));
