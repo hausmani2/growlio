@@ -51,7 +51,7 @@ const ForgotPassword = () => {
         <Card className="w-full max-w-md shadow-2xl border-0">
           <div className="text-center">
             <div className="mb-6">
-              <GrowlioLogo width={120} height={40} className="mx-auto" />
+              <GrowlioLogo width={200} height={70} className="mx-auto" />
             </div>
             
             <div className="mb-6">
@@ -116,7 +116,7 @@ const ForgotPassword = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-2xl border-0">
         <div className="text-center mb-6">
-          <GrowlioLogo width={120} height={40} className="mx-auto" />
+          <GrowlioLogo width={200} height={70} className="mx-auto" />
         </div>
         
         <div className="mb-6">

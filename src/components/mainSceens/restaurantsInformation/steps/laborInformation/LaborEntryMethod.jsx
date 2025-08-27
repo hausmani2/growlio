@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Input, Select, Tooltip } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
@@ -97,6 +99,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         return data.labor_record_method === 'daily-hours-costs';
     };
 
+    const tooltips = useTooltips('onboarding-labor');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -115,11 +119,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
 
                     <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700">
                         What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
-                        </label>
-                        <Tooltip placement="topLeft" title="Select whether you would like to record daily ticket count">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                        </div>
+                        <TooltipIcon text={tooltips['avg_hourly_rate']} />
+                    </label>
                     <div className="relative">
                         <Input 
                             type="number" 
@@ -144,15 +145,11 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Labor Recording Method */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <label className="block text-sm font-semibold text-gray-700">
-                            How would you like to record your labor?
-                        </label>
-                        <Tooltip placement="topLeft" title="Select whether you would like to record your labor">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        How would you like to record your labor?
+                        <TooltipIcon text={tooltips['labor_record_method']} />
+                    </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <PrimaryButton 
                             title="Daily Hours & Costs (Recommended)" 
@@ -199,11 +196,10 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div> */}
                 
                 {/* Daily Ticket Count */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-
-                    <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700">
-                    Would you like to enter your daily ticket count?
+                <div>
+                    <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Would you like to daily ticket count?
+                        <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
                     <Tooltip placement="topLeft"  title="Enable this option to record the number of tickets created each day.">
                             <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
@@ -227,6 +223,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                     <div className="flex items-center gap-2">
                     <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700">
                         Forward previous week's actual labor rate?
+                        <TooltipIcon text={tooltips['forward_prev_week_rate']} />
                     </label>
                     <Tooltip placement="topLeft" title="Enable this option to carry forward the previous week's actual labor rate.">
                             <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />

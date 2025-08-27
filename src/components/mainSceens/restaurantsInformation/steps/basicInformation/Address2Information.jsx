@@ -1,8 +1,12 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+// Use the same icon design as before
 import { Input, Select, Tooltip } from 'antd';
 import PrimaryButton from '../../../../../components/buttons/Buttons';
 import { useTabHook } from '../../useTabHook';
 import { useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAndContinue }) => {
     const location = useLocation();
@@ -29,6 +33,8 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
         navigateToPreviousStep();
     };
     
+    const tooltips = useTooltips('onboarding-basic');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -43,15 +49,11 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
             <div className="space-y-4">
                 {/* SQFT */}
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
 
                     <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700">
                         How many SQFT is your location? <span className="text-red-500">*</span>
-                        </label>
-                        <Tooltip placement="topLeft" title="Enter the total square footage of your restaurant location">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
+                        <TooltipIcon text={tooltips['sqft']} />
+                    </label>
                     <Input 
                         type="text" 
                         id="sqft" 
@@ -69,15 +71,11 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
                 
                 {/* Franchise */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700">
-                            Is this location a franchise? <span className="text-red-500">*</span>
-                        </label>
-                        <Tooltip placement="topLeft" title="Select whether this restaurant location is part of a franchise or independently owned">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
+                <div>
+                    <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        Is this location a franchise? <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['is_franchise']} />
+                    </label>
                     <Select 
                         id="franchise" 
                         placeholder="No" 

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 import { Tooltip } from "antd";
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
@@ -92,6 +94,8 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         }
     };
 
+    const tooltips = useTooltips('onboarding-expense');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -104,14 +108,10 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <label className="block text-sm font-semibold text-gray-700 ">
-                        Fixed Costs <span className="text-red-500">*</span>
-                    </label>
-                    <Tooltip placement="topLeft" title="Fixed costs are costs that do not change with the number of guests served.">
-                        <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                    </Tooltip>
-                </div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Fixed Costs <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips['fixed_costs']} />
+                </label>
                 
                 <div className="space-y-3">
                     {dynamicFields.map((field) => (

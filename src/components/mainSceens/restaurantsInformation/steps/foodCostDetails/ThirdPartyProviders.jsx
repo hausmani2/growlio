@@ -1,9 +1,12 @@
-// import { Input, Select } from 'antd';
-// import { useState, useEffect } from 'react';
-// import PrimaryButton from '../../../../buttons/Buttons';
+import { Input, Select } from 'antd';
+import { useState, useEffect } from 'react';
+import PrimaryButton from '../../../../buttons/Buttons';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 
-// const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
+const ThirdPartyProviders = ({ data, updateData, errors = {} }) => {
+    const tooltips = useTooltips('onboarding-food');
 
 //     // State to manage multiple providers
 //     const [providers, setProviders] = useState([
@@ -104,35 +107,40 @@
 //         updateData('providers', updatedProviders);
 //     };
 
-//     return (
-//         <div className="bg-white rounded-xl border border-gray-200 p-6">
-//             {/* Header Section */}
-//             <div className="mb-6">
-//                 <h3 className="text-xl font-bold text-orange-600 mb-2">Third-Party Providers</h3>
-//             </div>
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+            {/* Header Section */}
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Third-Party Providers</h3>
+                <p className="text-gray-600 text-sm">
+                    Does this Location use hired party delivery?
+                    <TooltipIcon tooltipText={tooltips.hired_party_delivery} />
+                </p>
+            </div>
             
-//             {/* Form Fields */}
-//             <div className="space-y-6">
-//                 {/* Hired Party Delivery Question */}
-//                 <div>
-//                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-//                         Does this Location use third party delivery?
-//                         <span className="text-red-500">*</span>
-//                     </label>
-//                     <Select
-//                         placeholder="Select Yes or No"
-//                         className={`w-full h-11 rounded-lg text-sm ${
-//                             errors.useHiredPartyDelivery ? 'border-red-500' : ''
-//                         }`}
-//                         value={useHiredPartyDelivery || undefined}
-//                         onChange={handleHiredPartyDeliveryChange}
-//                         options={yesNoOptions}
-//                         status={errors.useHiredPartyDelivery ? 'error' : ''}
-//                     />
-//                     {errors.useHiredPartyDelivery && (
-//                         <span className="text-red-500 text-xs mt-1">{errors.useHiredPartyDelivery}</span>
-//                     )}
-//                 </div>
+            {/* Form Fields */}
+            <div className="space-y-6">
+                {/* Hired Party Delivery Question */}
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Does this Location use third party delivery?
+                        <TooltipIcon tooltipText={tooltips.third_party_delivery} />
+                        <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                        placeholder="Select Yes or No"
+                        className={`w-full h-11 rounded-lg text-sm ${
+                            errors.useHiredPartyDelivery ? 'border-red-500' : ''
+                        }`}
+                        value={useHiredPartyDelivery || undefined}
+                        onChange={handleHiredPartyDeliveryChange}
+                        options={yesNoOptions}
+                        status={errors.useHiredPartyDelivery ? 'error' : ''}
+                    />
+                    {errors.useHiredPartyDelivery && (
+                        <span className="text-red-500 text-xs mt-1">{errors.useHiredPartyDelivery}</span>
+                    )}
+                </div>
 
 //                 {/* Provider Details - Only show if "Yes" is selected */}
 //                 {useHiredPartyDelivery === 'true' && (

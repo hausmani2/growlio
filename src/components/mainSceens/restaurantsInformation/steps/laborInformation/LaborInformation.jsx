@@ -1,4 +1,6 @@
 import { Select } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
     const handleLaborGoalChange = (value) => {
@@ -37,6 +39,8 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
         return options;
     };
 
+    const tooltips = useTooltips('onboarding-labor');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
@@ -58,6 +62,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                     <div className="space-y-3">
                         <label htmlFor="labour_goal" className="block text-sm font-semibold text-gray-700">
                             Labor Goal as Percentage of Sales <span className="text-red-500">*</span>
+                            <TooltipIcon text={tooltips['labour_goal']} />
                         </label>
                         <Select
                             id="labour_goal"

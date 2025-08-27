@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { Tooltip } from "antd";
-import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
+    const tooltips = useTooltips('onboarding-expense');
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicVariableFields || []);
@@ -126,19 +127,15 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Variable Cost</h3>
                 <p className="text-gray-600 text-sm">
                     What are the variable costs for this location?
+                    <TooltipIcon text={tooltips.variable_costs_description} />
                 </p>
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <label className="block text-sm font-semibold text-gray-700 ">
-                        Variable Costs <span className="text-red-500">*</span>
-                    </label>
-                    <Tooltip placement="topLeft" title="Variable costs are costs that change with the number of guests served.">
-                        <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                    </Tooltip>
-                </div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Variable Costs <TooltipIcon text={tooltips.variable_costs} /> <span className="text-red-500">*</span>
+                </label>
                 
                 <div className="space-y-3">
                     {dynamicFields.map((field) => (
@@ -190,7 +187,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                         onClick={showModal}
                         className="h-11 text-sm"
                     >
-                        Add Variable Cost
+                        Add Variable Cost <TooltipIcon text={tooltips.add_variable_cost} />
                     </Button>
                 </div>
                 

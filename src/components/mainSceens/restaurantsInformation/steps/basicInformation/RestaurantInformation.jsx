@@ -1,8 +1,11 @@
 import { Input, Select, Tooltip } from "antd";
 import { useEffect, useState } from "react";
 import useStore from "../../../../../store/store";
-import SubTrack from '../../../../../assets/svgs/Subtract.svg';
-
+import { apiGet } from "../../../../../utils/axiosInterceptors";
+import { fetchTooltips } from "../../../../../utils";
+import SubTrack from "../../../../../assets/svgs/Subtract.svg";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 
 const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false }) => {
     const { 
@@ -13,7 +16,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         restaurantNameExists,
         completeOnboardingData
     } = useStore();
-    
+    const tooltips = useTooltips('onboarding-basic');
     
     // Check if Basic Information step is completed
     const isBasicInfoCompleted = completeOnboardingData["Basic Information"]?.status === true;
@@ -101,15 +104,11 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* Restaurant Name */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700">
-                            Company Name <span className="text-red-500">*</span>
-                        </label>
-                        <Tooltip placement="topLeft" title="Enter the name of the company">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
+                <div>
+                    <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Restaurant Name <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips["restaurant_name"]} />
+                    </label>
                     <div className="relative">
                         <Input 
                             type="text" 
@@ -161,6 +160,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     <div className="flex items-center gap-2">
                     <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700">
                         Number of Locations <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['number_of_locations']} />
                     </label>
                     </div>
                     <Select 
@@ -191,6 +191,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
 
                     <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700">
                         Location Name <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['location_name']} />
                     </label>
                     <Tooltip placement="topLeft" title="Enter the name of the location where the restaurant is located">
                             <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
