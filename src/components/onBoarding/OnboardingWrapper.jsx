@@ -6,7 +6,7 @@ import PrimaryBtn from "../buttons/Buttons";
 import LoadingSpinner from "../layout/LoadingSpinner";
 import { Checkbox, Alert } from "antd";
 import { FaArrowLeftLong } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import useStore from "../../store/store";
 import { message } from "antd";
 
@@ -14,6 +14,7 @@ import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [isChecking, setIsChecking] = useState(false);
     const { 
         checkOnboardingCompletion, 
@@ -136,7 +137,7 @@ const OnboardingWrapper = () => {
                                     navigate('/onboarding/sales-channels');
                                     break;
                                 case 'Expenses':
-                                    navigate('/onboarding/expenses');
+                                    navigate('/onboarding/expense');
                                     break;
                                 default:
                                     navigate('/onboarding/basic-information');
@@ -194,10 +195,7 @@ const OnboardingWrapper = () => {
 
     // Auto-navigate if onboarding status is already known
     useEffect(() => {
-        if (onboardingStatus === 'complete') {
-            console.log('✅ Onboarding already complete - redirecting to dashboard');
-            navigate('/dashboard/budget');
-        } else if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
+        if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
             console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
             
             // Welcome message logic for new users

@@ -114,10 +114,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
             {/* Form Fields */}
             <div className="space-y-6">
                 {/* Average Hourly Rate */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-
-                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700">
+                <div>
+                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700 mb-2">
                         What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['avg_hourly_rate']} />
                     </label>
@@ -146,7 +144,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 
                 {/* Labor Recording Method */}
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                         How would you like to record your labor?
                         <TooltipIcon text={tooltips['labor_record_method']} />
                     </label>
@@ -201,10 +199,6 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         Would you like to daily ticket count?
                         <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
-                    <Tooltip placement="topLeft"  title="Enable this option to record the number of tickets created each day.">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
 
                     <Select 
                         id="daily_ticket_count" 
@@ -219,16 +213,11 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Forward Previous Week Rate */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                    <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700">
+                <div>
+                    <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
                         Forward previous week's actual labor rate?
                         <TooltipIcon text={tooltips['forward_prev_week_rate']} />
                     </label>
-                    <Tooltip placement="topLeft" title="Enable this option to carry forward the previous week's actual labor rate.">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
                     <Select 
                         id="forward_prev_week_rate" 
                         placeholder="No" 

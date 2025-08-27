@@ -81,7 +81,7 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Simple logic: if onboarding is complete, allow access to all routes
+  // Logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
   // If onboarding is incomplete, only allow onboarding routes
   const isOnboardingPath = location.pathname.includes('onboarding');
   
@@ -89,13 +89,20 @@ const ProtectedRoutes = () => {
     isOnBoardingCompleted,
     currentPath: location.pathname,
     isOnboardingPath,
-    willAllowAccess: isOnBoardingCompleted || isOnboardingPath
+    willAllowAccess: !isOnBoardingCompleted || !isOnboardingPath
   });
   
   if (isOnBoardingCompleted) {
-    // User has completed onboarding - allow access to all routes
-    console.log('✅ Onboarding complete - allowing access to:', location.pathname);
-    return <Outlet />;
+    // User has completed onboarding
+    if (isOnboardingPath) {
+      // User is trying to access onboarding path - redirect to dashboard
+      console.log('🚫 Onboarding complete - blocking access to onboarding path:', location.pathname);
+      return <Navigate to="/dashboard/budget" replace />;
+    } else {
+      // User is on non-onboarding path - allow access
+      console.log('✅ Onboarding complete - allowing access to:', location.pathname);
+      return <Outlet />;
+    }
   } else {
     // User has not completed onboarding
     if (isOnboardingPath) {

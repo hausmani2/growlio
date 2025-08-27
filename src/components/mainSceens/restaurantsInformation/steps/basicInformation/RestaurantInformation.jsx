@@ -156,13 +156,13 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 </div>
                 
                 {/* Number of Locations */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                    <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700">
+                <div>
+
+                    <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700 mb-2">
                         Number of Locations <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['number_of_locations']} />
                     </label>
-                    </div>
+
                     <Select 
                         id="numberOfLocations" 
                         placeholder="Select Locations" 
@@ -186,17 +186,11 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 </div>
                 
                 {/* Location Name */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-
-                    <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700">
+                <div>
+                    <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700 mb-2">
                         Location Name <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['location_name']} />
                     </label>
-                    <Tooltip placement="topLeft" title="Enter the name of the location where the restaurant is located">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
-                    </div>
                     <Input 
                         type="text" 
                         id="locationName" 

@@ -154,7 +154,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Sales Channels <span className="text-red-500">*</span>
                     <TooltipIcon text={tooltips['sales_channels']} />
                 </label>

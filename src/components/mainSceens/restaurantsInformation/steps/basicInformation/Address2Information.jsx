@@ -48,9 +48,9 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* SQFT */}
-                <div className="flex flex-col gap-2">
+                <div>
 
-                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700">
+                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700 mb-2">
                         How many SQFT is your location? <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['sqft']} />
                     </label>
@@ -72,7 +72,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 
                 {/* Franchise */}
                 <div>
-                    <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2">
                         Is this location a franchise? <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['is_franchise']} />
                     </label>
@@ -95,12 +95,11 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
 
                 {/* Restaurant Type */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                    <label htmlFor="restaurantType" className="block text-sm font-semibold text-gray-700">
+                <div>
+                    <label htmlFor="restaurantType" className="block text-sm font-semibold text-gray-700 mb-2">
                         Restaurant Type <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['restaurant_type']} />
                     </label>
-                    </div>
                     <Select 
                         id="restaurantType" 
                         placeholder="Select Restaurant Type" 
@@ -127,12 +126,11 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 </div>
                 
                 {/* Menu Type */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                    <label htmlFor="menuType" className="block text-sm font-semibold text-gray-700">
+                <div>
+                    <label htmlFor="menuType" className="block text-sm font-semibold text-gray-700 mb-2">
                         Menu Type <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['menu_type']} />
                     </label>
-                    </div>
                     <Select 
                         id="menuType" 
                         placeholder="Select Menu Type" 
