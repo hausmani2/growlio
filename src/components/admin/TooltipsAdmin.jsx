@@ -16,6 +16,7 @@ const TooltipsAdmin = () => {
   const [pageFilter, setPageFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [selectedPage, setSelectedPage] = useState('onboarding-basic');
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -38,12 +39,15 @@ const TooltipsAdmin = () => {
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ page: pageFilter || 'onboarding-basic', is_active: true });
+    const defaultPage = pageFilter || 'onboarding-basic';
+    setSelectedPage(defaultPage);
+    form.setFieldsValue({ page: defaultPage, is_active: true });
     setIsModalOpen(true);
   };
 
   const openEdit = (record) => {
     setEditing(record);
+    setSelectedPage(record.page);
     form.setFieldsValue(record);
     setIsModalOpen(true);
   };
@@ -60,6 +64,7 @@ const TooltipsAdmin = () => {
       }
       setIsModalOpen(false);
       setEditing(null);
+      setSelectedPage('onboarding-basic');
       fetchData();
     } catch (e) {
       // validation or api error handled by antd or message above
@@ -73,6 +78,54 @@ const TooltipsAdmin = () => {
       fetchData();
     } catch (e) {
       message.error('Failed to delete tooltip');
+    }
+  };
+
+  const getKeyOptions = (page) => {
+    switch (page) {
+      case 'onboarding-basic':
+        return [
+          { label: 'Restaurant Name', value: 'restaurant_name' },
+          { label: 'Number of Locations', value: 'number_of_locations' },
+          { label: 'Location Name', value: 'location_name' },
+          { label: 'Restaurant Type', value: 'restaurant_type' },
+          { label: 'Menu Type', value: 'menu_type' },
+          { label: 'Address 1', value: 'address_1' },
+          { label: 'Address 2', value: 'address_2' },
+          { label: 'Country', value: 'country' },
+          { label: 'City', value: 'city' },
+          { label: 'State', value: 'state' },
+          { label: 'Zip Code', value: 'zip_code' },
+          { label: 'SQFT', value: 'sqft' },
+          { label: 'Is Franchise', value: 'is_franchise' },
+        ];
+      case 'onboarding-labor':
+        return [
+          { label: 'Labor Goal %', value: 'labour_goal' },
+          { label: 'Avg Hourly Rate', value: 'avg_hourly_rate' },
+          { label: 'Labor Record Method', value: 'labor_record_method' },
+          { label: 'Daily Ticket Count', value: 'daily_ticket_count' },
+          { label: 'Forward Prev Week Rate', value: 'forward_prev_week_rate' },
+        ];
+      case 'onboarding-food':
+        return [
+          { label: 'COGS Goal %', value: 'cogs_goal' },
+          { label: 'Delivery Days', value: 'delivery_days' },
+          { label: 'Hired Party Delivery', value: 'hired_party_delivery' },
+          { label: 'Third Party Delivery', value: 'third_party_delivery' },
+        ];
+      case 'onboarding-sales':
+        return [
+          { label: 'Sales Channels', value: 'sales_channels' },
+        ];
+      case 'onboarding-expense':
+        return [
+          { label: 'Fixed Costs', value: 'fixed_costs' },
+          { label: 'Variable Costs', value: 'variable_costs' },
+          { label: 'Total Expense', value: 'total_expense' },
+        ];
+      default:
+        return [];
     }
   };
 
@@ -94,6 +147,11 @@ const TooltipsAdmin = () => {
     }
   ];
 
+  console.log(" page", pages);
+  console.log(" pageFilter", pageFilter);
+  console.log(" selectedPage", selectedPage);
+  console.log(" keyOptions for selectedPage", getKeyOptions(selectedPage));
+  
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
@@ -115,69 +173,31 @@ const TooltipsAdmin = () => {
       </div>
       <Table rowKey="id" loading={loading} dataSource={items} columns={columns} />
 
-      <Modal
-        title={editing ? 'Edit Tooltip' : 'Create Tooltip'}
-        open={isModalOpen}
-        onOk={handleOk}
-        onCancel={() => setIsModalOpen(false)}
-        okText={editing ? 'Save' : 'Create'}
-      >
+              <Modal
+          title={editing ? 'Edit Tooltip' : 'Create Tooltip'}
+          open={isModalOpen}
+          onOk={handleOk}
+          onCancel={() => {
+            setIsModalOpen(false);
+            setEditing(null);
+            setSelectedPage('onboarding-basic');
+          }}
+          okText={editing ? 'Save' : 'Create'}
+        >
         <Form layout="vertical" form={form} initialValues={{ is_active: true }}>
           <Form.Item name="page" label="Page" rules={[{ required: true }]}>
-            <Select options={pages} onChange={(val) => form.setFieldsValue({ page: val, key: undefined })} />
+            <Select 
+              options={pages} 
+              onChange={(val) => {
+                setSelectedPage(val);
+                form.setFieldsValue({ page: val, key: undefined });
+              }} 
+            />
           </Form.Item>
           <Form.Item name="key" label="Key" rules={[{ required: true }]}>
             <Select
               placeholder="Select a key"
-              options={(() => {
-                const page = form.getFieldValue('page');
-                if (page === 'onboarding-basic') {
-                  return [
-                    { label: 'Restaurant Name', value: 'restaurant_name' },
-                    { label: 'Number of Locations', value: 'number_of_locations' },
-                    { label: 'Location Name', value: 'location_name' },
-                    { label: 'Restaurant Type', value: 'restaurant_type' },
-                    { label: 'Menu Type', value: 'menu_type' },
-                    { label: 'Address 1', value: 'address_1' },
-                    { label: 'Country', value: 'country' },
-                    { label: 'State', value: 'state' },
-                    { label: 'Zip Code', value: 'zip_code' },
-                    { label: 'SQFT', value: 'sqft' },
-                    { label: 'Is Franchise', value: 'is_franchise' },
-                  ];
-                }
-                if (page === 'onboarding-labor') {
-                  return [
-                    { label: 'Labor Goal %', value: 'labour_goal' },
-                    { label: 'Avg Hourly Rate', value: 'avg_hourly_rate' },
-                    { label: 'Labor Record Method', value: 'labor_record_method' },
-                    { label: 'Daily Ticket Count', value: 'daily_ticket_count' },
-                    { label: 'Forward Prev Week Rate', value: 'forward_prev_week_rate' },
-                  ];
-                }
-                if (page === 'onboarding-food') {
-                  return [
-                    { label: 'COGS Goal %', value: 'cogs_goal' },
-                    { label: 'Delivery Days', value: 'delivery_days' },
-                    { label: 'Hired Party Delivery', value: 'hired_party_delivery' },
-                    { label: 'Third Party Delivery', value: 'third_party_delivery' },
-                  ];
-                }
-                if (page === 'onboarding-sales') {
-                  return [
-                    { label: 'Sales Channels', value: 'sales_channels' },
-                  ];
-                }
-                if (page === 'onboarding-expense') {
-                  return [
-                    { label: 'Fixed Costs', value: 'fixed_costs' },
-                    { label: 'Variable Costs Description', value: 'variable_costs_description' },
-                    { label: 'Variable Costs', value: 'variable_costs' },
-                    { label: 'Add Variable Cost', value: 'add_variable_cost' },
-                  ];
-                }
-                return [];
-              })()}
+              options={getKeyOptions(selectedPage)}
             />
           </Form.Item>
           <Form.Item name="text" label="Text" rules={[{ required: true }]}> 

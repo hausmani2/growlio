@@ -3,8 +3,7 @@ import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
-import { Tooltip } from "antd";
-import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);

@@ -85,7 +85,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                             <span className="font-medium">Zone Guidelines:</span><br/>
                             <span className="text-green-600">🟢 Green Zone (Goal): 31%</span> | 
                             <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 33%</span> | 
-                            <span className="text-red-600">🔴 Red Zone (Danger): 36%</span>
+                            <span className="text-red-600">🔴 Red Zone (Danger): 34%</span>
                         </div>
                     </div>
                 </div>

@@ -3,13 +3,14 @@ import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryBtn from "../../../../buttons/Buttons";
 import { useTabHook } from "../../useTabHook";
 import { useLocation } from 'react-router-dom';
-import { Tooltip } from "antd";
-import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+import TooltipIcon from "../../../../common/TooltipIcon";
+import useTooltips from "../../../../../utils/useTooltips";
 
 
 const TotalExpense = ({ data,  onSave }) => {
     const location = useLocation();
     const { handleTabClick } = useTabHook();
+    const tooltips = useTooltips('onboarding-expense');
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -53,9 +54,7 @@ const TotalExpense = ({ data,  onSave }) => {
                         <label className="text-base font-semibold text-gray-700">
                             Total Expenses:
                         </label>
-                        <Tooltip placement="topLeft" title="Your total expenses are calculated by adding your variable and fixed costs.">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
+                        <TooltipIcon text={tooltips['total_expense']} />
                     </div>
                     <span className="text-2xl font-bold text-gray-900">
                         ${totalExpenses}

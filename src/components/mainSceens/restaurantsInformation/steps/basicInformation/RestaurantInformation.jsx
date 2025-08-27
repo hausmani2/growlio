@@ -106,7 +106,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 {/* Restaurant Name */}
                 <div>
                     <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Restaurant Name <span className="text-red-500">*</span>
+                        Company Name <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips["restaurant_name"]} />
                     </label>
                     <div className="relative">

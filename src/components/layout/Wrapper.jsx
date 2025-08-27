@@ -80,7 +80,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'expense',
           icon: <SiExpensify  />,
-          label: 'Expense',
+          label: 'Expenses',
           onClick: () => navigate('/dashboard/expense'),
         },
       ],
