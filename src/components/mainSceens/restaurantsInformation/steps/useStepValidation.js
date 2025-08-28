@@ -211,40 +211,56 @@ const useStepValidation = () => {
             
             if (data.providers && data.providers.length > 0) {
                 let hasValidProvider = false;
+                let hasPartialProvider = false;
                 
                 data.providers.forEach((provider, index) => {
                     console.log(`Validating provider ${index + 1}:`, provider);
                     
-                    if (!provider.providerName?.trim()) {
-                        errors[`provider_${index}_name`] = "Provider name is required";
-                        console.log(`❌ Provider ${index + 1} name validation failed`);
-                    } else {
-                        console.log(`✅ Provider ${index + 1} name validation passed: "${provider.providerName}"`);
-                    }
+                    // Check if this provider has any data entered (partial or complete)
+                    const hasName = provider.providerName?.trim();
+                    const hasFee = provider.providerFee && provider.providerFee !== '';
                     
-                    if (!provider.providerFee || provider.providerFee === '') {
-                        errors[`provider_${index}_fee`] = "Provider fee is required";
-                        console.log(`❌ Provider ${index + 1} fee validation failed: missing`);
-                    } else if (isNaN(provider.providerFee) || parseFloat(provider.providerFee) < 1 || parseFloat(provider.providerFee) > 50) {
-                        errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
-                        console.log(`❌ Provider ${index + 1} fee validation failed: invalid range`);
+                    // If provider has any data, validate both fields
+                    if (hasName || hasFee) {
+                        hasPartialProvider = true;
+                        
+                        if (!hasName) {
+                            errors[`provider_${index}_name`] = "Provider name is required";
+                            console.log(`❌ Provider ${index + 1} name validation failed`);
+                        } else {
+                            console.log(`✅ Provider ${index + 1} name validation passed: "${provider.providerName}"`);
+                        }
+                        
+                        if (!hasFee) {
+                            errors[`provider_${index}_fee`] = "Provider fee is required";
+                            console.log(`❌ Provider ${index + 1} fee validation failed: missing`);
+                        } else if (isNaN(provider.providerFee) || parseInt(provider.providerFee) < 1 || parseInt(provider.providerFee) > 50) {
+                            errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
+                            console.log(`❌ Provider ${index + 1} fee validation failed: invalid range`);
+                        } else {
+                            console.log(`✅ Provider ${index + 1} fee validation passed: ${parseInt(provider.providerFee)}%`);
+                        }
+                        
+                        // Check if this provider has complete data
+                        if (hasName && hasFee && !isNaN(provider.providerFee) && parseInt(provider.providerFee) >= 1 && parseInt(provider.providerFee) <= 50) {
+                            hasValidProvider = true;
+                            console.log(`✅ Provider ${index + 1} has complete data`);
+                        } else {
+                            console.log(`❌ Provider ${index + 1} has incomplete data`);
+                        }
                     } else {
-                        console.log(`✅ Provider ${index + 1} fee validation passed: ${provider.providerFee}%`);
-                    }
-                    
-                    // Check if this provider has complete data
-                    if (provider.providerName?.trim() && provider.providerFee && !isNaN(provider.providerFee) && parseFloat(provider.providerFee) >= 1 && parseFloat(provider.providerFee) <= 50) {
-                        hasValidProvider = true;
-                        console.log(`✅ Provider ${index + 1} has complete data`);
-                    } else {
-                        console.log(`❌ Provider ${index + 1} has incomplete data`);
+                        console.log(`⏭️ Provider ${index + 1} is empty - skipping validation`);
                     }
                 });
                 
-                // If no provider has complete data, show a general error
-                if (!hasValidProvider) {
+                // If there are partial providers but no complete ones, show a general error
+                if (hasPartialProvider && !hasValidProvider) {
                     errors.providers = "Please add at least one third-party provider with complete information";
-                    console.log("❌ Third party providers validation failed: no complete providers");
+                    console.log("❌ Third party providers validation failed: partial providers but no complete ones");
+                } else if (!hasPartialProvider) {
+                    // If no providers have any data at all, show a different error
+                    errors.providers = "Please add at least one third-party provider";
+                    console.log("❌ Third party providers validation failed: no providers added");
                 } else {
                     console.log("✅ Third party providers validation passed: at least one complete provider found");
                 }

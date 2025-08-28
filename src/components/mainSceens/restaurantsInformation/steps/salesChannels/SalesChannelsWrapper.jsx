@@ -80,13 +80,32 @@ const SalesChannelsWrapperContent = () => {
             console.log("📅 Final selectedDays state:", selectedDays);
             setSalesChannelsData(prev => {
                 console.log("🔄 Previous state:", prev);
+                
+                // Process providers data to ensure proper format and IDs
+                let processedProviders = [];
+                if (data.providers && Array.isArray(data.providers)) {
+                    processedProviders = data.providers.map((provider, index) => {
+                        // Ensure provider fee is an integer
+                        let providerFee = provider.provider_fee || provider.providerFee || '';
+                        if (providerFee && !isNaN(providerFee)) {
+                            providerFee = parseInt(providerFee, 10).toString();
+                        }
+                        
+                        return {
+                            id: provider.id || Date.now() + index + Math.random(), // Ensure unique ID
+                            providerName: provider.provider_name || provider.providerName || '',
+                            providerFee: providerFee
+                        };
+                    });
+                }
+                
                 const newState = {
                     ...prev,
                     in_store: data.in_store || true,
                     online: data.online || false,
                     from_app: data.from_app || false,
                     third_party: data.third_party || false,
-                    providers: data.providers || [],
+                    providers: processedProviders,
                     selectedDays: selectedDays
                 };
                 console.log("🔄 New state:", newState);
@@ -175,7 +194,7 @@ const SalesChannelsWrapperContent = () => {
                     .filter(provider => provider.providerName && provider.providerFee) // Only include providers with both name and fee
                     .map(provider => ({
                         provider_name: provider.providerName,
-                        provider_fee: provider.providerFee
+                        provider_fee: parseInt(provider.providerFee, 10) // Ensure it's sent as integer
                     }));
                 
                 if (providersForAPI.length > 0) {
