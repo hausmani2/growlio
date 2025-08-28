@@ -196,7 +196,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 {/* Daily Ticket Count */}
                 <div>
                     <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Would you like to daily ticket count?
+                    Would you like to enter your daily ticket count?
                         <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
 
@@ -207,7 +207,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         value={data.daily_ticket_count}
                         onChange={(value) => updateData('daily_ticket_count', value)}
                     >
-                        <Select.Option value="1">Yes</Select.Option>
+                        <Select.Option value="1">Yes (recommended)</Select.Option>
                         <Select.Option value="2">No</Select.Option>
                     </Select>                
                 </div>
