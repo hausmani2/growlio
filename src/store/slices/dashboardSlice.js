@@ -68,18 +68,17 @@ const createDashboardSlice = (set, get) => {
         // Fetch dashboard data with caching
         fetchDashboardData: async (weekStart = null) => {
             try {
-                console.log('🚀 fetchDashboardData called with weekStart:', weekStart);
                 set({ loading: true, error: null });
                 
                 // Get restaurant ID
                 const restaurantId = await get().fetchRestaurantId();
-                console.log('🚀 Restaurant ID:', restaurantId);
+                
                 
                 if (!restaurantId) {
                     // Don't throw error - just set loading to false and return
                     // This is expected for new users who haven't completed onboarding
                     set({ loading: false, error: null });
-                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                    
                     return null;
                 }
                 
@@ -96,9 +95,9 @@ const createDashboardSlice = (set, get) => {
                     url += `?${queryString}`;
                 }
                 
-                console.log('🚀 Making API call to:', url);
+                
                 const response = await apiGet(url);
-                console.log('🚀 API response:', response.data);
+                
                 
                 set({ 
                     dashboardData: response.data, 
@@ -120,15 +119,10 @@ const createDashboardSlice = (set, get) => {
         // Check if data needs to be refreshed
         shouldRefreshData: (weekStart) => {
             const { lastFetchedDate, dashboardData } = get();
-            console.log('🔍 shouldRefreshData debug:', {
-                weekStart,
-                lastFetchedDate,
-                hasDashboardData: !!dashboardData,
-                dashboardDataKeys: dashboardData ? Object.keys(dashboardData) : null
-            });
+            
             
             if (!dashboardData || !lastFetchedDate) {
-                console.log('✅ Should refresh: No cached data available');
+                
                 return true;
             }
             
@@ -147,26 +141,18 @@ const createDashboardSlice = (set, get) => {
                 
                 const shouldRefresh = lastFetchedWeek !== requestedWeek || lastFetchedYear !== requestedYear;
                 
-                console.log('🔍 Week comparison:', {
-                    lastFetchedDate: lastFetchedDateObj.format('YYYY-MM-DD'),
-                    lastFetchedWeek,
-                    lastFetchedYear,
-                    requestedDate: requestedDateObj.format('YYYY-MM-DD'),
-                    requestedWeek,
-                    requestedYear,
-                    shouldRefresh
-                });
+                
                 
                 return shouldRefresh;
             }
             
-            console.log('✅ Should refresh: No weekStart provided');
+            
             return false;
         },
 
         // Fetch data only if needed
         fetchDashboardDataIfNeeded: async (weekStart = null) => {
-            console.log('🔄 fetchDashboardDataIfNeeded called with:', weekStart);
+            
             
             // Force refresh for current week to ensure we always get the latest data
             const currentDate = dayjs();
@@ -175,27 +161,23 @@ const createDashboardSlice = (set, get) => {
                                  requestedDate.week() === currentDate.week() && 
                                  requestedDate.year() === currentDate.year();
             
-            console.log('🔄 Current week check:', {
-                isCurrentWeek,
-                currentDate: currentDate.format('YYYY-MM-DD'),
-                requestedDate: requestedDate ? requestedDate.format('YYYY-MM-DD') : null
-            });
+            
             
             // Always fetch fresh data for current week
             if (isCurrentWeek) {
-                console.log('🔄 Force refreshing data for current week...');
+                
                 return await get().fetchDashboardData(weekStart);
             }
             
             const shouldRefresh = get().shouldRefreshData(weekStart);
-            console.log('🔄 Should refresh data:', shouldRefresh);
+
             
             if (shouldRefresh) {
-                console.log('🔄 Fetching fresh dashboard data...');
+                
                 return await get().fetchDashboardData(weekStart);
             }
             
-            console.log('🔄 Using cached dashboard data');
+            
             return get().dashboardData;
         },
 
@@ -210,7 +192,7 @@ const createDashboardSlice = (set, get) => {
                     // Don't throw error - just set loading to false and return
                     // This is expected for new users who haven't completed onboarding
                     set({ loading: false, error: null });
-                    console.log('ℹ️ No restaurant ID available for goals - user needs to complete onboarding first');
+                    
                     return null;
                 }
                 
@@ -359,7 +341,7 @@ const createDashboardSlice = (set, get) => {
                     const restaurantId = await get().fetchRestaurantId();
                     
                     if (!restaurantId) {
-                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+                        
                         set({ loading: false, error: null });
                         return null;
                     }
@@ -387,7 +369,7 @@ const createDashboardSlice = (set, get) => {
                 const restaurantId = await get().fetchRestaurantId();
 
                 if (!restaurantId) {
-                    console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
+
                     set({ loading: false, error: null });
                     return null;
                 }
@@ -402,7 +384,7 @@ const createDashboardSlice = (set, get) => {
                     }
                 } catch (fetchError) {
                     // If no existing data, that's fine - we'll create new
-                    console.log('No existing data found, creating new dashboard entry:', fetchError.message);
+                    
                 }
 
                 // Check if this is a sales-only payload (has sales_budget at root level)
@@ -638,19 +620,19 @@ const createDashboardSlice = (set, get) => {
                 const state = get();
                 const storeRestaurantId = state.restaurantId;
                 
-                console.log('🔍 fetchRestaurantId - storeRestaurantId:', storeRestaurantId);
+                
                 
                 if (storeRestaurantId) {
-                    console.log('✅ Using restaurant ID from store:', storeRestaurantId);
+                    
                     return storeRestaurantId;
                 }
                 
                 // Try localStorage as fallback
                 const localRestaurantId = localStorage.getItem('restaurant_id');
-                console.log('🔍 fetchRestaurantId - localRestaurantId:', localRestaurantId);
+                
                 
                 if (localRestaurantId) {
-                    console.log('✅ Using restaurant ID from localStorage:', localRestaurantId);
+                    
                     set({ restaurantId: localRestaurantId });
                     return localRestaurantId;
                 }
@@ -660,18 +642,17 @@ const createDashboardSlice = (set, get) => {
                     const onboardingState = get();
                     if (onboardingState.completeOnboardingData?.restaurant_id) {
                         const onboardingRestaurantId = onboardingState.completeOnboardingData.restaurant_id;
-                        console.log('✅ Using restaurant ID from onboarding data:', onboardingRestaurantId);
+                        
                         set({ restaurantId: onboardingRestaurantId });
                         localStorage.setItem('restaurant_id', onboardingRestaurantId.toString());
                         return onboardingRestaurantId;
                     }
                 } catch (error) {
-                    console.log('⚠️ Could not get restaurant ID from onboarding data:', error);
                 }
                 
                 // If no restaurant ID found, this means the user is new and hasn't completed onboarding
                 // Don't make API calls - just return null and let the onboarding flow handle it
-                console.log('ℹ️ No restaurant ID found - user needs to complete onboarding first');
+                
                 return null;
             } catch (error) {
                 console.error('❌ Error in fetchRestaurantId:', error);
@@ -685,10 +666,10 @@ const createDashboardSlice = (set, get) => {
         // Manually set restaurant ID and save to localStorage
         setRestaurantIdAndPersist: (id) => {
             if (id) {
-                console.log('🔧 Manually setting restaurant ID:', id);
+                
                 set({ restaurantId: id });
                 localStorage.setItem('restaurant_id', id.toString());
-                console.log('✅ Restaurant ID saved to localStorage:', id);
+                
             }
         },
         
@@ -698,18 +679,15 @@ const createDashboardSlice = (set, get) => {
             const storeRestaurantId = state.restaurantId;
             const localRestaurantId = localStorage.getItem('restaurant_id');
             
-            console.log('🔍 Restaurant ID Debug Info:');
-            console.log('  - Store restaurantId:', storeRestaurantId);
-            console.log('  - localStorage restaurant_id:', localRestaurantId);
-            console.log('  - Store state keys:', Object.keys(state));
+            
             
             // Check onboarding slice if available
             try {
                 if (state.completeOnboardingData?.restaurant_id) {
-                    console.log('  - Onboarding data restaurant_id:', state.completeOnboardingData.restaurant_id);
+                    
                 }
             } catch (error) {
-                console.log('  - Could not access onboarding data');
+                
             }
             
             return {

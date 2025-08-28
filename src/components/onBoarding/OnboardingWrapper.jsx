@@ -34,11 +34,10 @@ const OnboardingWrapper = () => {
         setIsChecking(true);
         
         try {
-            console.log("📋 User clicking Continue - checking onboarding status...");
             
             // For new users, we can skip the API call and go directly to basic information
             if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
-                console.log('✅ New user detected - proceeding directly to Basic Information');
+                
                 message.success("Welcome! Let's set up your restaurant.");
                 navigate('/onboarding/basic-information');
                 return;
@@ -49,17 +48,17 @@ const OnboardingWrapper = () => {
             
             if (onboardingStatus === 'loading') {
                 // Wait for the existing check to complete
-                console.log('⏳ Waiting for existing onboarding status check...');
+                
                 message.info("Please wait while we check your status...");
                 return;
             }
             
             // Use cached status from store
-            console.log('✅ Using cached onboarding status from store');
+            
             
             // Check if we already have onboarding data in the store
             if (isOnBoardingCompleted !== undefined) {
-                console.log('✅ Using existing onboarding status from store');
+                
                 onboardingData = {
                     success: true,
                     isComplete: isOnBoardingCompleted,
@@ -67,22 +66,22 @@ const OnboardingWrapper = () => {
                 };
             } else if (onboardingLoading) {
                 // If loading is in progress, wait for it to complete
-                console.log('⏳ Onboarding check in progress, waiting...');
+                
                 message.info("Please wait while we check your status...");
                 return;
             } else {
                 // Only make API call if we don't have the data and not loading
-                console.log('🔄 Making API call to check onboarding status');
+                
                 const result = await checkOnboardingCompletion();
                 onboardingData = result;
             }
             
-            console.log('Onboarding Status Check - Raw data:', onboardingData);
+            
             
             // Check if user has no restaurants (new user)
             if (onboardingData && onboardingData.message === "No restaurants found for this user." && 
                 (!onboardingData.restaurants || onboardingData.restaurants.length === 0)) {
-                console.log('✅ New user with no restaurants - redirecting to Basic Information');
+                
                 message.success("Welcome! Let's set up your restaurant.");
                 navigate('/onboarding/basic-information');
                 return;
@@ -96,33 +95,33 @@ const OnboardingWrapper = () => {
                 );
                 
                 if (hasCompletedOnboarding) {
-                    console.log('✅ User has restaurants with completed onboarding - redirecting to dashboard');
+                    
                     message.success("Welcome back! Redirecting to your dashboard...");
                     setTimeout(() => {
                         navigate('/dashboard/budget');
                     }, 1000);
                     return;
                 } else {
-                    console.log('⚠️ User has restaurants but onboarding is not complete - loading existing data');
+                    
                     message.info("Loading your existing setup...");
                     
                     // Load existing onboarding data from API
                     const result = await loadExistingOnboardingData();
                     
                     if (result.success) {
-                        console.log('✅ Successfully loaded existing onboarding data');
+                        
                         
                         // Determine which step to navigate to based on incomplete steps
                         const { incompleteSteps } = result;
                         
                         if (incompleteSteps.length === 0) {
                             // All steps are complete, go to completion page
-                            console.log('🎉 All steps are complete - navigating to completion page');
+
                             navigate('/onboarding/complete');
                         } else {
                             // Navigate to the first incomplete step
                             const firstIncompleteStep = incompleteSteps[0];
-                            console.log('🔄 Navigating to first incomplete step:', firstIncompleteStep);
+                            
                             
                             switch (firstIncompleteStep) {
                                 case 'Basic Information':
@@ -145,14 +144,14 @@ const OnboardingWrapper = () => {
                             }
                         }
                     } else {
-                        console.log('⚠️ Failed to load existing data, starting fresh');
+                        
                         message.warning("Couldn't load your existing data. Starting fresh setup.");
                         navigate('/onboarding/basic-information');
                     }
                 }
             } else {
                 // Fallback - no restaurants found
-                console.log('🆕 No restaurants found - starting fresh onboarding');
+                
                 message.info("Welcome! Let's set up your restaurant.");
                 navigate('/onboarding/basic-information');
             }
@@ -178,11 +177,11 @@ const OnboardingWrapper = () => {
             
             // For certain errors, we can still proceed to onboarding
             if (error.response?.status === 404 || error.message === 'Request timeout') {
-                console.log('Proceeding to Basic Information despite error');
+                
                 navigate('/onboarding/basic-information');
             } else {
                 // For other errors, stay on current page and let user retry
-                console.log('Staying on current page due to error');
+                
             }
         } finally {
             setIsChecking(false);
@@ -201,14 +200,14 @@ const OnboardingWrapper = () => {
     // Auto-navigate if onboarding status is already known
     useEffect(() => {
         if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
-            console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
+            
             
             // Welcome message logic for new users
             if (isNewUser) {
-                console.log('🆕 New user detected - showing welcome message');
+                
                 message.info("Welcome! Let's set up your restaurant.");
             } else {
-                console.log('📝 Existing user with incomplete onboarding - no welcome message needed');
+                
             }
         }
     }, [onboardingStatus, isNewUser, navigate]);
@@ -217,7 +216,7 @@ const OnboardingWrapper = () => {
     useEffect(() => {
         if (onboardingLoading) {
             const timer = setTimeout(() => {
-                console.log('⚠️ Loading state stuck for 10 seconds, auto-resetting...');
+                
                 forceResetOnboardingLoading();
             }, 10000);
             

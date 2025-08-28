@@ -101,8 +101,7 @@ const ExpenseWrapperContent = () => {
                 }
             }
         } else {
-            console.log("No expense data found in completeOnboardingData");
-            console.log("Available keys:", Object.keys(completeOnboardingData));
+
         }
     }, [completeOnboardingData]);
 
@@ -183,15 +182,6 @@ const ExpenseWrapperContent = () => {
             return sum + parseFloat(field.value || 0);
         }, 0);
 
-        // Debug logging
-        console.log('ExpenseWrapper Debug:', {
-            dynamicFixedFields: expenseData.dynamicFixedFields,
-            dynamicVariableFields: expenseData.dynamicVariableFields,
-            currentTotalFixed: expenseData.totalFixedCost,
-            currentTotalVariable: expenseData.totalVariableCost,
-            calculatedTotalFixed: totalFixed,
-            calculatedTotalVariable: totalVariable
-        });
 
         // Update totals if they've changed
         if (parseFloat(expenseData.totalFixedCost) !== totalFixed) {

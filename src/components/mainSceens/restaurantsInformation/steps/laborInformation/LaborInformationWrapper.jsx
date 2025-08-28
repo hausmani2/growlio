@@ -30,15 +30,10 @@ const LaborInformationWrapperContent = () => {
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
-        console.log('LaborInformationWrapper - completeOnboardingData:', completeOnboardingData);
         const labourInfoData = completeOnboardingData["Labor Information"];
-        console.log('LaborInformationWrapper - labourInfoData:', labourInfoData);
         
         if (labourInfoData && labourInfoData.data) {
             const data = labourInfoData.data;
-            console.log('LaborInformationWrapper - data:', data);
-            console.log('LaborInformationWrapper - data.goal:', data.goal);
-            console.log('LaborInformationWrapper - data.labour_goal:', data.labour_goal);
 
             setLaborData(prev => ({
                 ...prev,
@@ -53,7 +48,6 @@ const LaborInformationWrapperContent = () => {
 
     // Monitor laborData changes
     useEffect(() => {
-        console.log('LaborInformationWrapper - laborData changed:', laborData);
     }, [laborData]);
 
     // Clear error when component mounts
@@ -79,30 +73,22 @@ const LaborInformationWrapperContent = () => {
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
-            console.log("=== Labor Information Save & Continue ===");
-            console.log("Current laborData:", laborData);
 
             // Step 1: Validate form
             const validationResult = validateStep('Labor Information', laborData);
-            console.log("Validation result:", validationResult);
-            console.log("Validation passed:", validationResult);
 
             if (!validationResult) {
-                console.log("Validation failed with errors:", validationErrors);
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
             }
 
             // Additional check for labour_goal
             if (!laborData.labour_goal || laborData.labour_goal.trim() === '') {
-                console.log("❌ labour_goal is empty or missing");
                 message.error("Please select a labor goal percentage");
                 return { success: false, error: "Labor goal is required" };
             }
 
             // Step 2: Prepare data for API
-            console.log("Current laborData.labour_goal:", laborData.labour_goal);
-            console.log("Current laborData.labour_goal type:", typeof laborData.labour_goal);
             
             const stepData = {
                 labour_goal: laborData.labour_goal,
@@ -114,32 +100,20 @@ const LaborInformationWrapperContent = () => {
                 forward_previous_week_rate: laborData.forward_prev_week_rate === "2"
             };
 
-            console.log("Prepared stepData for API:", stepData);
-
             // Step 3: Call API through Zustand store with success callback
-            console.log("Calling submitStepData...");
             const result = await submitStepData("Labor Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
-                console.log("✅ Labor Information saved successfully");
-
-                // Check if restaurant_id was returned and log it
-                if (responseData && responseData.restaurant_id) {
-                    console.log("✅ Restaurant ID received:", responseData.restaurant_id);
-                }
 
                 // Step 4: Handle navigation based on mode
                 if (isUpdateMode) {
                     // In update mode, stay on the same page or go to dashboard
-                    console.log("🔄 Update mode - staying on current page");
                     message.success("Labor information updated successfully!");
                 } else {
                     // In onboarding mode, navigate to next step
-                    console.log("🔄 Onboarding mode - navigating to next step");
                     message.success("Labor information saved successfully!");
                     navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
-            console.log("submitStepData result:", result);
 
             // Step 4: Handle success
             if (result.success) {

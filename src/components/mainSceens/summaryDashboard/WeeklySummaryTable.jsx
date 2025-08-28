@@ -84,7 +84,6 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
       return;
     }
 
-    console.log('WeeklySummaryTable: Processing weekly data:', entries);
 
     // Process the data - Same structure as SummaryTableDashboard
     const processed = {
@@ -108,7 +107,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
       processed.profit_loss[weekKey] = parseNumericValue(entry.profit_loss);
     });
 
-    console.log('WeeklySummaryTable: Processed data:', processed);
+    
     
     setProcessedData(processed);
     setTableData(entries);

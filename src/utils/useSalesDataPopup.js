@@ -10,7 +10,6 @@ const useSalesDataPopup = () => {
     try {
       setIsLoading(true);
       const response = await api.get('/authentication/sales-data-popup/');
-      console.log('Popup API response:', response.data);
       setShouldShowPopup(response.data.should_show);
     } catch (err) {
       console.error('Error checking popup status:', err);
@@ -24,9 +23,9 @@ const useSalesDataPopup = () => {
   // Mark popup as shown today
   const markPopupAsShown = async () => {
     try {
-      console.log('Marking popup as shown...');
+      
       await api.post('/authentication/sales-data-popup/');
-      console.log('Popup marked as shown successfully');
+      
       setShouldShowPopup(false);
     } catch (err) {
       console.error('Error marking popup as shown:', err);
@@ -37,7 +36,7 @@ const useSalesDataPopup = () => {
 
   // Check popup status when component mounts
   useEffect(() => {
-    console.log('useSalesDataPopup: Component mounted, checking popup status...');
+    
     checkPopupStatus();
   }, []);
 

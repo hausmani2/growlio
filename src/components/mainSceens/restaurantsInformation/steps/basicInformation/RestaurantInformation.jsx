@@ -25,11 +25,9 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     
     // Initialize local state with data when component mounts or data changes
     useEffect(() => {
-        console.log("🔍 RestaurantInformation received data:", data);
-        console.log("🔍 Restaurant name in data:", data.restaurantName);
+
         if (data.restaurantName) {
             setLocalRestaurantName(data.restaurantName);
-            console.log("✅ Local restaurant name set to:", data.restaurantName);
         }
     }, [data.restaurantName]);
     const [debounceTimer, setDebounceTimer] = useState(null);
@@ -119,13 +117,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                             } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                             value={(() => {
                                 const displayValue = isUpdateMode || isBasicInfoCompleted ? (data.restaurantName || "") : localRestaurantName;
-                                console.log("🔍 Restaurant name display value:", {
-                                    isUpdateMode,
-                                    isBasicInfoCompleted,
-                                    dataRestaurantName: data.restaurantName,
-                                    localRestaurantName,
-                                    finalValue: displayValue
-                                });
+                                
                                 return displayValue;
                             })()}
                             onChange={(e) => handleRestaurantNameChange(e.target.value)}

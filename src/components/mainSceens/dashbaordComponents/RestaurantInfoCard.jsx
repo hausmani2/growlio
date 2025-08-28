@@ -26,7 +26,6 @@ const RestaurantInfoCard = () => {
             
             // If no data found, that's okay - just show empty state
             if (!result.success && result.message.includes('No onboarding data found')) {
-                console.log('ℹ️ No onboarding data available - showing empty state');
                 setError(null);
             }
         } catch (error) {

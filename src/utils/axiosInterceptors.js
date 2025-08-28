@@ -18,13 +18,11 @@ import useStore from '../store/store';
  * when creating an account in the same browser.
  */
 export const clearStoreAndRedirectToLogin = () => {
-  console.log('🔐 Token expired - clearing all store data and redirecting to login...');
   
   // Get the store instance and clear all persisted state
   const store = useStore.getState();
   if (store.clearPersistedState) {
     store.clearPersistedState();
-    console.log('✅ Store data cleared successfully');
   } else {
     console.warn('⚠️ clearPersistedState function not found in store');
   }
@@ -33,18 +31,13 @@ export const clearStoreAndRedirectToLogin = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('restaurant_id');
   localStorage.removeItem('growlio-store');
-  console.log('✅ LocalStorage cleared');
   
   // Clear sessionStorage
   sessionStorage.clear();
-  console.log('✅ SessionStorage cleared');
   
   // Redirect to login page if not already there
   if (window.location.pathname !== '/login') {
-    console.log('🔄 Redirecting to login page...');
     window.location.href = '/login';
-  } else {
-    console.log('ℹ️ Already on login page');
   }
 };
 

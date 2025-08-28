@@ -14,17 +14,17 @@ const RestaurantIdDebug = () => {
   } = useStore();
 
   const runDebug = () => {
-    console.log('🔍 Running restaurant ID debug...');
+    
     const info = debugRestaurantId();
     setDebugInfo(info);
-    console.log('Debug info:', info);
+    
   };
 
   const testOnboardingCheck = async () => {
     try {
-      console.log('🔄 Testing onboarding completion check...');
+      
       const result = await checkOnboardingCompletion();
-      console.log('Onboarding check result:', result);
+      
       alert(`Onboarding check result: ${JSON.stringify(result, null, 2)}`);
     } catch (error) {
       console.error('Onboarding check error:', error);
@@ -34,7 +34,7 @@ const RestaurantIdDebug = () => {
 
   const clearRestaurantId = () => {
     localStorage.removeItem('restaurant_id');
-    console.log('🗑️ Cleared restaurant_id from localStorage');
+    
     runDebug();
   };
 

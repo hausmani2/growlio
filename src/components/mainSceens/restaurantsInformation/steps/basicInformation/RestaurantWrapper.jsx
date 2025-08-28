@@ -74,15 +74,12 @@ const RestaurantWrapperContent = () => {
             const data = basicInfoData.data;
             
             // Load restaurant data
-            console.log("🔍 Loading restaurant data:", data.restaurant_name);
             if (data.restaurant_name) {
                 setRestaurantData(prev => ({
                     ...prev,
                     restaurantName: data.restaurant_name
                 }));
-                console.log("✅ Restaurant name set to:", data.restaurant_name);
             } else {
-                console.log("❌ No restaurant_name found in API data");
             }
             
             if (data.number_of_locations) {
@@ -124,7 +121,6 @@ const RestaurantWrapperContent = () => {
                     restaurantType: data.restaurant_type
                 }));
             } else {
-                console.log("❌ restaurant_type is missing from API data");
             }
             
             if (data.menu_type) {
@@ -133,10 +129,8 @@ const RestaurantWrapperContent = () => {
                     menuType: data.menu_type
                 }));
             } else {
-                console.log("❌ menu_type is missing from API data");
             }
         } else {
-            console.log("❌ No Basic Information data found in completeOnboardingData");
         }
     }, [completeOnboardingData]);
 
@@ -236,7 +230,6 @@ const RestaurantWrapperContent = () => {
             }
             
             // Step 3: Call API through Zustand store with success callback
-            console.log("Calling submitStepData...");
             const result = await submitStepData("Basic Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
                 

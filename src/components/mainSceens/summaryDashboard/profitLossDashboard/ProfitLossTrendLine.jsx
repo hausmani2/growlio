@@ -60,7 +60,6 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     const entries = Array.isArray(dashboardData?.data) ? dashboardData.data : [];
     
     if (entries.length === 0) {
-      console.log('ProfitLossTrendLine: No entries found in dashboardData');
       return { labels: [], dataset: [] };
     }
 
@@ -68,15 +67,7 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     const isWeekly = isWeeklyData(entries);
     const isMonthly = isMonthlyData(entries);
     
-    console.log('ProfitLossTrendLine: Processing data format:', {
-      isWeekly,
-      isMonthly,
-      viewMode,
-      entriesCount: entries.length,
-      sampleEntry: entries[0],
-      dashboardDataKeys: Object.keys(dashboardData || {}),
-      dataKeys: Object.keys(entries[0] || {})
-    });
+    
 
     const labels = entries.map((entry, index) => {
       // Use appropriate date field based on data format
@@ -90,7 +81,7 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
       }
       
       const formattedLabel = formatDateForDisplay(dateField, isWeekly, isMonthly);
-      console.log(`Label ${index}:`, { dateField, formattedLabel, entry });
+      
       return formattedLabel;
     });
 
@@ -118,30 +109,16 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
         
         const calculatedProfit = salesActual - (foodActual + laborActual + fixedCosts + variableCosts);
         
-        console.log(`Profit calculation for entry ${index}:`, {
-          salesActual,
-          foodActual,
-          laborActual,
-          fixedCosts,
-          variableCosts,
-          calculatedProfit,
-          directProfit: profitLoss,
-          entry
-        });
+        
         
         return Number(calculatedProfit);
       }
       
-      console.log(`Direct profit for entry ${index}:`, { profitLoss, entry });
+      
       return Number(profitLoss);
     });
 
-    console.log('ProfitLossTrendLine: Generated data:', {
-      labels,
-      profits,
-      dataFormat: isMonthly ? 'monthly' : (isWeekly ? 'weekly' : 'daily'),
-      hasValidData: profits.some(p => p !== 0)
-    });
+    
 
     return {
       labels,

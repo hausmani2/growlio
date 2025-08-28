@@ -207,7 +207,6 @@ export const TabProvider = ({ children }) => {
             } else {
                 // In update mode, don't redirect to onboarding - just set to first tab
                 if (isUpdateMode) {
-                    console.log('✅ Update mode detected - staying on current page');
                     setActiveTab(0);
                 } else {
                     // Only redirect to onboarding in onboarding mode
@@ -244,7 +243,6 @@ export const TabProvider = ({ children }) => {
         if (tab) {
             if (isUpdateMode) {
                 // In update mode, stay on the same page - don't navigate
-                console.log('✅ Update mode detected - staying on current page for tab:', tab.title);
             } else {
                 // In onboarding mode, navigate to onboarding path
                 const targetPath = `/onboarding/${tab.path}`;
@@ -279,7 +277,6 @@ export const TabProvider = ({ children }) => {
                 if (tab) {
                     if (isUpdateMode) {
                         // In update mode, stay on the same page - don't navigate
-                        console.log('✅ Update mode detected - staying on current page for next step:', tab.title);
                     } else {
                         // In onboarding mode, navigate to onboarding path
                         const targetPath = `/onboarding/${tab.path}`;
@@ -332,7 +329,6 @@ export const TabProvider = ({ children }) => {
 
     // Complete onboarding (explicitly called by user)
     const completeOnboarding = () => {
-        console.log('🎉 User explicitly completing onboarding! Navigating to completion page...');
         message.success('Finalizing your setup...');
         navigate('/onboarding/complete', { replace: true });
     };

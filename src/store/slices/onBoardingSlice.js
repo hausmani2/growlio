@@ -567,7 +567,6 @@ const createOnBoardingSlice = (set, get) => ({
                     }
                 } else {
                     // No restaurant_id found in response data
-                    console.log('No restaurant_id found in response data');
                 }
             }
             
@@ -793,23 +792,21 @@ const createOnBoardingSlice = (set, get) => ({
             
             // Handle array format response
             let stepsData = [];
-            console.log('🔍 Store - apiData type:', typeof apiData, 'isArray:', Array.isArray(apiData));
-            console.log('🔍 Store - apiData:', apiData);
+           
             
             if (Array.isArray(apiData)) {
                 // If it's a nested array, flatten it
                 if (apiData.length > 0 && Array.isArray(apiData[0])) {
                     stepsData = apiData[0];
-                    console.log('🔍 Store - First level nested array detected, stepsData:', stepsData);
                 } else {
                     stepsData = apiData;
-                    console.log('🔍 Store - Single level array, stepsData:', stepsData);
+                    
                 }
                 
                 // Additional check for double-nested arrays (like [[{...}]])
                 if (stepsData.length > 0 && Array.isArray(stepsData[0])) {
                     stepsData = stepsData[0];
-                    console.log('🔍 Store - Double nested array detected, stepsData:', stepsData);
+                    
                 }
             } else {
                 // Handle object format (fallback)
@@ -818,7 +815,7 @@ const createOnBoardingSlice = (set, get) => ({
                     status: data.status,
                     data: data.data
                 }));
-                console.log('🔍 Store - Object format, stepsData:', stepsData);
+                
             }
             
             // Process each step from the API response
@@ -844,7 +841,7 @@ const createOnBoardingSlice = (set, get) => ({
                         locations: data.locations || []
                     };
                 } else if (stepName === "Labor Information" && data) {
-                    console.log('🔍 Store - Processing Labor Information data:', data);
+                    
                     // Handle Labour Information data mapping
                     processedData = {
                         goal: data.labour_goal || data.goal || "",
@@ -856,7 +853,7 @@ const createOnBoardingSlice = (set, get) => ({
                         daily_ticket_count: data.daily_ticket_count || false,
                         forward_prev_week_rate: data.forward_previous_week_rate || data.forward_prev_week_rate || false // Handle both field names
                     };
-                    console.log('🔍 Store - Processed Labor Information data:', processedData);
+                    
                 } else if (stepName === "Food Cost Details" && data) {
                     // Handle Food Cost Details data mapping
                     processedData = {
@@ -890,7 +887,7 @@ const createOnBoardingSlice = (set, get) => ({
             });
             
             // Update the store with the loaded data
-            console.log('🔍 Store - Final updatedOnboardingData:', updatedOnboardingData);
+            
             set(() => ({
                 completeOnboardingData: updatedOnboardingData,
                 onboardingLoading: false,

@@ -66,9 +66,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   // Listen for custom event to open COGS modal from SalesTable
   useEffect(() => {
-    const handleOpenCogsModal = (event) => {
-      console.log('🎯 Received openCogsModal event:', event.detail);
-      
+    const handleOpenCogsModal = (event) => {      
       // Store the event data for later use when data is loaded
       localStorage.setItem('pendingCogsModal', JSON.stringify({
         shouldOpen: true,
@@ -95,7 +93,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         const pendingData = JSON.parse(pendingCogsModal);
         
         if (pendingData.shouldOpen) {
-          console.log('🎯 Opening COGS modal after data processing');
           
           // Check if we have data or if we need to add data
           if (dataNotFound || areAllValuesZero(weeklyData)) {

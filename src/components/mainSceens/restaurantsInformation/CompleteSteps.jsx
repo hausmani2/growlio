@@ -18,20 +18,19 @@ const CompleteSteps = () => {
         setIsChecking(true);
         
         try {
-            console.log('🔄 CompleteSteps - Checking final onboarding status...');
             
             // Use the store's onboarding check function to ensure consistency
             const result = await forceOnboardingCheck();
-            console.log('📊 CompleteSteps - Onboarding check result:', result);
+            
             
             if (result.success && result.isComplete) {
                 // Update the store state to mark onboarding as completed
                 setIsOnBoardingCompleted(true);
-                console.log('✅ CompleteSteps - Onboarding completed, navigating to dashboard');
+                
                 message.success("Welcome to your dashboard!");
                 navigate('/dashboard/budget');
             } else {
-                console.log('⚠️ CompleteSteps - Onboarding not yet complete');
+                
                 message.warning("Please wait while we finalize your setup...");
                 // Stay on the completion page for now
             }

@@ -4,8 +4,6 @@ import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
 
 const SalesDays = ({ data, updateData, errors = {} }) => {
-    console.log("🎯 SalesDays component received data:", data);
-    console.log("🎯 selectedDays from props:", data?.selectedDays);
 
     const days = [
         { name: 'Sunday', disabled: false },
@@ -45,7 +43,6 @@ const SalesDays = ({ data, updateData, errors = {} }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {days.map((day, index) => {
                         const isSelected = data.selectedDays[day.name];
-                        console.log(`🎯 ${day.name}: isSelected = ${isSelected}`);
                         
                         return (
                         <div

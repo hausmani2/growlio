@@ -143,7 +143,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         
         // Check if this navigation came from Summary Dashboard and should open sales modal
         if (context.source === 'summary-dashboard' && context.shouldOpenSalesModal) {
-          console.log('🎯 Processing navigation context for sales modal');
           
           // Store the budgeted sales data for use in the modal
           if (context.budgetedSalesData) {

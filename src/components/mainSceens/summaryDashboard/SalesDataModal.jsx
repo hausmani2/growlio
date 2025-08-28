@@ -108,7 +108,6 @@ const SalesDataModal = ({
     }
     
     const startDate = dayjs(selectedWeekData.startDate);
-    console.log('Initializing form data with start date:', startDate.format('YYYY-MM-DD'));
     
     const currentProviders = getProviders();
     const dailyData = generateDailyData(startDate, currentProviders);
@@ -159,7 +158,7 @@ const SalesDataModal = ({
             );
             if (existingDay?.restaurant_open !== undefined) {
               const value = existingDay.restaurant_open;
-              console.log('Restaurant open value from existing data:', value, typeof value);
+              
               // Handle both boolean and integer values
               if (typeof value === 'boolean') {
                 return value ? 1 : 0;
@@ -287,7 +286,7 @@ const SalesDataModal = ({
       if (value > 0 && Math.abs(value - previousValue) >= 1) {
         // Set timeout to show console log after user stops typing (1 second delay)
         budgetedSalesTimeoutRef.current[dayKey] = setTimeout(() => {
-          console.log('Budgeted sales changed:', { field, value, changedDay }); // Debug log
+          
         }, 1000);
       }
       
@@ -397,7 +396,7 @@ const SalesDataModal = ({
       }
       
       const startDate = dayjs(selectedWeekData.startDate);
-      console.log('Submitting data with start date:', startDate.format('YYYY-MM-DD'));
+      
       
       const currentProviders = getProviders();
 
@@ -430,7 +429,7 @@ const SalesDataModal = ({
               daily_tickets: parseFloat(day.dailyTickets) || 0,
               restaurant_open: (() => {
                 const value = day.restaurant_open;
-                console.log('Sending restaurant_open to API:', value, typeof value);
+                
                 // Ensure we always send integer values (0 or 1)
                 if (typeof value === 'boolean') {
                   return value ? 1 : 0;
