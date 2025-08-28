@@ -1,27 +1,49 @@
 import Header from "../../layout/Header";
-import Card from "../../../assets/pngs/cafe.png";
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { message } from "antd";
 import useStore from "../../../store/store";
 
 const CompleteSteps = () => {
     const navigate = useNavigate();
     const [isChecking, setIsChecking] = useState(false);
+    const [isNewUser, setIsNewUser] = useState(false);
     
     // Get the store's onboarding check function
     const forceOnboardingCheck = useStore((state) => state.forceOnboardingCheck);
     const setIsOnBoardingCompleted = useStore((state) => state.setIsOnBoardingCompleted);
 
+    // Check if this is a new user completing onboarding
+    useEffect(() => {
+        const isNewUserCompleting = sessionStorage.getItem('isNewUserCompletingOnboarding') === 'true';
+
+        
+        // Check if user is on onboarding path (indicates new user)
+        const isOnboardingPath = window.location.pathname.includes('/onboarding');
+        
+        if (!isNewUserCompleting && !isOnboardingPath) {
+            // This is not a new user and not on onboarding path, redirect to dashboard
+            message.info("Redirecting to dashboard...");
+            navigate('/dashboard/budget', { replace: true });
+            return;
+        }
+        
+        // This is a new user or on onboarding path, show the completion page
+        setIsNewUser(true);
+        
+        // Clear the flag after using it
+        sessionStorage.removeItem('isNewUserCompletingOnboarding');
+    }, [navigate]);
+
+
+
     const handleGoToDashboard = async () => {
         setIsChecking(true);
         
         try {
-            
             // Use the store's onboarding check function to ensure consistency
             const result = await forceOnboardingCheck();
-            
             
             if (result.success && result.isComplete) {
                 // Update the store state to mark onboarding as completed
@@ -30,7 +52,6 @@ const CompleteSteps = () => {
                 message.success("Welcome to your dashboard!");
                 navigate('/dashboard/budget');
             } else {
-                
                 message.warning("Please wait while we finalize your setup...");
                 // Stay on the completion page for now
             }
@@ -44,6 +65,11 @@ const CompleteSteps = () => {
             setIsChecking(false);
         }
     };
+
+    // Don't render anything if not a new user (will redirect)
+    if (!isNewUser) {
+        return null;
+    }
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6 px-4 sm:px-5  bg-white ">
@@ -174,7 +200,7 @@ const CompleteSteps = () => {
             </div>
            </div>
         </div>
-    )
-}
+    );
+};
 
 export default CompleteSteps;

@@ -257,8 +257,6 @@ export const TabProvider = ({ children }) => {
     const navigateToNextStep = async (skipCompletionCheck = false) => {
         const nextTabId = activeTab + 1;
 
-        // Debug: Check current state before navigation
-
         if (nextTabId < tabs.length) {
 
             if (skipCompletionCheck) {
@@ -299,11 +297,13 @@ export const TabProvider = ({ children }) => {
                     message.success('Congratulations! Your onboarding is complete!');
                     completeOnboarding();
                 } else {
-                    message.info('All steps completed! Please wait for final confirmation.');
+                    // Even if the server check fails, if all local steps are complete, show completion page
+                    completeOnboarding();
                 }
             } catch (error) {
                 console.error('❌ Error checking onboarding completion:', error);
-                message.warning('All steps completed! Please check your onboarding status.');
+                // Even on error, if all local steps are complete, show completion page
+                completeOnboarding();
             }
         }
     };
@@ -329,8 +329,22 @@ export const TabProvider = ({ children }) => {
 
     // Complete onboarding (explicitly called by user)
     const completeOnboarding = () => {
-        message.success('Finalizing your setup...');
-        navigate('/onboarding/complete', { replace: true });
+ 
+        
+        // Check if this is onboarding mode (not update mode)
+        const isOnboardingMode = location.pathname.includes('/onboarding');
+        
+        if (isOnboardingMode) {
+            // For new users in onboarding mode, navigate to completion page
+            message.success('Finalizing your setup...');
+            // Set a flag to indicate this is a new user completing onboarding
+            sessionStorage.setItem('isNewUserCompletingOnboarding', 'true');
+            navigate('/onboarding/complete', { replace: true });
+        } else {
+            // For existing users in update mode, navigate to dashboard
+            message.success('Settings updated successfully!');
+            navigate('/dashboard/budget', { replace: true });
+        }
     };
 
     // Render different content based on active tab
