@@ -19,10 +19,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Get providers from onboarding data
   const getProviders = () => {
-    if (!completeOnboardingData || !completeOnboardingData['Food Cost Details'] || !completeOnboardingData['Food Cost Details'].data) {
+    if (!completeOnboardingData || !completeOnboardingData['Sales Channels'] || !completeOnboardingData['Sales Channels'].data) {
       return [];
     }
-    return completeOnboardingData['Food Cost Details'].data.providers || [];
+    return completeOnboardingData['Sales Channels'].data.providers || [];
   };
 
   const [providers, setProviders] = useState([]);

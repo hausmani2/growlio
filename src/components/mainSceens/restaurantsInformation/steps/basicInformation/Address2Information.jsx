@@ -21,7 +21,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 const result = await onSaveAndContinue();
                 if (result?.success) {
                     // Navigate to next step after successful save
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             } catch (error) {
                 console.error('Error in handleSaveAndContinueClick:', error);
@@ -40,16 +40,17 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Restaurant Details</h3>
-                <p className="text-gray-600 text-sm">
+                {/* <p className="text-gray-600 text-sm">
                     Tell us about your restaurant specifications and business details.
-                </p>
+                </p> */}
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* SQFT */}
                 <div>
-                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+
+                    <label htmlFor="sqft" className="block text-sm font-semibold text-gray-700 mb-2">
                         How many SQFT is your location? <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['sqft']} />
                     </label>
@@ -71,7 +72,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 
                 {/* Franchise */}
                 <div>
-                    <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <label htmlFor="franchise" className="block text-sm font-semibold text-gray-700 mb-2">
                         Is this location a franchise? <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['is_franchise']} />
                     </label>
@@ -97,6 +98,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 <div>
                     <label htmlFor="restaurantType" className="block text-sm font-semibold text-gray-700 mb-2">
                         Restaurant Type <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['restaurant_type']} />
                     </label>
                     <Select 
                         id="restaurantType" 
@@ -127,6 +129,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                 <div>
                     <label htmlFor="menuType" className="block text-sm font-semibold text-gray-700 mb-2">
                         Menu Type <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['menu_type']} />
                     </label>
                     <Select 
                         id="menuType" 
@@ -138,15 +141,28 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                         onChange={(value) => updateData('menuType', value)}
                         status={errors.menuType ? 'error' : ''}
                     >
-                        <Select.Option value="American (Traditional)">American (Traditional)</Select.Option>
-                        <Select.Option value="BBQ">BBQ</Select.Option>
-                        <Select.Option value="Bowls">Bowls</Select.Option>
-                        <Select.Option value="Breakfast / Brunch">Breakfast / Brunch</Select.Option>
+                        <Select.Option value="Pizza">Pizza</Select.Option>
                         <Select.Option value="Burgers">Burgers</Select.Option>
-                        <Select.Option value="Coffee / Tea">Coffee / Tea</Select.Option>
-                        <Select.Option value="Chinese">Chinese</Select.Option>
-                        <Select.Option value="Desserts / Ice Cream">Desserts / Ice Cream</Select.Option>
+                        <Select.Option value="Sandwiches / Subs">Sandwiches / Subs</Select.Option>
+                        <Select.Option value="BBQ / Smokehouse">BBQ / Smokehouse</Select.Option>
+                        <Select.Option value="Chicken / Wings">Chicken / Wings</Select.Option>
+                        <Select.Option value="Seafood">Seafood</Select.Option>
+                        <Select.Option value="Steakhouse / Grill">Steakhouse / Grill</Select.Option>
+                        <Select.Option value="Italian">Italian</Select.Option>
+                        <Select.Option value="Mexican / Tex-Mex">Mexican / Tex-Mex</Select.Option>
+                        <Select.Option value="Asian (Chinese, Japanese, Thai, Korean, etc.)">Asian (Chinese, Japanese, Thai, Korean, etc.)</Select.Option>
                         <Select.Option value="Indian">Indian</Select.Option>
+                        <Select.Option value="Mediterranean / Greek">Mediterranean / Greek</Select.Option>
+                        <Select.Option value="Middle Eastern">Middle Eastern</Select.Option>
+                        <Select.Option value="Vegan / Vegetarian">Vegan / Vegetarian</Select.Option>
+                        <Select.Option value="Salad / Healthy Bowls">Salad / Healthy Bowls</Select.Option>
+                        <Select.Option value="Breakfast / Brunch">Breakfast / Brunch</Select.Option>
+                        <Select.Option value="Bakery / Café">Bakery / Café</Select.Option>
+                        <Select.Option value="Ice Cream / Gelato / Dessert">Ice Cream / Gelato / Dessert</Select.Option>
+                        <Select.Option value="Deli">Deli</Select.Option>
+                        <Select.Option value="American / Diner">American / Diner</Select.Option>
+                        <Select.Option value="Latin / Caribbean">Latin / Caribbean</Select.Option>
+                        <Select.Option value="Fusion">Fusion</Select.Option>
                     </Select>
                     {errors.menuType && (
                         <span className="text-red-500 text-xs mt-1">{errors.menuType}</span>
@@ -158,9 +174,8 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
             {!isUpdateMode && (
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6">
                     <PrimaryButton 
-                        title="Back" 
+                        title="" 
                         className="border-none w-full sm:w-auto"
-                        onClick={handleGoBack}
                         disabled={loading}
                     />
                     <PrimaryButton 

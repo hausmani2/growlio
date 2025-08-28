@@ -142,10 +142,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Process the data - Updated to handle both daily and weekly structures
     const processed = {
       sales_budget: {},
+      sales_actual: {},
       sales_budeget_profit: {},
       labour: {},
+      labour_actual: {},
       labour_profit: {},
       food_cost: {},
+      food_cost_actual: {},
       food_cost_profit: {},
       hours: {},
       amount: {},
@@ -170,27 +173,35 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
+      processed.sales_actual[dateKey] = parseNumericValue(entry.sales_actual);
       processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
+      processed.labour_actual[dateKey] = parseNumericValue(entry.labour_actual);
       processed.labour_profit[dateKey] = parseNumericValue(entry.labour_profit);
       processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
+      processed.food_cost_actual[dateKey] = parseNumericValue(entry.food_cost_actual);
       processed.food_cost_profit[dateKey] = parseNumericValue(entry.food_cost_profit);
       processed.hours[dateKey] = parseNumericValue(entry.hours);
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
       processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
       
-      // Calculate fixed cost total from array
-      const fixedCostTotal = Array.isArray(entry.fixed_costs) 
-        ? entry.fixed_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
-        : 0;
-      processed.fixedCost[dateKey] = fixedCostTotal;
-      
-      // Calculate variable cost total from array
-      const variableCostTotal = Array.isArray(entry.variable_costs)
-        ? entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
-        : 0;
-      processed.variableCost[dateKey] = variableCostTotal;
+             // Calculate fixed cost total from array
+       const fixedCostTotal = Array.isArray(entry.fixed_costs) 
+         ? entry.fixed_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
+         : 0;
+       
+       // Calculate variable cost total from array
+       const variableCostTotal = Array.isArray(entry.variable_costs)
+         ? entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
+         : 0;
+       
+       // Get total_days from the entry itself (it's in each entry in the API response)
+       const totalDays = parseNumericValue(entry.total_days) || 1;
+       
+       // Apply the formula: Total Cost ÷ Total Days
+       processed.fixedCost[dateKey] = totalDays > 0 ? fixedCostTotal / totalDays : fixedCostTotal;
+       processed.variableCost[dateKey] = totalDays > 0 ? variableCostTotal / totalDays : variableCostTotal;
       
 
     });
@@ -202,7 +213,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
     { 
-      key: 'sales_budget', 
+      key: 'sales_actual', 
       label: 'Net Sales', 
       type: 'currency',
       hasDetails: true,
@@ -213,7 +224,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       ]
     },
     { 
-      key: 'labour', 
+      key: 'labour_actual', 
       label: 'Labor Cost', 
       type: 'currency',
       hasDetails: true,
@@ -225,7 +236,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       ]
     },
     { 
-      key: 'food_cost', 
+      key: 'food_cost_actual', 
       label: 'Food Cost', 
       type: 'currency',
       hasDetails: true,
@@ -237,22 +248,22 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     },
     { 
       key: 'fixedCost', 
-      label: 'Fixed Cost', 
+      label: 'Fixed Cost (Daily)', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Fixed Cost Breakdown',
       detailFields: [
-        { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
+        { key: 'fixedCost', label: 'Daily Fixed Cost', type: 'currency' }
       ]
     },
     { 
       key: 'variableCost', 
-      label: 'Variable Cost', 
+      label: 'Variable Cost (Daily)', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Variable Cost Breakdown',
       detailFields: [
-        { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
+        { key: 'variableCost', label: 'Daily Variable Cost', type: 'currency' }
       ]
     },
     { 
@@ -292,8 +303,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value || 0);
   }, []);
 
@@ -511,31 +522,22 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     // Get profit percentage for inline display
     let profitPercentage = null;
-    if (categoryKey === 'sales_budget' && entry.sales_budeget_profit) {
+    if (categoryKey === 'sales_actual' && entry.sales_budeget_profit) {
       profitPercentage = formatPercentage(entry.sales_budeget_profit);
-    } else if (categoryKey === 'labour' && entry.labour_profit) {
+    } else if (categoryKey === 'labour_actual' && entry.labour_profit) {
       profitPercentage = formatPercentage(entry.labour_profit);
-    } else if (categoryKey === 'food_cost' && entry.food_cost_profit) {
+    } else if (categoryKey === 'food_cost_actual' && entry.food_cost_profit) {
       profitPercentage = formatPercentage(entry.food_cost_profit);
     }
     
     // Debug logging for weekly/monthly data
-    if ((isWeeklyData(tableData) || isMonthlyData(tableData)) && (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost')) {
+    if ((isWeeklyData(tableData) || isMonthlyData(tableData)) && (categoryKey === 'sales_actual' || categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual')) {
       const dataType = isMonthlyData(tableData) ? 'Monthly' : 'Weekly';
-      console.log(`${dataType} data - ${categoryKey}:`, {
-        entry,
-        profitPercentage,
-        sales_budeget_profit: entry.sales_budeget_profit,
-        labour_profit: entry.labour_profit,
-        food_cost_profit: entry.food_cost_profit,
-        dateKey,
-        rawValue,
-        hasData: !!entry
-      });
+
     }
     
     // Handle currency fields
-    if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
+    if (categoryKey === 'sales_actual' || categoryKey === 'food_cost_actual' || 
         categoryKey === 'fixedCost' || categoryKey === 'variableCost' ||
         categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
         categoryKey === 'profit_loss') {
@@ -543,7 +545,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
       
       // Make sales budget clickable with dropdown
-      if (categoryKey === 'sales_budget' && rawValue > 0) {
+      if (categoryKey === 'sales_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -570,7 +572,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       // Make food cost clickable with dropdown
-      if (categoryKey === 'food_cost' && rawValue > 0) {
+      if (categoryKey === 'food_cost_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -686,9 +688,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     // Handle number fields
-    if (categoryKey === 'labour' || categoryKey === 'hours') {
+    if (categoryKey === 'labour_actual' || categoryKey === 'hours') {
       // Make labor clickable with dropdown
-      if (categoryKey === 'labour' && rawValue > 0) {
+      if (categoryKey === 'labour_actual' && rawValue > 0) {
         const dayData = {
           dayName: dateInfo.day,
           date: dateInfo.fullDate
@@ -892,38 +894,48 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       variable_costs: 0,
       tickets: 0,
       app_online_sales: 0,
-      in_store_sales: 0
+      in_store_sales: 0,
+      total_days: 0
     };
 
-    tableData.forEach(entry => {
-      totals.sales_budget += parseFloat(entry.sales_budget) || 0;
-      totals.sales_actual += parseFloat(entry.sales_actual) || 0;
-      totals.labour += parseFloat(entry.labour) || 0;
-      totals.labour_actual += parseFloat(entry.labour_actual || entry.amount) || 0;
-      totals.food_cost += parseFloat(entry.food_cost) || 0;
-      totals.food_cost_actual += parseFloat(entry.food_cost_actual) || 0;
-      totals.hours += parseFloat(entry.hours) || 0;
-      totals.tickets += parseFloat(entry.tickets) || 0;
-      totals.app_online_sales += parseFloat(entry.app_online_sales) || 0;
-      totals.in_store_sales += parseFloat(entry.in_store_sales || entry['in-store_sales']) || 0;
+         tableData.forEach(entry => {
+       totals.sales_budget += parseFloat(entry.sales_budget) || 0;
+       totals.sales_actual += parseFloat(entry.sales_actual) || 0;
+       totals.labour += parseFloat(entry.labour) || 0;
+       totals.labour_actual += parseFloat(entry.labour_actual || entry.amount) || 0;
+       totals.food_cost += parseFloat(entry.food_cost) || 0;
+       totals.food_cost_actual += parseFloat(entry.food_cost_actual) || 0;
+       totals.hours += parseFloat(entry.hours) || 0;
+       totals.tickets += parseFloat(entry.tickets) || 0;
+       totals.app_online_sales += parseFloat(entry.app_online_sales) || 0;
+       totals.in_store_sales += parseFloat(entry.in_store_sales || entry['in-store_sales']) || 0;
 
-      // Handle fixed costs array
-      if (Array.isArray(entry.fixed_costs)) {
-        entry.fixed_costs.forEach(cost => {
-          totals.fixed_costs += parseFloat(cost.amount) || 0;
-        });
-      }
+       // Handle fixed costs array
+       if (Array.isArray(entry.fixed_costs)) {
+         entry.fixed_costs.forEach(cost => {
+           totals.fixed_costs += parseFloat(cost.amount) || 0;
+         });
+       }
 
-      // Handle variable costs array
-      if (Array.isArray(entry.variable_costs)) {
-        entry.variable_costs.forEach(cost => {
-          totals.variable_costs += parseFloat(cost.amount) || 0;
-        });
-      }
-    });
+       // Handle variable costs array
+       if (Array.isArray(entry.variable_costs)) {
+         entry.variable_costs.forEach(cost => {
+           totals.variable_costs += parseFloat(cost.amount) || 0;
+         });
+       }
+     });
+
+     // Get total_days from the first entry (all entries should have the same total_days)
+     const totalDays = parseNumericValue(tableData[0]?.total_days) || 1;
+     
+     // Apply the formula: Total Cost ÷ Total Days
+     if (totalDays > 0) {
+       totals.fixed_costs = totals.fixed_costs / totalDays;
+       totals.variable_costs = totals.variable_costs / totalDays;
+     }
 
     return totals;
-  }, [tableData]);
+     }, [tableData, dashboardSummaryData, dashboardData, parseNumericValue]);
 
   // Render period summary - Optimized for performance
   const renderWeeklySummary = useCallback((categoryKey, totals) => {
@@ -974,7 +986,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </div>
           </div>
         );
-      case 'food_cost':
+      case 'food_cost_actual':
         return (
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center">
@@ -987,20 +999,20 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </div>
           </div>
         );
-      case 'fixedCost':
-        return (
-          <div className="text-center">
-            <div className="text-xs text-gray-600">Total Fixed Costs</div>
-            <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.fixed_costs)}</div>
-          </div>
-        );
-      case 'variableCost':
-        return (
-          <div className="text-center">
-            <div className="text-xs text-gray-600">Total Variable Costs</div>
-            <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.variable_costs)}</div>
-          </div>
-        );
+             case 'fixedCost':
+         return (
+           <div className="text-center">
+             <div className="text-xs text-gray-600">Daily Fixed Cost Average</div>
+             <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.fixed_costs)}</div>
+           </div>
+         );
+       case 'variableCost':
+         return (
+           <div className="text-center">
+             <div className="text-xs text-gray-600">Daily Variable Cost Average</div>
+             <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.variable_costs)}</div>
+           </div>
+         );
       default:
         return null;
     }
@@ -1369,7 +1381,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Total Fixed Cost:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(totalFixedCost)}</span>
+          <span className="text-sm font-bold text-blue-900">{formatCurrency(totalFixedCost) }</span>
         </div>
 
         {/* Fixed Cost Breakdown - Expandable */}
@@ -1458,11 +1470,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render detailed content for expandable rows - Optimized with memoization
   const renderDetailedContent = useCallback((categoryKey, entry) => {
     switch (categoryKey) {
-      case 'sales_budget':
+      case 'sales_actual':
         return renderSalesDetails(entry);
-      case 'labour':
+      case 'labour_actual':
         return renderLaborDetails(entry);
-      case 'food_cost':
+      case 'food_cost_actual':
         return renderFoodCostDetails(entry);
       case 'fixedCost':
         return renderFixedCostDetails(entry);

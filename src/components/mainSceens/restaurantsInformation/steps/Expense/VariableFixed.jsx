@@ -134,7 +134,8 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
             {/* Form Fields */}
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Variable Costs <TooltipIcon text={tooltips.variable_costs} /> <span className="text-red-500">*</span>
+                    Variable Costs <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips.variable_costs} />
                 </label>
                 
                 <div className="space-y-3">

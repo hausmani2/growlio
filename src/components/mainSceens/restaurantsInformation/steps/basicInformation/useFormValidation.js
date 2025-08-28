@@ -41,6 +41,9 @@ const useFormValidation = () => {
         if (!addressData.state) {
             errors.state = VALIDATION_MESSAGES.STATE;
         }
+        if (!addressData.city) {
+            errors.city = VALIDATION_MESSAGES.CITY;
+        }
         if (!addressData.zipCode?.trim()) {
             errors.zipCode = VALIDATION_MESSAGES.ZIP_CODE;
         } else if (!/^\d{5}(-\d{4})?$/.test(addressData.zipCode)) {

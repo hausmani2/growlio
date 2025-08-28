@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { message } from "antd";
 import FoodCostDetails from "./FoodCostDetails";
 import DeliveryFrequency from "./DeliveryFrequency";
-import ThirdPartyProviders from "./ThirdPartyProviders";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
@@ -30,16 +29,9 @@ const FoodCostWrapperContent = () => {
         selectedDays: {}
     });
 
-    // State for Third Party Providers
-    const [thirdPartyData, setThirdPartyData] = useState({
-        providers: [],
-        useHiredPartyDelivery: 'false' // Default to false
-    });
-
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
         cogs_goal: "",
-        use_third_party_delivery: false, // Default to false
         delivery_days: []
     });
 
@@ -58,7 +50,6 @@ const FoodCostWrapperContent = () => {
             setCombinedData(prev => ({
                 ...prev,
                 cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : "",
-                use_third_party_delivery: data.uses_third_party_delivery === true || data.use_third_party_delivery === true || false,
                 delivery_days: data.delivery_days || []
             }));
             
@@ -75,34 +66,6 @@ const FoodCostWrapperContent = () => {
                     selectedDays
                 }));
             }
-            
-            // Set third party providers data
-            if (data.providers && Array.isArray(data.providers)) {
-                const providersData = data.providers.map((provider, index) => ({
-                    id: index + 1,
-                    providerName: provider.provider_name || "",
-                    providerFee: provider.provider_fee || ""
-                }));
-                
-                setThirdPartyData(prev => ({
-                    ...prev,
-                    providers: providersData.length > 0 ? providersData : [{ id: 1, providerName: '', providerFee: '' }],
-                    useHiredPartyDelivery: (data.uses_third_party_delivery === true || data.use_third_party_delivery === true) ? 'true' : 'false'
-                }));
-            } else {
-                // Set default third party data
-                setThirdPartyData(prev => ({
-                    ...prev,
-                    providers: [{ id: 1, providerName: '', providerFee: '' }],
-                    useHiredPartyDelivery: (data.uses_third_party_delivery === true || data.use_third_party_delivery === true) ? 'true' : 'false'
-                }));
-            }
-            
-            // Update combined data with third party delivery status
-            setCombinedData(prev => ({
-                ...prev,
-                use_third_party_delivery: data.uses_third_party_delivery === true || data.use_third_party_delivery === true || false
-            }));
         }
     }, [completeOnboardingData]);
 
@@ -155,29 +118,6 @@ const FoodCostWrapperContent = () => {
         }
     };
 
-    // Function to update third party data
-    const updateThirdPartyData = (field, value) => {
-        console.log('🔍 Debug - updateThirdPartyData called with field:', field, 'value:', value);
-        setThirdPartyData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-        
-        // Update combined data when useHiredPartyDelivery changes
-        if (field === 'useHiredPartyDelivery') {
-            console.log('🔍 Debug - Updating combined data with use_third_party_delivery:', value === 'true');
-            setCombinedData(prev => ({
-                ...prev,
-                use_third_party_delivery: value === 'true'
-            }));
-        }
-        
-        // Clear validation error for this field when user starts typing
-        if (validationErrors[field]) {
-            clearFieldError(field);
-        }
-    };
-
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
@@ -185,9 +125,7 @@ const FoodCostWrapperContent = () => {
             // Step 1: Prepare comprehensive data for validation
             const validationData = {
                 ...combinedData,
-                selectedDays: deliveryData.selectedDays,
-                providers: thirdPartyData.providers,
-                useHiredPartyDelivery: thirdPartyData.useHiredPartyDelivery
+                selectedDays: deliveryData.selectedDays
             };
             
             
@@ -204,27 +142,12 @@ const FoodCostWrapperContent = () => {
             // Step 3: Prepare data for API
             const cogsGoalClean = combinedData.cogs_goal ? combinedData.cogs_goal.toString().replace('%', '') : '';
             
-            // Prepare providers data for API - only include if third party delivery is enabled
-            let providersForAPI = [];
-            if (thirdPartyData.useHiredPartyDelivery === 'true' && thirdPartyData.providers) {
-                providersForAPI = thirdPartyData.providers
-                    .filter(provider => provider.providerName && provider.providerFee) // Only include providers with both name and fee
-                    .map(provider => ({
-                        provider_name: provider.providerName,
-                        provider_fee: provider.providerFee
-                    }));
-            }
-            
             const stepData = {
                 cogs_goal: parseFloat(cogsGoalClean) || 0,
-                uses_third_party_delivery: combinedData.use_third_party_delivery || false,
-                delivery_days: combinedData.delivery_days.map(day => day.toLowerCase()) || [],
-                ...(combinedData.use_third_party_delivery && { providers: providersForAPI }) // Only include providers if third party delivery is true
+                delivery_days: combinedData.delivery_days.map(day => day.toLowerCase()) || []
             };
 
-            console.log('🔍 Debug - Step data being sent to API:', stepData);
-            console.log('🔍 Debug - Third party delivery value:', combinedData.use_third_party_delivery);
-            console.log('🔍 Debug - Third party data state:', thirdPartyData);
+            
             
             // Step 4: Call API through Zustand store with success callback
             const result = await submitStepData("Food Cost Details", stepData, (responseData) => {
@@ -242,7 +165,7 @@ const FoodCostWrapperContent = () => {
                 } else {
                     // In onboarding mode, navigate to next step
                     message.success("Food cost details saved successfully!");
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
             
@@ -289,11 +212,7 @@ const FoodCostWrapperContent = () => {
                             updateData={updateFoodCostData}
                             errors={validationErrors}
                         />
-                        <ThirdPartyProviders
-                            data={thirdPartyData}
-                            updateData={updateThirdPartyData}
-                            errors={validationErrors}
-                        />
+
                         <DeliveryFrequency 
                             data={deliveryData}
                             updateData={updateDeliveryData}
@@ -330,7 +249,7 @@ const FoodCostWrapperContent = () => {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
                     currentStep="Food Cost Details"
-                    description="Set up your food cost management including COGS goals, delivery schedules, and third-party provider settings."
+                    description="Set up your food cost management including COGS goals and delivery schedules."
                 />
             </div>
             
@@ -341,11 +260,7 @@ const FoodCostWrapperContent = () => {
                     updateData={updateFoodCostData}
                     errors={validationErrors}
                 />
-                <ThirdPartyProviders
-                    data={thirdPartyData}
-                    updateData={updateThirdPartyData}
-                    errors={validationErrors}
-                />
+
                 <DeliveryFrequency 
                     data={deliveryData}
                     updateData={updateDeliveryData}

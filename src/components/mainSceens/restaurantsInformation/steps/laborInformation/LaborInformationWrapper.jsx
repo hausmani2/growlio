@@ -31,7 +31,7 @@ const LaborInformationWrapperContent = () => {
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
         console.log('LaborInformationWrapper - completeOnboardingData:', completeOnboardingData);
-        const labourInfoData = completeOnboardingData["Labour Information"];
+        const labourInfoData = completeOnboardingData["Labor Information"];
         console.log('LaborInformationWrapper - labourInfoData:', labourInfoData);
         
         if (labourInfoData && labourInfoData.data) {
@@ -79,11 +79,11 @@ const LaborInformationWrapperContent = () => {
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
-            console.log("=== Labour Information Save & Continue ===");
+            console.log("=== Labor Information Save & Continue ===");
             console.log("Current laborData:", laborData);
 
             // Step 1: Validate form
-            const validationResult = validateStep('Labour Information', laborData);
+            const validationResult = validateStep('Labor Information', laborData);
             console.log("Validation result:", validationResult);
             console.log("Validation passed:", validationResult);
 
@@ -97,7 +97,7 @@ const LaborInformationWrapperContent = () => {
             if (!laborData.labour_goal || laborData.labour_goal.trim() === '') {
                 console.log("❌ labour_goal is empty or missing");
                 message.error("Please select a labor goal percentage");
-                return { success: false, error: "Labour goal is required" };
+                return { success: false, error: "Labor goal is required" };
             }
 
             // Step 2: Prepare data for API
@@ -118,9 +118,9 @@ const LaborInformationWrapperContent = () => {
 
             // Step 3: Call API through Zustand store with success callback
             console.log("Calling submitStepData...");
-            const result = await submitStepData("Labour Information", stepData, (responseData) => {
+            const result = await submitStepData("Labor Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
-                console.log("✅ Labour Information saved successfully");
+                console.log("✅ Labor Information saved successfully");
 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
@@ -131,12 +131,12 @@ const LaborInformationWrapperContent = () => {
                 if (isUpdateMode) {
                     // In update mode, stay on the same page or go to dashboard
                     console.log("🔄 Update mode - staying on current page");
-                    message.success("Labour information updated successfully!");
+                    message.success("Labor information updated successfully!");
                 } else {
                     // In onboarding mode, navigate to next step
                     console.log("🔄 Onboarding mode - navigating to next step");
                     message.success("Labor information saved successfully!");
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             });
             console.log("submitStepData result:", result);
@@ -217,7 +217,7 @@ const LaborInformationWrapperContent = () => {
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
-                    currentStep="Labour Information"
+                    currentStep="Labor Information"
                     description="Configure your labor management settings including goals, hourly rates, and recording methods."
                 />
             </div>

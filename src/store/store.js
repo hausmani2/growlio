@@ -59,14 +59,15 @@ const useStore = create(
                   ]
                 }
               },
-              "Labour Information": {
+              "Labor Information": {
                 status: false,
                 data: {
+                  labour_goal: 0,
                   goal: "",
                   needs_attention: "",
                   danger: "",
                   avg_hourly_rate: 0,
-                  labor_record_method: "daily_hours_costs",
+                  labor_record_method: "daily-hours-costs",
                   daily_ticket_count: false,
                   forward_prev_week_rate: false
                 }
@@ -75,7 +76,6 @@ const useStore = create(
                 status: false,
                 data: {
                   cogs_goal: "",
-                  use_third_party_delivery: false,
                   delivery_days: []
                 }
               },
@@ -85,7 +85,8 @@ const useStore = create(
                   in_store: true,
                   online: false,
                   from_app: false,
-                  third_party: false
+                  third_party: false,
+                  providers: []
                 }
               },
               "Expense": {

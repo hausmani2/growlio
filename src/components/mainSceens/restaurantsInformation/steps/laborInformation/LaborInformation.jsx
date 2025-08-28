@@ -3,8 +3,6 @@ import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
-
-    
     const handleLaborGoalChange = (value) => {
         // Convert the value to just the number if it contains percentage symbol
         const numericValue = value.toString().replace('%', '');
@@ -14,7 +12,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
     // Generate percentage options from 15% to 40% with color coding
     const generateLaborPercentageOptions = () => {
         const options = [];
-        for (let i = 1; i <= 40; i++) {
+        for (let i = 1; i <= 30; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             
@@ -48,16 +46,13 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Information</h3>
-                <p className="text-gray-600 text-sm">
-                    Add basic labor details so we can help you manage operations more effectively.
-                </p>
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* Labor Goals Section */}
                 <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    <h4 className="text-lg font-semibold text-gray-800 ">
                         Labor Goals
                     </h4>
                     <p className="text-gray-600 text-sm mb-4">
@@ -72,7 +67,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                         <Select
                             id="labour_goal"
                             placeholder="Select Percentage"
-                            value={data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : undefined}
+                            value={data.labour_goal || undefined}
                             onChange={handleLaborGoalChange}
                             options={generateLaborPercentageOptions()}
                             className={`w-full h-11 rounded-lg text-sm ${
@@ -83,12 +78,6 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                         {errors.labour_goal && (
                             <span className="text-red-500 text-xs mt-1">{errors.labour_goal}</span>
                         )}
-                        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium">Zone Guidelines:</span><br/>
-                            <span className="text-green-600">🟢 Green Zone (Goal): 25%</span> | 
-                            <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 27%</span> | 
-                            <span className="text-red-600">🔴 Red Zone (Danger): 30%</span>
-                        </div>
                     </div>
                 </div>
             </div>

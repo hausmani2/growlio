@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useStore from '../store/store';
 import LoadingSpinner from '../components/layout/LoadingSpinner';
@@ -6,11 +6,7 @@ import LoadingSpinner from '../components/layout/LoadingSpinner';
 const ProtectedRoutes = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(false);
-  const [redirectPath, setRedirectPath] = useState(null);
-  const hasCheckedOnboarding = useRef(false);
-  const isNavigating = useRef(false);
-  const isCheckingRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check authentication from store and fallback to localStorage
   const isAuthenticated = useStore((state) => state.isAuthenticated);
@@ -19,164 +15,52 @@ const ProtectedRoutes = () => {
   const localStorageToken = localStorage.getItem('token');
   const token = storeToken || localStorageToken;
   
-  // Get onboarding status check function from onBoardingSlice
-  const checkOnboardingCompletion = useStore((state) => state.checkOnboardingCompletion);
+  // Get onboarding status from store and check function from onBoardingSlice
+  const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
   const forceOnboardingCheck = useStore((state) => state.forceOnboardingCheck);
-  console.log('🔍 checkOnboardingCompletion function:', typeof checkOnboardingCompletion);
 
-  // Simple and robust onboarding check function
-  const performOnboardingCheck = useCallback(async () => {
-    console.log('🔍 performOnboardingCheck called');
-    // Prevent multiple simultaneous checks
-    if (isNavigating.current) {
-      console.log('🔍 Navigation in progress, skipping check');
-      setIsCheckingOnboarding(false);
-      isCheckingRef.current = false;
-      return;
-    }
-
+  // Simple onboarding check function
+  const checkOnboardingStatus = async () => {
     try {
-      // Skip onboarding checks for admin area
-      if (location.pathname.startsWith('/admin')) {
-        return;
-      }
-      console.log('🔄 ProtectedRoutes - Checking onboarding status...');
-      console.log('🔍 Current pathname:', location.pathname);
-      console.log('🔍 About to call checkOnboardingCompletion...');
-      
-      // Use force check to ensure we get fresh data
+      console.log('🔄 Checking onboarding status...');
       const result = await forceOnboardingCheck();
       console.log('📊 Onboarding check result:', result);
-      console.log('🔍 Restaurant ID from result:', result.restaurantId);
+      console.log('🔍 Result details:', {
+        success: result.success,
+        isComplete: result.isComplete,
+        restaurantId: result.restaurantId,
+        message: result.message
+      });
       
-      // If we got a restaurant ID from the onboarding check, store it
-      if (result.restaurantId) {
-        console.log('✅ Setting restaurant ID from onboarding check:', result.restaurantId);
-        localStorage.setItem('restaurant_id', result.restaurantId.toString());
-      }
-
       if (result.success) {
-        const isComplete = result.isComplete;
-        console.log('🔍 Is complete:', isComplete);
+        console.log('✅ Store onboarding status updated to:', result.isComplete);
         
-        // Handle redirects based on completion status and current path
-        if (isComplete && location.pathname.includes('onboarding')) {
-          console.log('✅ User completed onboarding - redirecting to /dashboard/budget');
-          setRedirectPath('/dashboard/budget');
-        } else if (!isComplete && location.pathname.includes('dashboard')) {
-          console.log('🆕 User needs onboarding - redirecting to /onboarding/budget');
-          setRedirectPath('/onboarding/budget');
-        } else {
-          console.log('✅ User is on correct path - no redirect needed');
+        // Store restaurant ID if available
+        if (result.restaurantId) {
+          localStorage.setItem('restaurant_id', result.restaurantId.toString());
+          console.log('✅ Stored restaurant ID:', result.restaurantId);
         }
       } else {
         console.log('⚠️ Onboarding check failed, assuming incomplete');
-        if (location.pathname.includes('dashboard')) {
-          setRedirectPath('/onboarding/budget');
-        }
       }
     } catch (error) {
-      console.error('ProtectedRoutes - Error checking onboarding status:', error);
-      // On error, assume incomplete and redirect to onboarding if on dashboard
-      if (location.pathname.includes('dashboard')) {
-        setRedirectPath('/onboarding/budget');
-      }
+      console.error('❌ Error checking onboarding status:', error);
     } finally {
-      setIsCheckingOnboarding(false);
-      hasCheckedOnboarding.current = true;
-      isCheckingRef.current = false;
+      setIsLoading(false);
     }
-  }, [forceOnboardingCheck, location.pathname]);
+  };
 
   // Check onboarding status when component mounts
   useEffect(() => {
-    if (isAuthenticated && token && !isCheckingRef.current && !isNavigating.current && !hasCheckedOnboarding.current) {
-      const isOnOnboardingPath = location.pathname.includes('onboarding');
-      const isOnDashboardPath = location.pathname.includes('dashboard');
-      
-      // Only check if we're on onboarding or dashboard paths
-      if (isOnOnboardingPath || isOnDashboardPath) {
-        console.log('🚀 Starting onboarding check for path:', location.pathname);
-        isCheckingRef.current = true;
-        // Add a small delay to ensure proper initialization
-        setTimeout(() => {
-          setIsCheckingOnboarding(true);
-          performOnboardingCheck();
-        }, 100);
-      }
-    }
-  }, [isAuthenticated, token]); // Only check once when authenticated
-
-  // Force check when user completes onboarding (listen for store changes)
-  const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
-  useEffect(() => {
-    if (isOnBoardingCompleted && hasCheckedOnboarding.current && location.pathname.includes('onboarding')) {
-      console.log('🔄 User completed onboarding, forcing redirect check');
-      hasCheckedOnboarding.current = false;
-      if (!isCheckingRef.current && !isNavigating.current) {
-        isCheckingRef.current = true;
-        setTimeout(() => {
-          setIsCheckingOnboarding(true);
-          performOnboardingCheck();
-        }, 100);
-      }
-    }
-  }, [isOnBoardingCompleted, location.pathname]);
-
-  // Handle redirects
-  useEffect(() => {
-    if (redirectPath && !isNavigating.current) {
-      console.log('🚀 Navigating to:', redirectPath);
-      isNavigating.current = true;
-      navigate(redirectPath, { replace: true });
-      setRedirectPath(null);
-      
-      // Reset navigation flag after navigation
-      setTimeout(() => {
-        isNavigating.current = false;
-      }, 500);
-    }
-  }, [redirectPath, navigate]);
-
-  // Reset flags when user logs out
-  useEffect(() => {
-    if (!isAuthenticated || !token) {
-      console.log('🔄 Resetting onboarding check flags');
-      hasCheckedOnboarding.current = false;
-      isNavigating.current = false;
-      isCheckingRef.current = false;
-      setIsCheckingOnboarding(false);
-      setRedirectPath(null);
+    if (isAuthenticated && token) {
+      // Clear any cached onboarding status to force fresh check
+      sessionStorage.removeItem('onboarding_completion_check_time');
+      console.log('🔄 Clearing cache and checking onboarding status...');
+      checkOnboardingStatus();
+    } else {
+      setIsLoading(false);
     }
   }, [isAuthenticated, token]);
-
-  // Reset loading state on component unmount
-  useEffect(() => {
-    return () => {
-      if (isCheckingRef.current) {
-        console.log('🔄 Component unmounting - resetting loading state');
-        setIsCheckingOnboarding(false);
-        isCheckingRef.current = false;
-      }
-    };
-  }, []);
-
-  // Note: We only check onboarding status once per session to avoid unnecessary API calls
-  // The check happens when the component first mounts and the user is authenticated
-
-  // Debug logging
-  console.log('🔍 ProtectedRoutes Debug:', {
-    isAuthenticated,
-    hasToken: !!token,
-    currentPath: location.pathname,
-    isCheckingOnboarding,
-    hasCheckedOnboarding: hasCheckedOnboarding.current,
-    isNavigating: isNavigating.current,
-    isCheckingRef: isCheckingRef.current,
-    redirectPath
-  });
-
-
 
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
@@ -185,7 +69,7 @@ const ProtectedRoutes = () => {
   }
 
   // Show loading spinner while checking onboarding
-  if (isCheckingOnboarding) {
+  if (isLoading) {
     console.log('⏳ Showing loading spinner');
     return <LoadingSpinner message="Checking your setup..." />;
   }
@@ -197,8 +81,40 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  console.log('✅ Rendering protected route content');
-  return <Outlet />;
+  // Logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
+  // If onboarding is incomplete, only allow onboarding routes
+  const isOnboardingPath = location.pathname.includes('onboarding');
+  
+  console.log('🔍 Final decision:', {
+    isOnBoardingCompleted,
+    currentPath: location.pathname,
+    isOnboardingPath,
+    willAllowAccess: !isOnBoardingCompleted || !isOnboardingPath
+  });
+  
+  if (isOnBoardingCompleted) {
+    // User has completed onboarding
+    if (isOnboardingPath) {
+      // User is trying to access onboarding path - redirect to dashboard
+      console.log('🚫 Onboarding complete - blocking access to onboarding path:', location.pathname);
+      return <Navigate to="/dashboard/budget" replace />;
+    } else {
+      // User is on non-onboarding path - allow access
+      console.log('✅ Onboarding complete - allowing access to:', location.pathname);
+      return <Outlet />;
+    }
+  } else {
+    // User has not completed onboarding
+    if (isOnboardingPath) {
+      // User is on onboarding path - allow access
+      console.log('🆕 Onboarding incomplete - allowing access to onboarding path:', location.pathname);
+      return <Outlet />;
+    } else {
+      // User is not on onboarding path - redirect to onboarding
+      console.log('🆕 Onboarding incomplete - redirecting to onboarding from:', location.pathname);
+      return <Navigate to="/onboarding/budget" replace />;
+    }
+  }
 };
 
 export default ProtectedRoutes;

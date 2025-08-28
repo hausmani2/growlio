@@ -3,11 +3,14 @@ import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryBtn from "../../../../buttons/Buttons";
 import { useTabHook } from "../../useTabHook";
 import { useLocation } from 'react-router-dom';
+import TooltipIcon from "../../../../common/TooltipIcon";
+import useTooltips from "../../../../../utils/useTooltips";
 
 
 const TotalExpense = ({ data,  onSave }) => {
     const location = useLocation();
     const { handleTabClick } = useTabHook();
+    const tooltips = useTooltips('onboarding-expense');
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -38,7 +41,7 @@ const TotalExpense = ({ data,  onSave }) => {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Total Expenses</h3>
+                <h3 className="text-xl font-bold text-orange-600">Total Expenses</h3>
                 <p className="text-gray-600 text-sm">
                    Your total expenses are calculated by adding your variable and fixed costs.
                 </p>
@@ -47,9 +50,12 @@ const TotalExpense = ({ data,  onSave }) => {
             {/* Total Display */}
             <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">
-                    <label className="text-base font-semibold text-gray-700">
-                        Total Expenses:
-                    </label>
+                    <div className="flex items-center gap-2">
+                        <label className="text-base font-semibold text-gray-700">
+                            Total Expenses:
+                        </label>
+                        <TooltipIcon text={tooltips['total_expense']} />
+                    </div>
                     <span className="text-2xl font-bold text-gray-900">
                         ${totalExpenses}
                     </span>

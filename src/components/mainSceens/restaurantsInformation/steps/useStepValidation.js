@@ -60,7 +60,7 @@ const useStepValidation = () => {
 
     // Labour Information Validation
     const validateLabourInformation = useCallback((data) => {
-        console.log("=== Labour Information Validation ===");
+        console.log("=== Labor Information Validation ===");
         console.log("Validating data:", data);
         
         const errors = {};
@@ -137,56 +137,13 @@ const useStepValidation = () => {
             console.log("✅ COGS goal validation passed:", cogsGoalClean, "parsed as:", goalValue, zoneMessage);
         }
 
-        // 2. Third Party Delivery Validation
-        // Prioritize useHiredPartyDelivery field as it's the primary field used in the component
-        const useThirdPartyDelivery = data.useHiredPartyDelivery === true || data.useHiredPartyDelivery === 'true';
-        
-        console.log("🔍 Debug - use_third_party_delivery:", data.use_third_party_delivery);
-        console.log("🔍 Debug - useHiredPartyDelivery:", data.useHiredPartyDelivery);
-        console.log("🔍 Debug - useThirdPartyDelivery calculated as:", useThirdPartyDelivery);
-        
-        // Validate third party delivery selection
-        if (data.useHiredPartyDelivery === undefined || data.useHiredPartyDelivery === '') {
-            errors.useHiredPartyDelivery = "Please select whether you use third party delivery";
-            console.log("❌ Third party delivery selection validation failed");
+        // 2. Delivery Days Validation
+        // Validate that at least one delivery day is selected
+        if (!data.delivery_days || data.delivery_days.length === 0) {
+            errors.delivery_days = "Please select at least one delivery day";
+            console.log("❌ Delivery days validation failed: no days selected");
         } else {
-            console.log("✅ Third party delivery selection validation passed");
-        }
-        
-        if (useThirdPartyDelivery) {
-            console.log("✅ Third party delivery is enabled");
-            
-            // Validate delivery days for third party delivery
-            if (!data.delivery_days || data.delivery_days.length === 0) {
-                errors.delivery_days = "Please select at least one delivery day";
-                console.log("❌ Delivery days validation failed: third party delivery enabled but no days selected");
-            } else {
-                console.log("✅ Delivery days validation passed for third party delivery");
-            }
-
-            // Validate third party providers - only if third party delivery is enabled
-            if (data.providers && data.providers.length > 0) {
-                data.providers.forEach((provider, index) => {
-                    if (!provider.providerName?.trim()) {
-                        errors[`provider_${index}_name`] = "Provider name is required";
-                        console.log(`❌ Provider ${index + 1} name validation failed`);
-                    }
-                    if (!provider.providerFee || provider.providerFee === '') {
-                        errors[`provider_${index}_fee`] = "Provider fee is required";
-                        console.log(`❌ Provider ${index + 1} fee validation failed`);
-                    } else if (isNaN(provider.providerFee) || parseFloat(provider.providerFee) < 1 || parseFloat(provider.providerFee) > 50) {
-                        errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
-                        console.log(`❌ Provider ${index + 1} fee validation failed: invalid range`);
-                    }
-                });
-            }
-        } else {
-            console.log("✅ Third party delivery is disabled - skipping provider validation");
-            
-            // For regular delivery, validate that at least one delivery day is selected
-            if (!data.delivery_days || data.delivery_days.length === 0) {
-                errors.delivery_days = "Please select at least one delivery day";
-            } 
+            console.log("✅ Delivery days validation passed");
         }
 
         // 3. Validate delivery days format and content
@@ -219,13 +176,74 @@ const useStepValidation = () => {
 
     // Sales Channels Validation
     const validateSalesChannels = useCallback((data) => {
+        console.log("=== Sales Channels Validation ===");
+        console.log("Validating data:", data);
+        
         const errors = {};
 
         // At least one sales channel must be selected
         if (!data.in_store && !data.online && !data.from_app && !data.third_party) {
             errors.sales_channels = "Please select at least one sales channel";
+            console.log("❌ Sales channels validation failed: no channels selected");
+        } else {
+            console.log("✅ Sales channels validation passed: at least one channel selected");
         }
 
+        // Validate third party providers if third-party sales is enabled
+        if (data.third_party) {
+            console.log("✅ Third party sales is enabled - validating providers");
+            console.log("Providers data:", data.providers);
+            
+            if (data.providers && data.providers.length > 0) {
+                let hasValidProvider = false;
+                
+                data.providers.forEach((provider, index) => {
+                    console.log(`Validating provider ${index + 1}:`, provider);
+                    
+                    if (!provider.providerName?.trim()) {
+                        errors[`provider_${index}_name`] = "Provider name is required";
+                        console.log(`❌ Provider ${index + 1} name validation failed`);
+                    } else {
+                        console.log(`✅ Provider ${index + 1} name validation passed: "${provider.providerName}"`);
+                    }
+                    
+                    if (!provider.providerFee || provider.providerFee === '') {
+                        errors[`provider_${index}_fee`] = "Provider fee is required";
+                        console.log(`❌ Provider ${index + 1} fee validation failed: missing`);
+                    } else if (isNaN(provider.providerFee) || parseFloat(provider.providerFee) < 1 || parseFloat(provider.providerFee) > 50) {
+                        errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
+                        console.log(`❌ Provider ${index + 1} fee validation failed: invalid range`);
+                    } else {
+                        console.log(`✅ Provider ${index + 1} fee validation passed: ${provider.providerFee}%`);
+                    }
+                    
+                    // Check if this provider has complete data
+                    if (provider.providerName?.trim() && provider.providerFee && !isNaN(provider.providerFee) && parseFloat(provider.providerFee) >= 1 && parseFloat(provider.providerFee) <= 50) {
+                        hasValidProvider = true;
+                        console.log(`✅ Provider ${index + 1} has complete data`);
+                    } else {
+                        console.log(`❌ Provider ${index + 1} has incomplete data`);
+                    }
+                });
+                
+                // If no provider has complete data, show a general error
+                if (!hasValidProvider) {
+                    errors.providers = "Please add at least one third-party provider with complete information";
+                    console.log("❌ Third party providers validation failed: no complete providers");
+                } else {
+                    console.log("✅ Third party providers validation passed: at least one complete provider found");
+                }
+            } else {
+                errors.providers = "Please add at least one third-party provider";
+                console.log("❌ Third party providers validation failed: no providers added");
+            }
+        } else {
+            console.log("✅ Third party sales is disabled - skipping provider validation");
+        }
+
+        console.log("Final validation errors:", errors);
+        console.log("Validation result:", Object.keys(errors).length === 0 ? "PASSED" : "FAILED");
+        
         return errors;
     }, []);
 
@@ -372,7 +390,7 @@ const useStepValidation = () => {
             case 'Basic Information':
                 errors = validateBasicInformation(data);
                 break;
-            case 'Labour Information':
+            case 'Labor Information':
                 errors = validateLabourInformation(data);
                 break;
             case 'Food Cost Details':

@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
 
+
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
@@ -98,7 +99,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Fixed Cost</h3>
+                <h3 className="text-xl font-bold text-orange-600">Fixed Cost</h3>
                 <p className="text-gray-600 text-sm">
                     What are the fixed costs for this location?
                 </p>
