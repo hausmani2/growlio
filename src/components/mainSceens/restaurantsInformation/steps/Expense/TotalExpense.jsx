@@ -20,15 +20,7 @@ const TotalExpense = ({ data,  onSave }) => {
         const variableCost = parseFloat(data.totalVariableCost) || 0;
         const fixedCost = parseFloat(data.totalFixedCost) || 0;
         const total = (variableCost + fixedCost).toFixed(2);
-        
-        // Debug logging
-        console.log('TotalExpense Debug:', {
-            totalVariableCost: data.totalVariableCost,
-            totalFixedCost: data.totalFixedCost,
-            variableCost,
-            fixedCost,
-            total
-        });
+
         
         return total;
     };

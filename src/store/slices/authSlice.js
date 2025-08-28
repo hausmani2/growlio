@@ -35,6 +35,12 @@ const createAuthSlice = (set, get) => {
           throw new Error('No authentication token received');
         }
         
+        // Clear any existing data before setting new user data
+        const currentState = get();
+        if (currentState.clearPersistedState) {
+          currentState.clearPersistedState();
+        }
+        
         // Store access token in localStorage
         localStorage.setItem('token', access);
         
@@ -261,7 +267,7 @@ const createAuthSlice = (set, get) => {
         const restaurantId = localStorage.getItem('restaurant_id');
         if (restaurantId) {
           set(() => ({ restaurantId }));
-          console.log('✅ Restaurant ID loaded from localStorage:', restaurantId);
+          
         }
       } else {
         // Clear invalid token
@@ -281,7 +287,7 @@ const createAuthSlice = (set, get) => {
       if (!restaurantId) {
         // If no restaurant ID found, this means the user is new and hasn't completed onboarding
         // Don't make API calls - just return null and let the onboarding flow handle it
-        console.log('ℹ️ No restaurant ID found - user needs to complete onboarding first');
+        
         return null;
       }
       

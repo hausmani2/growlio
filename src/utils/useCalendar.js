@@ -71,28 +71,24 @@ const useCalendar = ({
   useEffect(() => {
     if (autoSelectCurrentWeek && (!initialDates || initialDates.length === 0) && (!dateRange || dateRange.length === 0)) {
       const [start, end] = getWeekBoundaries(dayjs());
-      console.log('useCalendar: Auto-selecting current week:', start.format('YYYY-MM-DD'), 'to', end.format('YYYY-MM-DD'));
       setDateRange([start, end]);
     } else if (initialDates && initialDates.length === 2) {
-      console.log('useCalendar: Using provided initial dates:', initialDates.map(d => d.format('YYYY-MM-DD')));
       setDateRange(initialDates);
     }
   }, [autoSelectCurrentWeek, initialDates]); // Run only once on mount
 
   // Handle date range change
   const handleDateChange = (dates) => {
-    console.log('useCalendar: Date range changed:', dates?.map(d => d?.format('YYYY-MM-DD')));
     setDateRange(dates);
     setError(null);
     
     // Allow any date range - no validation restrictions
     if (dates && dates.length === 2) {
       const daysDiff = dates[1].diff(dates[0], 'day');
-      console.log('useCalendar: Days difference:', daysDiff);
       
       // Optional: Log if it's a week range for debugging
       if (daysDiff === 6 && dates[0].day() === 0 && dates[1].day() === 6) {
-        console.log('useCalendar: This is a valid week range (Sunday to Saturday)');
+        
       }
     }
   };

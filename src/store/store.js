@@ -131,7 +131,6 @@ const useStore = create(
             currentViewMode: 'weekly'
           }));
           
-          console.log('✅ All persisted state cleared');
         }
       }),
       { name: 'growlio-store' }

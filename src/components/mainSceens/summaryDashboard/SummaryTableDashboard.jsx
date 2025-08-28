@@ -384,17 +384,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       }, {})
     })), [categories, tableData, processedData, formatDateForDisplay]);
   
-  // Debug logging
-  console.log('SummaryTableDashboard Debug:', {
-    viewMode,
-    groupBy,
-    dataGroupBy: dataToProcess?.group_by,
-    isMonthlyView,
-    monthDisplayName,
-    hasData: tableData.length > 0,
-    firstEntry: tableData[0],
-    dataToProcess
-  });
+  
 
   // Loading state
   if (loading) {

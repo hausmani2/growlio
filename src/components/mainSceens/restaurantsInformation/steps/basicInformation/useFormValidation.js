@@ -73,7 +73,6 @@ const useFormValidation = () => {
         if (!addressTypeData.menuType?.trim()) {
             errors.menuType = VALIDATION_MESSAGES.MENU_TYPE;
         } else {
-            console.log("✅ Menu type validation passed:", addressTypeData.menuType);
         }
 
         return errors;

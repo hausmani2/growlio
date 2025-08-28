@@ -93,7 +93,6 @@ const ProfitLossDashboard = () => {
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
-    console.log('ProfitLossDashboard: handleDateChange called with:', dates?.map(d => d?.format('YYYY-MM-DD')));
     
     // Update the calendar state first
     handleCalendarDateChange(dates);
@@ -101,20 +100,17 @@ const ProfitLossDashboard = () => {
     if (dates && dates.length === 2) {
       const startDate = dates[0].format('YYYY-MM-DD');
       const endDate = dates[1].format('YYYY-MM-DD');
-      console.log('ProfitLossDashboard: Fetching data for:', startDate, 'to', endDate);
       fetchSummaryData(startDate, endDate, groupBy);
     }
   }, [handleCalendarDateChange, fetchSummaryData, groupBy]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
-    console.log('ProfitLossDashboard: handleGroupByChange called with:', groupByValue);
     setGroupBy(groupByValue);
     // Refetch data with new group by if we have a date range
     if (calendarDateRange && calendarDateRange.length === 2) {
       const startDate = calendarDateRange[0].format('YYYY-MM-DD');
       const endDate = calendarDateRange[1].format('YYYY-MM-DD');
-      console.log('ProfitLossDashboard: Refetching data for groupBy:', groupByValue, 'dates:', startDate, 'to', endDate);
       fetchSummaryData(startDate, endDate, groupByValue);
     }
   }, [calendarDateRange, fetchSummaryData]);
@@ -185,15 +181,7 @@ const ProfitLossDashboard = () => {
         {calendarDateRange && calendarDateRange.length === 2 ? (
           <>
             {(() => {
-              console.log('Conditional rendering check:', {
-                dateRange: calendarDateRange,
-                summaryLoading,
-                hasNoData: hasValidData(),
-                shouldShowLoading: summaryLoading,
-                shouldShowEmpty: !summaryLoading && !hasValidData(),
-                shouldShowDashboard: !summaryLoading && hasValidData()
-              });
-
+              
               // Always show loading first if still loading
               if (summaryLoading) {
                 return (
@@ -231,11 +219,7 @@ const ProfitLossDashboard = () => {
                   {/* Profit & Loss Line + Category Pie side-by-side */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {(() => {
-                      console.log('ProfitLossDashboard: Rendering ProfitLossTrendLine with:', {
-                        dashboardSummaryData,
-                        groupBy,
-                        hasData: dashboardSummaryData?.data?.length > 0
-                      });
+                      
                       return <ProfitLossTrendLine dashboardData={dashboardSummaryData} viewMode={groupBy} />;
                     })()}
                     <ProfitLossCategoryPie
