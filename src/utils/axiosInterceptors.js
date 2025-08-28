@@ -1,4 +1,52 @@
 import axios from 'axios';
+import useStore from '../store/store';
+
+/**
+ * Utility function to clear all store data and redirect to login
+ * 
+ * This function is called when:
+ * 1. A 401 Unauthorized error occurs (token expired)
+ * 2. Any API call fails with authentication error
+ * 
+ * It ensures that:
+ * - All Redux store data is cleared (prevents showing previous user's data)
+ * - All localStorage items are removed
+ * - All sessionStorage is cleared
+ * - User is redirected to login page
+ * 
+ * This prevents the issue where a new user would see the previous user's data
+ * when creating an account in the same browser.
+ */
+export const clearStoreAndRedirectToLogin = () => {
+  console.log('🔐 Token expired - clearing all store data and redirecting to login...');
+  
+  // Get the store instance and clear all persisted state
+  const store = useStore.getState();
+  if (store.clearPersistedState) {
+    store.clearPersistedState();
+    console.log('✅ Store data cleared successfully');
+  } else {
+    console.warn('⚠️ clearPersistedState function not found in store');
+  }
+  
+  // Also clear any remaining localStorage items
+  localStorage.removeItem('token');
+  localStorage.removeItem('restaurant_id');
+  localStorage.removeItem('growlio-store');
+  console.log('✅ LocalStorage cleared');
+  
+  // Clear sessionStorage
+  sessionStorage.clear();
+  console.log('✅ SessionStorage cleared');
+  
+  // Redirect to login page if not already there
+  if (window.location.pathname !== '/login') {
+    console.log('🔄 Redirecting to login page...');
+    window.location.href = '/login';
+  } else {
+    console.log('ℹ️ Already on login page');
+  }
+};
 
 // Create an Axios instance
 const api = axios.create({
@@ -31,14 +79,8 @@ api.interceptors.response.use(
       // Handle specific status codes
       switch (error.response.status) {
         case 401:
-          // Unauthorized - clear token and redirect to login
-          
-          localStorage.removeItem('token');
-          
-          // Redirect to login page if not already there
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
+          // Unauthorized - clear token and all store data, then redirect to login
+          clearStoreAndRedirectToLogin();
           break;
         case 403:
           // Forbidden

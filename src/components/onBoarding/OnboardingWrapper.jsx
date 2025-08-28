@@ -11,6 +11,7 @@ import useStore from "../../store/store";
 import { message } from "antd";
 
 import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
+import { clearStoreAndRedirectToLogin } from "../../utils/axiosInterceptors";
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
@@ -165,6 +166,10 @@ const OnboardingWrapper = () => {
                 errorMessage = "Request timed out. Please check your connection and try again.";
             } else if (error.response?.status === 401) {
                 errorMessage = "Authentication required. Please log in again.";
+                
+                // Clear all store data when token expires and redirect to login
+                clearStoreAndRedirectToLogin();
+                return; // Exit early to prevent further processing
             } else if (error.response?.status === 404) {
                 errorMessage = "No restaurant data found. Starting fresh setup.";
             }

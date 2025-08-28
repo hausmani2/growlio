@@ -35,6 +35,13 @@ const createAuthSlice = (set, get) => {
           throw new Error('No authentication token received');
         }
         
+        // Clear any existing data before setting new user data
+        console.log('🔄 Clearing existing data for new login...');
+        const currentState = get();
+        if (currentState.clearPersistedState) {
+          currentState.clearPersistedState();
+        }
+        
         // Store access token in localStorage
         localStorage.setItem('token', access);
         
