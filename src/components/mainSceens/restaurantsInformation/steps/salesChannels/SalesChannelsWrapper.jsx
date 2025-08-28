@@ -8,11 +8,12 @@ import useStepValidation from "../useStepValidation";
 import { useNavigate, useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
+import SalesDays from "./SalesDays";
 
 const SalesChannelsWrapperContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, loadExistingOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
 
@@ -25,25 +26,91 @@ const SalesChannelsWrapperContent = () => {
         online: false,
         from_app: false,
         third_party: false,
-        providers: []
+        providers: [],
+        selectedDays: {
+            Sunday: true,
+            Monday: true,
+            Tuesday: true,
+            Wednesday: true,
+            Thursday: true,
+            Friday: true,
+            Saturday: true
+        }
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
+        console.log("🔄 useEffect triggered - completeOnboardingData changed:", completeOnboardingData);
+        console.log("🔄 completeOnboardingData keys:", Object.keys(completeOnboardingData || {}));
+        
         const salesChannelsInfoData = completeOnboardingData["Sales Channels"];
+        console.log("📋 Sales Channels data from store:", salesChannelsInfoData);
+        
         if (salesChannelsInfoData && salesChannelsInfoData.data) {
             const data = salesChannelsInfoData.data;
+            console.log("📊 Raw data from API:", data);
 
-            setSalesChannelsData(prev => ({
-                ...prev,
-                in_store: data.in_store || true,
-                online: data.online || false,
-                from_app: data.from_app || false,
-                third_party: data.third_party || false,
-                providers: data.providers || []
-            }));
+            // Handle restaurant days - if days are returned from API, they are CLOSED days
+            // If no days are returned, all days are OPEN by default
+            let selectedDays = {
+                Sunday: true,
+                Monday: true,
+                Tuesday: true,
+                Wednesday: true,
+                Thursday: true,
+                Friday: true,
+                Saturday: true
+            };
+
+            // If restaurant_days is returned from API, those are the CLOSED days
+            if (data.restaurant_days && Array.isArray(data.restaurant_days)) {
+                console.log("📅 Loading restaurant days from API:", data.restaurant_days);
+                // Mark returned days as CLOSED (false)
+                data.restaurant_days.forEach(day => {
+                    const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+                    if (selectedDays.hasOwnProperty(dayName)) {
+                        selectedDays[dayName] = false; // Closed
+                        console.log(`🔒 Marking ${dayName} as CLOSED`);
+                    }
+                });
+            } else {
+                console.log("📅 No restaurant_days in API response, all days will be OPEN by default");
+            }
+
+            console.log("📅 Final selectedDays state:", selectedDays);
+            setSalesChannelsData(prev => {
+                console.log("🔄 Previous state:", prev);
+                const newState = {
+                    ...prev,
+                    in_store: data.in_store || true,
+                    online: data.online || false,
+                    from_app: data.from_app || false,
+                    third_party: data.third_party || false,
+                    providers: data.providers || [],
+                    selectedDays: selectedDays
+                };
+                console.log("🔄 New state:", newState);
+                return newState;
+            });
+        } else {
+            console.log("❌ No Sales Channels data found in completeOnboardingData");
+            console.log("❌ completeOnboardingData is:", completeOnboardingData);
         }
     }, [completeOnboardingData]);
+
+    // Load data when component mounts
+    useEffect(() => {
+        console.log("🚀 Component mounted - loading existing data...");
+        const loadData = async () => {
+            try {
+                const result = await loadExistingOnboardingData();
+                console.log("🚀 Load data result:", result);
+            } catch (error) {
+                console.error("🚀 Error loading data:", error);
+            }
+        };
+        loadData();
+    }, [loadExistingOnboardingData]);
 
     // Clear error when component mounts
     useEffect(() => {
@@ -59,6 +126,9 @@ const SalesChannelsWrapperContent = () => {
 
     // Function to update sales channels data
     const updateSalesChannelsData = (field, value) => {
+        if (field === 'selectedDays') {
+            console.log("🔄 Updating selectedDays:", value);
+        }
         setSalesChannelsData(prev => ({
             ...prev,
             [field]: value
@@ -86,6 +156,18 @@ const SalesChannelsWrapperContent = () => {
                 from_app: salesChannelsData.from_app,
                 third_party: salesChannelsData.third_party
             };
+
+            // Add sales days data - send CLOSED days to API
+            if (salesChannelsData.selectedDays) {
+                const closedDays = Object.keys(salesChannelsData.selectedDays).filter(day => !salesChannelsData.selectedDays[day]);
+                // Always include restaurant_days field, even if empty (meaning all days are open)
+                stepData.restaurant_days = closedDays;
+                console.log("🔍 Restaurant days data:", {
+                    selectedDays: salesChannelsData.selectedDays,
+                    closedDays: closedDays,
+                    willSendToAPI: stepData.restaurant_days
+                });
+            }
 
             // Add providers data if third-party sales is enabled
             if (salesChannelsData.third_party && salesChannelsData.providers) {
@@ -162,6 +244,12 @@ const SalesChannelsWrapperContent = () => {
                             </div>
                         )}
 
+                        <SalesDays
+                            data={salesChannelsData}
+                            updateData={updateSalesChannelsData}
+                            errors={validationErrors}
+                        />
+
                         <SalesChannel
                             data={salesChannelsData}
                             updateData={updateSalesChannelsData}
@@ -201,6 +289,12 @@ const SalesChannelsWrapperContent = () => {
                     description="Configure your restaurant's sales channels including in-store, online, app, and third-party delivery options."
                 />
             </div>
+
+            <SalesDays
+                data={salesChannelsData}
+                updateData={updateSalesChannelsData}
+                errors={validationErrors}
+            />
 
             {/* Content Section */}
             <SalesChannel

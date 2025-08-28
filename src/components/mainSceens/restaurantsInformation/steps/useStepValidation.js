@@ -189,6 +189,21 @@ const useStepValidation = () => {
             console.log("✅ Sales channels validation passed: at least one channel selected");
         }
 
+        // Validate restaurant days - check for at least one OPEN day
+        if (!data.selectedDays || Object.keys(data.selectedDays).length === 0) {
+            errors.restaurant_days = "Please select at least one restaurant day";
+            console.log("❌ Restaurant days validation failed: no days selected");
+        } else {
+            const openDays = Object.keys(data.selectedDays).filter(day => data.selectedDays[day]);
+            if (openDays.length === 0) {
+                errors.restaurant_days = "Please select at least one restaurant day";
+                console.log("❌ Restaurant days validation failed: no open days selected");
+            } else {
+                console.log("✅ Restaurant days validation passed:", openDays, "open days");
+            }
+        }
+        
+
         // Validate third party providers if third-party sales is enabled
         if (data.third_party) {
             console.log("✅ Third party sales is enabled - validating providers");

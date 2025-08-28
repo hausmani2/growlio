@@ -6,6 +6,7 @@ import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
@@ -212,7 +213,116 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return record.restaurant_open === 0;
   };
 
+  // Handle toggle changes in the main table
+  const handleMainTableToggleChange = async (dayIndex, field, value, record) => {
+    try {
+      // Update the local state immediately for better UX
+      const updatedWeeklyData = [...weeklyData];
+      if (updatedWeeklyData[0] && updatedWeeklyData[0].dailyData) {
+        updatedWeeklyData[0].dailyData[dayIndex] = { 
+          ...updatedWeeklyData[0].dailyData[dayIndex], 
+          [field]: value 
+        };
+        setWeeklyData(updatedWeeklyData);
+      }
 
+      // Prepare the data for API update
+      const currentWeekData = weeklyData[0];
+      if (!currentWeekData || !currentWeekData.dailyData) {
+        message.error('No weekly data found to update');
+        return;
+      }
+
+      // Create the transformed data for API
+      const transformedData = {
+        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
+        section: "Sales Performance",
+        section_data: {
+          weekly: {
+            sales_budget: (weeklyGoals.salesBudget || 0).toFixed(2),
+            actual_sales_in_store: (weeklyGoals.actualSalesInStore || 0).toFixed(2),
+            actual_sales_app_online: (weeklyGoals.actualSalesAppOnline || 0).toFixed(2),
+            net_sales_actual: (weeklyGoals.netSalesActual || 0).toFixed(2),
+            actual_vs_budget_sales: (weeklyGoals.actualVsBudgetSales || 0),
+            daily_tickets: (weeklyGoals.dailyTickets || 0),
+            average_daily_ticket: (weeklyGoals.averageDailyTicket || 0).toFixed(2),
+            // Add dynamic provider fields to weekly data
+            ...providers.reduce((acc, provider) => {
+              const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+              acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = (weeklyGoals[providerKey] || 0).toFixed(2);
+              return acc;
+            }, {})
+          },
+          daily: currentWeekData.dailyData.map(day => {
+            const dailyData = {
+              date: day.date.format('YYYY-MM-DD'),
+              day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
+              sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
+              actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
+              actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
+              daily_tickets: parseFloat(day.dailyTickets) || 0,
+              average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
+              restaurant_open: (() => {
+                const dayValue = day.restaurant_open;
+                // Ensure we always send integer values (0 or 1)
+                if (typeof dayValue === 'boolean') {
+                  return dayValue ? 1 : 0;
+                }
+                if (dayValue === null || dayValue === undefined || dayValue === false) {
+                  return 0;
+                }
+                if (typeof dayValue === 'string') {
+                  return dayValue.toLowerCase() === 'true' || dayValue === '1' ? 1 : 0;
+                }
+                return dayValue !== 0 ? 1 : 0;
+              })(),
+              // Add dynamic provider fields to daily data
+              ...providers.reduce((acc, provider) => {
+                const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = (parseFloat(day[providerKey]) || 0).toFixed(2);
+                return acc;
+              }, {})
+            };
+
+            // Calculate net sales actual including dynamic providers
+            const baseSales = (parseFloat(day.actualSalesInStore) || 0) + 
+                             (parseFloat(day.actualSalesAppOnline) || 0)
+            const providerSales = providers.reduce((sum, provider) => {
+              const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+              return sum + (parseFloat(day[providerKey]) || 0);
+            }, 0);
+            dailyData.net_sales_actual = (baseSales + providerSales).toFixed(2);
+
+            return dailyData;
+          })
+        }
+      };
+
+      // Save to API
+      await saveDashboardData(transformedData);
+      
+      // Show success message
+      message.success(`Day ${value === 1 ? 'opened' : 'closed'} successfully!`);
+      
+      // Refresh dashboard data
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      }
+    } catch (error) {
+      console.error('Error updating restaurant open/closed status:', error);
+      message.error(`Failed to update day status: ${error.message}`);
+      
+      // Revert the local state change on error
+      const revertedWeeklyData = [...weeklyData];
+      if (revertedWeeklyData[0] && revertedWeeklyData[0].dailyData) {
+        revertedWeeklyData[0].dailyData[dayIndex] = { 
+          ...revertedWeeklyData[0].dailyData[dayIndex], 
+          [field]: record[field] 
+        };
+        setWeeklyData(revertedWeeklyData);
+      }
+    }
+  };
 
   // Process dashboard data to extract sales information
   const processDashboardData = () => {
@@ -269,7 +379,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0,
         restaurant_open: (() => {
           const value = entry['Sales Performance']?.restaurant_open;
-          console.log('Restaurant open value from API:', value, typeof value);
           // Handle both boolean and integer values
           if (typeof value === 'boolean') {
             return value ? 1 : 0;
@@ -330,7 +439,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             // If we have existing data, use it and convert if needed
             if (existingEntry?.restaurant_open !== undefined) {
               const value = existingEntry.restaurant_open;
-              console.log('Restaurant open value from existing entry:', value, typeof value);
               // Handle both boolean and integer values
               if (typeof value === 'boolean') {
                 return value ? 1 : 0;
@@ -488,7 +596,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
               restaurant_open: (() => {
                 const value = day.restaurant_open;
-                console.log('Sending restaurant_open to API from SalesTable:', value, typeof value);
                 // Ensure we always send integer values (0 or 1)
                 if (typeof value === 'boolean') {
                   return value ? 1 : 0;
@@ -737,7 +844,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     }, [editingWeek, weeklyData.length, weekDays, selectedDate, weeklyGoals]);
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
-      if (isDayClosed(record)) {
+      // Allow changes to restaurant_open field even when day is closed
+      if (isDayClosed(record) && field !== 'restaurant_open') {
         message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
         return;
       }
@@ -954,37 +1062,40 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>-</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={2}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={3}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4}>
                       <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                     {/* Dynamic Provider Summary Cells */}
                     {providers.map((provider, index) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return (
-                        <Table.Summary.Cell key={providerKey} index={4 + index}>
+                        <Table.Summary.Cell key={providerKey} index={5 + index}>
                           <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
                         </Table.Summary.Cell>
                       );
                     })}
-                    <Table.Summary.Cell index={4 + providers.length}>
+                    <Table.Summary.Cell index={5 + providers.length}>
                       <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={5 + providers.length}>
+                    <Table.Summary.Cell index={6 + providers.length}>
                       <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={6 + providers.length}>
+                    <Table.Summary.Cell index={7 + providers.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.budgetedSales > 0 && netSalesActualTotal > 0 
                           ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
                           : '0.0'}%
                       </Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={7 + providers.length}>
+                    <Table.Summary.Cell index={8 + providers.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.dailyTickets > 0 
                           ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
@@ -1014,6 +1125,27 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       <div style={{ fontSize: '12px', color: '#666' }}>
                         {record.date.format('MMM DD, YYYY')}
                       </div>
+                    </div>
+                  )
+                },
+                {
+                  title: 'Days',
+                  dataIndex: 'restaurant_open',
+                  key: 'restaurant_open',
+                  width: 100,
+                  render: (value, record, index) => (
+                    <div className="flex items-center gap-2">
+                      <ToggleSwitch
+                        isOn={value === 1}
+                        setIsOn={(isOn) => {
+                          const newValue = isOn ? 1 : 0;
+                          handleDailyDataChange(index, 'restaurant_open', newValue, record);
+                        }}
+                        size="small"
+                      />
+                      <span className="text-xs text-gray-600">
+                        {value === 1 ? 'Open' : 'Closed'}
+                      </span>
                     </div>
                   )
                 },
@@ -1310,37 +1442,40 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                     <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={1}>
-                                    <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>-</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={2}>
-                                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={3}>
+                                    <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
+                                  </Table.Summary.Cell>
+                                  <Table.Summary.Cell index={4}>
                                     <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   {/* Dynamic Provider Summary Cells */}
                                   {providers.map((provider, index) => {
                                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                                     return (
-                                      <Table.Summary.Cell key={providerKey} index={4 + index}>
+                                      <Table.Summary.Cell key={providerKey} index={5 + index}>
                                         <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
                                       </Table.Summary.Cell>
                                     );
                                   })}
-                                  <Table.Summary.Cell index={4 + providers.length}>
+                                  <Table.Summary.Cell index={5 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={5 + providers.length}>
+                                  <Table.Summary.Cell index={6 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={6 + providers.length}>
+                                  <Table.Summary.Cell index={7 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>
                                       {totals.budgetedSales > 0 && netSalesActualTotal > 0 
                                         ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
                                         : '0.0'}%
                                     </Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={7 + providers.length}>
+                                  <Table.Summary.Cell index={8 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>
                                       {totals.dailyTickets > 0 
                                         ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 

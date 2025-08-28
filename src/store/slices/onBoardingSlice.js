@@ -870,7 +870,8 @@ const createOnBoardingSlice = (set, get) => ({
                         online: data.online || false,
                         from_app: data.from_app || false,
                         third_party: data.third_party || false,
-                        providers: data.providers || []
+                        providers: data.providers || [],
+                        restaurant_days: data.restaurant_days || []
                     };
                 } else if (stepName === "Expense" && data) {
                     // Handle Expenses data mapping
