@@ -1,6 +1,11 @@
-import { Input, Select } from "antd";
+import { Input, Select, Tooltip } from "antd";
 import { useEffect, useState } from "react";
 import useStore from "../../../../../store/store";
+import { apiGet } from "../../../../../utils/axiosInterceptors";
+import { fetchTooltips } from "../../../../../utils";
+import SubTrack from "../../../../../assets/svgs/Subtract.svg";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 
 const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false }) => {
     const { 
@@ -11,7 +16,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         restaurantNameExists,
         completeOnboardingData
     } = useStore();
-    
+    const tooltips = useTooltips('onboarding-basic');
     
     // Check if Basic Information step is completed
     const isBasicInfoCompleted = completeOnboardingData["Basic Information"]?.status === true;
@@ -93,9 +98,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Restaurant Information</h3>
-                <p className="text-gray-600 text-sm">
-                    Tell us about your restaurant — name, category, and a short description to help customers get to know you.
-                </p>
+               
             </div>
             
             {/* Form Fields */}
@@ -103,13 +106,14 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 {/* Restaurant Name */}
                 <div>
                     <label htmlFor="restaurantName" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Restaurant Name <span className="text-red-500">*</span>
+                        Company Name <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips["restaurant_name"]} />
                     </label>
                     <div className="relative">
                         <Input 
                             type="text" 
                             id="restaurantName" 
-                            placeholder="Enter your restaurant name" 
+                            placeholder="Enter your company name" 
                             className={`w-full h-11 rounded-lg text-sm ${
                                 combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
                             } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
@@ -135,25 +139,30 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                             </div>
                         )}
                     </div>
+                    <div className="flex gap-2 items-center">
                     {combinedErrors.restaurantName && !isUpdateMode && (
                         <span className="text-red-500 text-xs mt-1">{combinedErrors.restaurantName}</span>
                     )}
                     {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
-                        <span className="text-green-500 text-xs mt-1">✓ Restaurant name is available</span>
+                        <span className="text-green-500 text-xs mt-1">✓ Company name is available</span>
                     )}
                     {isBasicInfoCompleted && !isUpdateMode && (
-                        <span className="text-blue-500 text-xs mt-1">🔒 Restaurant name is locked (cannot be changed after completion)</span>
+                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked (cannot be changed after completion)</span>
                     )}
                     {isUpdateMode && (
-                        <span className="text-blue-500 text-xs mt-1">🔒 Restaurant name is locked in update mode</span>
+                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked in update mode</span>
                     )}
+                    </div>
                 </div>
                 
                 {/* Number of Locations */}
                 <div>
+
                     <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700 mb-2">
                         Number of Locations <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['number_of_locations']} />
                     </label>
+
                     <Select 
                         id="numberOfLocations" 
                         placeholder="Select Locations" 
@@ -180,6 +189,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 <div>
                     <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700 mb-2">
                         Location Name <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['location_name']} />
                     </label>
                     <Input 
                         type="text" 

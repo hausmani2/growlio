@@ -24,6 +24,8 @@ import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
+import UsersAdmin from './components/admin/UsersAdmin';
+import TooltipsAdmin from './components/admin/TooltipsAdmin';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -67,11 +69,10 @@ function App() {
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/onboarding/budget" element={<OnboardingWrapper />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
-          <Route path="/onboarding/labour-information" element={<RestaurantInfo />} />
+          <Route path="/onboarding/labor-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
           <Route path="/onboarding/sales-channels" element={<RestaurantInfo />} />
           <Route path="/onboarding/expense" element={<RestaurantInfo />} />
@@ -81,10 +82,15 @@ function App() {
           <Route path="/dashboard/profit-loss" element={<Wrapper showSidebar={true} children={<ProfitLossDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
-          <Route path="/dashboard/labour-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
+          <Route path="/dashboard/labor-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
           <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
+          <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
+          {/* Admin */}
+          <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
+          <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
+
         </Route>
 
         {/* Catch-all: redirect unknown routes to home or login */}

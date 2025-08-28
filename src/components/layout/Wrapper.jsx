@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
+import useStore from '../../store/store';
 import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiActualbudget, SiExpensify } from 'react-icons/si';
@@ -17,6 +18,9 @@ const { Content } = Layout;
 const Wrapper = ({ showSidebar = false, children, className }) => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const user = useStore((state) => state.user);
+  const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
 
   const menuItems = [
     {
@@ -56,10 +60,16 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/basic-information'),
         },
         {
-          key: 'labour-information',
+          key: 'sales-channels',
+          icon: <FaStore  />,
+          label: 'Sales Channels',
+          onClick: () => navigate('/dashboard/sales-channels'),
+        },
+        {
+          key: 'labor-information',
           icon: <FaPeopleCarry/>,
-          label: 'Labour Information',
-          onClick: () => navigate('/dashboard/labour-information'),
+          label: 'Labor Information',
+          onClick: () => navigate('/dashboard/labor-information'),
         },
         {
           key: 'food-cost-details',
@@ -68,19 +78,34 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/food-cost-details'),
         },
         {
-          key: 'sales-channels',
-          icon: <FaStore  />,
-          label: 'Sales Channels',
-          onClick: () => navigate('/dashboard/sales-channels'),
-        },
-        {
           key: 'expense',
           icon: <SiExpensify  />,
-          label: 'Expense',
+          label: 'Expenses',
           onClick: () => navigate('/dashboard/expense'),
         },
       ],
     },
+    ...(isAdmin ? [
+      {
+        key: 'admin',
+        icon: <SettingOutlined />,
+        label: 'Admin',
+        children: [
+          {
+            key: 'admin-users',
+            icon: <UserOutlined />,
+            label: 'Users',
+            onClick: () => navigate('/admin/users'),
+          },
+          {
+            key: 'admin-tooltips',
+            icon: <InfoCircleOutlined />,
+            label: 'Tooltips',
+            onClick: () => navigate('/admin/tooltips'),
+          },
+        ],
+      },
+    ] : []),
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -90,7 +115,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           key: 'profile',
           icon: <UserOutlined />,
           label: 'Profile',
-          onClick: () => navigate('/profile'),
+          onClick: () => navigate('/dashboard/profile'),
         },
       ],
     },

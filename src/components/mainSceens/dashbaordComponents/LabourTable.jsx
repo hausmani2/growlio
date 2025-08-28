@@ -115,18 +115,25 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       });
 
       // Extract all daily entries into one consolidated table
-      const allDailyEntries = dashboardData.daily_entries?.map((entry) => ({
-        key: `day-${entry.date}`,
-        date: dayjs(entry.date),
-        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
-        laborHoursBudget: parseFloat(entry['Labor Performance']?.labor_hours_budget) || 0,
-        laborHoursActual: parseFloat(entry['Labor Performance']?.labor_hours_actual) || 0,
-        budgetedLaborDollars: parseFloat(entry['Labor Performance']?.budgeted_labor_dollars) || 0,
-        actualLaborDollars: parseFloat(entry['Labor Performance']?.actual_labor_dollars) || 0,
-        dailyLaborRate: parseFloat(entry['Labor Performance']?.daily_labor_rate) || 0,
-        dailyLaborPercentage: parseFloat(entry['Labor Performance']?.daily_labour_percent) || 0,
-        weeklyLaborPercentage: parseFloat(entry['Labor Performance']?.weekly_labour_percent) || 0
-      })) || [];
+      const allDailyEntries = dashboardData.daily_entries?.map((entry) => {
+        // Check if restaurant is open for this day
+        const isRestaurantOpen = entry['Sales Performance']?.restaurant_open !== false && 
+                                entry['Sales Performance']?.restaurant_open !== 0;
+        
+        return {
+          key: `day-${entry.date}`,
+          date: dayjs(entry.date),
+          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          laborHoursBudget: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.labor_hours_budget) || 0) : 0,
+          laborHoursActual: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.labor_hours_actual) || 0) : 0,
+          budgetedLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.budgeted_labor_dollars) || 0) : 0,
+          actualLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.actual_labor_dollars) || 0) : 0,
+          dailyLaborRate: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.daily_labor_rate) || 0) : 0,
+          dailyLaborPercentage: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.daily_labour_percent) || 0) : 0,
+          weeklyLaborPercentage: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.weekly_labour_percent) || 0) : 0,
+          restaurantOpen: isRestaurantOpen
+        };
+      }) || [];
 
       // If weekDays are provided, use them to create the daily data structure
       let dailyData = allDailyEntries;
@@ -148,7 +155,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             actualLaborDollars: 0,
             dailyLaborRate: 0,
             dailyLaborPercentage: 0,
-            weeklyLaborPercentage: 0
+            weeklyLaborPercentage: 0,
+            restaurantOpen: true // Default to open for new days
           };
         });
       } else {
@@ -260,13 +268,13 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           daily: weekData.dailyData.map(day => ({
             date: day.date.format('YYYY-MM-DD'),
             day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
-            labor_hours_budget: parseFloat(day.laborHoursBudget) || 0,
-            labor_hours_actual: parseFloat(day.laborHoursActual) || 0,
-            budgeted_labor_dollars: parseFloat(day.budgetedLaborDollars) || 0,
-            actual_labor_dollars: parseFloat(day.actualLaborDollars) || 0,
-            daily_labor_rate: parseFloat(getAverageHourlyRate()) || 0,
-            daily_labour_percent: parseFloat(day.dailyLaborPercentage) || 0,
-            weekly_labour_percent: parseFloat(day.weeklyLaborPercentage) || 0
+            labor_hours_budget: day.restaurantOpen === false ? 0 : (parseFloat(day.laborHoursBudget) || 0),
+            labor_hours_actual: day.restaurantOpen === false ? 0 : (parseFloat(day.laborHoursActual) || 0),
+            budgeted_labor_dollars: day.restaurantOpen === false ? 0 : (parseFloat(day.budgetedLaborDollars) || 0),
+            actual_labor_dollars: day.restaurantOpen === false ? 0 : (parseFloat(day.actualLaborDollars) || 0),
+            daily_labor_rate: day.restaurantOpen === false ? 0 : (parseFloat(getAverageHourlyRate()) || 0),
+            daily_labour_percent: day.restaurantOpen === false ? 0 : (parseFloat(day.dailyLaborPercentage) || 0),
+            weekly_labour_percent: day.restaurantOpen === false ? 0 : (parseFloat(day.weeklyLaborPercentage) || 0)
           }))
         }
       };
@@ -296,12 +304,19 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
   // Calculate weekly totals
   const calculateWeeklyTotals = (weekData) => {
-    const totals = weekData.dailyData.reduce((acc, day) => ({
-      laborHoursBudget: acc.laborHoursBudget + (parseFloat(day.laborHoursBudget) || 0),
-      laborHoursActual: acc.laborHoursActual + (parseFloat(day.laborHoursActual) || 0),
-      budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(day.budgetedLaborDollars) || 0),
-      actualLaborDollars: acc.actualLaborDollars + (parseFloat(day.actualLaborDollars) || 0)
-    }), {
+    const totals = weekData.dailyData.reduce((acc, day) => {
+      // Skip closed days in totals calculation
+      if (day.restaurantOpen === false) {
+        return acc;
+      }
+      
+      return {
+        laborHoursBudget: acc.laborHoursBudget + (parseFloat(day.laborHoursBudget) || 0),
+        laborHoursActual: acc.laborHoursActual + (parseFloat(day.laborHoursActual) || 0),
+        budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(day.budgetedLaborDollars) || 0),
+        actualLaborDollars: acc.actualLaborDollars + (parseFloat(day.actualLaborDollars) || 0)
+      };
+    }, {
       laborHoursBudget: 0,
       laborHoursActual: 0,
       budgetedLaborDollars: 0,
@@ -325,7 +340,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         actualLaborDollars: 0,
         dailyLaborRate: 0,
         dailyLaborPercentage: 0,
-        weeklyLaborPercentage: 0
+        weeklyLaborPercentage: 0,
+        restaurantOpen: true // Default to open for new days
       });
     }
     return days;
@@ -632,10 +648,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     render: (value, record, index) => (
                       <Input
                         type="number"
-                        value={formatDisplayValue(value)}
+                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
                         onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0)}
                         suffix="hrs"
                         className="w-full"
+                        disabled={record.restaurantOpen === false}
+                        style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                       />
                     )
                   });
@@ -650,10 +668,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     render: (value, record, index) => (
                       <Input
                         type="number"
-                        value={formatDisplayValue(value)}
+                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
                         onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0)}
                         prefix="$"
                         className="w-full"
+                        disabled={record.restaurantOpen === false}
+                        style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                       />
                     )
                   });
@@ -804,6 +824,11 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
+                                    {record.restaurantOpen === false && (
+                                      <div style={{ fontSize: '10px', color: '#ff4d4f', fontWeight: 'bold' }}>
+                                        CLOSED
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               },
@@ -812,49 +837,84 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 dataIndex: 'laborHoursBudget',
                                 key: 'laborHoursBudget',
                                 width: 120,
-                                render: (value) => <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
+                                }
                               },
                               {
                                 title: 'Labor Hours - Actual',
                                 dataIndex: 'laborHoursActual',
                                 key: 'laborHoursActual',
                                 width: 150,
-                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
+                                }
                               },
                               {
                                 title: 'Budgeted Labor $',
                                 dataIndex: 'budgetedLaborDollars',
                                 key: 'budgetedLaborDollars',
                                 width: 120,
-                                render: (value) => <Text className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                }
                               },
                               {
                                 title: 'Actual Labor $',
                                 dataIndex: 'actualLaborDollars',
                                 key: 'actualLaborDollars',
                                 width: 150,
-                                render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                }
                               },
                               {
                                 title: 'Daily Labor Rate',
                                 dataIndex: 'dailyLaborRate',
                                 key: 'dailyLaborRate',
                                 width: 150,
-                                render: (value) => <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                                render: (value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                }
                               },
                               {
                                 title:"Daily Labor %",
                                 dataIndex:"dailyLaborPercentage",
                                 key:"dailyLaborPercentage",
                                 width:150,
-                                render:(value)=><Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>
+                                render:(value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>;
+                                }
                               },
                               {
                                 title:"Weekly Labor %",
                                 dataIndex:"weeklyLaborPercentage",
                                 key:"weeklyLaborPercentage",
                                 width:150,
-                                render:(value)=><Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>
+                                render:(value, record) => {
+                                  if (record.restaurantOpen === false) {
+                                    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  }
+                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>;
+                                }
                               }
                             ]}
                           />

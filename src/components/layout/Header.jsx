@@ -39,7 +39,7 @@ const Header = ({ onMenuClick }) => {
                     <span className="text-sm font-medium">Profile</span>
                 </div>
             ),
-            onClick: () => navigate('/profile'),
+            onClick: () => navigate('/dashboard/profile'),
             className: 'hover:bg-gray-50'
         },
         {

@@ -1,8 +1,11 @@
 import React, { useEffect, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
+    const tooltips = useTooltips('onboarding-expense');
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicVariableFields || []);
@@ -124,6 +127,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Variable Cost</h3>
                 <p className="text-gray-600 text-sm">
                     What are the variable costs for this location?
+                    <TooltipIcon text={tooltips.variable_costs_description} />
                 </p>
             </div>
             
@@ -131,6 +135,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Variable Costs <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips.variable_costs} />
                 </label>
                 
                 <div className="space-y-3">
@@ -183,7 +188,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                         onClick={showModal}
                         className="h-11 text-sm"
                     >
-                        Add Variable Cost
+                        Add Variable Cost <TooltipIcon text={tooltips.add_variable_cost} />
                     </Button>
                 </div>
                 

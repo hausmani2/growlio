@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import useTooltips from "../../../../../utils/useTooltips";
+import TooltipIcon from "../../../../common/TooltipIcon";
+
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -90,11 +93,13 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         }
     };
 
+    const tooltips = useTooltips('onboarding-expense');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Fixed Cost</h3>
+                <h3 className="text-xl font-bold text-orange-600">Fixed Cost</h3>
                 <p className="text-gray-600 text-sm">
                     What are the fixed costs for this location?
                 </p>
@@ -104,6 +109,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Fixed Costs <span className="text-red-500">*</span>
+                    <TooltipIcon text={tooltips['fixed_costs']} />
                 </label>
                 
                 <div className="space-y-3">

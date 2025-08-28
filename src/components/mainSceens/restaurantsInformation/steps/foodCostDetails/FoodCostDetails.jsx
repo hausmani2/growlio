@@ -1,5 +1,7 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import { Select, Tooltip } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 
 const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     const handleCogsChange = (value) => {
@@ -9,7 +11,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     // Generate percentage options from 15% to 50% with zone colors
     const generatePercentageOptions = () => {
         const options = [];
-        for (let i = 1; i <= 40; i++) {
+        for (let i = 1; i <= 34; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             
@@ -36,14 +38,16 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
         return options;
     };
 
+    const tooltips = useTooltips('onboarding-food');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Food Cost Details</h3>
-                <p className="text-gray-600 text-sm">
+                {/* <p className="text-gray-600 text-sm">
                     Share your average food cost and pricing structure to help us better support your business planning.
-                </p>
+                </p> */}
             </div>
             
             {/* Form Fields */}
@@ -58,13 +62,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                         <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
                             What is your COGS goal as a percentage of sales?
                             <span className="text-red-500">*</span>
-                            <Tooltip placement="bottomLeft" title="Select the percentage of sales that you want to achieve as your COGS goal">
-                                <img 
-                                    src={SubTrack} 
-                                    alt="SubTrack" 
-                                    className="w-4 h-4" 
-                                />
-                            </Tooltip>
+                            <TooltipIcon text={tooltips['cogs_goal']} />
                         </label>
                         
                         <Select
@@ -87,7 +85,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                             <span className="font-medium">Zone Guidelines:</span><br/>
                             <span className="text-green-600">🟢 Green Zone (Goal): 31%</span> | 
                             <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 33%</span> | 
-                            <span className="text-red-600">🔴 Red Zone (Danger): 36%</span>
+                            <span className="text-red-600">🔴 Red Zone (Danger): 34%</span>
                         </div>
                     </div>
                 </div>

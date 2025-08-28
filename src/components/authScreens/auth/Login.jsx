@@ -110,16 +110,16 @@ const Login = () => {
               navigate('/dashboard/budget');
             }, 1000);
           } else {
-            message.info('Please complete your onboarding setup...');
+            message.success('Welcome to Growlio! Let\'s get you set up.');
             setTimeout(() => {
-              navigate('/onboarding/budget');
+              navigate('/congratulations');
             }, 1000);
           }
         } else {
-          // Fallback to onboarding if check fails
-          message.info('Redirecting to onboarding...');
+          // Fallback to congratulations page if check fails
+          message.success('Welcome to Growlio! Let\'s get you set up.');
           setTimeout(() => {
-            navigate('/onboarding/budget');
+            navigate('/congratulations');
           }, 1000);
         }
       }
@@ -153,7 +153,7 @@ const Login = () => {
       
       {/* Logo Section - Outside the form box */}
       <div className="text-center mb-8">
-        <GrowlioLogo width={180} height={60} className="mx-auto" />
+        <GrowlioLogo width={220} height={80} className="mx-auto" />
       </div>
       
       <form

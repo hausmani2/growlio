@@ -6,7 +6,7 @@ import PrimaryBtn from "../buttons/Buttons";
 import LoadingSpinner from "../layout/LoadingSpinner";
 import { Checkbox, Alert } from "antd";
 import { FaArrowLeftLong } from "react-icons/fa6";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import useStore from "../../store/store";
 import { message } from "antd";
 
@@ -14,6 +14,7 @@ import { forceResetOnboardingLoading } from "../../utils/resetLoadingState";
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [isChecking, setIsChecking] = useState(false);
     const { 
         checkOnboardingCompletion, 
@@ -21,7 +22,8 @@ const OnboardingWrapper = () => {
         onboardingStatus,
         onboardingLoading,
         isNewUser,
-        isOnBoardingCompleted
+        isOnBoardingCompleted,
+        logout
     } = useStore();
 
     // Check if we should show loading state
@@ -125,8 +127,8 @@ const OnboardingWrapper = () => {
                                 case 'Basic Information':
                                     navigate('/onboarding/basic-information');
                                     break;
-                                case 'Labour Information':
-                                    navigate('/onboarding/labour-information');
+                                case 'Labor Information':
+                                    navigate('/onboarding/labor-information');
                                     break;
                                 case 'Food Cost Details':
                                     navigate('/onboarding/food-cost-details');
@@ -134,7 +136,7 @@ const OnboardingWrapper = () => {
                                 case 'Sales Channels':
                                     navigate('/onboarding/sales-channels');
                                     break;
-                                case 'Expense':
+                                case 'Expenses':
                                     navigate('/onboarding/expense');
                                     break;
                                 default:
@@ -182,12 +184,18 @@ const OnboardingWrapper = () => {
         }
     };
 
+    const handleBack = () => {
+        navigate('/congratulations');
+    }
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    }
+
     // Auto-navigate if onboarding status is already known
     useEffect(() => {
-        if (onboardingStatus === 'complete') {
-            console.log('✅ Onboarding already complete - redirecting to dashboard');
-            navigate('/dashboard/budget');
-        } else if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
+        if (onboardingStatus === 'incomplete' || onboardingStatus === null) {
             console.log('⚠️ New user or onboarding incomplete - user can proceed with setup');
             
             // Welcome message logic for new users
@@ -224,10 +232,15 @@ const OnboardingWrapper = () => {
                     <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">
                         <div className="flex flex-col gap-6 sm:gap-8 bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10">
                             {/* Back Button */}
-                            <div>
-                                <button className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium">
+                            <div className="flex justify-between">
+                                <button  onClick={handleBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium">
                                     <FaArrowLeftLong className="text-sm" />
                                     <span className="hidden sm:inline">Go Back</span>
+                                   
+                                </button>
+                                <button  onClick={handleLogout} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium  p-1">
+                                    <span className="hidden sm:inline">Logout</span>
+                                   
                                 </button>
                             </div>
                             
@@ -243,7 +256,7 @@ const OnboardingWrapper = () => {
                             
                             {/* Options */}
                             <div className="flex flex-col gap-4 sm:gap-6">
-                                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50 opacity-60">
+                                {/* <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50 opacity-60">
                                     <div className="flex items-center gap-3">
                                         <Checkbox disabled />
                                         <span className="text-base sm:text-lg font-semibold text-gray-500">
@@ -253,7 +266,7 @@ const OnboardingWrapper = () => {
                                     <p className="text-sm sm:text-base text-gray-500 leading-relaxed mt-2 ml-6">
                                         Claim and manage an existing listing.
                                     </p>
-                                </div>
+                                </div> */}
                                 
                                 <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer">
                                     <div className="flex items-center gap-3">
@@ -268,11 +281,11 @@ const OnboardingWrapper = () => {
                                 </div>
                             </div>
 
-                        <div className="mt-8">
+                        <div className="">
                             <button
                                 onClick={handleSubmit}
                                 disabled={isChecking}
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gray-50 opacity-60"
+                                className="w-full border-2 border-gray-200 rounded-xl p-2 bg-orange-500 text-white hover:bg-orange-600"
                             >
                                 {isChecking ? (
                                     <div className="flex items-center justify-center">

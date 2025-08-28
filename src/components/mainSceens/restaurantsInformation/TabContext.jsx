@@ -14,10 +14,10 @@ export const TabProvider = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [activeTab, setActiveTab] = useState(0);
-    const { 
-        completeOnboardingData, 
-        resetStepStatus, 
-        getRestaurantId, 
+    const {
+        completeOnboardingData,
+        resetStepStatus,
+        getRestaurantId,
         ensureAllStepsInitialized,
         loadExistingOnboardingData,
         checkOnboardingCompletion,
@@ -27,17 +27,17 @@ export const TabProvider = ({ children }) => {
 
     // Check if we need to load existing onboarding data
     const shouldLoadExistingData = () => {
-        const hasAnyCompletedSteps = Object.values(completeOnboardingData).some(step => 
+        const hasAnyCompletedSteps = Object.values(completeOnboardingData).some(step =>
             step && typeof step === 'object' && step.status === true
         );
-        
+
         const hasRestaurantId = completeOnboardingData.restaurant_id || localStorage.getItem('restaurant_id');
-        
+
         // If we have a restaurant_id but no completed steps, we should load data
         if (hasRestaurantId && !hasAnyCompletedSteps) {
             return true;
         }
-        
+
         return false;
     };
 
@@ -64,18 +64,18 @@ export const TabProvider = ({ children }) => {
 
     const tabs = [
         { id: 0, title: 'Basic Information', path: 'basic-information', required: true },
-        { id: 1, title: 'Labour Information', path: 'labour-information', required: true },
-        { id: 2, title: 'Food Cost Details', path: 'food-cost-details', required: true },
-        { id: 3, title: 'Sales Channels', path: 'sales-channels', required: true },
+        { id: 1, title: 'Sales Channels', path: 'sales-channels', required: true },
+        { id: 2, title: 'Labor Information', path: 'labor-information', required: true },
+        { id: 3, title: 'Food Cost Details', path: 'food-cost-details', required: true },
         { id: 4, title: 'Expense', path: 'expense', required: true },
     ];
 
     // Map URL paths to tab IDs
     const pathToTabId = {
         'basic-information': 0,
-        'labour-information': 1,
-        'food-cost-details': 2,
-        'sales-channels': 3,
+        'sales-channels': 1,
+        'labor-information': 2,
+        'food-cost-details': 3,
         'expense': 4,
     };
 
@@ -83,40 +83,44 @@ export const TabProvider = ({ children }) => {
     const isStepCompleted = (stepName) => {
         const stepData = completeOnboardingData[stepName];
         const completed = stepData?.status === true;
-        
-        
+
+
         if (completed) {
         } else {
         }
-        
+
         return completed;
     };
 
     // Check if user can navigate to a specific tab
-    const canNavigateToTab = (targetTabId) => {
-        
+    const canNavigateToTab = (targetTabId, showMessage = true) => {
+
         // Always allow navigation to Basic Information (tab 0)
-        if (targetTabId === 0) { 
+        if (targetTabId === 0) {
             return true;
         }
 
         // Check if Basic Information is completed
         const basicInfoCompleted = isStepCompleted('Basic Information');
-        
+
         if (!basicInfoCompleted) {
-            message.error('Please complete Basic Information before proceeding to other steps.');
+            if (showMessage) {
+                message.error('Please complete Basic Information before proceeding to other steps.');
+            }
             return false;
         }
 
         // For other steps, check if ALL previous steps are completed (not including the target step)
         const requiredSteps = tabs.slice(0, targetTabId).filter(tab => tab.required);
-        
+
         for (const step of requiredSteps) {
             const stepName = step.title;
             const stepCompleted = isStepCompleted(stepName);
-            
+
             if (!stepCompleted) {
-                message.error(`Please complete ${stepName} before proceeding.`);
+                if (showMessage) {
+                    message.error(`Please complete ${stepName} before proceeding.`);
+                }
                 return false;
             }
         }
@@ -130,7 +134,7 @@ export const TabProvider = ({ children }) => {
         if (!tab) return { completed: false, accessible: false };
 
         const completed = isStepCompleted(tab.title);
-        const accessible = canNavigateToTab(tabId);
+        const accessible = canNavigateToTab(tabId, false); // Don't show messages for UI status checks
 
         return { completed, accessible };
     };
@@ -138,15 +142,15 @@ export const TabProvider = ({ children }) => {
     // Get the next incomplete step
     const getNextIncompleteStep = () => {
         // Check if there are any steps with data at all
-        const hasAnyStepData = Object.values(completeOnboardingData).some(step => 
+        const hasAnyStepData = Object.values(completeOnboardingData).some(step =>
             step && typeof step === 'object' && step.status !== undefined
         );
-        
-        
+
+
         if (!hasAnyStepData) {
             return 0; // Return 0 to start with Basic Information step
         }
-        
+
         for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i];
             const isCompleted = isStepCompleted(tab.title);
@@ -155,7 +159,7 @@ export const TabProvider = ({ children }) => {
                 return i;
             }
         }
-        
+
         // If all steps are completed locally, return the last step index
         return tabs.length - 1; // Return last step index instead of navigating
     };
@@ -190,28 +194,40 @@ export const TabProvider = ({ children }) => {
         const pathname = location.pathname;
         const pathSegments = pathname.split('/');
         const lastSegment = pathSegments[pathSegments.length - 1];
-        
+
+        // Check if this is update mode (dashboard flow) or onboarding mode
+        const isUpdateMode = pathname.includes('/dashboard/');
+
         if (pathToTabId[lastSegment] !== undefined) {
             const targetTabId = pathToTabId[lastSegment];
-            
-            // Check if user can navigate to this tab
-            if (canNavigateToTab(targetTabId)) {
+
+            // Check if user can navigate to this tab (don't show messages for URL-based navigation)
+            if (canNavigateToTab(targetTabId, false)) {
                 setActiveTab(targetTabId);
             } else {
-                // Redirect to Basic Information if not accessible
-                setActiveTab(0);
-                navigate('/onboarding/basic-information', { replace: true });
+                // In update mode, don't redirect to onboarding - just set to first tab
+                if (isUpdateMode) {
+                    console.log('✅ Update mode detected - staying on current page');
+                    setActiveTab(0);
+                } else {
+                    // Only redirect to onboarding in onboarding mode
+                    setActiveTab(0);
+                    navigate('/onboarding/basic-information', { replace: true });
+                }
             }
-        } else if (pathname.includes('/onboarding')) {
-            // Default to basic information if no specific tab in URL
+        } else if (pathname.includes('/onboarding') && !isUpdateMode) {
+            // Only redirect to onboarding if we're in onboarding mode
             setActiveTab(0);
             navigate('/onboarding/basic-information', { replace: true });
         }
     }, [location.pathname, navigate, completeOnboardingData]);
 
     const handleTabClick = (tabId) => {
-        
-        // SIMPLIFIED: Allow navigation to any tab without checking completion status
+
+        // Check if user can navigate to this tab (show message for explicit user clicks)
+        if (!canNavigateToTab(tabId, true)) {
+            return; // Don't proceed if navigation is not allowed
+        }
 
         // Load saved data into temporary form data for the target step
         const targetTab = tabs.find(t => t.id === tabId);
@@ -220,33 +236,68 @@ export const TabProvider = ({ children }) => {
         }
 
         setActiveTab(tabId);
-        
+
+        // Check if this is update mode (dashboard flow) or onboarding mode
+        const isUpdateMode = location.pathname.includes('/dashboard/');
+
         const tab = tabs.find(t => t.id === tabId);
         if (tab) {
-            const targetPath = `/onboarding/${tab.path}`;
-            navigate(targetPath);
+            if (isUpdateMode) {
+                // In update mode, stay on the same page - don't navigate
+                console.log('✅ Update mode detected - staying on current page for tab:', tab.title);
+            } else {
+                // In onboarding mode, navigate to onboarding path
+                const targetPath = `/onboarding/${tab.path}`;
+                navigate(targetPath);
+            }
         } else {
             console.error(`❌ Tab not found for id: ${tabId}`);
         }
     };
 
     // Navigate to next step (used by Save & Continue buttons)
-    const navigateToNextStep = async () => {
+    const navigateToNextStep = async (skipCompletionCheck = false) => {
         const nextTabId = activeTab + 1;
-        
+
         // Debug: Check current state before navigation
-        
+
         if (nextTabId < tabs.length) {
-            
-            // SIMPLIFIED LOGIC: Just navigate to the next step if we have a next step
-            // Don't check completion status of other steps - just go to the next one
-            handleTabClick(nextTabId);
+
+            if (skipCompletionCheck) {
+                // Skip completion check when called from successful save operation
+                const targetTab = tabs.find(t => t.id === nextTabId);
+                if (targetTab) {
+                    loadStepData(targetTab.title);
+                }
+
+                setActiveTab(nextTabId);
+
+                // Check if this is update mode (dashboard flow) or onboarding mode
+                const isUpdateMode = location.pathname.includes('/dashboard/');
+
+                const tab = tabs.find(t => t.id === nextTabId);
+                if (tab) {
+                    if (isUpdateMode) {
+                        // In update mode, stay on the same page - don't navigate
+                        console.log('✅ Update mode detected - staying on current page for next step:', tab.title);
+                    } else {
+                        // In onboarding mode, navigate to onboarding path
+                        const targetPath = `/onboarding/${tab.path}`;
+                        navigate(targetPath);
+                    }
+                } else {
+                    console.error(`❌ Tab not found for id: ${nextTabId}`);
+                }
+            } else {
+                // Check completion status for manual navigation
+                handleTabClick(nextTabId);
+            }
         } else {
             // All local steps completed - check if onboarding is actually complete
-            
+
             try {
                 const completionResult = await checkOnboardingCompletion();
-                
+
                 if (completionResult.success && completionResult.isComplete) {
                     message.success('Congratulations! Your onboarding is complete!');
                     completeOnboarding();
@@ -263,18 +314,18 @@ export const TabProvider = ({ children }) => {
     // Navigate to previous step
     const navigateToPreviousStep = () => {
         const prevTabId = activeTab - 1;
-        
+
         if (prevTabId >= 0) {
             // Save current step's temporary form data before going back
             const currentTab = tabs[activeTab];
             if (currentTab) {
                 const currentStepName = currentTab.title;
                 saveCurrentStepData(currentStepName);
-                
+
                 // Don't reset step status when going back to preserve restaurant_id
                 // resetStepStatus(currentStepName);
             }
-            
+
             handleTabClick(prevTabId);
         }
     };
@@ -292,11 +343,11 @@ export const TabProvider = ({ children }) => {
             case 0:
                 return <RestaurantWrapper />;
             case 1:
-                return <LaborInformationWrapper />;
-            case 2:
-                return <FoodCostWrapper />;
-            case 3:
                 return <SalesChannelsWrapper />;
+            case 2:
+                return <LaborInformationWrapper />;
+            case 3:
+                return <FoodCostWrapper />;
             case 4:
                 return <ExpenseWrapper />;
             default:

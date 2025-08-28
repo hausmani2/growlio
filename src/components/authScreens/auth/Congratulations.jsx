@@ -1,56 +1,118 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Staff from "../../../assets/pngs/shaff.png"
 import Cafe from "../../../assets/pngs/cafe.png"
-
-import ImageLayout from "../../imageWrapper/ImageLayout";
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
+import useStore from "../../../store/store";
+import LoadingSpinner from "../../layout/LoadingSpinner";
+import ImageLayout from "../../imageWrapper/ImageLayout";
 
 const Congratulations = () => {
     const navigate = useNavigate();
+    const [isChecking, setIsChecking] = useState(true);
+
+    // Zustand store hooks
+    const {
+        isAuthenticated,
+        checkOnboardingCompletion
+    } = useStore();
+
+    // Check authentication and onboarding status on component mount
+    useEffect(() => {
+        const checkAuthAndOnboarding = async () => {
+            // If not authenticated, redirect to login
+            if (!isAuthenticated) {
+                navigate('/login');
+                return;
+            }
+
+            // Check onboarding completion status
+            try {
+                const result = await checkOnboardingCompletion();
+
+                if (result.success) {
+                    const isComplete = result.isComplete;
+
+                    if (isComplete) {
+                        // If onboarding is complete, redirect to dashboard
+                        navigate('/dashboard/budget');
+                    }
+                    // If not complete, stay on this page (which is correct)
+                } else {
+                    // If check fails, stay on this page (assume incomplete)
+                    console.warn('Onboarding check failed, staying on congratulations page');
+                }
+            } catch (error) {
+                console.error('Error checking onboarding status:', error);
+                // If error occurs, stay on this page (assume incomplete)
+            } finally {
+                setIsChecking(false);
+            }
+        };
+
+        checkAuthAndOnboarding();
+    }, [isAuthenticated, navigate]);
+
+    // Show loading spinner while checking authentication and onboarding status
+    if (isChecking) {
+        return <LoadingSpinner message="Checking your setup..." />;
+    }
+
     return (
         <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col lg:flex-row">
-            {/* Content Section */}
-            <div className="w-full h-screen lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-                <div className="w-full max-w-sm mx-auto">
-                    <div className="flex flex-col gap-4 sm:gap-6">
+            {/* Content Section - Left Side */}
+            <div className="w-full h-screen lg:w-1/2 flex items-center justify-center px-2 sm:px-2 lg:px-4 bg-gradient-to-br from-orange-50 to-orange-100">
+                <div className="w-full max-w-lg mx-auto">
+                    <div className="flex flex-col gap-2">
                         {/* Header */}
-                        <div className="flex flex-col gap-2 sm:gap-2">
-                            <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-[22px] font-bold leading-tight !mb-0 !font-bold">
-                                🎉 Congratulations!
+                        <div className="flex flex-col gap-3">
+                            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600 leading-tight">
+                                Welcome to Growlio
                             </h1>
-                            <h2 className="text-base sm:text-lg lg:text-xl xl:text-[18px] !font-bold text-gray-800 leading-tight !mb-0">
-                                Your account has been successfully created.
-                            </h2>
-                        </div>
-
-                        {/* Cafe Image */}
-                        <div className="flex justify-center">
-                            <img 
-                                src={Cafe} 
-                                alt="Cafe illustration" 
-                                className="object-cover h-[40vh] sm:h-[50vh] lg:h-[60vh] max-h-[400px] w-auto" 
-                            />
                         </div>
 
                         {/* Description */}
-                        <div className="text-center">
-                            <p className="text-sm sm:text-base lg:text-lg xl:text-[16px] font-medium text-gray-700">
-                                You can now register your restaurant, set up your menu, manage bookings, and more — all from your dashboard.
+                        <div className="space-y-4 text-gray-700 leading-relaxed">
+                            <p className="text-sm sm:text-base">
+                                Running a restaurant is tough—but managing your numbers doesn't have to be. That's why we built Growlio: a simple budgeting tool designed to help you stay profitable and in control.
+                            </p>
+
+                            <p className="text-sm sm:text-base">
+                                Here's the deal: restaurants live and die by three things—sales, food costs, and labor costs. Food and labor are your biggest expenses, and the key is keeping them in line with your sales. It's not about the dollar amount—it's about the percentage.
+                            </p>
+
+                            <p className="text-sm sm:text-base">
+                                For example, if you do $10,000 in sales this week and your food cost target is 30%, you should only spend about $3,000 on food. If sales dip to $8,000, your food budget drops to $2,400. Same goes for labor. When sales go up, you can spend more. When sales go down, you have to spend less. That's how you stay profitable.
+                            </p>
+
+                            <p className="text-sm sm:text-base">
+                                Growlio makes this easy. At the start of each week, you enter your sales goal. Based on the food and labor targets you set during setup, Growlio gives you clear weekly budgets. Each day, you enter your actual sales, food costs, and labor costs, and Growlio automatically updates your budgets—so you always know exactly where you stand.
+                            </p>
+
+                            <p className="text-sm sm:text-base">
+                                Stick to your percentages, and Growlio will help you spot problems early and fix them before they turn into headaches.
+                            </p>
+
+                            <p className="text-sm sm:text-base">
+                                Getting started is quick and painless—we'll ask you a few simple questions about your restaurant, and in just a couple of minutes, you'll be ready to roll. And along the way, Growlio will keep giving you tips and insights to make sure you're never left guessing.
                             </p>
                         </div>
-
                         {/* Button */}
-                        <div className="mt-4 sm:mt-6">
-                            <PrimaryBtn 
-                                title="Continue" 
-                                className="btn-brand w-full text-sm sm:text-base py-3 sm:py-4"
-                                onClick={()=>{navigate('/onboarding')}} 
+                        <div className="space-y-4">
+
+                            <PrimaryBtn
+                                title="Let's get started!"
+                                className="btn-brand w-full text-lg py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+                                onClick={() => navigate('/onboarding')}
                             />
                         </div>
                     </div>
                 </div>
             </div>
+
+
+
+
 
             {/* Image Section */}
             <div className="hidden lg:block w-full lg:w-1/2 relative">

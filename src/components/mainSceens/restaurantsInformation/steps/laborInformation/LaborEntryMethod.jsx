@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Input, Select, Tooltip } from 'antd';
+import useTooltips from '../../../../../utils/useTooltips';
+import TooltipIcon from '../../../../common/TooltipIcon';
 import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
@@ -43,7 +45,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 const result = await onSaveAndContinue();
                 if (result?.success) {
                     // Navigate to next step after successful save
-                    navigateToNextStep();
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
             } catch (error) {
                 console.error('Error in handleSaveAndContinueClick:', error);
@@ -97,25 +99,25 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         return data.labor_record_method === 'daily-hours-costs';
     };
 
+    const tooltips = useTooltips('onboarding-labor');
+
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Entry Method</h3>
-                <p className="text-gray-600 text-sm">
+                {/* <p className="text-gray-600 text-sm">
                     Configure how you want to record and manage your labor information.
-                </p>
+                </p> */}
             </div>
             
             {/* Form Fields */}
             <div className="space-y-6">
                 {/* Average Hourly Rate */}
                 <div>
-                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <label htmlFor="hourlyRate" className="block text-sm font-semibold text-gray-700 mb-2">
                         What is your average hourly rate for all staff roles? <span className="text-red-500">*</span>
-                        <Tooltip placement="bottomLeft" title="Select whether you would like to record daily ticket count">
-                            <img src={SubTrack} alt="SubTrack" className="w-4 h-4" />
-                        </Tooltip>
+                        <TooltipIcon text={tooltips['avg_hourly_rate']} />
                     </label>
                     <div className="relative">
                         <Input 
@@ -142,8 +144,9 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 
                 {/* Labor Recording Method */}
                 <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                         How would you like to record your labor?
+                        <TooltipIcon text={tooltips['labor_record_method']} />
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <PrimaryButton 
@@ -177,7 +180,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Toggle Switch */}
-                <div 
+                {/* <div 
                     onClick={handleToggleSwitch}
                     className="flex items-center justify-between px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
                 >
@@ -188,13 +191,15 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         disabled={false}
                         size="large"
                     />
-                </div>
+                </div> */}
                 
                 {/* Daily Ticket Count */}
                 <div>
                     <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
                         Would you like to daily ticket count?
+                        <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
+
                     <Select 
                         id="daily_ticket_count" 
                         placeholder="No" 
@@ -202,8 +207,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         value={data.daily_ticket_count}
                         onChange={(value) => updateData('daily_ticket_count', value)}
                     >
-                        <Select.Option value="1">No</Select.Option>
-                        <Select.Option value="2">Yes</Select.Option>
+                        <Select.Option value="1">Yes</Select.Option>
+                        <Select.Option value="2">No</Select.Option>
                     </Select>                
                 </div>
                 
@@ -211,6 +216,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
                         Forward previous week's actual labor rate?
+                        <TooltipIcon text={tooltips['forward_prev_week_rate']} />
                     </label>
                     <Select 
                         id="forward_prev_week_rate" 
@@ -228,11 +234,12 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
             {/* Navigation Buttons */}
             {!isUpdateMode && (
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6">
-                    <PrimaryButton 
-                        title="Back" 
-                        className="border-none w-full sm:w-auto"
-                        onClick={handleGoBack}
-                        disabled={loading}
+                     <PrimaryButton 
+                        icon={LeftArrow} 
+                        title="Go Back" 
+                        className="bg-gray-200 text-black h-10 w-full sm:w-auto text-sm" 
+                        onClick={handleGoBack} 
+                        disabled={loading} 
                     />
                     <PrimaryButton 
                         title={loading ? "Saving..." : "Save & Continue"} 

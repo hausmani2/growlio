@@ -48,6 +48,7 @@ const RestaurantWrapperContent = () => {
             address1: "",
             address2: "",
             country: "",
+            city: "",
             state: "",
             zipCode: ""
         }
@@ -102,8 +103,10 @@ const RestaurantWrapperContent = () => {
                 setAddressData(prev => ({
                     ...prev,
                     address1: location.address_1 || "",
+                    address2: location.address_2 || "",
                     country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "3",
-                    state: location.state === "CA" ? "1" : location.state === "NY" ? "2" : "3",
+                    city: location.city || "",
+                    state: location.state || "", // Keep the actual state code (TX, CA, NY, etc.)
                     zipCode: location.zip_code || ""
                 }));
                 
@@ -216,8 +219,10 @@ const RestaurantWrapperContent = () => {
                     {
                         location_name: restaurantData.locationName, // API expects 'location_name'
                         address_1: addressData.address1,
+                        address_2: addressData.address2,
+                        city: addressData.city,
                         country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
-                        state: addressData.state === "1" ? "CA" : addressData.state === "2" ? "NY" : "TX",
+                        state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
                         zip_code: addressData.zipCode,
                         sqft: parseInt(addressTypeData.sqft),
                         is_franchise: addressTypeData.isFranchise === "2"
@@ -257,7 +262,7 @@ const RestaurantWrapperContent = () => {
                         // Debug: Check current state
                         const currentState = useStore.getState();
                         
-                        navigateToNextStep();
+                        navigateToNextStep(true); // Skip completion check since we just saved successfully
                     }, 200); // Increased delay to ensure state update
                 }
             });
