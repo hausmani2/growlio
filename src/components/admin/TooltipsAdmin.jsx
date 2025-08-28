@@ -116,6 +116,7 @@ const TooltipsAdmin = () => {
         ];
       case 'onboarding-sales':
         return [
+          { label: 'Operating Days', value: 'restaurant_days' },
           { label: 'Sales Channels', value: 'sales_channels' },
         ];
       case 'onboarding-expense':

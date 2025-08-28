@@ -15,7 +15,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     saveDashboardData, 
     loading: storeLoading, 
     error: storeError,
-    completeOnboardingData
+    completeOnboardingData,
+    restaurantGoals,
+    getRestaurentGoal
   } = useStore();
 
   // Get providers from onboarding data
@@ -33,6 +35,47 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     const currentProviders = getProviders();
     setProviders(currentProviders);
   }, [completeOnboardingData]);
+
+  // Function to check if a day should be closed based on restaurant goals
+  const shouldDayBeClosed = (dayName) => {
+    if (!restaurantGoals || !restaurantGoals.restaurant_days) {
+      return false; // Default to open if no goals data
+    }
+    
+    // dayjs format('dddd') returns full day names like "Sunday", "Monday"
+    // restaurant_days array contains capitalized day names like "Sunday", "Monday"
+    // So we can compare directly without additional formatting
+    
+    // Check if this day is IN the restaurant_days array
+    // If it's in the array, it means the restaurant is CLOSED on that day
+    // If it's NOT in the array, it means the restaurant is OPEN on that day
+    return restaurantGoals.restaurant_days.includes(dayName);
+  };
+
+  // Function to fetch restaurant goals if not already available
+  const fetchRestaurantGoals = async () => {
+    try {
+      if (!restaurantGoals) {
+        await getRestaurentGoal();
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant goals:', error);
+    }
+  };
+
+  // Fetch restaurant goals on component mount
+  useEffect(() => {
+    fetchRestaurantGoals();
+  }, []);
+
+  // Refetch restaurant goals when needed and reprocess data
+  useEffect(() => {
+    if (restaurantGoals && dashboardData) {
+      // When restaurant goals are available, reprocess the dashboard data
+      // to apply the restaurant days settings
+      processDashboardData();
+    }
+  }, [restaurantGoals]);
 
   const [weeklyGoals, setWeeklyGoals] = useState({
     salesBudget: 0,
@@ -370,7 +413,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       const dailyData = {
         key: `day-${entry.date}`,
         date: dayjs(entry.date),
-        dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+                 dayName: dayjs(entry.date).format('dddd'),
         budgetedSales: entry['Sales Performance']?.sales_budget || 0,
         actualSalesInStore: entry['Sales Performance']?.actual_sales_in_store || 0,
         actualSalesAppOnline: entry['Sales Performance']?.actual_sales_app_online || 0,
@@ -428,34 +471,37 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         const defaultData = {
           key: `day-${day.date.format('YYYY-MM-DD')}`,
           date: day.date,
-          dayName: day.dayName.toLowerCase(),
+                     dayName: day.dayName,
           budgetedSales: 0,
           actualSalesInStore: 0,
           actualSalesAppOnline: 0,
           actualVsBudgetSales: 0,
           dailyTickets: 0,
           averageDailyTicket: 0,
-          restaurant_open: (() => {
-            // If we have existing data, use it and convert if needed
-            if (existingEntry?.restaurant_open !== undefined) {
-              const value = existingEntry.restaurant_open;
-              // Handle both boolean and integer values
-              if (typeof value === 'boolean') {
-                return value ? 1 : 0;
-              }
-              // Handle null, undefined, or falsy values
-              if (value === null || value === undefined || value === false) {
-                return 0;
-              }
-              // Handle string values
-              if (typeof value === 'string') {
-                return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
-              }
-              // Handle numeric values
-              return value !== 0 ? 1 : 0;
-            }
-            return 1; // Default to open for new days
-          })()
+                     restaurant_open: (() => {
+             // If we have existing data, use it and convert if needed
+             if (existingEntry?.restaurant_open !== undefined) {
+               const value = existingEntry.restaurant_open;
+               // Handle both boolean and integer values
+               if (typeof value === 'boolean') {
+                 return value ? 1 : 0;
+               }
+               // Handle null, undefined, or falsy values
+               if (value === null || value === undefined || value === false) {
+                 return 0;
+               }
+               // Handle string values
+               if (typeof value === 'string') {
+                 return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+               }
+               // Handle numeric values
+               return value !== 0 ? 1 : 0;
+             }
+             
+             // Check restaurant goals to determine if this day should be closed
+             const shouldBeClosed = shouldDayBeClosed(day.dayName);
+             return shouldBeClosed ? 0 : 1; // 0 for closed, 1 for open
+           })()
         };
 
         // Add dynamic provider fields to default data
@@ -504,6 +550,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     setEditingWeek(weekData);
     setIsEditMode(true);
     setIsModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+    setEditingWeek(null);
+    setIsEditMode(false);
   };
 
   const handleWeeklySubmit = async (weekData) => {
@@ -698,14 +750,19 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     const days = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
+      const dayName = currentDate.format('dddd');
+      
+      // Check restaurant goals to determine if this day should be closed
+      const shouldBeClosed = shouldDayBeClosed(dayName);
+      
       const dayData = {
         key: `day-${currentDate.format('YYYY-MM-DD')}`,
         date: currentDate,
-        dayName: currentDate.format('dddd'),
+        dayName: dayName,
         budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
-        restaurant_open: 1 // Default to open for new days
+        restaurant_open: shouldBeClosed ? 0 : 1 // Use restaurant goals to set open/closed status
       };
 
       // Add dynamic provider fields
@@ -735,6 +792,32 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         // Dynamic provider fields will be added here
       }
     });
+
+    // Flag to prevent showing the message multiple times
+    const [hasShownRestaurantDaysMessage, setHasShownRestaurantDaysMessage] = useState(false);
+
+    // Show message about restaurant days when modal opens (only once per modal session)
+    useEffect(() => {
+      // Only show message when modal is visible and we haven't shown it yet
+      if (isModalVisible && 
+          !hasShownRestaurantDaysMessage && 
+          restaurantGoals && 
+          restaurantGoals.restaurant_days && 
+          restaurantGoals.restaurant_days.length > 0 &&
+          weekFormData.dailyData.length > 0) {
+        
+        const closedDays = weekFormData.dailyData.filter(day => day.restaurant_open === 0);
+        if (closedDays.length > 0) {
+          const closedDayNames = closedDays.map(day => day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1)).join(', ');
+          setHasShownRestaurantDaysMessage(true);
+        }
+      }
+      
+      // Reset flag when modal closes
+      if (!isModalVisible) {
+        setHasShownRestaurantDaysMessage(false);
+      }
+    }, [isModalVisible, restaurantGoals, hasShownRestaurantDaysMessage]);
 
       // Check if a day is closed (restaurant not open)
   const isDayClosed = (record) => {
@@ -867,17 +950,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       <Modal
         title={isEditMode ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
         open={isModalVisible}
-        onCancel={() => {
-          setIsModalVisible(false);
-          setEditingWeek(null);
-          setIsEditMode(false);
-        }}
+        onCancel={closeModal}
         footer={[
-          <Button key="cancel" onClick={() => {
-            setIsModalVisible(false);
-            setEditingWeek(null);
-            setIsEditMode(false);
-          }}>
+          <Button key="cancel" onClick={closeModal}>
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
@@ -1106,28 +1181,35 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 );
               }}
               columns={[
-                {
-                  title: 'Day',
-                  dataIndex: 'dayName',
-                  key: 'dayName',
-                  width: 120,
-                  fixed: 'left',
-                  render: (text, record) => (
-                    <div>
-                      <div className="font-medium flex items-center gap-2">
-                        {text}
-                        {isDayClosed(record) && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                            CLOSED
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>
-                        {record.date.format('MMM DD, YYYY')}
-                      </div>
-                    </div>
-                  )
-                },
+                                 {
+                   title: 'Day',
+                   dataIndex: 'dayName',
+                   key: 'dayName',
+                   width: 120,
+                   fixed: 'left',
+                   render: (text, record) => {
+                     const isAutoClosed = shouldDayBeClosed(record.dayName);
+                     return (
+                       <div>
+                         <div className="font-medium flex items-center gap-2">
+                           {text}
+                           {isDayClosed(record) && (
+                             <span className={`text-xs px-2 py-1 rounded ${
+                               isAutoClosed 
+                                 ? 'bg-orange-100 text-orange-600' 
+                                 : 'bg-red-100 text-red-600'
+                             }`}>
+                               {isAutoClosed ? 'CLOSED' : 'CLOSED'}
+                             </span>
+                           )}
+                         </div>
+                         <div style={{ fontSize: '12px', color: '#666' }}>
+                           {record.date.format('MMM DD, YYYY')}
+                         </div>
+                       </div>
+                     );
+                   }
+                 },
                 {
                   title: 'Days',
                   dataIndex: 'restaurant_open',
@@ -1324,22 +1406,30 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   return (
     <div className="w-full">
-      <div className="pb-3 border-b border-gray-200">
-        <h3 className="text-xl font-bold text-orange-600">
-          Sales Performance
-          {(() => {
-            const start = weekDays.length > 0 ? weekDays[0].date : selectedDate;
-            if (!start) return null;
-            const end = dayjs(start).add(6, 'day');
-            const wk = dayjs(start).week();
-            return (
-              <span className="ml-2 text-orange-600 text-sm font-semibold">
-                Week {wk} ({dayjs(start).format('MMM DD')} - {end.format('MMM DD')})
+             <div className="pb-3 border-b border-gray-200">
+         <h3 className="text-xl font-bold text-orange-600">
+           Sales Performance
+           {(() => {
+             const start = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+             if (!start) return null;
+             const end = dayjs(start).add(6, 'day');
+             const wk = dayjs(start).week();
+             return (
+               <span className="ml-2 text-orange-600 text-sm font-semibold">
+                 Week {wk} ({dayjs(start).format('MMM DD')} - {end.format('MMM DD')})
+               </span>
+             );
+           })()}
+         </h3>
+                   {restaurantGoals && restaurantGoals.restaurant_days && (
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">Closed Days:</span> {restaurantGoals.restaurant_days.join(', ')}
+              <span className="ml-2 text-xs text-gray-500">
+                (Days not listed are automatically open)
               </span>
-            );
-          })()}
-        </h3>
-      </div>
+            </div>
+          )}
+       </div>
       
       {storeError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -1486,28 +1576,35 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               );
                             }}
                             columns={[
-                                                             {
-                                 title: 'Day',
-                                 dataIndex: 'dayName',
-                                 key: 'dayName',
-                                 width: 120,
-                                 fixed: 'left',
-                                 render: (text, record) => (
-                                   <div>
-                                     <div className="font-medium flex items-center gap-2">
-                                       {text}
-                                       {record.restaurant_open === 0 && (
-                                         <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">
-                                           CLOSED
-                                         </span>
-                                       )}
-                                     </div>
-                                     <div style={{ fontSize: '12px', color: '#666' }}>
-                                       {record.date.format('MMM DD, YYYY')}
-                                     </div>
-                                   </div>
-                                 )
-                               },
+                                                                                             {
+                                  title: 'Day',
+                                  dataIndex: 'dayName',
+                                  key: 'dayName',
+                                  width: 120,
+                                  fixed: 'left',
+                                  render: (text, record) => {
+                                    const isAutoClosed = shouldDayBeClosed(record.dayName);
+                                    return (
+                                      <div>
+                                        <div className="font-medium flex items-center gap-2">
+                                          {text}
+                                          {record.restaurant_open === 0 && (
+                                            <span className={`text-xs px-2 py-1 rounded ${
+                                              isAutoClosed 
+                                                ? 'bg-orange-100 text-orange-600' 
+                                                : 'bg-red-100 text-red-600'
+                                            }`}>
+                                              {isAutoClosed ? 'CLOSED' : 'CLOSED'}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#666' }}>
+                                          {record.date.format('MMM DD, YYYY')}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                },
                               {
                                 title: 'Budgeted Sales',
                                 dataIndex: 'budgetedSales',
