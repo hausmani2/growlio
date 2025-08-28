@@ -84,21 +84,16 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   // Process data for charts
   // 1) Process incoming dashboard data (compute chartData + summaryData)
   useEffect(() => {
-    console.log('BudgetDashboard: Processing dashboard data:', dashboardData);
-    
     if (!dashboardData || !dashboardData.data) {
-      console.log('BudgetDashboard: No dashboard data available');
       setChartData([]);
       setSummaryData({});
       return;
     }
 
     const data = dashboardData.data;
-    console.log('BudgetDashboard: Raw data array:', data);
     
     // Process data for charts
     const processedData = data.map(entry => {
-      console.log('BudgetDashboard: Processing entry:', entry);
       
       // Handle daily, weekly, and monthly data structures
       let dayLabel;
@@ -143,11 +138,9 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         profit: profitValue
       };
       
-      console.log('BudgetDashboard: Processed entry:', processedEntry);
       return processedEntry;
     });
 
-    console.log('BudgetDashboard: Final processed data:', processedData);
     setChartData(processedData);
 
     // Calculate summary data
@@ -161,7 +154,6 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       totalProfit: processedData.reduce((sum, item) => sum + item.profit, 0)
     };
 
-    console.log('BudgetDashboard: Summary data:', summary);
     setSummaryData(summary);
   }, [dashboardData]);
 
@@ -327,12 +319,6 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     ]
   };
   
-  console.log('BudgetDashboard: Chart data for profit chart:', {
-    labels: profitChartData.labels,
-    data: profitChartData.datasets[0].data,
-    chartDataLength: chartData.length
-  });
-
   // Profit/Loss breakdown by category (Sales, Labor, Food Cost)
   const categoryNet = useMemo(() => {
     return {

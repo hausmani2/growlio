@@ -116,6 +116,7 @@ const TooltipsAdmin = () => {
         ];
       case 'onboarding-sales':
         return [
+          { label: 'Operating Days', value: 'restaurant_days' },
           { label: 'Sales Channels', value: 'sales_channels' },
         ];
       case 'onboarding-expense':
@@ -147,10 +148,6 @@ const TooltipsAdmin = () => {
     }
   ];
 
-  console.log(" page", pages);
-  console.log(" pageFilter", pageFilter);
-  console.log(" selectedPage", selectedPage);
-  console.log(" keyOptions for selectedPage", getKeyOptions(selectedPage));
   
   return (
     <div className="p-4">

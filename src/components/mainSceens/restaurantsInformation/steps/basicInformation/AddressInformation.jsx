@@ -182,12 +182,12 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                 {/* State/Province */}
                 <div>
                     <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
-                        {getCountryCodeForStates() === 'CA' ? 'Province' : 'State'} <span className="text-red-500">*</span>
+                      State/Province <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['state']} />
                     </label>
                     <Select 
                         id="state" 
-                        placeholder={`Select ${getCountryCodeForStates() === 'CA' ? 'Province' : 'State'}`}
+                        placeholder={`Select State/Province`}
                         className={`w-full h-11 rounded-lg text-sm cursor-pointer ${
                             errors.state ? 'border-red-500' : ''
                         }`}
@@ -210,12 +210,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                             </Select.Option>
                         ))}
                     </Select>
-                    {/* Display current state name if available */}
-                    {data.state && getStateDisplayLabel() && (
-                        <div className="mt-1 text-sm text-gray-600">
-                            Selected: {getStateDisplayLabel()}
-                        </div>
-                    )}
+               
                     {errors.state && (
                         <span className="text-red-500 text-xs mt-1">{errors.state}</span>
                     )}

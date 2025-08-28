@@ -79,7 +79,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
         // If third-party is being enabled, add a default provider
         if (channelKey === 'third_party' && !currentValue) {
             const defaultProvider = {
-                id: Date.now(),
+                id: Date.now() + Math.random(), // Ensure unique ID
                 providerName: '',
                 providerFee: ''
             };
@@ -110,7 +110,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
     const addProvider = () => {
         const currentProviders = data?.providers || [];
         const newProvider = {
-            id: Date.now(),
+            id: Date.now() + Math.random(), // Ensure unique ID
             providerName: '',
             providerFee: ''
         };
@@ -135,10 +135,20 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
         const currentProviders = data?.providers || [];
         const updatedProviders = currentProviders.map(provider =>
             provider.id === providerId
-                ? { ...provider, [field]: value }
+                ? { 
+                    ...provider, 
+                    [field]: field === 'providerFee' && value ? parseInt(value, 10).toString() : value 
+                }
                 : provider
         );
         updateData('providers', updatedProviders);
+        
+        // Clear any general provider errors when user starts typing
+        // This helps provide immediate feedback
+        if (errors.providers) {
+            // Note: This would need to be passed down from parent component
+            // For now, we'll rely on the improved validation logic
+        }
     };
     const tooltips = useTooltips('onboarding-sales');
 
@@ -198,7 +208,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                         )}
                         
                         <div className="space-y-4">
-                            {(data?.providers || [{ id: 1, providerName: '', providerFee: '' }]).map((provider, index) => {
+                            {(data?.providers || []).map((provider, index) => {
                                 // Handle both camelCase and snake_case field names
                                 const providerName = provider.providerName || provider.provider_name || '';
                                 const providerFee = provider.providerFee || provider.provider_fee || '';

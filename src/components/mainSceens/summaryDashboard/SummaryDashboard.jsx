@@ -96,12 +96,7 @@ const SummaryDashboard = () => {
                    Array.isArray(dashboardSummaryData?.data) && 
                    dashboardSummaryData.data.length > 0;
     
-    console.log('hasValidData check:', {
-      status: dashboardSummaryData?.status,
-      isArray: Array.isArray(dashboardSummaryData?.data),
-      dataLength: dashboardSummaryData?.data?.length,
-      isValid
-    });
+
     
     return isValid;
   }, [dashboardSummaryData]);
@@ -113,7 +108,6 @@ const SummaryDashboard = () => {
     if (!startDate || !endDate) return;
 
     try {
-      console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
       await fetchDashboardSummary(startDate, endDate, groupBy);
     } catch (error) {
       console.error('Error in fetchDashboardSummary:', error);
@@ -122,11 +116,9 @@ const SummaryDashboard = () => {
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
-    console.log('SummaryDashboard: Date range changed:', dates?.map(d => d?.format('YYYY-MM-DD')));
     if (dates && dates.length === 2) {
       const startDate = dates[0].format('YYYY-MM-DD');
       const endDate = dates[1].format('YYYY-MM-DD');
-      console.log('SummaryDashboard: Fetching data for:', startDate, 'to', endDate);
       
       // Update calendar state first
       handleCalendarDateChange(dates);
@@ -163,7 +155,6 @@ const SummaryDashboard = () => {
     if (!calendarDateRange || calendarDateRange.length !== 2) {
       // If no date range is selected, use the current week
       const currentWeekRange = selectThisWeek();
-      console.log('No date range selected, using current week:', currentWeekRange);
     }
     
     setIsSalesModalVisible(true);
@@ -296,29 +287,12 @@ const SummaryDashboard = () => {
   useEffect(() => {
     // Only run when we have a valid API response and we're not loading
     if (!summaryLoading && dashboardSummaryData !== null && dashboardSummaryData !== undefined) {
-      console.log('SummaryDashboard: Processing API response:', {
-        status: dashboardSummaryData?.status,
-        message: dashboardSummaryData?.message,
-        dataLength: dashboardSummaryData?.data?.length,
-        hasValidData: hasValidData(),
-        hasManuallyClosedModal,
-        isSalesModalVisible,
-        hasHandledFailResponse: hasHandledFailResponse.current
-      });
+
       
       const hasNoData = !hasValidData();
       
       // Debug log to understand the modal decision
-      console.log('SummaryDashboard: Modal decision factors:', {
-        hasNoData,
-        groupBy,
-        hasManuallyClosedModal,
-        isSalesModalVisible,
-        hasHandledFailResponse: hasHandledFailResponse.current,
-        apiStatus: dashboardSummaryData?.status,
-        isDataArray: Array.isArray(dashboardSummaryData?.data),
-        dataLength: dashboardSummaryData?.data?.length
-      });
+
       
       // Only show modal when there's truly no data (API failed or returned empty array) and groupBy is daily
       // AND we haven't manually closed it AND it's not already visible AND we haven't handled this response yet
@@ -327,14 +301,12 @@ const SummaryDashboard = () => {
           !hasManuallyClosedModal && 
           !isSalesModalVisible && 
           !hasHandledFailResponse.current) {
-        console.log('SummaryDashboard: Showing sales modal for no data (daily view)');
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
       }
       // Flash message is now controlled by the hook - no need to manually manage it
       // Ensure modal is closed when we have valid data
       if (hasValidData() && isSalesModalVisible) {
-        console.log('SummaryDashboard: Closing sales modal because we have valid data');
         setIsSalesModalVisible(false);
       }
     }
@@ -550,7 +522,6 @@ const SummaryDashboard = () => {
               endDate: calendarDateRange[1].format('YYYY-MM-DD'),
               weekNumber: calendarDateRange[0].week()
             };
-            console.log('SalesDataModal: Using calendar date range:', weekData);
             return weekData;
           } else {
             // Fallback to current week if no date range is selected
@@ -561,7 +532,6 @@ const SummaryDashboard = () => {
               endDate: currentWeekEnd.format('YYYY-MM-DD'),
               weekNumber: currentWeekStart.week()
             };
-            console.log('SalesDataModal: Using fallback current week:', weekData);
             return weekData;
           }
         })()}

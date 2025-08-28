@@ -22,29 +22,41 @@ const ProtectedRoutes = () => {
   // Simple onboarding check function
   const checkOnboardingStatus = async () => {
     try {
-      console.log('🔄 Checking onboarding status...');
+      console.log('🔍 ProtectedRoutes - Checking onboarding status...');
       const result = await forceOnboardingCheck();
-      console.log('📊 Onboarding check result:', result);
-      console.log('🔍 Result details:', {
-        success: result.success,
-        isComplete: result.isComplete,
-        restaurantId: result.restaurantId,
-        message: result.message
-      });
+      console.log('🔍 ProtectedRoutes - Onboarding check result:', result);
       
       if (result.success) {
-        console.log('✅ Store onboarding status updated to:', result.isComplete);
+        console.log('🔍 ProtectedRoutes - Onboarding check successful, isComplete:', result.isComplete);
+        
+        // Update the store state based on the result
+        if (result.isComplete) {
+          console.log('🔍 ProtectedRoutes - Setting isOnBoardingCompleted to true');
+          // We need to get the setter from the store
+          const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
+          setIsOnBoardingCompleted(true);
+        } else {
+          console.log('🔍 ProtectedRoutes - Setting isOnBoardingCompleted to false');
+          const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
+          setIsOnBoardingCompleted(false);
+        }
         
         // Store restaurant ID if available
         if (result.restaurantId) {
           localStorage.setItem('restaurant_id', result.restaurantId.toString());
-          console.log('✅ Stored restaurant ID:', result.restaurantId);
+          console.log('🔍 ProtectedRoutes - Restaurant ID stored:', result.restaurantId);
         }
       } else {
-        console.log('⚠️ Onboarding check failed, assuming incomplete');
+        console.log('🔍 ProtectedRoutes - Onboarding check failed');
+        // Set to false on failure
+        const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
+        setIsOnBoardingCompleted(false);
       }
     } catch (error) {
       console.error('❌ Error checking onboarding status:', error);
+      // Set to false on error
+      const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
+      setIsOnBoardingCompleted(false);
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +67,7 @@ const ProtectedRoutes = () => {
     if (isAuthenticated && token) {
       // Clear any cached onboarding status to force fresh check
       sessionStorage.removeItem('onboarding_completion_check_time');
-      console.log('🔄 Clearing cache and checking onboarding status...');
+      
       checkOnboardingStatus();
     } else {
       setIsLoading(false);
@@ -64,13 +76,13 @@ const ProtectedRoutes = () => {
 
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
-    console.log('🔒 Redirecting to login - not authenticated');
+    
     return <Navigate to="/login" replace />;
   }
 
   // Show loading spinner while checking onboarding
   if (isLoading) {
-    console.log('⏳ Showing loading spinner');
+    
     return <LoadingSpinner message="Checking your setup..." />;
   }
 
@@ -81,37 +93,36 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
+  // Simple logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
   // If onboarding is incomplete, only allow onboarding routes
   const isOnboardingPath = location.pathname.includes('onboarding');
+  const isCompleteStepsPath = location.pathname.includes('/complete');
   
-  console.log('🔍 Final decision:', {
-    isOnBoardingCompleted,
-    currentPath: location.pathname,
-    isOnboardingPath,
-    willAllowAccess: !isOnBoardingCompleted || !isOnboardingPath
-  });
+  console.log('🔍 ProtectedRoutes - Current pathname:', location.pathname);
+  console.log('🔍 ProtectedRoutes - isOnBoardingCompleted:', isOnBoardingCompleted);
+  console.log('🔍 ProtectedRoutes - isOnboardingPath:', isOnboardingPath);
+  console.log('🔍 ProtectedRoutes - isCompleteStepsPath:', isCompleteStepsPath);
   
   if (isOnBoardingCompleted) {
     // User has completed onboarding
-    if (isOnboardingPath) {
-      // User is trying to access onboarding path - redirect to dashboard
-      console.log('🚫 Onboarding complete - blocking access to onboarding path:', location.pathname);
+    if (isOnboardingPath && !isCompleteStepsPath) {
+      // User is trying to access onboarding path (but not completion page) - redirect to dashboard
+      console.log('🔍 ProtectedRoutes - Completed user trying to access onboarding, redirecting to dashboard');
       return <Navigate to="/dashboard/budget" replace />;
     } else {
-      // User is on non-onboarding path - allow access
-      console.log('✅ Onboarding complete - allowing access to:', location.pathname);
+      // User is on non-onboarding path or completion page - allow access
+      console.log('🔍 ProtectedRoutes - Completed user on valid path, allowing access');
       return <Outlet />;
     }
   } else {
     // User has not completed onboarding
     if (isOnboardingPath) {
       // User is on onboarding path - allow access
-      console.log('🆕 Onboarding incomplete - allowing access to onboarding path:', location.pathname);
+      console.log('🔍 ProtectedRoutes - Incomplete user on onboarding path, allowing access');
       return <Outlet />;
     } else {
       // User is not on onboarding path - redirect to onboarding
-      console.log('🆕 Onboarding incomplete - redirecting to onboarding from:', location.pathname);
+      console.log('🔍 ProtectedRoutes - Incomplete user not on onboarding path, redirecting to onboarding');
       return <Navigate to="/onboarding/budget" replace />;
     }
   }

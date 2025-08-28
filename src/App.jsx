@@ -43,18 +43,9 @@ function App() {
   }, []);
   
   useEffect(() => {
-    console.log('🚀 App component mounted - initializing auth...');
     initializeAuth();
   }, [initializeAuth]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🔍 App Debug - Auth State:', {
-      isAuthenticated,
-      hasToken: !!token,
-      localStorageToken: !!localStorage.getItem('token')
-    });
-  }, [isAuthenticated, token]);
 
   return (
     <Router>

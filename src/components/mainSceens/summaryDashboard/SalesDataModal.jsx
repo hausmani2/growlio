@@ -18,7 +18,9 @@ const SalesDataModal = ({
   const { 
     saveDashboardData, 
     loading: storeLoading, 
-    completeOnboardingData
+    completeOnboardingData,
+    restaurantGoals,
+    getRestaurentGoal
   } = useStore();
 
   // Get providers from onboarding data
@@ -45,14 +47,44 @@ const SalesDataModal = ({
   const budgetedSalesTimeoutRef = useRef({});
   const lastBudgetedSalesValueRef = useRef({});
 
+  // Function to check if a day should be closed based on restaurant goals
+  const shouldDayBeClosed = (dayName) => {
+    if (!restaurantGoals || !restaurantGoals.restaurant_days) {
+      return false; // Default to open if no goals data
+    }
+    
+    // dayjs format('dddd') returns full day names like "Sunday", "Monday"
+    // restaurant_days array contains capitalized day names like "Sunday", "Monday"
+    // So we can compare directly without additional formatting
+    
+    // Check if this day is IN the restaurant_days array
+    // If it's in the array, it means the restaurant is CLOSED on that day
+    // If it's NOT in the array, it means the restaurant is OPEN on that day
+    return restaurantGoals.restaurant_days.includes(dayName);
+  };
 
+  // Function to fetch restaurant goals if not already available
+  const fetchRestaurantGoals = async () => {
+    try {
+      if (!restaurantGoals) {
+        await getRestaurentGoal();
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant goals:', error);
+    }
+  };
+
+  // Fetch restaurant goals on component mount
+  useEffect(() => {
+    fetchRestaurantGoals();
+  }, []);
 
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
       initializeFormData();
     }
-  }, [visible, selectedWeekData]);
+  }, [visible, selectedWeekData, restaurantGoals]);
 
   // Cleanup timeouts when component unmounts
   useEffect(() => {
@@ -76,7 +108,6 @@ const SalesDataModal = ({
     }
     
     const startDate = dayjs(selectedWeekData.startDate);
-    console.log('Initializing form data with start date:', startDate.format('YYYY-MM-DD'));
     
     const currentProviders = getProviders();
     const dailyData = generateDailyData(startDate, currentProviders);
@@ -105,10 +136,15 @@ const SalesDataModal = ({
     const days = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
+      const dayName = currentDate.format('dddd');
+      
+      // Check restaurant goals to determine if this day should be closed
+      const shouldBeClosed = shouldDayBeClosed(dayName);
+      
       const dayData = {
         key: `day-${currentDate.format('YYYY-MM-DD')}`,
         date: currentDate,
-        dayName: currentDate.format('dddd'),
+        dayName: dayName,
         budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
@@ -122,7 +158,7 @@ const SalesDataModal = ({
             );
             if (existingDay?.restaurant_open !== undefined) {
               const value = existingDay.restaurant_open;
-              console.log('Restaurant open value from existing data:', value, typeof value);
+              
               // Handle both boolean and integer values
               if (typeof value === 'boolean') {
                 return value ? 1 : 0;
@@ -139,7 +175,9 @@ const SalesDataModal = ({
               return value !== 0 ? 1 : 0;
             }
           }
-          return 1; // Default to open for all days
+          
+          // Use restaurant goals to determine if this day should be closed
+          return shouldBeClosed ? 0 : 1; // 0 for closed, 1 for open
         })()
       };
 
@@ -248,7 +286,7 @@ const SalesDataModal = ({
       if (value > 0 && Math.abs(value - previousValue) >= 1) {
         // Set timeout to show console log after user stops typing (1 second delay)
         budgetedSalesTimeoutRef.current[dayKey] = setTimeout(() => {
-          console.log('Budgeted sales changed:', { field, value, changedDay }); // Debug log
+          
         }, 1000);
       }
       
@@ -358,7 +396,7 @@ const SalesDataModal = ({
       }
       
       const startDate = dayjs(selectedWeekData.startDate);
-      console.log('Submitting data with start date:', startDate.format('YYYY-MM-DD'));
+      
       
       const currentProviders = getProviders();
 
@@ -391,7 +429,7 @@ const SalesDataModal = ({
               daily_tickets: parseFloat(day.dailyTickets) || 0,
               restaurant_open: (() => {
                 const value = day.restaurant_open;
-                console.log('Sending restaurant_open to API:', value, typeof value);
+                
                 // Ensure we always send integer values (0 or 1)
                 if (typeof value === 'boolean') {
                   return value ? 1 : 0;
@@ -465,7 +503,8 @@ const SalesDataModal = ({
 
   // Handle input change with closed day validation
   const handleInputChange = (dayIndex, field, value, record) => {
-    if (isDayClosed(record)) {
+    // Allow changes to restaurant_open field even when day is closed
+    if (isDayClosed(record) && field !== 'restaurant_open') {
       message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
       return;
     }
@@ -627,14 +666,14 @@ const SalesDataModal = ({
         <Card 
           title="Daily Sales Data"
           size="small"
-                     extra={
-             <div className="text-xs text-gray-500 flex items-center gap-2">
-               <span>💡 Toggle switches control restaurant open/closed status for each day</span>
-               {!hasBudgetedSales() && (
-                 <span className="text-red-500 ml-2">⚠️ Budgeted sales required to save</span>
-               )}
-             </div>
-           }
+          extra={
+            <div className="text-xs text-gray-500 flex items-center gap-2">
+              <span>💡 Toggle switches control restaurant open/closed status for each day</span>
+              {!hasBudgetedSales() && (
+                <span className="text-red-500 ml-2">⚠️ Budgeted sales required to save</span>
+              )}
+            </div>
+          }
         >
           <div className="overflow-x-auto">
             <Table
@@ -751,21 +790,28 @@ const SalesDataModal = ({
                   key: 'dayName',
                   width: 160,
                   fixed: 'left',
-                  render: (text, record) => (
-                    <div className="min-w-[160px]">
-                      <div className="font-medium flex items-center gap-2">
-                        {text}
-                        {isDayClosed(record) && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
-                            CLOSED
-                          </span>
-                        )}
+                  render: (text, record) => {
+                    const isAutoClosed = shouldDayBeClosed(record.dayName);
+                    return (
+                      <div className="min-w-[160px]">
+                        <div className="font-medium flex items-center gap-2">
+                          {text}
+                          {isDayClosed(record) && (
+                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                              isAutoClosed 
+                                ? 'bg-orange-100 text-orange-600' 
+                                : 'bg-red-100 text-red-600'
+                            }`}>
+                              {isAutoClosed ? 'CLOSED' : 'CLOSED'}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {record.date.format('MMM DD, YYYY')}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>
-                        {record.date.format('MMM DD, YYYY')}
-                      </div>
-                    </div>
-                  )
+                    );
+                  }
                 },
                                 {
                   title: 'Days Open',
@@ -814,21 +860,28 @@ const SalesDataModal = ({
                   key: 'dayName',
                   width: 160,
                   fixed: 'left',
-                  render: (text, record) => (
-                    <div className="min-w-[160px]">
-                      <div className="font-medium flex items-center gap-2">
-                        {text}
-                        {isDayClosed(record) && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded whitespace-nowrap">
-                            CLOSED
-                          </span>
-                        )}
+                  render: (text, record) => {
+                    const isAutoClosed = shouldDayBeClosed(record.dayName);
+                    return (
+                      <div className="min-w-[160px]">
+                        <div className="font-medium flex items-center gap-2">
+                          {text}
+                          {isDayClosed(record) && (
+                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                              isAutoClosed 
+                                ? 'bg-orange-100 text-orange-600' 
+                                : 'bg-red-100 text-red-600'
+                            }`}>
+                              {isAutoClosed ? 'AUTO-CLOSED' : 'CLOSED'}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {record.date.format('MMM DD, YYYY')}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#666' }}>
-                        {record.date.format('MMM DD, YYYY')}
-                      </div>
-                    </div>
-                  )
+                    );
+                  }
                 },
                 {
                   title: 'Days Open',

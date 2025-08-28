@@ -136,8 +136,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isWeekly = isWeeklyData(entries);
     const isMonthly = isMonthlyData(entries);
     const dataFormat = isMonthly ? 'monthly' : (isWeekly ? 'weekly' : 'daily');
-    console.log('ProfitLossTableDashboard: Processing data format:', dataFormat);
-    console.log('ProfitLossTableDashboard: Sample entry:', entries[0]);
 
     // Process the data - Updated to handle both daily and weekly structures
     const processed = {
@@ -487,7 +485,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
     });
 
-    console.log('Generated columns:', groupedColumns);
     return groupedColumns;
   }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData]);
 
@@ -1552,15 +1549,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   const dataToProcess = dashboardSummaryData || dashboardData;
   const isFailStatus = dataToProcess?.status === 'fail';
   
-  // Debug logging
-  console.log('ProfitLossTableDashboard render:', {
-    hasData,
-    tableDataLength: tableData.length,
-    isWeekly: isWeeklyData(tableData),
-    isMonthly: isMonthlyData(tableData),
-    processedDataKeys: Object.keys(processedData),
-    generateExpandableDataLength: generateExpandableData.length
-  });
 
   // Loading state
   if (loading) {

@@ -29,12 +29,11 @@ const createDashboardSummarySlice = (set, get) => {
                     try {
                         targetRestaurantId = await get().fetchRestaurantId();
                     } catch (error) {
-                        console.log('⚠️ Error fetching restaurant ID:', error);
+                        
                         targetRestaurantId = null;
                     }
                     
                     if (!targetRestaurantId) {
-                        console.log('ℹ️ No restaurant ID available - user needs to complete onboarding first');
                         set({ loading: false, error: null });
                         return null;
                     }
@@ -61,12 +60,10 @@ const createDashboardSummarySlice = (set, get) => {
                     url += `?${queryString}`;
                 }
                 
-                console.log('Fetching dashboard summary from:', url);
-                console.log('Parameters:', params);
+                    
                 
                 const response = await apiGet(url);
-                console.log('Dashboard summary API response:', response);
-                console.log('Response data:', response.data);
+                
                 
                 set({ 
                     dashboardSummaryData: response.data, 
