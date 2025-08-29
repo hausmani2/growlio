@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { message } from "antd";
+import { message, Modal } from "antd";
 import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
@@ -249,42 +249,15 @@ const ExpenseWrapperContent = () => {
         return errors;
     };
 
-    const handleSave = async () => {
+    const proceedWithSave = async () => {
         try {
-            // Step 1: Validate the API-ready data
-            const validationErrors = validateExpenseData(apiExpenseData);
-            
-            if (Object.keys(validationErrors).length > 0) {
-                setValidationErrors(validationErrors);
-                message.error("Please fix the validation errors before saving");
-                return;
-            }
-
-            // Step 2: Validate using the step validation hook
-            const isValid = validateExpense(apiExpenseData);
-            
-            if (!isValid) {
-                message.error("Please fix the validation errors before saving");
-                return;
-            }
-
-            // Step 3: Check if we have any expenses to save
-            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
-            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
-            
-            if (!hasFixedCosts && !hasVariableCosts) {
-                setValidationErrors({ no_expenses: "Please add at least one expense before saving" });
-                message.error("Please add at least one expense before saving");
-                return;
-            }
-
-            // Step 4: Prepare data for API
+            // Prepare data for API
             const stepData = {
                 fixed_costs: apiExpenseData.fixed_costs,
                 variable_costs: apiExpenseData.variable_costs
             };
             
-            // Step 5: Call API through Zustand store with success callback
+            // Call API through Zustand store with success callback
             const result = await submitStepData("Expense", stepData, async (responseData) => {
                 // Success callback - handle navigation based on mode
                 
@@ -315,6 +288,45 @@ const ExpenseWrapperContent = () => {
 
         } catch (error) {
             console.error("Error saving expense data:", error);
+            message.error("An unexpected error occurred. Please try again.");
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            // Check if we have any expenses to save
+            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
+            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
+            
+            if (!hasFixedCosts && !hasVariableCosts) {
+                // Show confirmation popup asking if user wants to skip expenses
+                Modal.confirm({
+                    title: 'Are you sure?',
+                    content: (
+                        <div>
+                            <p>By skipping expenses, your cash flow model may not reflect the true picture of your restaurant's performance.</p>
+                        </div>
+                    ),
+                    okText: 'Yes, Skip for now',
+                    cancelText: 'No, Lets enter expenses',
+                    okType: 'default',
+                    cancelType: 'primary',
+                    onOk: () => {
+                        // User chose to skip - proceed with empty expenses
+                        proceedWithSave();
+                    },
+                    onCancel: () => {
+                        // User chose to enter expenses - do nothing, let them continue editing
+                    }
+                });
+                return;
+            }
+
+            // If we have expenses, proceed normally
+            await proceedWithSave();
+
+        } catch (error) {
+            console.error("Error in handleSave:", error);
             message.error("An unexpected error occurred. Please try again.");
         }
     };

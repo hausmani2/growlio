@@ -318,7 +318,7 @@ const Register = () => {
                           </Tooltip>
 
               <div className="flex-1">
-                <p className="text-sm text-gray-700 leading-relaxed">
+                <p className="text-sm text-gray-700 leading-relaxed cursor-pointer"  onClick={() => setShowDisclaimerModal(true)}>
                   I have read and agree to the{' '}
                   <button
                     type="button"
