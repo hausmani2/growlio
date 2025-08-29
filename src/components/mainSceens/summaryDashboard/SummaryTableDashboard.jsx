@@ -94,6 +94,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       hours: {},
       amount: {},
       average_hourly_rate: {},
+      fixed_cost: {},
+      variable_cost: {},
       profit_loss: {}
     };
 
@@ -114,6 +116,25 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       processed.hours[dateKey] = parseNumericValue(entry.hours);
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
+      
+      // Handle fixed_costs array structure
+      let fixedCostTotal = 0;
+      if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
+        fixedCostTotal = entry.fixed_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
+      } else {
+        fixedCostTotal = parseNumericValue(entry.fixed_cost);
+      }
+      processed.fixed_cost[dateKey] = fixedCostTotal;
+      
+      // Handle variable_costs array structure
+      let variableCostTotal = 0;
+      if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
+        variableCostTotal = entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
+      } else {
+        variableCostTotal = parseNumericValue(entry.variable_cost);
+      }
+      processed.variable_cost[dateKey] = variableCostTotal;
+      
       processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
     });
 
@@ -128,7 +149,9 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
-    { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' }
+    { key: 'fixed_cost', label: 'Fixed Cost', type: 'currency' },
+    { key: 'variable_cost', label: 'Variable Cost', type: 'currency' },
+    { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' },
   ], []);
 
   // Helper function to format percentage
@@ -322,11 +345,20 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           const categoryKey = record.key;
           const rawValue = processedData[categoryKey]?.[dateKey] || 0;
           
-          // Check if the original value was None/null/undefined
-          const originalValue = entry[categoryKey];
-          const displayValue = handleValue(originalValue);
+          // For fixed_cost and variable_cost, we need to check the processed arrays
+          let shouldDisplay = true;
+          if (categoryKey === 'fixed_cost') {
+            shouldDisplay = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
+          } else if (categoryKey === 'variable_cost') {
+            shouldDisplay = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
+          } else {
+            // Check if the original value was None/null/undefined for other fields
+            const originalValue = entry[categoryKey];
+            const displayValue = handleValue(originalValue);
+            shouldDisplay = displayValue !== '-';
+          }
           
-          if (displayValue === '-') {
+          if (!shouldDisplay) {
             return <span className="text-xs text-gray-500">-</span>;
           }
           
@@ -335,6 +367,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           // Handle currency fields
           if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
               categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
+              categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
               categoryKey === 'profit_loss') {
             const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
             const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
@@ -494,8 +527,19 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                   }
                   
                   const rawValue = processedData[row.key]?.[dateKey] || 0;
-                  const originalValue = entry[row.key];
-                  const displayValue = handleValue(originalValue);
+                  
+                  // For fixed_cost and variable_cost, we need to check the processed arrays
+                  let shouldDisplay = true;
+                  if (row.key === 'fixed_cost') {
+                    shouldDisplay = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
+                  } else if (row.key === 'variable_cost') {
+                    shouldDisplay = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
+                  } else {
+                    // Check if the original value was None/null/undefined for other fields
+                    const originalValue = entry[row.key];
+                    const displayValue = handleValue(originalValue);
+                    shouldDisplay = displayValue !== '-';
+                  }
                   
                   // Get profit percentage for inline display
                   let profitPercentage = null;
@@ -514,15 +558,16 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                       </span>
                       <div className="flex items-center">
                         <span className={`font-medium ${
-                          displayValue === '-' ? 'text-gray-500' :
+                          !shouldDisplay ? 'text-gray-500' :
                           row.key === 'profit_loss'
                             ? getProfitLossColor(rawValue) : 'text-gray-600'
                         }`}>
-                          {displayValue === '-' ? '-' :
+                          {!shouldDisplay ? '-' :
                            row.key === 'profit_loss'
                             ? formatProfitLoss(rawValue)
                             : row.key === 'sales_budget' || row.key === 'food_cost' || 
-                              row.key === 'amount' || row.key === 'average_hourly_rate'
+                              row.key === 'amount' || row.key === 'average_hourly_rate' ||
+                              row.key === 'fixed_cost' || row.key === 'variable_cost'
                             ? formatCurrency(rawValue)
                             : row.key === 'labour' || row.key === 'hours'
                             ? formatNumber(rawValue)
