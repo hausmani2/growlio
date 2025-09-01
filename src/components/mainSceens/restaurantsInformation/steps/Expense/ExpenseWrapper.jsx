@@ -34,14 +34,11 @@ const ExpenseWrapperContent = () => {
         dynamicVariableFields: []
     });
 
-    // State for frequency selection (weekly/monthly)
-    const [frequency, setFrequency] = useState("monthly");
 
     // API-ready expense data
     const [apiExpenseData, setApiExpenseData] = useState({
         fixed_costs: [],
         variable_costs: [],
-        frequency: "monthly"
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -57,7 +54,8 @@ const ExpenseWrapperContent = () => {
                     id: Date.now() + Math.random(),
                     label: cost.name,
                     value: cost.amount.toString(),
-                    key: `dynamic_fixed_${Date.now()}_${Math.random()}`
+                    key: `dynamic_fixed_${Date.now()}_${Math.random()}`,
+                    fixed_expense_type: cost.fixed_expense_type || "monthly" // Default to monthly if not present
                 }));
                 
                 if (dynamicFixedCosts.length > 0) {
@@ -80,7 +78,8 @@ const ExpenseWrapperContent = () => {
                     id: Date.now() + Math.random(),
                     label: cost.name,
                     value: cost.amount.toString(),
-                    key: `dynamic_variable_${Date.now()}_${Math.random()}`
+                    key: `dynamic_variable_${Date.now()}_${Math.random()}`,
+                    variable_expense_type: cost.variable_expense_type || "monthly" // Default to monthly if not present
                 }));
                 
                 if (dynamicVariableCosts.length > 0) {
@@ -128,7 +127,8 @@ const ExpenseWrapperContent = () => {
             .filter(field => parseFloat(field.value) > 0)
             .map(field => ({
                 name: field.label,
-                amount: parseFloat(field.value)
+                amount: parseFloat(field.value),
+                fixed_expense_type: field.fixed_expense_type || "monthly"
             }));
 
         // Dynamic variable costs - include all fields in API
@@ -140,7 +140,8 @@ const ExpenseWrapperContent = () => {
                 .filter(field => parseFloat(field.value) > 0)
                 .map(field => ({
                     name: field.label,
-                    amount: parseFloat(field.value)
+                    amount: parseFloat(field.value),
+                    variable_expense_type: field.variable_expense_type || "monthly"
                 }));
         } else {
             // Fallback: include all fields
@@ -148,14 +149,14 @@ const ExpenseWrapperContent = () => {
                 .filter(field => parseFloat(field.value) > 0)
                 .map(field => ({
                     name: field.label,
-                    amount: parseFloat(field.value)
+                    amount: parseFloat(field.value),
+                    fixed_expense_type: field.fixed_expense_type || "monthly"
                 }));
         }
 
         const newApiData = {
             fixed_costs: dynamicFixedCosts,
             variable_costs: dynamicVariableCosts,
-            frequency: frequency
         };
 
         // Only update if the data has actually changed
@@ -165,7 +166,7 @@ const ExpenseWrapperContent = () => {
         if (currentDataString !== newDataString) {
             setApiExpenseData(newApiData);
         }
-    }, [expenseData, apiExpenseData, frequency]);
+    }, [expenseData, apiExpenseData]);
 
     // Recalculate totals whenever dynamic fields change
     useEffect(() => {
@@ -260,7 +261,6 @@ const ExpenseWrapperContent = () => {
             const stepData = {
                 fixed_costs: apiExpenseData.fixed_costs,
                 variable_costs: apiExpenseData.variable_costs,
-                frequency: frequency
             };
             
             // Call API through Zustand store with success callback
@@ -345,23 +345,7 @@ const ExpenseWrapperContent = () => {
                     currentStep="Expenses"
                     description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
                 />
-                
-                {/* Frequency Selection Dropdown */}
-                <div className="">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Expense Frequency
-                    </label>
-                    <Select
-                        value={frequency}
-                        onChange={setFrequency}
-                        className="w-48"
-                        options={[
-                            { value: 'weekly', label: 'Weekly' },
-                            { value: 'monthly', label: 'Monthly' }
-                        ]}
-                    />
-                  
-                </div>
+
             </div>
 
             {/* Content Section */}

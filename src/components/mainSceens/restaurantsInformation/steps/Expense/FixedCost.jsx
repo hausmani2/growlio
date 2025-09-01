@@ -3,7 +3,7 @@ import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
-
+import ToggleSwitch from "../../../../buttons/ToggleSwitch";
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -36,7 +36,8 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                 id: Date.now() + Math.random(),
                 label: newFieldLabel.trim(),
                 value: "",
-                key: `dynamic_fixed_${Date.now()}_${Math.random()}`
+                key: `dynamic_fixed_${Date.now()}_${Math.random()}`,
+                fixed_expense_type: "monthly" // Default to monthly
             };
             const updatedFields = [...dynamicFields, newField];
             setDynamicFields(updatedFields);
@@ -72,6 +73,14 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                 memoizedUpdateData('totalFixedCost', dynamicTotal.toFixed(2));
             }
         }
+    };
+
+    const handleFrequencyChange = (id, fixed_expense_type) => {
+        const updatedFields = dynamicFields.map(field => 
+            field.id === id ? { ...field, fixed_expense_type } : field
+        );
+        setDynamicFields(updatedFields);
+        memoizedUpdateData('dynamicFixedFields', updatedFields);
     };
 
     const handleDeleteField = (id) => {
@@ -120,7 +129,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                                     type="text"
                                     placeholder="Cost name"
                                     value={field.label}
-                                    className="w-full sm:w-48 h-11 rounded-lg text-sm"
+                                    className="w-full sm:w-48 h-10 rounded-lg text-sm"
                                     disabled
                                 />
                             </div>
@@ -130,10 +139,19 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                                     placeholder="0.00"
                                     value={field.value}
                                     onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
-                                    className="w-full sm:w-32 h-11 rounded-lg text-sm"
+                                    className="w-full sm:w-full h-10 rounded-lg text-sm"
                                     step="0.01"
                                     min="0"
                                 />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">Weekly</span>
+                                <ToggleSwitch
+                                    isOn={field.fixed_expense_type === "monthly"}
+                                    setIsOn={(isOn) => handleFrequencyChange(field.id, isOn ? "monthly" : "weekly")}
+                                  size="large"
+                                />
+                                <span className="text-xs text-gray-500 whitespace-nowrap">Monthly</span>
                             </div>
                             <Button
                                 type="text"
