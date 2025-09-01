@@ -150,7 +150,7 @@ const ExpenseWrapperContent = () => {
                 .map(field => ({
                     name: field.label,
                     amount: parseFloat(field.value),
-                    fixed_expense_type: field.fixed_expense_type || "monthly"
+                    variable_expense_type: field.variable_expense_type || "monthly"
                 }));
         }
 

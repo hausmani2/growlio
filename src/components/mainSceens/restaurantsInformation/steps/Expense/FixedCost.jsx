@@ -3,7 +3,7 @@ import { Button, Modal, Input } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
-import ToggleSwitch from "../../../../buttons/ToggleSwitch";
+import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -145,13 +145,11 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500 whitespace-nowrap">Weekly</span>
-                                <ToggleSwitch
-                                    isOn={field.fixed_expense_type === "monthly"}
-                                    setIsOn={(isOn) => handleFrequencyChange(field.id, isOn ? "monthly" : "weekly")}
-                                  size="large"
+                                <MonthlyWeeklyToggle
+                                    isMonthly={field.fixed_expense_type === "monthly"}
+                                    setIsMonthly={(isMonthly) => handleFrequencyChange(field.id, isMonthly ? "monthly" : "weekly")}
+                                    size="medium"
                                 />
-                                <span className="text-xs text-gray-500 whitespace-nowrap">Monthly</span>
                             </div>
                             <Button
                                 type="text"

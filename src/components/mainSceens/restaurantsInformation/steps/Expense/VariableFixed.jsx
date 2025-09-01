@@ -3,7 +3,7 @@ import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
-import ToggleSwitch from "../../../../buttons/ToggleSwitch";
+import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
     const tooltips = useTooltips('onboarding-expense');
@@ -181,18 +181,14 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                                     />
                                 )}
                             </div>
-                            {/* Only show frequency toggle for non-percentage fields */}
-                            {!shouldShowPercentageDropdown(field.label) && (
+                            
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-500 whitespace-nowrap">Weekly</span>
-                                    <ToggleSwitch
-                                        isOn={field.variable_expense_type === "monthly"}
-                                        setIsOn={(isOn) => handleFrequencyChange(field.id, isOn ? "monthly" : "weekly")}
-                                        size="large"
+                                    <MonthlyWeeklyToggle
+                                        isMonthly={field.variable_expense_type === "monthly"}
+                                        setIsMonthly={(isMonthly) => handleFrequencyChange(field.id, isMonthly ? "monthly" : "weekly")}
+                                        size="medium"
                                     />
-                                    <span className="text-xs text-gray-500 whitespace-nowrap">Monthly</span>
                                 </div>
-                            )}
                             <Button
                                 type="text"
                                 danger
