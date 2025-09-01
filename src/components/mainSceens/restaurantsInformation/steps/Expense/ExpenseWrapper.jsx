@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { message, Modal } from "antd";
+import { message, Modal, Select } from "antd";
 import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
@@ -34,10 +34,14 @@ const ExpenseWrapperContent = () => {
         dynamicVariableFields: []
     });
 
+    // State for frequency selection (weekly/monthly)
+    const [frequency, setFrequency] = useState("monthly");
+
     // API-ready expense data
     const [apiExpenseData, setApiExpenseData] = useState({
         fixed_costs: [],
-        variable_costs: []
+        variable_costs: [],
+        frequency: "monthly"
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -150,7 +154,8 @@ const ExpenseWrapperContent = () => {
 
         const newApiData = {
             fixed_costs: dynamicFixedCosts,
-            variable_costs: dynamicVariableCosts
+            variable_costs: dynamicVariableCosts,
+            frequency: frequency
         };
 
         // Only update if the data has actually changed
@@ -160,7 +165,7 @@ const ExpenseWrapperContent = () => {
         if (currentDataString !== newDataString) {
             setApiExpenseData(newApiData);
         }
-    }, [expenseData, apiExpenseData]);
+    }, [expenseData, apiExpenseData, frequency]);
 
     // Recalculate totals whenever dynamic fields change
     useEffect(() => {
@@ -254,7 +259,8 @@ const ExpenseWrapperContent = () => {
             // Prepare data for API
             const stepData = {
                 fixed_costs: apiExpenseData.fixed_costs,
-                variable_costs: apiExpenseData.variable_costs
+                variable_costs: apiExpenseData.variable_costs,
+                frequency: frequency
             };
             
             // Call API through Zustand store with success callback
@@ -334,11 +340,28 @@ const ExpenseWrapperContent = () => {
     return (
         <div className="w-full mx-auto">
             {/* Header Section with same styling as dashboard */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
                 <OnboardingBreadcrumb 
                     currentStep="Expenses"
                     description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
                 />
+                
+                {/* Frequency Selection Dropdown */}
+                <div className="">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expense Frequency
+                    </label>
+                    <Select
+                        value={frequency}
+                        onChange={setFrequency}
+                        className="w-48"
+                        options={[
+                            { value: 'weekly', label: 'Weekly' },
+                            { value: 'monthly', label: 'Monthly' }
+                        ]}
+                    />
+                  
+                </div>
             </div>
 
             {/* Content Section */}
