@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { message } from "antd";
+import { message, Modal, Select } from "antd";
 import { useLocation } from "react-router-dom";
 import FixedCost from "./FixedCost";
 import VariableFixed from "./VariableFixed";
@@ -34,10 +34,14 @@ const ExpenseWrapperContent = () => {
         dynamicVariableFields: []
     });
 
+    // State for frequency selection (weekly/monthly)
+    const [frequency, setFrequency] = useState("monthly");
+
     // API-ready expense data
     const [apiExpenseData, setApiExpenseData] = useState({
         fixed_costs: [],
-        variable_costs: []
+        variable_costs: [],
+        frequency: "monthly"
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -150,7 +154,8 @@ const ExpenseWrapperContent = () => {
 
         const newApiData = {
             fixed_costs: dynamicFixedCosts,
-            variable_costs: dynamicVariableCosts
+            variable_costs: dynamicVariableCosts,
+            frequency: frequency
         };
 
         // Only update if the data has actually changed
@@ -160,7 +165,7 @@ const ExpenseWrapperContent = () => {
         if (currentDataString !== newDataString) {
             setApiExpenseData(newApiData);
         }
-    }, [expenseData, apiExpenseData]);
+    }, [expenseData, apiExpenseData, frequency]);
 
     // Recalculate totals whenever dynamic fields change
     useEffect(() => {
@@ -249,42 +254,16 @@ const ExpenseWrapperContent = () => {
         return errors;
     };
 
-    const handleSave = async () => {
+    const proceedWithSave = async () => {
         try {
-            // Step 1: Validate the API-ready data
-            const validationErrors = validateExpenseData(apiExpenseData);
-            
-            if (Object.keys(validationErrors).length > 0) {
-                setValidationErrors(validationErrors);
-                message.error("Please fix the validation errors before saving");
-                return;
-            }
-
-            // Step 2: Validate using the step validation hook
-            const isValid = validateExpense(apiExpenseData);
-            
-            if (!isValid) {
-                message.error("Please fix the validation errors before saving");
-                return;
-            }
-
-            // Step 3: Check if we have any expenses to save
-            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
-            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
-            
-            if (!hasFixedCosts && !hasVariableCosts) {
-                setValidationErrors({ no_expenses: "Please add at least one expense before saving" });
-                message.error("Please add at least one expense before saving");
-                return;
-            }
-
-            // Step 4: Prepare data for API
+            // Prepare data for API
             const stepData = {
                 fixed_costs: apiExpenseData.fixed_costs,
-                variable_costs: apiExpenseData.variable_costs
+                variable_costs: apiExpenseData.variable_costs,
+                frequency: frequency
             };
             
-            // Step 5: Call API through Zustand store with success callback
+            // Call API through Zustand store with success callback
             const result = await submitStepData("Expense", stepData, async (responseData) => {
                 // Success callback - handle navigation based on mode
                 
@@ -319,14 +298,70 @@ const ExpenseWrapperContent = () => {
         }
     };
 
+    const handleSave = async () => {
+        try {
+            // Check if we have any expenses to save
+            const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
+            const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
+            
+            if (!hasFixedCosts && !hasVariableCosts) {
+                // Show confirmation popup asking if user wants to skip expenses
+                Modal.confirm({
+                    title: 'Are you sure?',
+                    content: (
+                        <div>
+                            <p>By skipping expenses, your cash flow model may not reflect the true picture of your restaurant's performance.</p>
+                        </div>
+                    ),
+                    okText: 'Yes, Skip for now',
+                    cancelText: 'No, Lets enter expenses',
+                    okType: 'default',
+                    cancelType: 'primary',
+                    onOk: () => {
+                        // User chose to skip - proceed with empty expenses
+                        proceedWithSave();
+                    },
+                    onCancel: () => {
+                        // User chose to enter expenses - do nothing, let them continue editing
+                    }
+                });
+                return;
+            }
+
+            // If we have expenses, proceed normally
+            await proceedWithSave();
+
+        } catch (error) {
+            console.error("Error in handleSave:", error);
+            message.error("An unexpected error occurred. Please try again.");
+        }
+    };
+
     return (
         <div className="w-full mx-auto">
             {/* Header Section with same styling as dashboard */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
                 <OnboardingBreadcrumb 
                     currentStep="Expenses"
                     description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
                 />
+                
+                {/* Frequency Selection Dropdown */}
+                <div className="">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expense Frequency
+                    </label>
+                    <Select
+                        value={frequency}
+                        onChange={setFrequency}
+                        className="w-48"
+                        options={[
+                            { value: 'weekly', label: 'Weekly' },
+                            { value: 'monthly', label: 'Monthly' }
+                        ]}
+                    />
+                  
+                </div>
             </div>
 
             {/* Content Section */}

@@ -44,17 +44,17 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Food Cost Details</h3>
-                {/* <p className="text-gray-600 text-sm">
-                    Share your average food cost and pricing structure to help us better support your business planning.
-                </p> */}
+                <h3 className="text-xl font-bold text-orange-600 mb-1">Food Cost Details</h3>
+                <p className="text-gray-600 text-sm">
+                Add your average food cost and pricing structure so we can help manage your food costs more effectively
+                </p>
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* COGS Goals Section */}
                 <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4">
+                    <h4 className="text-lg font-semibold text-gray-800 ">
                         Cost of Goods (COGS) Goals
                     </h4>
                     

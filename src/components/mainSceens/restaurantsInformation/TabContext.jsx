@@ -67,7 +67,7 @@ export const TabProvider = ({ children }) => {
         { id: 1, title: 'Sales Channels', path: 'sales-channels', required: true },
         { id: 2, title: 'Labor Information', path: 'labor-information', required: true },
         { id: 3, title: 'Food Cost Details', path: 'food-cost-details', required: true },
-        { id: 4, title: 'Expense', path: 'expense', required: true },
+        { id: 4, title: 'Expenses', path: 'expense', required: true },
     ];
 
     // Map URL paths to tab IDs

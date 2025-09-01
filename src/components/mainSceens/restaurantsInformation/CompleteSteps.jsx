@@ -86,6 +86,26 @@ const CompleteSteps = () => {
 
             {/* Main Guide Content */}
             <div className="w-full max-w-4xl space-y-3">
+                  {/* Congratulations Section */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                    <h3 className="text-lg sm:text-xl font-bold text-yellow-800 mb-4">🎉 Congratulations!</h3>
+                    <p className="text-yellow-800 mb-4">
+                        Growlio has now populated your information on the Budget Dashboard. On this screen, you'll see:
+                    </p>
+                    <ul className="space-y-2 text-yellow-800">
+                        <li className="flex items-start gap-2">
+                            <span className="text-yellow-600 font-bold">•</span>
+                            <span>Your labor and food cost budgets based on the sales estimates you entered</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-yellow-600 font-bold">•</span>
+                            <span>A projection of your profit or loss by day, calculated from those budgets</span>
+                        </li>
+                    </ul>
+                    <p className="text-yellow-800 mt-4">
+                        This gives you a clear, actionable plan for the week so you can stay on top of your numbers and keep your restaurant profitable.
+                    </p>
+                </div>
                 
                 {/* What to do next section */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -139,26 +159,7 @@ const CompleteSteps = () => {
                     </div>
                 </div>
 
-                {/* Congratulations Section */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                    <h3 className="text-lg sm:text-xl font-bold text-yellow-800 mb-4">🎉 Congratulations!</h3>
-                    <p className="text-yellow-800 mb-4">
-                        Growlio has now populated your information on the Budget Dashboard. On this screen, you'll see:
-                    </p>
-                    <ul className="space-y-2 text-yellow-800">
-                        <li className="flex items-start gap-2">
-                            <span className="text-yellow-600 font-bold">•</span>
-                            <span>Your labor and food cost budgets based on the sales estimates you entered</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-yellow-600 font-bold">•</span>
-                            <span>A projection of your profit or loss by day, calculated from those budgets</span>
-                        </li>
-                    </ul>
-                    <p className="text-yellow-800 mt-4">
-                        This gives you a clear, actionable plan for the week so you can stay on top of your numbers and keep your restaurant profitable.
-                    </p>
-                </div>
+              
 
                 {/* Next Steps Section */}
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
