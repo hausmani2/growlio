@@ -3,6 +3,7 @@ import { Button, Modal, Input, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
+import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
     const tooltips = useTooltips('onboarding-expense');
@@ -57,7 +58,8 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                 id: Date.now() + Math.random(),
                 label: newFieldLabel.trim(),
                 value: "",
-                key: `dynamic_variable_${Date.now()}_${Math.random()}`
+                key: `dynamic_variable_${Date.now()}_${Math.random()}`,
+                variable_expense_type: "monthly" // Default to monthly
             };
             const updatedFields = [...dynamicFields, newField];
             setDynamicFields(updatedFields);
@@ -95,6 +97,14 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
         if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
             memoizedUpdateData('totalVariableCost', dynamicTotal.toFixed(2));
         }
+    };
+
+    const handleFrequencyChange = (id, variable_expense_type) => {
+        const updatedFields = dynamicFields.map(field => 
+            field.id === id ? { ...field, variable_expense_type } : field
+        );
+        setDynamicFields(updatedFields);
+        memoizedUpdateData('dynamicVariableFields', updatedFields);
     };
 
     const handleDeleteField = (id) => {
@@ -146,7 +156,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                                     type="text"
                                     placeholder="Cost name"
                                     value={field.label}
-                                    className="w-full sm:w-48 h-11 rounded-lg text-sm"
+                                    className="w-full sm:w-48 h-10 rounded-lg text-sm"
                                     disabled
                                 />
                             </div>
@@ -165,12 +175,20 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
                                         placeholder="0.00"
                                         value={field.value}
                                         onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
-                                        className="w-full sm:w-32 h-11 rounded-lg text-sm"
+                                        className="w-full sm:w-full h-10 rounded-lg text-sm"
                                         step="0.01"
                                         min="0"
                                     />
                                 )}
                             </div>
+                            
+                                <div className="flex items-center gap-2">
+                                    <MonthlyWeeklyToggle
+                                        isMonthly={field.variable_expense_type === "monthly"}
+                                        setIsMonthly={(isMonthly) => handleFrequencyChange(field.id, isMonthly ? "monthly" : "weekly")}
+                                        size="medium"
+                                    />
+                                </div>
                             <Button
                                 type="text"
                                 danger
