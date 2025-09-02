@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty } from 'antd';
+import { PlusOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
@@ -213,7 +213,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         const budgetedSales = parseFloat(day.budgetedSales) || 0;
         const actualSalesInStore = parseFloat(day.actualSalesInStore) || 0;
         const actualSalesAppOnline = parseFloat(day.actualSalesAppOnline) || 0;
-        const dailyTickets = parseFloat(day.dailyTickets) || 0;
+        const dailyTickets = ensureWholeNumberTickets(day.dailyTickets);
         const averageDailyTicket = parseFloat(day.averageDailyTicket) || 0;
         
         // Check dynamic provider fields
@@ -240,10 +240,31 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return ((netSales - budgetedSales) / budgetedSales) * 100;
   };
 
-  // Helper function to calculate average daily ticket as integer
+  // Helper function to calculate average daily ticket with decimal precision
   const calculateAverageDailyTicket = (netSales, dailyTickets) => {
     if (dailyTickets === 0) return 0;
-    return Math.round(netSales / dailyTickets);
+    return parseFloat((netSales / dailyTickets).toFixed(2));
+  };
+
+  // Helper function to ensure daily tickets are always whole numbers
+  // Daily tickets represent actual customer count and cannot be fractional
+  const ensureWholeNumberTickets = (value) => {
+    return Math.round(parseFloat(value) || 0);
+  };
+
+  // Helper function to handle daily tickets input change with validation
+  const handleDailyTicketsChange = (value, setterFunction) => {
+    // Remove any non-numeric characters except for the minus sign
+    const cleanValue = value.toString().replace(/[^0-9]/g, '');
+    const wholeNumber = parseInt(cleanValue) || 0;
+    setterFunction(wholeNumber);
+  };
+
+  // Helper function to validate daily tickets input
+  const validateDailyTicketsInput = (value) => {
+    if (value === '' || value === null || value === undefined) return true;
+    const numValue = parseFloat(value);
+    return Number.isInteger(numValue) && numValue >= 0;
   };
 
   // Check if a day is closed (restaurant not open)
@@ -286,7 +307,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             actual_sales_app_online: (weeklyGoals.actualSalesAppOnline || 0).toFixed(2),
             net_sales_actual: (weeklyGoals.netSalesActual || 0).toFixed(2),
             actual_vs_budget_sales: (weeklyGoals.actualVsBudgetSales || 0),
-            daily_tickets: (weeklyGoals.dailyTickets || 0),
+            daily_tickets: ensureWholeNumberTickets(weeklyGoals.dailyTickets),
             average_daily_ticket: (weeklyGoals.averageDailyTicket || 0).toFixed(2),
             // Add dynamic provider fields to weekly data
             ...providers.reduce((acc, provider) => {
@@ -302,7 +323,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
-              daily_tickets: parseFloat(day.dailyTickets) || 0,
+              daily_tickets: ensureWholeNumberTickets(day.dailyTickets),
               average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
               restaurant_open: (() => {
                 const dayValue = day.restaurant_open;
@@ -384,7 +405,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: parseFloat(salesPerformance.actual_sales_app_online) || 0,
         netSalesActual: parseFloat(salesPerformance.net_sales_actual) || 0,
         actualVsBudgetSales: parseFloat(salesPerformance.actual_vs_budget_sales) || 0,
-        dailyTickets: parseFloat(salesPerformance.daily_tickets) || 0,
+        dailyTickets: ensureWholeNumberTickets(salesPerformance.daily_tickets),
         averageDailyTicket: parseFloat(salesPerformance.average_daily_ticket) || 0
       };
 
@@ -417,7 +438,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesInStore: entry['Sales Performance']?.actual_sales_in_store || 0,
         actualSalesAppOnline: entry['Sales Performance']?.actual_sales_app_online || 0,
         actualVsBudgetSales: entry['Sales Performance']?.actual_vs_budget_sales || 0,
-        dailyTickets: entry['Sales Performance']?.daily_tickets || 0,
+        dailyTickets: ensureWholeNumberTickets(entry['Sales Performance']?.daily_tickets),
         averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0,
         restaurant_open: (() => {
           const value = entry['Sales Performance']?.restaurant_open;
@@ -643,7 +664,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
-              daily_tickets: parseFloat(day.dailyTickets) || 0,
+              daily_tickets: ensureWholeNumberTickets(day.dailyTickets),
               average_daily_ticket: (parseFloat(day.averageDailyTicket) || 0).toFixed(2),
               restaurant_open: (() => {
                 const value = day.restaurant_open;
@@ -1064,23 +1085,46 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="w-full">
-              <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
+              <div className="flex items-center gap-2 mb-1">
+                <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
+            
+              </div>
               <Input
                 type='number'
                 value={weekFormData.weeklyTotals.dailyTickets}
                 onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setWeekFormData(prev => ({
-                    ...prev,
-                    weeklyTotals: {
-                      ...prev.weeklyTotals,
-                      dailyTickets: value
-                    }
-                  }));
+                  handleDailyTicketsChange(e.target.value, (value) => {
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        dailyTickets: value
+                      }
+                    }));
+                  });
+                }}
+                onBlur={(e) => {
+                  const wholeNumber = ensureWholeNumberTickets(e.target.value);
+                  if (wholeNumber !== parseFloat(e.target.value)) {
+                    setWeekFormData(prev => ({
+                      ...prev,
+                      weeklyTotals: {
+                        ...prev.weeklyTotals,
+                        dailyTickets: wholeNumber
+                      }
+                    }));
+                  }
                 }}
                 placeholder="0"
+                step="1"
+                min="0"
+                pattern="[0-9]*"
                 className="w-full"
               />
+              <div className="text-xs text-gray-500 mt-1">
+                Only whole numbers allowed (e.g., 25, not 25.5). This represents actual customer count.
+              </div>
+            
             </div>
           </div>
 
@@ -1098,7 +1142,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
                   acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
                   acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
-                  acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
+                  acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
                   acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
                   
                   // Add dynamic provider totals
@@ -1172,8 +1216,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Table.Summary.Cell index={8 + providers.length}>
                       <Text strong style={{ color: '#1890ff' }}>
                         {totals.dailyTickets > 0 
-                          ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
-                          : 0}
+                          ? `$${calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets).toFixed(2)}` 
+                          : '$0.00'}
                       </Text>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
@@ -1333,23 +1377,41 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   }
                 },
                 {
-                  title: '# Daily Tickets',
+                  title: (
+                    <div className="flex items-center gap-2">
+                      <span># Daily Tickets</span>
+              
+                    </div>
+                  ),
                   dataIndex: 'dailyTickets',
                   key: 'dailyTickets',
                   width: 150,
                   render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
-                      placeholder="0"
-                      className="w-full"
-                      disabled={isDayClosed(record)}
-                      style={{ 
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                      }}
-                    />
+                    <div>
+                      <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyTicketsChange(e.target.value, (value) => handleDailyDataChange(index, 'dailyTickets', value, record))}
+                        onBlur={(e) => {
+                          const wholeNumber = ensureWholeNumberTickets(e.target.value);
+                          if (wholeNumber !== parseFloat(e.target.value)) {
+                            handleDailyDataChange(index, 'dailyTickets', wholeNumber, record);
+                          }
+                        }}
+                        placeholder="0"
+                        step="1"
+                        min="0"
+                        pattern="[0-9]*"
+                        className="w-full"
+                        disabled={isDayClosed(record)}
+                        style={{ 
+                          opacity: isDayClosed(record) ? 0.5 : 1,
+                          cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                        }}
+                      />
+                
+                     
+                    </div>
                   )
                 },
                 {
@@ -1375,7 +1437,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   }
                 },
                 {
-                  title: 'Average Daily Ticket',
+                  title: (
+                    <div className="flex items-center gap-2">
+                      <span>Average Daily Ticket</span>
+                  
+                    </div>
+                  ),
                   dataIndex: 'averageDailyTicket',
                   key: 'averageDailyTicket',
                   width: 150,
@@ -1390,9 +1457,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     }, 0);
                     
                     const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
-                    const dailyTickets = parseFloat(record.dailyTickets) || 0;
+                    const dailyTickets = ensureWholeNumberTickets(record.dailyTickets);
                     const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
-                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
+                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${avgDailyTicket.toFixed(2)}</Text>;
                   }
                 }
               ]}
@@ -1493,7 +1560,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                 acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
                                 acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
                                 acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
-                                acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
+                                acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
                                 acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
                                 
                                 // Add dynamic provider totals
@@ -1530,45 +1597,43 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                   <Table.Summary.Cell index={0}>
                                     <Text strong style={{ color: '#1890ff' }}>TOTAL</Text>
                                   </Table.Summary.Cell>
+                                 
                                   <Table.Summary.Cell index={1}>
-                                    <Text strong style={{ color: '#1890ff' }}>-</Text>
-                                  </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={2}>
                                     <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={3}>
+                                  <Table.Summary.Cell index={2}>
                                     <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={4}>
+                                  <Table.Summary.Cell index={3}>
                                     <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesAppOnline.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   {/* Dynamic Provider Summary Cells */}
                                   {providers.map((provider, index) => {
                                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                                     return (
-                                      <Table.Summary.Cell key={providerKey} index={5 + index}>
+                                      <Table.Summary.Cell key={providerKey} index={4 + index}>
                                         <Text strong style={{ color: '#1890ff' }}>${totals[providerKey]?.toFixed(2) || '0.00'}</Text>
                                       </Table.Summary.Cell>
                                     );
                                   })}
-                                  <Table.Summary.Cell index={5 + providers.length}>
+                                  <Table.Summary.Cell index={4 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>${netSalesActualTotal.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={6 + providers.length}>
+                                  <Table.Summary.Cell index={5 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>{totals.dailyTickets.toFixed(0)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={7 + providers.length}>
+                                  <Table.Summary.Cell index={6 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>
                                       {totals.budgetedSales > 0 && netSalesActualTotal > 0 
                                         ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
                                         : '0.0'}%
                                     </Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={8 + providers.length}>
+                                  <Table.Summary.Cell index={7 + providers.length}>
                                     <Text strong style={{ color: '#1890ff' }}>
                                       {totals.dailyTickets > 0 
-                                        ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
-                                        : 0}
+                                        ? `$${calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets).toFixed(2)}` 
+                                        : '$0.00'}
                                     </Text>
                                   </Table.Summary.Cell>
                                 </Table.Summary.Row>
@@ -1655,7 +1720,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                 }
                               },
                               {
-                                title: '# Daily Tickets',
+                                title: (
+                                  <div className="flex items-center gap-2">
+                                    <span># Daily Tickets</span>
+                                   
+                                  </div>
+                                ),
                                 dataIndex: 'dailyTickets',
                                 key: 'dailyTickets',
                                 width: 150,
@@ -1683,10 +1753,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                   return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{actualSalesBudget.toFixed(1)}%</Text>;
                                 }
                               },
-                              {
-                                title: 'Average Daily Ticket',
-                                dataIndex: 'averageDailyTicket',
-                                key: 'averageDailyTicket',
+                                                             {
+                                 title: (
+                                   <div className="flex items-center gap-2">
+                                     <span>Average Daily Ticket</span>
+                                   
+                                   </div>
+                                 ),
+                                 dataIndex: 'averageDailyTicket',
+                                 key: 'averageDailyTicket',
                                 width: 150,
                                 render: (value, record) => {
                                   const actualSalesInStore = parseFloat(record.actualSalesInStore) || 0;
@@ -1699,9 +1774,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                   }, 0);
                                   
                                   const netSales = actualSalesInStore + actualSalesAppOnline + providerSales;
-                                  const dailyTickets = parseFloat(record.dailyTickets) || 0;
+                                  const dailyTickets = ensureWholeNumberTickets(record.dailyTickets);
                                   const avgDailyTicket = calculateAverageDailyTicket(netSales, dailyTickets);
-                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{avgDailyTicket}</Text>;
+                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${avgDailyTicket.toFixed(2)}</Text>;
                                 }
                               }
                             ]}
@@ -1804,18 +1879,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </div>
                 
                 <div>
-                  <Text strong># Daily Tickets:</Text>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Text strong># Daily Tickets:</Text>
+                   
+                  </div>
                   <Input
-                    value={weeklyGoals.dailyTickets || 0}
+                    value={ensureWholeNumberTickets(weeklyGoals.dailyTickets)}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f5f5f5' }}
                   />
                 </div>
                 
-                <div>
-                  <Text strong>Average Daily Ticket:</Text>
-                  <Input
+                                 <div>
+                   <div className="flex items-center gap-2 mb-1">
+                     <Text strong>Average Daily Ticket:</Text>
+                  
+                   </div>
+                   <Input
                     value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
                     className="mt-1"
                     disabled

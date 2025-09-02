@@ -116,7 +116,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
   // Categories for the weekly summary table - Same as SummaryTableDashboard
   const categories = useMemo(() => [
     { key: 'sales_budget', label: 'Sales Budget', type: 'currency' },
-    { key: 'labour', label: 'Labor Budget', type: 'number' },
+    { key: 'labour', label: 'Labor Budget', type: 'currency' },
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
@@ -303,7 +303,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
             );
           }
           // Handle number fields - Same as SummaryTableDashboard
-          if (categoryKey === 'labour' || categoryKey === 'hours') {
+          if (categoryKey === 'hours') {
             return (
               <div className="flex items-start justify-start">
                 <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
@@ -443,7 +443,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
                             : row.key === 'sales_budget' || row.key === 'food_cost' || 
                               row.key === 'average_hourly_rate'
                             ? formatCurrency(rawValue)
-                            : row.key === 'labour' || row.key === 'hours'
+                            : row.key === 'hours'
                             ? formatNumber(rawValue)
                             : rawValue
                           }
