@@ -35,18 +35,19 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/budget'),
         },
         {
+          key: 'dashboard',
+          icon: <HomeOutlined />,
+          label: 'Enter Weekly Data',
+          onClick: () => navigate('/dashboard'),
+        },
+        {
           key: 'profit-loss',
           icon: <ArrowUpOutlined />,
           label: 'Budget vs Actual Sales',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
+ 
       ],
-    },
-    {
-      key: 'dashboard',
-      icon: <HomeOutlined />,
-      label: 'Enter Weekly Data',
-      onClick: () => navigate('/dashboard'),
     },
     {
       key: 'onboarding',

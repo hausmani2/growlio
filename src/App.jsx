@@ -59,7 +59,7 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/congratulations" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/onboarding/budget" element={<OnboardingWrapper />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
@@ -84,7 +84,7 @@ function App() {
 
         </Route>
 
-        {/* Catch-all: redirect unknown routes to home or login */}
+        {/* Catch-all: redirect unknown routes to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

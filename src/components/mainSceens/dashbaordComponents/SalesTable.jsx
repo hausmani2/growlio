@@ -78,11 +78,22 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   }, [restaurantGoals]);
 
   const [weeklyGoals, setWeeklyGoals] = useState({
-    salesBudget: 0,
+    budgetedSales: 0,
     actualSalesInStore: 0,
     actualSalesAppOnline: 0,
     netSalesActual: 0,
     actualVsBudgetSales: 0,
+    dailyTickets: 0,
+    averageDailyTicket: 0,
+    // Dynamic provider fields will be added here
+  });
+
+  // Separate state for weekly totals (calculated from daily data)
+  const [weeklyTotals, setWeeklyTotals] = useState({
+    budgetedSales: 0,
+    actualSalesInStore: 0,
+    actualSalesAppOnline: 0,
+    netSalesActual: 0,
     dailyTickets: 0,
     averageDailyTicket: 0,
     // Dynamic provider fields will be added here
@@ -113,14 +124,22 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     } else {
       // Reset data when no dashboard data is available
       setWeeklyData([]);
-      setWeeklyGoals({
-        salesBudget: 0,
-        actualSalesInStore: 0,
-        actualSalesAppOnline: 0,
-        netSalesActual: 0,
-        dailyTickets: 0,
-        averageDailyTicket: 0
-      });
+             setWeeklyGoals({
+         budgetedSales: 0,
+         actualSalesInStore: 0,
+         actualSalesAppOnline: 0,
+         netSalesActual: 0,
+         dailyTickets: 0,
+         averageDailyTicket: 0
+       });
+       setWeeklyTotals({
+         budgetedSales: 0,
+         actualSalesInStore: 0,
+         actualSalesAppOnline: 0,
+         netSalesActual: 0,
+         dailyTickets: 0,
+         averageDailyTicket: 0
+       });
       // setWeeklyTotals({
       //   salesBudget: 0,
       //   actualSalesInStore: 0,
@@ -302,7 +321,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         section: "Sales Performance",
         section_data: {
           weekly: {
-            sales_budget: (weeklyGoals.salesBudget || 0).toFixed(2),
+                         sales_budget: (weeklyGoals.budgetedSales || 0).toFixed(2),
             actual_sales_in_store: (weeklyGoals.actualSalesInStore || 0).toFixed(2),
             actual_sales_app_online: (weeklyGoals.actualSalesAppOnline || 0).toFixed(2),
             net_sales_actual: (weeklyGoals.netSalesActual || 0).toFixed(2),
@@ -400,7 +419,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     if (dashboardData['Sales Performance']) {
       const salesPerformance = dashboardData['Sales Performance'];
       const goals = {
-        salesBudget: parseFloat(salesPerformance.sales_budget) || 0,
+                 budgetedSales: parseFloat(salesPerformance.sales_budget) || 0,
         actualSalesInStore: parseFloat(salesPerformance.actual_sales_in_store) || 0,
         actualSalesAppOnline: parseFloat(salesPerformance.actual_sales_app_online) || 0,
         netSalesActual: parseFloat(salesPerformance.net_sales_actual) || 0,
@@ -539,20 +558,56 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     
     const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
     
-    setWeeklyData([{
-      id: 'consolidated-week',
-      weekTitle: 'Weekly Sales Data',
-      startDate: weekStartDate,
-      dailyData: dailyData
-    }]);
-    
-    // Calculate weekly totals from the consolidated data
-    // calculateWeeklyTotalsFromData([{
-    //   id: 'consolidated-week',
-    //   weekTitle: 'Weekly Sales Data',
-    //   startDate: weekStartDate,
-    //   dailyData: dailyData
-    // }]);
+         setWeeklyData([{
+       id: 'consolidated-week',
+       weekTitle: 'Weekly Sales Data',
+       startDate: weekStartDate,
+       dailyData: dailyData
+     }]);
+     
+     // Calculate weekly totals from daily data
+     if (dailyData.length > 0) {
+       const calculatedTotals = dailyData.reduce((acc, record) => {
+         acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
+         acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
+         acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
+         acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
+         
+         // Add dynamic provider totals
+         providers.forEach(provider => {
+           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+           if (!acc[providerKey]) acc[providerKey] = 0;
+           acc[providerKey] += parseFloat(record[providerKey]) || 0;
+         });
+         
+         return acc;
+       }, {
+         budgetedSales: 0,
+         actualSalesInStore: 0,
+         actualSalesAppOnline: 0,
+         dailyTickets: 0,
+         ...providers.reduce((acc, provider) => {
+           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+           acc[providerKey] = 0;
+           return acc;
+         }, {})
+       });
+
+       // Calculate net sales actual total (including dynamic providers)
+       const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
+       providers.forEach(provider => {
+         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+         allSalesFields.push(providerKey);
+       });
+       calculatedTotals.netSalesActual = allSalesFields.reduce((sum, field) => sum + calculatedTotals[field], 0);
+
+       // Calculate average daily ticket
+       calculatedTotals.averageDailyTicket = calculatedTotals.dailyTickets > 0 
+         ? calculateAverageDailyTicket(calculatedTotals.netSalesActual, calculatedTotals.dailyTickets)
+         : 0;
+
+       setWeeklyTotals(calculatedTotals);
+     }
   };
 
 
@@ -597,17 +652,22 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         setWeeklyData(prev => [...prev, newWeek]);
       }
       
-      // Update weekly goals from the modal data
-      if (weekData.weeklyTotals) {
-        setWeeklyGoals({
-          salesBudget: weekData.weeklyTotals.salesBudget || 0,
-          actualSalesInStore: weekData.weeklyTotals.actualSalesInStore || 0,
-          actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
-          netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
-          dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
-          averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0
-        });
-      }
+             // Update weekly totals from the modal data (this will update the right sidebar)
+       if (weekData.weeklyTotals) {
+         setWeeklyTotals({
+           budgetedSales: weekData.weeklyTotals.budgetedSales || 0,
+           actualSalesInStore: weekData.weeklyTotals.actualSalesInStore || 0,
+           actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
+           netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
+           dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
+           averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0,
+           ...providers.reduce((acc, provider) => {
+             const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+             acc[providerKey] = weekData.weeklyTotals[providerKey] || 0;
+             return acc;
+           }, {})
+         });
+       }
 
       // Save data to API when modal is submitted
       // Use the weekData from the modal instead of checking weeklyData state
@@ -618,7 +678,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
       // Use the weekly totals from the modal data
       const weeklyTotals = weekData.weeklyTotals || {
-        salesBudget: 0,
+        budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
         netSalesActual: 0,
@@ -628,7 +688,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
       // Calculate final totals for this week
       const finalTotals = {
-        salesBudget: weeklyTotals.salesBudget,
+        budgetedSales: weeklyTotals.budgetedSales,
         actualSalesInStore: weeklyTotals.actualSalesInStore,
         actualSalesAppOnline: weeklyTotals.actualSalesAppOnline,
         netSalesActual: weeklyTotals.netSalesActual || (weeklyTotals.actualSalesInStore + weeklyTotals.actualSalesAppOnline),
@@ -643,7 +703,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         section: "Sales Performance",
         section_data: {
           weekly: {
-            sales_budget: finalTotals.salesBudget.toFixed(2),
+            sales_budget: finalTotals.budgetedSales.toFixed(2),
             actual_sales_in_store: finalTotals.actualSalesInStore.toFixed(2),
             actual_sales_app_online: finalTotals.actualSalesAppOnline.toFixed(2),
             net_sales_actual: finalTotals.netSalesActual.toFixed(2),
@@ -782,6 +842,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
+        dailyTickets: 0,
+        averageDailyTicket: 0,
         restaurant_open: shouldBeClosed ? 0 : 1 // Use restaurant goals to set open/closed status
       };
 
@@ -804,11 +866,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
       // Add weekly totals for the modal
       weeklyTotals: {
-        salesBudget: 0,
+        budgetedSales: 0,
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,  
         dailyTickets: 0,
         averageDailyTicket: 0,
+        netSalesActual: 0,
         // Dynamic provider fields will be added here
       }
     });
@@ -879,22 +942,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           }
         }
         
+        // Calculate weekly totals from daily data
+        const calculatedWeeklyTotals = calculateWeeklyTotals(dailyData);
+        
         setWeekFormData({
           ...editingWeek,
           dailyData: dailyData,
-          weeklyTotals: {
-            salesBudget: weeklyGoals.salesBudget || 0,
-            actualSalesInStore: weeklyGoals.actualSalesInStore || 0,
-            actualSalesAppOnline: weeklyGoals.actualSalesAppOnline || 0,
-            dailyTickets: weeklyGoals.dailyTickets || 0,
-            averageDailyTicket: weeklyGoals.averageDailyTicket || 0,
-            // Add dynamic provider fields
-            ...providers.reduce((acc, provider) => {
-              const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-              acc[providerKey] = weeklyGoals[providerKey] || 0;
-              return acc;
-            }, {})
-          }
+          weeklyTotals: calculatedWeeklyTotals
         });
       } else {
         // Check if we have budgeted sales data from Summary Dashboard
@@ -925,26 +979,61 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           }
         }
         
+        // Calculate weekly totals from daily data
+        const calculatedWeeklyTotals = calculateWeeklyTotals(dailyData);
+        
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
           dailyData: dailyData,
-          weeklyTotals: {
-            salesBudget: 0,
-            actualSalesInStore: 0,
-            actualSalesAppOnline: 0,
-            dailyTickets: 0,
-            averageDailyTicket: 0,
-            // Add dynamic provider fields
-            ...providers.reduce((acc, provider) => {
-              const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-              acc[providerKey] = 0;
-              return acc;
-            }, {})
-          }
+          weeklyTotals: calculatedWeeklyTotals
         });
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate, weeklyGoals]);
+
+    // Function to calculate weekly totals from daily data
+    const calculateWeeklyTotals = (dailyData) => {
+      const totals = dailyData.reduce((acc, record) => {
+        acc.budgetedSales += parseFloat(record.budgetedSales) || 0;
+        acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
+        acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
+        acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
+        
+        // Add dynamic provider totals
+        providers.forEach(provider => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          if (!acc[providerKey]) acc[providerKey] = 0;
+          acc[providerKey] += parseFloat(record[providerKey]) || 0;
+        });
+        
+        return acc;
+      }, {
+        budgetedSales: 0,
+        actualSalesInStore: 0,
+        actualSalesAppOnline: 0,
+        dailyTickets: 0,
+        ...providers.reduce((acc, provider) => {
+          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+          acc[providerKey] = 0;
+          return acc;
+        }, {})
+      });
+
+      // Calculate net sales actual total (including dynamic providers)
+      const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline'];
+      providers.forEach(provider => {
+        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+        allSalesFields.push(providerKey);
+      });
+      totals.netSalesActual = allSalesFields.reduce((sum, field) => sum + totals[field], 0);
+
+      // Calculate average daily ticket
+      totals.averageDailyTicket = totals.dailyTickets > 0 
+        ? calculateAverageDailyTicket(totals.netSalesActual, totals.dailyTickets)
+        : 0;
+
+      return totals;
+    };
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
       // Allow changes to restaurant_open field even when day is closed
@@ -956,9 +1045,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
+      // Calculate new weekly totals based on updated daily data
+      const newWeeklyTotals = calculateWeeklyTotals(newDailyData);
+      
       setWeekFormData({ 
         ...weekFormData, 
-        dailyData: newDailyData
+        dailyData: newDailyData,
+        weeklyTotals: newWeeklyTotals
       });
     };
 
@@ -990,145 +1083,131 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           />
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
-          {/* Weekly Totals Section - Responsive Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* Weekly Totals Section - Responsive Grid (Read-only) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="w-full">
               <Text strong className="text-sm sm:text-base">Sales Budget:</Text>
               <Input
                 type='number'
-                value={weekFormData.weeklyTotals.salesBudget}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setWeekFormData(prev => ({
-                    ...prev,
-                    weeklyTotals: {
-                      ...prev.weeklyTotals,
-                      salesBudget: value
-                    }
-                  }));
-                }}
+                value={(weekFormData.weeklyTotals.budgetedSales || 0).toFixed(2)}
                 prefix="$"
                 placeholder="0.00"
                 className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
               />
             </div>
             <div className="w-full">
               <Text strong className="text-sm sm:text-base">Actual Sales - In Store:</Text>
               <Input
                 type='number'
-                value={weekFormData.weeklyTotals.actualSalesInStore}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setWeekFormData(prev => ({
-                    ...prev,
-                    weeklyTotals: {
-                      ...prev.weeklyTotals,
-                      actualSalesInStore: value
-                    }
-                  }));
-                }}
+                value={(weekFormData.weeklyTotals.actualSalesInStore || 0).toFixed(2)}
                 prefix="$"
                 placeholder="0.00"
                 className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
               />
             </div>
             <div className="w-full">
               <Text strong className="text-sm sm:text-base">Actual Sales - App/Online:</Text>
               <Input
                 type='number'
-                value={weekFormData.weeklyTotals.actualSalesAppOnline}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value) || 0;
-                  setWeekFormData(prev => ({
-                    ...prev,
-                    weeklyTotals: {
-                      ...prev.weeklyTotals,
-                      actualSalesAppOnline: value
-                    }
-                  }));
-                }}
+                value={(weekFormData.weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}
                 prefix="$"
                 placeholder="0.00"
                 className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
               />
             </div>
+            <div className="w-full">
+                <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
+            
+              <Input
+                type='number'
+                value={weekFormData.weeklyTotals.dailyTickets}
+                placeholder="0"
+                step="1"
+                min="0"
+                pattern="[0-9]*"
+                className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
+              />
+            
+            </div>
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base">Net Sales - Actual (Auto-calculated)</Text>
+              <Input
+                type='number'
+                value={(weekFormData.weeklyTotals.netSalesActual || 0).toFixed(2)}
+                prefix="$"
+                placeholder="0.00"
+                className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
+              />
+
+            </div>
+            <div className="w-full">
+              <Text strong className="text-sm sm:text-base">Average Daily Ticket:</Text>
+              <Input
+                type='number'
+                value={(weekFormData.weeklyTotals.averageDailyTicket || 0).toFixed(2)}
+                prefix="$"
+                placeholder="0.00"
+                className="w-full"
+                disabled={true}
+                style={{ 
+                  backgroundColor: '#f5f5f5',
+                  cursor: 'not-allowed'
+                }}
+              />
+              </div>
           </div>
           
-          {/* Dynamic Provider Fields - Responsive Grid */}
+          {/* Dynamic Provider Fields - Responsive Grid (Read-only) */}
           {providers.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {providers.map((provider) => (
                 <div key={provider.provider_name} className="w-full">
                   <Text strong className="text-sm sm:text-base">Actual Sales - {provider.provider_name}:</Text>
                   <Input
                     type='number'
                     value={weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                      setWeekFormData(prev => ({
-                        ...prev,
-                        weeklyTotals: {
-                          ...prev.weeklyTotals,
-                          [providerKey]: value
-                        }
-                      }));
-                    }}
                     prefix="$"
                     placeholder="0.00"
                     className="w-full"
+                    disabled={true}
+                    style={{ 
+                      backgroundColor: '#f5f5f5',
+                      cursor: 'not-allowed'
+                    }}
                   />
                 </div>
               ))}
             </div>
           )}
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="w-full">
-              <div className="flex items-center gap-2 mb-1">
-                <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
-            
-              </div>
-              <Input
-                type='number'
-                value={weekFormData.weeklyTotals.dailyTickets}
-                onChange={(e) => {
-                  handleDailyTicketsChange(e.target.value, (value) => {
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        dailyTickets: value
-                      }
-                    }));
-                  });
-                }}
-                onBlur={(e) => {
-                  const wholeNumber = ensureWholeNumberTickets(e.target.value);
-                  if (wholeNumber !== parseFloat(e.target.value)) {
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        dailyTickets: wholeNumber
-                      }
-                    }));
-                  }
-                }}
-                placeholder="0"
-                step="1"
-                min="0"
-                pattern="[0-9]*"
-                className="w-full"
-              />
-              <div className="text-xs text-gray-500 mt-1">
-                Only whole numbers allowed (e.g., 25, not 25.5). This represents actual customer count.
-              </div>
-            
-            </div>
-          </div>
 
-          {/* Table Section - Responsive */}
+          
           <div className="overflow-x-auto">
             <Table
               dataSource={weekFormData.dailyData}
@@ -1789,124 +1868,133 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               )}
             </Card>
           </Col>
-            {/* Weekly Goals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Sales Goals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No sales data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong>Sales - Budget:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.salesBudget || 0).toFixed(2)}`}
+                     {/* Weekly Sales Totals Section */}
+         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+           <Card title="Weekly Sales Totals" className="h-fit">
+             {dataNotFound ? (
+               <Empty
+                 image={Empty.PRESENTED_IMAGE_SIMPLE}
+                 description="No sales data available for this period."
+                 className="py-4"
+               />
+             ) : (
+               <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                 <div>
+                   <Text strong>Sales - Budget:</Text>
+                   <Input
+                     value={`${(weeklyTotals.budgetedSales || 0).toFixed(2)}`}
+                     className="mt-1"
+                     disabled
+                      style={{ backgroundColor: '#fff7ed'  }}
+                     prefix="$"
+                   />
+                 </div>
+                 
+                 <div>
+                   <Text strong>Actual Sales - In Store:</Text>
+                   <Input
+                     value={`${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
+                     className="mt-1"
+                     disabled
+                      style={{ backgroundColor: '#fff7ed' }}
+                     prefix="$"
+                   />
+                 </div>
+                 
+                 <div>
+                   <Text strong>Actual Sales - App / On Line:</Text>
+                   <Input
+                     value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
+                     className="mt-1"
+                     disabled
+                      style={{ backgroundColor: '#fff7ed' }}
+                     prefix="$"
+                   />
+                 </div>
+                 
+                 {/* Dynamic Provider Fields */}
+                 {providers.map((provider) => (
+                   <div key={provider.provider_name}>
+                     <Text strong>Actual Sales - {provider.provider_name}:</Text>
+                     <Input
+                       value={`${(weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
+                       className="mt-1"
+                       disabled
+                        style={{ backgroundColor: '#fff7ed' }}
+                       prefix="$"
+                     />
+                   </div>
+                 ))}
+                 
+                 <div>
+                   <Text strong>Net Sales - Actual:</Text>
+                   <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                     (Calculated: In Store + App/Online + Providers)
+                   </Text>
+                   <Input
+                     value={`${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
+                     className="mt-1"
+                     disabled
+                     style={{ backgroundColor: '#fff7ed' }}
+                     prefix="$"
+                   />
+                 </div>
+                 
+                 <div>
+                   <Text strong>% Actual vs Budgeted Sales:</Text>
+                   <Input
+                     value={(() => {
+                       const budgetedSales = weeklyTotals.budgetedSales || 0;
+                       const netSales = weeklyTotals.netSalesActual || 0;
+                       if (budgetedSales === 0) return 0;
+                       return ((netSales - budgetedSales) / budgetedSales * 100).toFixed(1);
+                     })()}
+                     className="mt-1"
+                     disabled
+                     style={{ 
+                       color: (() => {
+                         const budgetedSales = weeklyTotals.budgetedSales || 0;
+                         const netSales = weeklyTotals.netSalesActual || 0;
+                         if (budgetedSales === 0) return '#666';
+                         const percentage = ((netSales - budgetedSales) / budgetedSales * 100);
+                         return percentage < 0 ? '#ff4d4f' : '#52c41a';
+                       })(),
+                       backgroundColor: '#fff7ed'
+                     }}
+                     prefix="%"
+                   />
+                 </div>
+                 
+                 <div>
+                   <div className="flex items-center gap-2 mb-1">
+                     <Text strong># Daily Tickets:</Text>
+                    
+                   </div>
+                   <Input
+                     value={ensureWholeNumberTickets(weeklyTotals.dailyTickets)}
+                     className="mt-1"
+                     disabled
+                     style={{ backgroundColor: '#fff7ed' }}
+                   />
+                 </div>
+                 
+                 <div>
+                   <div className="flex items-center gap-2 mb-1">
+                     <Text strong>Average Daily Ticket:</Text>
+                   
+                   </div>
+                   <Input
+                    value={`${(weeklyTotals.averageDailyTicket || 0).toFixed(2)}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Actual Sales - In Store:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.actualSalesInStore || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Actual Sales - App / On Line:</Text>
-                  <Input
-                    value={`$${(weeklyGoals.actualSalesAppOnline || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                {/* Dynamic Provider Fields */}
-                {providers.map((provider) => (
-                  <div key={provider.provider_name}>
-                    <Text strong>Actual Sales - {provider.provider_name}:</Text>
-                    <Input
-                      value={`$${(weeklyGoals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
-                      className="mt-1"
-                      disabled
-                      style={{ backgroundColor: '#f5f5f5' }}
-                    />
-                  </div>
-                ))}
-                
-                <div>
-                  <Text strong>Net Sales - Actual:</Text>
-                  <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                    (Auto-calculated: In Store + App/Online + Providers)
-                  </Text>
-                  <Input
-                    value={(() => {
-                      const baseSales = weeklyGoals.actualSalesInStore + weeklyGoals.actualSalesAppOnline;
-                      const providerSales = providers.reduce((sum, provider) => {
-                        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                        return sum + (weeklyGoals[providerKey] || 0);
-                      }, 0);
-                      return baseSales + providerSales;
-                    })()}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed' }}
                     prefix="$"
                   />
                 </div>
-                
-                <div>
-                  <Text strong>% Actual vs Budgeted Sales:</Text>
-                  <Input
-                    value={weeklyGoals.actualVsBudgetSales || 0}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      color: (weeklyGoals.actualVsBudgetSales || 0) < 0 ? '#ff4d4f' : '#52c41a',
-                      backgroundColor: '#f5f5f5'
-                    }}
-                    prefix="%"
-                  />
-                </div>
-                
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Text strong># Daily Tickets:</Text>
-                   
-                  </div>
-                  <Input
-                    value={ensureWholeNumberTickets(weeklyGoals.dailyTickets)}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                                 <div>
-                   <div className="flex items-center gap-2 mb-1">
-                     <Text strong>Average Daily Ticket:</Text>
-                  
-                   </div>
-                   <Input
-                    value={`$${(weeklyGoals.averageDailyTicket || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+               </Space>
+             )}
+           </Card>
+         </Col>
         </Row>
 
       <WeeklyModal />
