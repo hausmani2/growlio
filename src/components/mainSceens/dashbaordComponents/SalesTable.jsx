@@ -1167,7 +1167,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
             </div>
             <div className="w-full">
-              <Text strong className="text-sm sm:text-base">Average Daily Ticket:</Text>
+              <Text strong className="text-sm sm:text-base">Average Daily Ticket ($):</Text>
               <Input
                 type='number'
                 value={(weekFormData.weeklyTotals.averageDailyTicket || 0).toFixed(2)}
@@ -1518,7 +1518,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 {
                   title: (
                     <div className="flex items-center gap-2">
-                      <span>Average Daily Ticket</span>
+                      <span>Average Daily Ticket ($)</span>
                   
                     </div>
                   ),
@@ -1835,7 +1835,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                                              {
                                  title: (
                                    <div className="flex items-center gap-2">
-                                     <span>Average Daily Ticket</span>
+                                     <span>Average Daily Ticket ($)</span>
                                    
                                    </div>
                                  ),
@@ -1980,7 +1980,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                  
                  <div>
                    <div className="flex items-center gap-2 mb-1">
-                     <Text strong>Average Daily Ticket:</Text>
+                     <Text strong>Average Daily Ticket ($)</Text>
                    
                    </div>
                    <Input
