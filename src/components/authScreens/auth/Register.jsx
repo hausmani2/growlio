@@ -36,7 +36,15 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard/summary');
+      // Check if user has completed onboarding
+      const restaurantId = localStorage.getItem('restaurant_id');
+      if (restaurantId) {
+        // User has completed onboarding, redirect to dashboard
+        navigate('/dashboard/budget');
+      } else {
+        // User hasn't completed onboarding, redirect to onboarding
+        navigate('/congratulations');
+      }
     }
   }, [isAuthenticated, navigate]);
 
@@ -125,17 +133,18 @@ const Register = () => {
       const result = await register(form);
       
       if (result.success) {
-        message.success('Registration successful! Please login to continue.');
         if (result.needsLogin) {
-          // Navigate to login after successful registration
+          // No token received - user needs to login
+          message.success('Registration successful! Please login to continue.');
           setTimeout(() => {
             navigate('/login');
           }, 1500);
         } else {
+          // Token received - user is automatically authenticated
           message.success('Registration successful! Welcome to Growlio!');
           // Navigate to onboarding after successful registration with token
           setTimeout(() => {
-            navigate('/onboarding/summary');
+            navigate('/congratulations');
           }, 1500);
         }
       }

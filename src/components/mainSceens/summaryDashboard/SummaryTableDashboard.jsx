@@ -145,7 +145,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   // Categories for the summary table - Updated to remove profit columns as separate rows
   const categories = useMemo(() => [
     { key: 'sales_budget', label: 'Sales Budget', type: 'currency' },
-    { key: 'labour', label: 'Labor Budget', type: 'number' },
+    { key: 'labour', label: 'Labor Budget', type: 'currency' },
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
@@ -365,7 +365,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
           
           // Handle currency fields
-          if (categoryKey === 'sales_budget' || categoryKey === 'food_cost' || 
+          if (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost' || 
               categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
               categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
               categoryKey === 'profit_loss') {
@@ -379,7 +379,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             );
           }
           // Handle number fields
-          if (categoryKey === 'labour' || categoryKey === 'hours') {
+          if (categoryKey === 'hours') {
             return (
               <div className="flex items-start justify-start">
                 <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
@@ -565,11 +565,11 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                           {!shouldDisplay ? '-' :
                            row.key === 'profit_loss'
                             ? formatProfitLoss(rawValue)
-                            : row.key === 'sales_budget' || row.key === 'food_cost' || 
+                            : row.key === 'sales_budget' || row.key === 'labour' || row.key === 'food_cost' || 
                               row.key === 'amount' || row.key === 'average_hourly_rate' ||
                               row.key === 'fixed_cost' || row.key === 'variable_cost'
                             ? formatCurrency(rawValue)
-                            : row.key === 'labour' || row.key === 'hours'
+                            : row.key === 'hours'
                             ? formatNumber(rawValue)
                             : rawValue
                           }

@@ -27,7 +27,8 @@ const createAuthSlice = (set, get) => {
       
       try {
         const response = await apiPost('/authentication/login/', credentials);
-        const { access, ...userData } = response.data;
+        // Handle both response structures: { access, ...userData } or { data: { access, ...userData } }
+        const { access, ...userData } = response.data.data || response.data;
         
         // Check if access token exists
         if (!hasToken(access)) {
@@ -160,16 +161,35 @@ const createAuthSlice = (set, get) => {
       try {
         const response = await apiPost('/authentication/register/', formData);
         
-        // Registration successful but no token - user needs to login
-        set(() => ({ 
-          user: null, 
-          token: null, 
-          isAuthenticated: false, 
-          loading: false, 
-          error: null 
-        }));
+        // Check if registration response includes a token
+        // The response structure is: { status, message, data: { access, refresh, ...userData } }
+        const { access, refresh, ...userData } = response.data.data || response.data;
         
-        return { success: true, data: response.data, needsLogin: true };
+        if (hasToken(access)) {
+          // Registration successful with token - user is automatically authenticated
+          localStorage.setItem('token', access);
+          
+          set(() => ({ 
+            user: userData, 
+            token: access, 
+            isAuthenticated: true, 
+            loading: false, 
+            error: null 
+          }));
+          
+          return { success: true, data: response.data, needsLogin: false, token: access };
+        } else {
+          // Registration successful but no token - user needs to login
+          set(() => ({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            loading: false, 
+            error: null 
+          }));
+          
+          return { success: true, data: response.data, needsLogin: true };
+        }
       } catch (error) {
         console.error('Registration error response:', error.response?.data);
         
