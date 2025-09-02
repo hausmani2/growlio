@@ -254,7 +254,7 @@ const OnboardingWrapper = () => {
                                     Is Your Restaurant Already on Growlio?
                                 </h1>
                                 <h2 className="text-lg sm:text-xl text-gray-600 leading-relaxed">
-                                    Let us know how you'd like to get started.
+                                Let's Get Your Restaurant Setup!
                                 </h2>
                             </div>
                             
