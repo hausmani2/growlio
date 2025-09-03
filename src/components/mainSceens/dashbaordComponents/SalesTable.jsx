@@ -1097,7 +1097,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
+                  
                 }}
               />
             </div>
@@ -1112,7 +1114,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             </div>
@@ -1127,7 +1130,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             </div>
@@ -1145,7 +1149,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             
@@ -1161,7 +1166,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
 
@@ -1177,7 +1183,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
               </div>
@@ -1198,7 +1205,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     disabled={true}
                     style={{ 
                       backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed'
+                      cursor: 'not-allowed',
+                      color: '#1890ff'
                     }}
                   />
                 </div>
@@ -1885,7 +1893,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.budgetedSales || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed'  }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1896,7 +1904,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed' }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1907,7 +1915,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed' }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1920,7 +1928,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                        value={`${(weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
                        className="mt-1"
                        disabled
-                        style={{ backgroundColor: '#fff7ed' }}
+                        style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                        prefix="$"
                      />
                    </div>
@@ -1935,7 +1943,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                     style={{ backgroundColor: '#fff7ed' }}
+                     style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1959,7 +1967,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                          const percentage = ((netSales - budgetedSales) / budgetedSales * 100);
                          return percentage < 0 ? '#ff4d4f' : '#52c41a';
                        })(),
-                       backgroundColor: '#fff7ed'
+                       backgroundColor: '#fff7ed' ,
+                       color: '#1890ff'
                      }}
                      prefix="%"
                    />
@@ -1974,7 +1983,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={ensureWholeNumberTickets(weeklyTotals.dailyTickets)}
                      className="mt-1"
                      disabled
-                     style={{ backgroundColor: '#fff7ed' }}
+                     style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                    />
                  </div>
                  
@@ -1987,7 +1996,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     value={`${(weeklyTotals.averageDailyTicket || 0).toFixed(2)}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed' }}
+                    style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                     prefix="$"
                   />
                 </div>

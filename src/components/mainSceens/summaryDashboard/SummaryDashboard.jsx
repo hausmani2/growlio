@@ -458,7 +458,7 @@ const SummaryDashboard = () => {
                             onClick={handleShowSalesModal}
                             size="large"
                           >
-                            Add Sales Data
+                            Enter Your Budgets Sales for The week of {calendarDateRange[0]?.format('MMM D')} - {calendarDateRange[1]?.format('MMM D')}
                           </Button>
                         )}
                       </div>
