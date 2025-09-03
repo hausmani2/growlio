@@ -28,13 +28,22 @@ const SummaryDashboard = () => {
 
   // Initialize with current week
   useEffect(() => {
-    if (calendarDateRange.length === 0) {
-      const startOfWeek = dayjs().startOf('week');
-      const endOfWeek = dayjs().endOf('week');
-      setCalendarDateRange([startOfWeek, endOfWeek]);
-      setWeekPickerValue(dayjs());
+    try {
+      console.log('Calendar initialization useEffect triggered, calendarDateRange length:', calendarDateRange.length);
+      
+      if (calendarDateRange.length === 0) {
+        const startOfWeek = dayjs().startOf('week');
+        const endOfWeek = dayjs().endOf('week');
+        console.log('Setting initial calendar dates:', { startOfWeek: startOfWeek.format('YYYY-MM-DD'), endOfWeek: endOfWeek.format('YYYY-MM-DD') });
+        setCalendarDateRange([startOfWeek, endOfWeek]);
+        setWeekPickerValue(dayjs());
+      }
+    } catch (error) {
+      console.error('Error in calendar initialization useEffect:', error);
     }
   }, [calendarDateRange.length]);
+
+
 
   // Calendar functions
   const handleCalendarDateChange = useCallback((dates) => {
@@ -85,11 +94,6 @@ const SummaryDashboard = () => {
   // Auth functionality for restaurant ID
   const { ensureRestaurantId } = useStore();
 
-  // Use refs to prevent infinite loops
-  const isInitialized = useRef(false);
-  const lastDateRange = useRef(null);
-  const hasHandledFailResponse = useRef(false);
-
   // Enhanced data validation function with better logging
   const hasValidData = useCallback(() => {
     const isValid = dashboardSummaryData?.status === 'success' && 
@@ -101,7 +105,10 @@ const SummaryDashboard = () => {
     return isValid;
   }, [dashboardSummaryData]);
 
-
+  // Use refs to prevent infinite loops
+  const [isInitialized, setIsInitialized] = useState(false);
+  const lastDateRange = useRef(null);
+  const hasHandledFailResponse = useRef(false);
 
   // Fetch dashboard summary data for selected date range
   const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
@@ -113,6 +120,29 @@ const SummaryDashboard = () => {
       console.error('Error in fetchDashboardSummary:', error);
     }
   }, [fetchDashboardSummary]);
+
+  // Auto-fetch data when calendar dates are set and component is initialized
+  useEffect(() => {
+    try {
+      
+      if (isInitialized && calendarDateRange.length === 2) {
+        const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+        const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+        
+        
+        // Only fetch if we haven't already fetched for this date range
+        const currentRangeKey = `${startDate}-${endDate}`;
+        if (currentRangeKey !== lastDateRange.current) {
+          lastDateRange.current = currentRangeKey;
+          fetchSummaryData(startDate, endDate, groupBy);
+        } else {
+          console.log('Skipping API call - already fetched for this date range:', currentRangeKey);
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto-fetch useEffect:', error);
+    }
+  }, [isInitialized, calendarDateRange, fetchSummaryData, groupBy]);
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
@@ -248,13 +278,16 @@ const SummaryDashboard = () => {
 
   // Initialize restaurant ID and fetch initial data (only once)
   useEffect(() => {
-    if (isInitialized.current) return;
+    
+    if (isInitialized) return;
     
     const initializeDashboard = async () => {
       try {
         await ensureRestaurantId();
         await getRestaurentGoal();
-        isInitialized.current = true;
+        setIsInitialized(true);
+        
+
       } catch (error) {
         console.error('Error initializing dashboard:', error);
       }
@@ -265,7 +298,7 @@ const SummaryDashboard = () => {
 
   // Fetch data when date range changes (but not on initial load)
   useEffect(() => {
-    if (!isInitialized.current) return;
+    if (!isInitialized) return;
     
     const currentDateRange = calendarDateRange && calendarDateRange.length === 2 
       ? `${calendarDateRange[0].format('YYYY-MM-DD')}-${calendarDateRange[1].format('YYYY-MM-DD')}`
