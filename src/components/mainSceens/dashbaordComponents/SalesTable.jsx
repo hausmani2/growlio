@@ -560,7 +560,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     
          setWeeklyData([{
        id: 'consolidated-week',
-       weekTitle: 'Weekly Sales Data',
+       weekTitle: 'Actual Weekly Sales ',
        startDate: weekStartDate,
        dailyData: dailyData
      }]);
@@ -1061,7 +1061,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
     return (
       <Modal
-        title={isEditMode ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
+        title={isEditMode ? "Edit Actual Weekly Sales " : "Add Actual Weekly Sales"}
         open={isModalVisible}
         onCancel={closeModal}
         footer={[
@@ -1596,7 +1596,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title="Weekly Sales Data"
+            title="Actual Weekly Sales"
             extra={
               <Space>
                 <Button 
@@ -1605,7 +1605,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Sales" : "Edit Weekly Sales"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly Sales" : "Edit Actual Weekly Sales"}
                 </Button>
               </Space>
             }
@@ -1625,7 +1625,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                          size="small" 
                          title={
                            <div className="flex items-center justify-between">
-                             <span>Weekly Sales Data</span>
+                             <span>Actual Weekly Sales </span>
                              {week.dailyData && (
                                <span className="text-xs text-gray-500">
                                  {week.dailyData.filter(day => day.restaurant_open === 0).length} of 7 days closed
@@ -1878,7 +1878,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           </Col>
                      {/* Weekly Sales Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-           <Card title="Weekly Sales Totals" className="h-fit">
+           <Card title="Actual Weekly Sales Totals" className="h-fit">
              {dataNotFound ? (
                <Empty
                  image={Empty.PRESENTED_IMAGE_SIMPLE}

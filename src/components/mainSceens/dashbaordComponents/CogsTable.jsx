@@ -409,7 +409,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     return (
       <Modal
         className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
-        title={isEditMode ? "Edit Weekly COGS Data" : "Add Weekly COGS Data"}
+        title={isEditMode ? "Edit Actual Weekly COGS Data" : "Add Actual Weekly COGS Data"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -425,7 +425,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
+            {isEditMode ? 'Update' : 'Add'} Actual Weekly COGS
           </Button>
         ]}
         width="90vw"
@@ -440,7 +440,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
           {/* Weekly Goals Input Section - Responsive Grid */}
-          <Card title="Weekly COGS Goals" size="small">
+          <Card title="Actual Weekly COGS Goals" size="small">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">COGS Budget:</Text>
@@ -626,7 +626,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
+            title={`Actual Weekly COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
             extra={
               <Space>
                 <Button 
@@ -635,7 +635,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly COGS" : "Edit Weekly COGS"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly COGS" : "Edit Actual Weekly COGS"}
                 </Button>
               </Space>
             }
@@ -787,7 +787,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         </Col>
         {/* Weekly Totals Section */}
         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly COGS Totals" className="h-fit">
+          <Card title="Actual Weekly COGS Totals" className="h-fit">
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}

@@ -403,7 +403,7 @@ const SummaryDashboard = () => {
                 Weekly Budgeted Dashboard
               </h1>
               <p className="text-gray-600 text-lg">
-                Track your performance with comprehensive financial insights.
+              Your weekly budget is ready, along with your estimated profit or loss. Use it as a guide to plan your week, schedule your team, and stay on top of inventory
               </p>
             </div>
             

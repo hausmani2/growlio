@@ -411,7 +411,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
     return (
       <Modal
-        title={isEditMode ? "Edit Weekly Labor Data" : "Add Weekly Labor Data"}
+        title={isEditMode ? "Edit Actual Weekly Labor Data" : "Add Actual Weekly Labor Data"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -427,7 +427,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
+            {isEditMode ? 'Update' : 'Add'} Actual Weekly Labor
           </Button>
         ]}
         width="90vw"
@@ -442,7 +442,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
           {/* Weekly Goals Input Section - Responsive Grid */}
-          <Card title="Weekly Labor Goals" size="small">
+          <Card title="Actual Weekly Labor Goals" size="small">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
@@ -730,7 +730,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Labor" : "Edit Weekly Labor"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly Labor" : "Edit Actual Weekly Labor"}
                 </Button>
               </Space>
             }
@@ -929,7 +929,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         </Col>
          {/* Weekly Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Labor Totals" className="h-fit">
+          <Card title=" Actual Weekly Labor Totals" className="h-fit">
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
