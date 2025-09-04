@@ -251,11 +251,11 @@ const OnboardingWrapper = () => {
                             {/* Header */}
                             <div className="flex flex-col gap-3">
                                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-gray-900">
-                                    Is Your Restaurant Already on Growlio?
-                                </h1>
-                                <h2 className="text-lg sm:text-xl text-gray-600 leading-relaxed">
                                 Let's Get Your Restaurant Setup!
-                                </h2>
+                                </h1>
+                                {/* <h2 className="text-lg sm:text-xl text-gray-600 leading-relaxed">
+                                Let's Get Your Restaurant Setup!
+                                </h2> */}
                             </div>
                             
                             {/* Options */}
