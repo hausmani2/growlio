@@ -81,12 +81,6 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                             <span className="text-red-500 text-xs mt-1">{errors.cogs_goal}</span>
                         )}
                         
-                        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                            <span className="font-medium">Zone Guidelines:</span><br/>
-                            <span className="text-green-600">🟢 Green Zone (Goal): 31%</span> | 
-                            <span className="text-yellow-600">🟡 Yellow Zone (Needs Attention): 33%</span> | 
-                            <span className="text-red-600">🔴 Red Zone (Danger): 34%</span>
-                        </div>
                     </div>
                 </div>
             </div>

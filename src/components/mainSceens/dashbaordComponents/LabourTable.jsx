@@ -49,6 +49,16 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     return 'daily-hours-costs'; // Default fallback
   };
 
+  // Get the correct daily labor rate - should be $50.00
+  const getDailyLaborRate = () => {
+    // If we have a specific daily labor rate from API, use it
+    if (weeklyTotals && weeklyTotals.daily_labor_rate && weeklyTotals.daily_labor_rate > 0) {
+      return parseFloat(weeklyTotals.daily_labor_rate);
+    }
+    // Otherwise, use the target rate of $50.00
+    return 50.00;
+  };
+
   // Helper function to format display values - show "0" instead of "0.00" for zero values
   const formatDisplayValue = (value) => {
     const numValue = parseFloat(value) || 0;
@@ -128,7 +138,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           laborHoursActual: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.labor_hours_actual) || 0) : 0,
           budgetedLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.budgeted_labor_dollars) || 0) : 0,
           actualLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.actual_labor_dollars) || 0) : 0,
-          dailyLaborRate: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.daily_labor_rate) || 0) : 0,
+          dailyLaborRate: parseFloat(entry['Labor Performance']?.daily_labor_rate) || 0,
           dailyLaborPercentage: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.daily_labour_percent) || 0) : 0,
           weeklyLaborPercentage: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.weekly_labour_percent) || 0) : 0,
           restaurantOpen: isRestaurantOpen
@@ -233,7 +243,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         laborHoursActual: 0,
         budgetedLaborDollars: 0,
         actualLaborDollars: 0,
-        dailyLaborRate: hourlyRate,
+        dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || hourlyRate,
         dailyLaborPercentage: 0,
         weeklyLaborPercentage: 0
       };
@@ -338,7 +348,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         laborHoursActual: 0,
         budgetedLaborDollars: 0,
         actualLaborDollars: 0,
-        dailyLaborRate: 0,
+        dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || getAverageHourlyRate(),
         dailyLaborPercentage: 0,
         weeklyLaborPercentage: 0,
         restaurantOpen: true // Default to open for new days
@@ -359,7 +369,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         laborHoursActual: 0,
         budgetedLaborDollars: 0,
         actualLaborDollars: 0,
-        dailyLaborRate: hourlyRate,
+        dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || hourlyRate,
         dailyLaborPercentage: 0,
         weeklyLaborPercentage: 0
       }
@@ -375,7 +385,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             laborHoursActual: 0,
             budgetedLaborDollars: 0,
             actualLaborDollars: 0,
-            dailyLaborRate: hourlyRate,
+            dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || hourlyRate,
             dailyLaborPercentage: 0,
             weeklyLaborPercentage: 0
           }
@@ -391,7 +401,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             laborHoursActual: 0,
             budgetedLaborDollars: 0,
             actualLaborDollars: 0,
-            dailyLaborRate: hourlyRate,
+            dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || hourlyRate,
             dailyLaborPercentage: 0,
             weeklyLaborPercentage: 0
           }
@@ -411,7 +421,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
     return (
       <Modal
-        title={isEditMode ? "Edit Weekly Labor Data" : "Add Weekly Labor Data"}
+        title={isEditMode ? "Edit Actual Weekly Labor Data" : "Add Actual Weekly Labor Data"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -427,7 +437,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
+            {isEditMode ? 'Update' : 'Add'} Actual Weekly Labor
           </Button>
         ]}
         width="90vw"
@@ -441,132 +451,73 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           />
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
-          {/* Weekly Goals Input Section - Responsive Grid */}
-          <Card title="Weekly Labor Goals" size="small">
+          {/* Weekly Labor Totals Summary - Auto-calculated from daily inputs */}
+          <Card title="Weekly Labor Totals Summary" size="small">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
+                <Text strong className="text-sm sm:text-base">Total Labor Hours - Budget:</Text>
                 <Input
-                  type="number"
-                  value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursBudget || 0)}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        laborHoursBudget: value
-                      }
-                    }));
-                  }}
-                  suffix="hrs"
-                  placeholder="0.0"
-                  className="w-full"
+                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0).toFixed(1)} hrs`}
+                  className="mt-1"
+                  disabled
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
+                <Text strong className="text-sm sm:text-base">Total Labor Hours - Actual:</Text>
                 <Input
-                  type="number"
-                  value={formatDisplayValue(weekFormData.weeklyTotals?.laborHoursActual || 0)}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        laborHoursActual: value
-                      }
-                    }));
-                  }}
-                  suffix="hrs"
-                  placeholder="0.0"
-                  className="w-full"
+                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1)} hrs`}
+                  className="mt-1"
+                  disabled
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
+                <Text strong className="text-sm sm:text-base">Total Budgeted Labor $:</Text>
                 <Input
-                  type="number"
-                  value={formatDisplayValue(weekFormData.weeklyTotals?.budgetedLaborDollars || 0)}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        budgetedLaborDollars: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
+                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0).toFixed(2)}`}
+                  className="mt-1"
+                  disabled
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
+                <Text strong className="text-sm sm:text-base">Total Actual Labor $:</Text>
                 <Input
-                  type="number"
-                  value={formatDisplayValue(weekFormData.weeklyTotals?.actualLaborDollars || 0)}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        actualLaborDollars: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
+                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2)}`}
+                  className="mt-1"
+                  disabled
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        dailyLaborRate: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
-                />
+                                  <Input
+                    value={`$${parseFloat(weeklyTotals.daily_labor_rate || 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  />
               </div>
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
                 <Input
-                  type="number"
-                  value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
-                    (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / (weekFormData.weeklyTotals?.dailyLaborRate || hourlyRate))).toFixed(1) : 0}
+                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.dailyLaborPercentage) || 0), 0).toFixed(1)}%`}
                   suffix="%"
                   disabled
-                  style={{ backgroundColor: '#f5f5f5' }}
                   className="w-full"
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
                 <Input
-                  type="number"
-                  value={(weekFormData.weeklyTotals?.actualLaborDollars || 0) > 0 ? 
-                    (((weekFormData.weeklyTotals?.actualLaborDollars || 0) / ((weekFormData.weeklyTotals?.actualLaborDollars || 0) + 5000)) * 100).toFixed(1) : 0}
+                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.weeklyLaborPercentage) || 0), 0).toFixed(1)}%`}
                   suffix="%"
                   disabled
-                  style={{ backgroundColor: '#f5f5f5' }}
+                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                   className="w-full"
                 />
               </div>
@@ -730,7 +681,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Labor" : "Edit Weekly Labor"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly Labor" : "Edit Actual Weekly Labor"}
                 </Button>
               </Space>
             }
@@ -768,45 +719,39 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 laborHoursBudget: acc.laborHoursBudget + (parseFloat(record.laborHoursBudget) || 0),
                                 laborHoursActual: acc.laborHoursActual + (parseFloat(record.laborHoursActual) || 0),
                                 budgetedLaborDollars: acc.budgetedLaborDollars + (parseFloat(record.budgetedLaborDollars) || 0),
-                                actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0),
-                                dailyLaborRate: acc.dailyLaborRate + (parseFloat(record.dailyLaborRate) || 0),
-                                dailyLaborPercentage: acc.dailyLaborPercentage + (parseFloat(record.dailyLaborPercentage) || 0),
-                                weeklyLaborPercentage: acc.weeklyLaborPercentage + (parseFloat(record.weeklyLaborPercentage) || 0)
+                                actualLaborDollars: acc.actualLaborDollars + (parseFloat(record.actualLaborDollars) || 0)
                               }), {
                                 laborHoursBudget: 0,
                                 laborHoursActual: 0,
                                 budgetedLaborDollars: 0,
-                                actualLaborDollars: 0,
-                                dailyLaborRate: 0,
-                                dailyLaborPercentage: 0,
-                                weeklyLaborPercentage: 0
+                                actualLaborDollars: 0
                               });
 
                               return (
-                                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                                <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
                                   <Table.Summary.Cell index={0}>
-                                    <Text strong>Week Totals:</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>Week Totals:</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={1}>
-                                    <Text strong>{(weekTotals?.laborHoursBudget || 0).toFixed(1)} hrs</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursBudget) || 0), 0).toFixed(1)} hrs</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={2}>
-                                    <Text strong>{(weekTotals?.laborHoursActual || 0).toFixed(1)} hrs</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursActual) || 0), 0).toFixed(1)} hrs</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={3}>
-                                    <Text strong>${(weekTotals?.budgetedLaborDollars || 0).toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.budgetedLaborDollars) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={4}>
-                                    <Text strong>${(weekTotals?.actualLaborDollars || 0).toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.actualLaborDollars) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={5}>
-                                    <Text strong>${(weekTotals?.dailyLaborRate || 0).toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.dailyLaborRate) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={6}>
-                                    <Text strong>{(weekTotals?.dailyLaborPercentage || 0).toFixed(1)}%</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.dailyLaborPercentage) || 0), 0).toFixed(1)}%</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={7}>
-                                    <Text strong>{(weekTotals?.weeklyLaborPercentage || 0).toFixed(1)}%</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.weeklyLaborPercentage) || 0), 0).toFixed(1)}%</Text>
                                   </Table.Summary.Cell>
                                 </Table.Summary.Row>
                               );
@@ -929,7 +874,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         </Col>
          {/* Weekly Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly Labor Totals" className="h-fit">
+          <Card title=" Actual Weekly Labor Totals" className="h-fit">
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -941,70 +886,70 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 <div>
                   <Text strong className="text-sm sm:text-base">Labor Hours - Budget:</Text>
                   <Input
-                    value={`${weeklyTotals.labor_hours_budget} hrs`}
+                    value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0).toFixed(1) : '0.0'} hrs`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
                   <Input
-                    value={`${weeklyTotals.labor_hours_actual} hrs`}
+                    value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1) : '0.0'} hrs`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
                   <Input
-                    value={`$${weeklyTotals.budgeted_labor_dollars}`}
+                    value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0).toFixed(2) : '0.00'}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
                   <Input
-                    value={`$${weeklyTotals.actual_labor_dollars}`}
+                    value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2) : '0.00'}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
                   <Input
-                    value={`$${weeklyTotals.daily_labor_rate}`}
+                    value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.dailyLaborRate) || 0), 0).toFixed(2) : '0.00'}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Daily Labor %:</Text>
                   <Input
-                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / parseFloat(weeklyTotals.daily_labor_rate))).toFixed(1) : '0.0'}%`}
+                    value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.dailyLaborPercentage) || 0), 0).toFixed(1) : '0.0'}%`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Weekly Labor %:</Text>
                   <Input
-                    value={`${parseFloat(weeklyTotals.actual_labor_dollars) > 0 ? ((parseFloat(weeklyTotals.actual_labor_dollars) / (parseFloat(weeklyTotals.actual_labor_dollars) + 5000)) * 100).toFixed(1) : '0.0'}%`}
+                    value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.weeklyLaborPercentage) || 0), 0).toFixed(1) : '0.0'}%`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
+                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
                   />
                 </div>
               </Space>

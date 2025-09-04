@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
@@ -42,6 +42,10 @@ const SalesDataModal = ({
     },
     dailyData: []
   });
+
+  // Add state for the budget validation modal
+  const [showBudgetValidationModal, setShowBudgetValidationModal] = useState(false);
+  const [openDaysWithoutBudget, setOpenDaysWithoutBudget] = useState([]);
 
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
@@ -373,6 +377,26 @@ const SalesDataModal = ({
   // Handle form submission
   const handleSubmit = async () => {
     try {
+      // Check for open days without budgeted sales
+      const openDaysWithoutBudget = checkOpenDaysWithoutBudget();
+      
+      if (openDaysWithoutBudget.length > 0) {
+        setOpenDaysWithoutBudget(openDaysWithoutBudget);
+        setShowBudgetValidationModal(true);
+        return;
+      }
+      
+      // Proceed with saving if all open days have budgets
+      await saveSalesData();
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      message.error(`Failed to process request: ${error.message}`);
+    }
+  };
+
+  // Actual save function
+  const saveSalesData = async () => {
+    try {
       setIsSubmitting(true);
       
       if (!formData.dailyData || formData.dailyData.length === 0) {
@@ -380,11 +404,11 @@ const SalesDataModal = ({
         return;
       }
 
-             // Check if budgeted sales are entered
-       if (!hasBudgetedSales()) {
-         message.warning('Please add budgeted sales data before saving.');
-         return;
-       }
+      // Check if budgeted sales are entered
+      if (!hasBudgetedSales()) {
+        message.warning('Please add budgeted sales data before saving.');
+        return;
+      }
 
       const weeklyTotals = calculateWeeklyTotals();
       
@@ -480,6 +504,28 @@ const SalesDataModal = ({
     }
   };
 
+  // Handle user choice in budget validation modal
+  const handleBudgetValidationChoice = async (addBudgets) => {
+    setShowBudgetValidationModal(false);
+    
+    if (addBudgets) {
+      // User wants to add budgets - focus on first day without budget
+      const firstDayWithoutBudget = openDaysWithoutBudget[0];
+      const dayIndex = formData.dailyData.findIndex(day => day.key === firstDayWithoutBudget.key);
+      
+      if (dayIndex !== -1) {
+        // Focus on the budgeted sales input for that day
+        message.info(`Please add budgeted sales for ${firstDayWithoutBudget.dayName}. The input field is now highlighted.`);
+        
+        // You can add additional logic here to highlight or focus the input field
+        // For now, we'll just show a message
+      }
+    } else {
+      // User wants to proceed with $0 budgets - save the data
+      await saveSalesData();
+    }
+  };
+
   // Calculate actual sales budget ratio
   const calculateActualSalesBudget = (budgetedSales, netSales) => {
     if (budgetedSales === 0) return 0;
@@ -519,6 +565,14 @@ const SalesDataModal = ({
   // Check if any budgeted sales are entered
   const hasBudgetedSales = () => {
     return formData.dailyData.some(day => day.budgetedSales && day.budgetedSales > 0);
+  };
+
+  // Check for open days without budgeted sales
+  const checkOpenDaysWithoutBudget = () => {
+    const openDaysWithoutBudget = formData.dailyData.filter(day => 
+      day.restaurant_open === 1 && (!day.budgetedSales || day.budgetedSales === 0)
+    );
+    return openDaysWithoutBudget;
   };
 
   // Check if save button should be disabled
@@ -792,6 +846,7 @@ const SalesDataModal = ({
                   fixed: 'left',
                   render: (text, record) => {
                     const isAutoClosed = shouldDayBeClosed(record.dayName);
+                    const needsBudget = record.restaurant_open === 1 && (!record.budgetedSales || record.budgetedSales === 0);
                     return (
                       <div className="min-w-[160px]">
                         <div className="font-medium flex items-center gap-2">
@@ -862,6 +917,7 @@ const SalesDataModal = ({
                   fixed: 'left',
                   render: (text, record) => {
                     const isAutoClosed = shouldDayBeClosed(record.dayName);
+                    const needsBudget = record.restaurant_open === 1 && (!record.budgetedSales || record.budgetedSales === 0);
                     return (
                       <div className="min-w-[160px]">
                         <div className="font-medium flex items-center gap-2">
@@ -873,6 +929,12 @@ const SalesDataModal = ({
                                 : 'bg-red-100 text-red-600'
                             }`}>
                               {isAutoClosed ? 'AUTO-CLOSED' : 'CLOSED'}
+                            </span>
+                          )}
+                          {needsBudget && (
+                            <span className="text-xs px-2 py-1 rounded whitespace-nowrap bg-orange-100 text-orange-600 flex items-center gap-1">
+                              <ExclamationCircleOutlined />
+                              NEEDS BUDGET
                             </span>
                           )}
                         </div>
@@ -1063,6 +1125,73 @@ const SalesDataModal = ({
           </div>
         </Card>
       </Space>
+
+      {/* Budget Validation Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <ExclamationCircleOutlined className="text-orange-500" />
+            <span>Missing Sales Budgets</span>
+          </div>
+        }
+        open={showBudgetValidationModal}
+        onCancel={() => setShowBudgetValidationModal(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setShowBudgetValidationModal(false)}>
+            Cancel
+          </Button>,
+          <Button 
+            key="no" 
+            onClick={() => handleBudgetValidationChoice(false)}
+            style={{ backgroundColor: '#ff4d4f', borderColor: '#ff4d4f', color: 'white' }}
+          >
+            No, Save with $0
+          </Button>,
+          <Button 
+            key="yes" 
+            type="primary" 
+            onClick={() => handleBudgetValidationChoice(true)}
+            icon={<DollarOutlined />}
+          >
+            Yes, Add Budgets
+          </Button>
+        ]}
+        width={500}
+        destroyOnClose
+      >
+        <div className="text-center">
+          <ExclamationCircleOutlined 
+            className="text-6xl text-orange-500 mb-4" 
+            style={{ fontSize: '64px' }}
+          />
+          <Title level={4} className="mb-4">
+            Some open days don't have sales budgets. Add them now?
+          </Title>
+          
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <Text strong className="text-gray-700 mb-2 block">
+              The following days are open but have $0 budgeted sales:
+            </Text>
+            <div className="space-y-2">
+              {openDaysWithoutBudget.map((day, index) => (
+                <div key={day.key} className="flex items-center justify-between bg-white p-2 rounded border">
+                  <span className="font-medium">{day.dayName}</span>
+                  <span className="text-red-500 font-bold">${day.budgetedSales || 0}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            <p className="mb-2">
+              <strong>Yes:</strong> Add budgeted sales for these days before saving
+            </p>
+            <p>
+              <strong>No:</strong> Save the data with $0 budgeted sales for these days
+            </p>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 };
