@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryBtn from "../../../../buttons/Buttons";
 import { useTabHook } from "../../useTabHook";
@@ -15,19 +15,62 @@ const TotalExpense = ({ data,  onSave }) => {
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
 
-    // Calculate total expenses properly
-    const calculateTotalExpenses = () => {
+    // Calculate weekly and monthly totals separately
+    const { weeklyTotal, monthlyTotal } = useMemo(() => {
         const variableCost = parseFloat(data.totalVariableCost) || 0;
         const fixedCost = parseFloat(data.totalFixedCost) || 0;
-        const total = (variableCost + fixedCost).toFixed(2);
-
         
-        return total;
-    };
+        // Calculate weekly totals from dynamic fields
+        const weeklyVariableTotal = (data.dynamicVariableFields || []).reduce((sum, field) => {
+            if (field.variable_expense_type === 'weekly') {
+                // Skip percentage fields (royalty/brand and fund) from total calculation
+                const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
+                    field.label.toLowerCase().includes(keyword)
+                );
+                if (!isPercentageField) {
+                    return sum + parseFloat(field.value || 0);
+                }
+            }
+            return sum;
+        }, 0);
+
+        const weeklyFixedTotal = (data.dynamicFixedFields || []).reduce((sum, field) => {
+            if (field.fixed_expense_type === 'weekly') {
+                return sum + parseFloat(field.value || 0);
+            }
+            return sum;
+        }, 0);
+
+        // Calculate monthly totals from dynamic fields
+        const monthlyVariableTotal = (data.dynamicVariableFields || []).reduce((sum, field) => {
+            if (field.variable_expense_type === 'monthly') {
+                // Skip percentage fields (royalty/brand and fund) from total calculation
+                const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
+                    field.label.toLowerCase().includes(keyword)
+                );
+                if (!isPercentageField) {
+                    return sum + parseFloat(field.value || 0);
+                }
+            }
+            return sum;
+        }, 0);
+
+        const monthlyFixedTotal = (data.dynamicFixedFields || []).reduce((sum, field) => {
+            if (field.fixed_expense_type === 'monthly') {
+                return sum + parseFloat(field.value || 0);
+            }
+            return sum;
+        }, 0);
+
+        const weeklyTotal = (weeklyVariableTotal + weeklyFixedTotal).toFixed(2);
+        const monthlyTotal = (monthlyVariableTotal + monthlyFixedTotal).toFixed(2);
+
+        return { weeklyTotal, monthlyTotal };
+    }, [data.dynamicVariableFields, data.dynamicFixedFields]);
+
     const handleBack = () => {
         handleTabClick(3);
     };
-    const totalExpenses = calculateTotalExpenses();
        
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -40,16 +83,27 @@ const TotalExpense = ({ data,  onSave }) => {
             </div>
             
             {/* Total Display */}
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <label className="text-base font-semibold text-gray-700">
-                            Total Expenses:
+                            Total Weekly Expenses:
                         </label>
-                        <TooltipIcon text={tooltips['total_expense']} />
+                        <TooltipIcon text={tooltips['total_weekly_expense']} />
                     </div>
                     <span className="text-2xl font-bold text-gray-900">
-                        ${totalExpenses}
+                        ${weeklyTotal}
+                    </span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <label className="text-base font-semibold text-gray-700">
+                            Total Monthly Expenses:
+                        </label>
+                        <TooltipIcon text={tooltips['total_monthly_expense']} />
+                    </div>
+                    <span className="text-2xl font-bold text-gray-900">
+                        ${monthlyTotal}
                     </span>
                 </div>
             </div>
