@@ -560,7 +560,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     
          setWeeklyData([{
        id: 'consolidated-week',
-       weekTitle: 'Weekly Sales Data',
+       weekTitle: 'Actual Weekly Sales ',
        startDate: weekStartDate,
        dailyData: dailyData
      }]);
@@ -1061,7 +1061,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
     return (
       <Modal
-        title={isEditMode ? "Edit Weekly Sales Data" : "Add Weekly Sales Data"}
+        title={isEditMode ? "Edit Actual Weekly Sales " : "Add Actual Weekly Sales"}
         open={isModalVisible}
         onCancel={closeModal}
         footer={[
@@ -1097,7 +1097,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
+                  
                 }}
               />
             </div>
@@ -1112,7 +1114,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             </div>
@@ -1127,7 +1130,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             </div>
@@ -1145,7 +1149,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
             
@@ -1161,7 +1166,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
 
@@ -1177,7 +1183,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 disabled={true}
                 style={{ 
                   backgroundColor: '#f5f5f5',
-                  cursor: 'not-allowed'
+                  cursor: 'not-allowed',
+                  color: '#1890ff'
                 }}
               />
               </div>
@@ -1198,7 +1205,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     disabled={true}
                     style={{ 
                       backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed'
+                      cursor: 'not-allowed',
+                      color: '#1890ff'
                     }}
                   />
                 </div>
@@ -1588,7 +1596,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title="Weekly Sales Data"
+            title="Actual Weekly Sales"
             extra={
               <Space>
                 <Button 
@@ -1597,7 +1605,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly Sales" : "Edit Weekly Sales"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly Sales" : "Edit Actual Weekly Sales"}
                 </Button>
               </Space>
             }
@@ -1617,7 +1625,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                          size="small" 
                          title={
                            <div className="flex items-center justify-between">
-                             <span>Weekly Sales Data</span>
+                             <span>Actual Weekly Sales </span>
                              {week.dailyData && (
                                <span className="text-xs text-gray-500">
                                  {week.dailyData.filter(day => day.restaurant_open === 0).length} of 7 days closed
@@ -1870,7 +1878,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           </Col>
                      {/* Weekly Sales Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-           <Card title="Weekly Sales Totals" className="h-fit">
+           <Card title="Actual Weekly Sales Totals" className="h-fit">
              {dataNotFound ? (
                <Empty
                  image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -1885,7 +1893,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.budgetedSales || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed'  }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1896,7 +1904,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed' }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1907,7 +1915,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                      style={{ backgroundColor: '#fff7ed' }}
+                      style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1920,7 +1928,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                        value={`${(weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0).toFixed(2)}`}
                        className="mt-1"
                        disabled
-                        style={{ backgroundColor: '#fff7ed' }}
+                        style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                        prefix="$"
                      />
                    </div>
@@ -1935,7 +1943,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={`${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
                      className="mt-1"
                      disabled
-                     style={{ backgroundColor: '#fff7ed' }}
+                     style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                      prefix="$"
                    />
                  </div>
@@ -1959,7 +1967,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                          const percentage = ((netSales - budgetedSales) / budgetedSales * 100);
                          return percentage < 0 ? '#ff4d4f' : '#52c41a';
                        })(),
-                       backgroundColor: '#fff7ed'
+                       backgroundColor: '#fff7ed' ,
+                       color: '#1890ff'
                      }}
                      prefix="%"
                    />
@@ -1974,7 +1983,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                      value={ensureWholeNumberTickets(weeklyTotals.dailyTickets)}
                      className="mt-1"
                      disabled
-                     style={{ backgroundColor: '#fff7ed' }}
+                     style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                    />
                  </div>
                  
@@ -1987,7 +1996,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     value={`${(weeklyTotals.averageDailyTicket || 0).toFixed(2)}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed' }}
+                    style={{ backgroundColor: '#fff7ed' , color: '#1890ff' }}
                     prefix="$"
                   />
                 </div>

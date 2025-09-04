@@ -409,7 +409,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     return (
       <Modal
         className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
-        title={isEditMode ? "Edit Weekly COGS Data" : "Add Weekly COGS Data"}
+        title={isEditMode ? "Edit Actual Weekly COGS Data" : "Add Actual Weekly COGS Data"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -425,7 +425,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
+            {isEditMode ? 'Update' : 'Add'} Actual Weekly COGS
           </Button>
         ]}
         width="90vw"
@@ -439,91 +439,51 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           />
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
-          {/* Weekly Goals Input Section - Responsive Grid */}
-          <Card title="Weekly COGS Goals" size="small">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">COGS Budget:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.cogsBudget}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        cogsBudget: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
-                />
-              </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">COGS Actual:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.cogsActual}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        cogsActual: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
-                />
-              </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">COGS Percentage:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.cogsPercentage}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        cogsPercentage: value
-                      }
-                    }));
-                  }}
-                  suffix="%"
-                  placeholder="0.0"
-                  className="w-full"
-                />
-              </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Weekly Remaining COGS:</Text>
-                <Input
-                  type="number"
-                  value={weekFormData.weeklyTotals.weeklyRemainingCog}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    setWeekFormData(prev => ({
-                      ...prev,
-                      weeklyTotals: {
-                        ...prev.weeklyTotals,
-                        weeklyRemainingCog: value
-                      }
-                    }));
-                  }}
-                  prefix="$"
-                  placeholder="0.00"
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </Card>
+                     {/* Weekly COGS Totals Summary - Auto-calculated from daily inputs */}
+           <Card title="Weekly COGS Totals Summary" size="small">
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Total COGS Budget:</Text>
+                 <Input
+                   value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                 />
+               </div>
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Total COGS Actual:</Text>
+                 <Input
+                   value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0).toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                 />
+               </div>
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Total COGS Percentage:</Text>
+                 <Input
+                   value={`${(() => {
+                     const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                     return totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) : '0.0';
+                   })()}%`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                 />
+               </div>
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Total Weekly Remaining:</Text>
+                 <Input
+                   value={`$${weekFormData.weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                 />
+               </div>
+             </div>
+           </Card>
 
           {/* Table Section - Responsive */}
           <div className="overflow-x-auto">
@@ -533,22 +493,22 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
               size="small"
               rowKey={(record) => record.key || `modal-day-${record.date?.format('YYYY-MM-DD')}`}
               scroll={{ x: 'max-content' }}
-              summary={(pageData) => {
-                const totals = pageData.reduce((acc, record) => ({
-                  budget: acc.budget + (parseFloat(record.budget) || 0),
-                  actual: acc.actual + (parseFloat(record.actual) || 0)
-                }), {
-                  budget: 0,
-                  actual: 0
-                });
+                             summary={(pageData) => {
+                 const totals = pageData.reduce((acc, record) => ({
+                   budget: acc.budget + (parseFloat(record.budget) || 0),
+                   actual: acc.actual + (parseFloat(record.actual) || 0)
+                 }), {
+                   budget: 0,
+                   actual: 0
+                 });
 
                 return (
-                  <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                  <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
                     <Table.Summary.Cell index={0}>
-                      <Text strong>Totals:</Text>
+                      <Text strong style={{ color: '#1890ff' }}>DAILY TOTALS</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
-                      <Text strong>${totals.actual.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.actual.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
                 );
@@ -626,7 +586,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
+            title={`Actual Weekly COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
             extra={
               <Space>
                 <Button 
@@ -635,7 +595,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
                 >
-                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Weekly COGS" : "Edit Weekly COGS"}
+                  {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly COGS" : "Edit Actual Weekly COGS"}
                 </Button>
               </Space>
             }
@@ -686,18 +646,18 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                               const weekPercentage = weekTotals.budget > 0 ? (weekTotals.actual / weekTotals.budget) * 100 : 0;
 
                               return (
-                                <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
+                                <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
                                   <Table.Summary.Cell index={0}>
-                                    <Text strong>Week Totals:</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>Week Totals:</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={1}>
-                                    <Text strong>${weekTotals.budget.toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${weekTotals.budget.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={2}>
-                                    <Text strong>${weekTotals.actual.toFixed(2)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${weekTotals.actual.toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                   <Table.Summary.Cell index={3}>
-                                    <Text strong>{weekPercentage.toFixed(1)}%</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>{weekPercentage.toFixed(1)}%</Text>
                                   </Table.Summary.Cell>
                                 </Table.Summary.Row>
                               );
@@ -785,60 +745,65 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             )}
           </Card>
         </Col>
-        {/* Weekly Totals Section */}
-        <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Weekly COGS Totals" className="h-fit">
-            {dataNotFound ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No COGS data available for this period."
-                className="py-4"
-              />
-            ) : (
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div>
-                  <Text strong>COGS Budget:</Text>
-                  <Input
-                    value={`$${weeklyTotals.cogsBudget.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>COGS Actual:</Text>
-                  <Input
-                    value={`$${weeklyTotals.cogsActual.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>COGS Percentage:</Text>
-                  <Input
-                    value={`${weeklyTotals.cogsPercentage.toFixed(1)}%`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-                
-                <div>
-                  <Text strong>Weekly Remaining COGS:</Text>
-                  <Input
-                    value={`$${weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f5f5f5' }}
-                  />
-                </div>
-              </Space>
-            )}
-          </Card>
-        </Col>
+                 {/* Weekly Totals Section */}
+         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
+           <Card title="Actual Weekly COGS Totals" className="h-fit">
+             {dataNotFound ? (
+               <Empty
+                 image={Empty.PRESENTED_IMAGE_SIMPLE}
+                 description="No COGS data available for this period."
+                 className="py-4"
+               />
+             ) : (
+               <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                                                       <div>
+                     <Text strong>COGS Budget:</Text>
+                     <Input
+                       value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2) : '0.00'}`}
+                       className="mt-1"
+                       disabled
+                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                     />
+                   </div>
+                   
+                   <div>
+                     <Text strong>COGS Actual:</Text>
+                     <Input
+                       value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0).toFixed(2) : '0.00'}`}
+                       className="mt-1"
+                       disabled
+                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                     />
+                   </div>
+                   
+                   <div>
+                     <Text strong>COGS Percentage:</Text>
+                     <Input
+                       value={`${(() => {
+                         if (weeklyData.length === 0) return '0.0';
+                         const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                         const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                         return totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) : '0.0';
+                       })()}%`}
+                       className="mt-1"
+                       disabled
+                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                     />
+                   </div>
+                   
+                   <div>
+                     <Text strong>Weekly Remaining COGS:</Text>
+                     <Input
+                       value={`$${weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
+                       className="mt-1"
+                       disabled
+                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                     />
+                   </div>
+               </Space>
+             )}
+           </Card>
+         </Col>
       </Row>
 
       <WeeklyModal />

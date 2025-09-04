@@ -8,6 +8,7 @@ const { Title, Text } = Typography;
 const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
+  const [dataTimestamp, setDataTimestamp] = useState(Date.now());
 
   // Helper function to handle None/null/undefined values
   const handleValue = useCallback((value) => {
@@ -53,6 +54,11 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   useEffect(() => {
     const dataToProcess = dashboardSummaryData || dashboardData;
     
+    console.log('=== NEW DATA RECEIVED ===');
+    console.log('dashboardSummaryData:', dashboardSummaryData);
+    console.log('dashboardData:', dashboardData);
+    console.log('dataToProcess:', dataToProcess);
+    
     if (!dataToProcess) {
       setTableData([]);
       setProcessedData({});
@@ -83,6 +89,16 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       return;
     }
 
+    // Extract total_days from the first entry (since it's in each entry, not at response level)
+    let totalDays = 1; // Default to 1 if not provided
+    if (weekEntries.length > 0) {
+      const firstEntry = weekEntries[0];
+      totalDays = parseNumericValue(firstEntry.total_days) || 1;
+      console.log('Total days from first entry:', firstEntry.total_days, 'Parsed as:', totalDays);
+      console.log('First entry fixed_costs:', firstEntry.fixed_costs);
+      console.log('First entry structure:', Object.keys(firstEntry));
+    }
+
     // Process the data - Updated to match new API response structure with profit columns
     const processed = {
       sales_budget: {},
@@ -110,6 +126,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         dateKey = entry.date || entry.day || 'N/A';
       }
       
+      console.log('Processing entry for date:', dateKey, 'Raw entry:', entry);
+      
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
       processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
@@ -117,29 +135,58 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
       
-      // Handle fixed_costs array structure
-      let fixedCostTotal = 0;
-      if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
-        fixedCostTotal = entry.fixed_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
-      } else {
-        fixedCostTotal = parseNumericValue(entry.fixed_cost);
-      }
-      processed.fixed_cost[dateKey] = fixedCostTotal;
-      
-      // Handle variable_costs array structure
-      let variableCostTotal = 0;
-      if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
-        variableCostTotal = entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
-      } else {
-        variableCostTotal = parseNumericValue(entry.variable_cost);
-      }
-      processed.variable_cost[dateKey] = variableCostTotal;
+       // Handle fixed_costs array structure and divide by total days
+       let fixedCostTotal = 0;
+       if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
+         fixedCostTotal = entry.fixed_costs.reduce((sum, cost) => {
+           const costAmount = parseNumericValue(cost.amount);
+           console.log(`Processing cost: ${cost.name} = $${cost.amount} (parsed: ${costAmount})`);
+           return sum + costAmount;
+         }, 0);
+         console.log(`Fixed costs for ${dateKey}:`, entry.fixed_costs, 'Total:', fixedCostTotal);
+       } else {
+         fixedCostTotal = parseNumericValue(entry.fixed_cost);
+         console.log(`Fixed cost direct for ${dateKey}:`, entry.fixed_cost, 'Total:', fixedCostTotal);
+       }
+       // Store the per-day fixed cost (divided by total days) in the main fixed_cost field
+       const fixedCostPerDay = fixedCostTotal / totalDays;
+       processed.fixed_cost[dateKey] = fixedCostPerDay;
+       console.log(`Fixed cost per day for ${dateKey}: ${fixedCostTotal} ÷ ${totalDays} = ${fixedCostPerDay}`);
+       console.log(`Stored in processed.fixed_cost[${dateKey}]:`, processed.fixed_cost[dateKey]);
+       
+       // Handle variable_costs array structure and divide by total days
+       let variableCostTotal = 0;
+       if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
+         variableCostTotal = entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
+         console.log(`Variable costs for ${dateKey}:`, entry.variable_costs, 'Total:', variableCostTotal);
+       } else {
+         variableCostTotal = parseNumericValue(entry.variable_cost);
+         console.log(`Variable cost direct for ${dateKey}:`, entry.variable_cost, 'Total:', variableCostTotal);
+       }
+       // Store the per-day variable cost (divided by total days) in the main variable_cost field
+       const variableCostPerDay = variableCostTotal / totalDays;
+       processed.variable_cost[dateKey] = variableCostPerDay;
+       console.log(`Variable cost per day for ${dateKey}: ${variableCostTotal} ÷ ${totalDays} = ${variableCostPerDay}`);
       
       processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
     });
 
     setProcessedData(processed);
     setTableData(weekEntries);
+    setDataTimestamp(Date.now()); // Force re-render
+    
+    // Debug logging to see the processed values
+    console.log('Processed Data:', processed);
+    console.log('Total Days:', totalDays);
+    console.log('Fixed Cost Per Day Values:', processed.fixed_cost);
+    console.log('Variable Cost Per Day Values:', processed.variable_cost);
+    console.log('Data timestamp updated:', Date.now());
+    
+    // Verify the state was updated
+    setTimeout(() => {
+      console.log('State after update - processedData:', processed);
+      console.log('State after update - tableData:', weekEntries);
+    }, 100);
   }, [dashboardData, dashboardSummaryData, parseNumericValue]);
 
   // Categories for the summary table - Updated to remove profit columns as separate rows
@@ -149,8 +196,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
-    { key: 'fixed_cost', label: 'Fixed Cost', type: 'currency' },
-    { key: 'variable_cost', label: 'Variable Cost', type: 'currency' },
+    { key: 'fixed_cost', label: 'Fixed Cost (Per Day)', type: 'currency' },
+    { key: 'variable_cost', label: 'Variable Cost (Per Day)', type: 'currency' },
     { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' },
   ], []);
 
@@ -182,8 +229,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(value || 0);
   }, []);
 
@@ -345,12 +392,24 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           const categoryKey = record.key;
           const rawValue = processedData[categoryKey]?.[dateKey] || 0;
           
-          // For fixed_cost and variable_cost, we need to check the processed arrays
+          // Debug logging for fixed and variable costs
+          if (categoryKey === 'fixed_cost' || categoryKey === 'variable_cost') {
+            console.log(`${categoryKey} - Date: ${dateKey}, Raw Value: ${rawValue}, Entry:`, entry);
+            console.log(`processedData[${categoryKey}]:`, processedData[categoryKey]);
+          }
+          
+          // For fixed_cost and variable_cost, we need to check if we have any cost data to display
           let shouldDisplay = true;
           if (categoryKey === 'fixed_cost') {
-            shouldDisplay = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
+            // Check if we have any fixed cost data (either from array or direct field)
+            const hasFixedCosts = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
+            const hasFixedCost = entry.fixed_cost && entry.fixed_cost !== 'None' && entry.fixed_cost !== null && entry.fixed_cost !== undefined;
+            shouldDisplay = hasFixedCosts || hasFixedCost;
           } else if (categoryKey === 'variable_cost') {
-            shouldDisplay = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
+            // Check if we have any variable cost data (either from array or direct field)
+            const hasVariableCosts = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
+            const hasVariableCost = entry.variable_cost && entry.variable_cost !== 'None' && entry.variable_cost !== null && entry.variable_cost !== undefined;
+            shouldDisplay = hasVariableCosts || hasVariableCost;
           } else {
             // Check if the original value was None/null/undefined for other fields
             const originalValue = entry[categoryKey];
@@ -459,11 +518,18 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   }
 
   return (
-    <Card className="shadow-lg border-0">
+    <Card key={`dashboard-${dataTimestamp}`} className="shadow-lg border-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
-        <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
-            {viewMode === 'monthly' && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : "Budget Dashboard"}
-        </h2>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
+              {viewMode === 'monthly' && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : "Budget Dashboard"}
+          </h2>
+          {dataToProcess?.total_days && (
+            <p className="text-sm text-gray-600 mt-1">
+              Fixed and Variable costs calculated per day (Total days: {dataToProcess.total_days})
+            </p>
+          )}
+        </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             icon={<PrinterOutlined />} 
@@ -528,18 +594,24 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                   
                   const rawValue = processedData[row.key]?.[dateKey] || 0;
                   
-                  // For fixed_cost and variable_cost, we need to check the processed arrays
-                  let shouldDisplay = true;
-                  if (row.key === 'fixed_cost') {
-                    shouldDisplay = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
-                  } else if (row.key === 'variable_cost') {
-                    shouldDisplay = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
-                  } else {
-                    // Check if the original value was None/null/undefined for other fields
-                    const originalValue = entry[row.key];
-                    const displayValue = handleValue(originalValue);
-                    shouldDisplay = displayValue !== '-';
-                  }
+                   // For fixed_cost and variable_cost, we need to check if we have any cost data to display
+                   let shouldDisplay = true;
+                   if (row.key === 'fixed_cost') {
+                     // Check if we have any fixed cost data (either from array or direct field)
+                     const hasFixedCosts = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
+                     const hasFixedCost = entry.fixed_cost && entry.fixed_cost !== 'None' && entry.fixed_cost !== null && entry.fixed_cost !== undefined;
+                     shouldDisplay = hasFixedCosts || hasFixedCost;
+                   } else if (row.key === 'variable_cost') {
+                     // Check if we have any variable cost data (either from array or direct field)
+                     const hasVariableCosts = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
+                     const hasVariableCost = entry.variable_cost && entry.variable_cost !== 'None' && entry.variable_cost !== null && entry.variable_cost !== undefined;
+                     shouldDisplay = hasVariableCosts || hasVariableCost;
+                   } else {
+                     // Check if the original value was None/null/undefined for other fields
+                     const originalValue = entry[row.key];
+                     const displayValue = handleValue(originalValue);
+                     shouldDisplay = displayValue !== '-';
+                   }
                   
                   // Get profit percentage for inline display
                   let profitPercentage = null;
