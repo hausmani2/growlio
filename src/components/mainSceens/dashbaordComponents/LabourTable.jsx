@@ -798,7 +798,19 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
+                                  const actual = parseFloat(value) || 0;
+                                  const budget = parseFloat(record.laborHoursBudget) || 0;
+                                  const isOverBudget = actual > budget;
+                                  return (
+                                    <Text style={{ 
+                                      backgroundColor: isOverBudget ? '#ffebee' : '#f0f8ff', 
+                                      color: isOverBudget ? '#d32f2f' : '#1890ff',
+                                      padding: '2px 6px', 
+                                      borderRadius: '3px' 
+                                    }} className="text-sm sm:text-base">
+                                      {actual.toFixed(1)} hrs
+                                    </Text>
+                                  );
                                 }
                               },
                               {
@@ -822,7 +834,19 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }} className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                  const actual = parseFloat(value) || 0;
+                                  const budget = parseFloat(record.budgetedLaborDollars) || 0;
+                                  const isOverBudget = actual > budget;
+                                  return (
+                                    <Text style={{ 
+                                      backgroundColor: isOverBudget ? '#ffebee' : '#f0f8ff', 
+                                      color: isOverBudget ? '#d32f2f' : '#1890ff',
+                                      padding: '2px 6px', 
+                                      borderRadius: '3px' 
+                                    }} className="text-sm sm:text-base">
+                                      ${actual.toFixed(2)}
+                                    </Text>
+                                  );
                                 }
                               },
                               {
@@ -899,7 +923,20 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1) : '0.0'} hrs`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                    style={{ 
+                      backgroundColor: (() => {
+                        if (weeklyData.length === 0) return '#fff7ed';
+                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
+                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
+                        return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                      })(),
+                      color: (() => {
+                        if (weeklyData.length === 0) return '#1890ff';
+                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
+                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
+                        return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                      })()
+                    }}
                   />
                 </div>
                 
@@ -919,7 +956,20 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2) : '0.00'}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                    style={{ 
+                      backgroundColor: (() => {
+                        if (weeklyData.length === 0) return '#fff7ed';
+                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
+                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
+                        return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                      })(),
+                      color: (() => {
+                        if (weeklyData.length === 0) return '#1890ff';
+                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
+                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
+                        return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                      })()
+                    }}
                   />
                 </div>
                 

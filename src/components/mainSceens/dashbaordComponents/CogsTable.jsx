@@ -159,6 +159,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       weeklyTotals.cogsPercentage = weeklyTotals.cogsBudget > 0 ? 
         (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
 
+      // Calculate remaining COGS - if actual exceeds budget, remaining is $0
+      weeklyTotals.weeklyRemainingCog = Math.max(0, weeklyTotals.cogsBudget - weeklyTotals.cogsActual);
+
       // Extract all daily entries into one consolidated table
       const allDailyEntries = dashboardData.daily_entries?.map((entry) => {
         // Check if restaurant is open for this day
@@ -704,7 +707,19 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                  const actual = parseFloat(value) || 0;
+                                  const budget = parseFloat(record.budget) || 0;
+                                  const isOverBudget = actual > budget;
+                                  return (
+                                    <Text style={{ 
+                                      backgroundColor: isOverBudget ? '#ffebee' : '#f0f8ff', 
+                                      color: isOverBudget ? '#d32f2f' : '#1890ff',
+                                      padding: '2px 6px', 
+                                      borderRadius: '3px' 
+                                    }}>
+                                      ${actual.toFixed(2)}
+                                    </Text>
+                                  );
                                 }
                               },
                               {
@@ -718,8 +733,16 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                   const budget = parseFloat(record.budget) || 0;
                                   const actual = parseFloat(record.actual) || 0;
                                   const percentage = budget > 0 ? (actual / budget) * 100 : 0;
+                                  const isOverBudget = actual > budget;
                                   return (
-                                    <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{percentage.toFixed(1)}%</Text>
+                                    <Text style={{ 
+                                      backgroundColor: isOverBudget ? '#ffebee' : '#f0f8ff', 
+                                      color: isOverBudget ? '#d32f2f' : '#1890ff',
+                                      padding: '2px 6px', 
+                                      borderRadius: '3px' 
+                                    }}>
+                                      {percentage.toFixed(1)}%
+                                    </Text>
                                   );
                                 }
                               },
@@ -772,7 +795,20 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                        value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0).toFixed(2) : '0.00'}`}
                        className="mt-1"
                        disabled
-                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                       style={{ 
+                         backgroundColor: (() => {
+                           if (weeklyData.length === 0) return '#fff7ed';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                         })(),
+                         color: (() => {
+                           if (weeklyData.length === 0) return '#1890ff';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                         })()
+                       }}
                      />
                    </div>
                    
@@ -787,7 +823,20 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                        })()}%`}
                        className="mt-1"
                        disabled
-                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                       style={{ 
+                         backgroundColor: (() => {
+                           if (weeklyData.length === 0) return '#fff7ed';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                         })(),
+                         color: (() => {
+                           if (weeklyData.length === 0) return '#1890ff';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                         })()
+                       }}
                      />
                    </div>
                    
