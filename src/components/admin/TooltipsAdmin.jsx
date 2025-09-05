@@ -123,7 +123,8 @@ const TooltipsAdmin = () => {
         return [
           { label: 'Fixed Costs', value: 'fixed_costs' },
           { label: 'Variable Costs', value: 'variable_costs' },
-          { label: 'Total Expense', value: 'total_expense' },
+          { label: 'Total Weekly Expense', value: 'total_weekly_expense' },
+          { label: 'Total Monthly Expense', value: 'total_monthly_expense' },
         ];
       default:
         return [];
