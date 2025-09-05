@@ -112,7 +112,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       average_hourly_rate: {},
       fixed_cost: {},
       variable_cost: {},
-      profit_loss: {}
+      profit_loss: {},
+      budgeted_profit_loss: {}
     };
 
     weekEntries.forEach((entry) => {
@@ -168,7 +169,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
        processed.variable_cost[dateKey] = variableCostPerDay;
        console.log(`Variable cost per day for ${dateKey}: ${variableCostTotal} ÷ ${totalDays} = ${variableCostPerDay}`);
       
-      processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
+      processed.budgeted_profit_loss[dateKey] = parseNumericValue(entry.budgeted_profit_loss);
     });
 
     setProcessedData(processed);
@@ -198,7 +199,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
     { key: 'fixed_cost', label: 'Fixed Cost (Per Day)', type: 'currency' },
     { key: 'variable_cost', label: 'Variable Cost (Per Day)', type: 'currency' },
-    { key: 'profit_loss', label: 'Profit/Loss', type: 'currency' },
+    { key: 'budgeted_profit_loss', label: 'Profit/Loss', type: 'currency' },
   ], []);
 
   // Helper function to format percentage
@@ -427,9 +428,9 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           if (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost' || 
               categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
               categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
-              categoryKey === 'profit_loss') {
-            const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
-            const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
+              categoryKey === 'budgeted_profit_loss') {
+            const colorClass = categoryKey === 'budgeted_profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
+            const formattedValue = categoryKey === 'budgeted_profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
             
             return (
               <div className="flex items-start justify-start">
@@ -631,11 +632,11 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                       <div className="flex items-center">
                         <span className={`font-medium ${
                           !shouldDisplay ? 'text-gray-500' :
-                          row.key === 'profit_loss'
+                          row.key === 'budgeted_profit_loss'
                             ? getProfitLossColor(rawValue) : 'text-gray-600'
                         }`}>
                           {!shouldDisplay ? '-' :
-                           row.key === 'profit_loss'
+                           row.key === 'budgeted_profit_loss'
                             ? formatProfitLoss(rawValue)
                             : row.key === 'sales_budget' || row.key === 'labour' || row.key === 'food_cost' || 
                               row.key === 'amount' || row.key === 'average_hourly_rate' ||
