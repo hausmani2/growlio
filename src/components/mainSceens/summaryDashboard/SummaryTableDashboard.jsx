@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert } from 'antd';
-import { PrinterOutlined, DownloadOutlined } from '@ant-design/icons';
+import { PrinterOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import SalesDataModal from './SalesDataModal';
 
 const { Title, Text } = Typography;
 
-const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy }) => {
+const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy, onDataRefresh }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
   const [dataTimestamp, setDataTimestamp] = useState(Date.now());
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [selectedWeekForEdit, setSelectedWeekForEdit] = useState(null);
 
   // Helper function to handle None/null/undefined values
   const handleValue = useCallback((value) => {
@@ -325,6 +328,83 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     window.print();
   }, []);
 
+  // Edit handler
+  const handleEdit = useCallback(() => {
+    if (!tableData || tableData.length === 0) {
+      return;
+    }
+
+    // Get the first entry to determine the week start date
+    const firstEntry = tableData[0];
+    let startDate;
+    
+    if (firstEntry.month_start) {
+      // For monthly data, use the month start date
+      startDate = dayjs(firstEntry.month_start);
+    } else {
+      // For daily data, find the earliest date
+      const dates = tableData.map(entry => dayjs(entry.date || entry.day)).filter(Boolean);
+      if (dates.length > 0) {
+        startDate = dates.reduce((earliest, current) => current.isBefore(earliest) ? current : earliest);
+      } else {
+        startDate = dayjs();
+      }
+    }
+
+    // Create week data for the edit modal
+    const weekData = {
+      startDate: startDate.format('YYYY-MM-DD'),
+      weekNumber: startDate.week(),
+      dailyData: tableData.map(entry => {
+        let entryDate;
+        if (entry.month_start) {
+          entryDate = dayjs(entry.month_start);
+        } else {
+          entryDate = dayjs(entry.date || entry.day);
+        }
+
+        return {
+          key: `day-${entryDate.format('YYYY-MM-DD')}`,
+          date: entryDate, // This is already a dayjs object
+          dayName: entryDate.format('dddd'),
+          budgetedSales: parseNumericValue(entry.sales_budget),
+          actualSalesInStore: parseNumericValue(entry.actual_sales_in_store),
+          actualSalesAppOnline: parseNumericValue(entry.actual_sales_app_online),
+          dailyTickets: parseNumericValue(entry.daily_tickets),
+          restaurant_open: entry.restaurant_open === 1 || entry.restaurant_open === true ? 1 : 0,
+          // Add any other fields that might be present, but ensure date is a dayjs object
+          ...Object.fromEntries(
+            Object.entries(entry).filter(([key, value]) => key !== 'date' && key !== 'day')
+          )
+        };
+      })
+    };
+
+    console.log('=== EDIT MODAL DATA ===');
+    console.log('Week Data:', weekData);
+    console.log('Daily Data:', weekData.dailyData);
+    console.log('First Day Data:', weekData.dailyData[0]);
+    console.log('Table Data (original):', tableData);
+    console.log('First Entry (original):', tableData[0]);
+    
+    setSelectedWeekForEdit(weekData);
+    setIsEditModalVisible(true);
+  }, [tableData, parseNumericValue]);
+
+  // Handle edit modal close
+  const handleEditModalClose = useCallback(() => {
+    setIsEditModalVisible(false);
+    setSelectedWeekForEdit(null);
+  }, []);
+
+  // Handle data saved from edit modal
+  const handleEditDataSaved = useCallback(() => {
+    if (onDataRefresh) {
+      onDataRefresh();
+    }
+    handleEditModalClose();
+  }, [onDataRefresh, handleEditModalClose]);
+
   // Check if we have data
   const hasData = tableData.length > 0;
   const dataToProcess = dashboardSummaryData || dashboardData;
@@ -533,6 +613,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
+            icon={<EditOutlined />} 
+            onClick={handleEdit}
+            size="middle"
+            disabled={!hasData}
+            className="h-9 px-4 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
+          >
+            <span className="hidden sm:inline">Edit Sales Data</span>
+          </Button>
+          <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
             size="middle"
@@ -661,6 +750,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           ))}
         </div>
       </div>
+
+      {/* Edit Sales Data Modal */}
+      <SalesDataModal
+        visible={isEditModalVisible}
+        onCancel={handleEditModalClose}
+        selectedWeekData={selectedWeekForEdit}
+        onDataSaved={handleEditDataSaved}
+        autoOpenFromSummary={true}
+      />
     </Card>
   );
 };

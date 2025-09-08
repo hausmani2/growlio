@@ -26,6 +26,7 @@ import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profit
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
+import SupportPage from './components/mainSceens/support/SupportPage';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -78,6 +79,7 @@ function App() {
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
+          <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />
           {/* Admin */}
           <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />

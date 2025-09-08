@@ -136,7 +136,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600">Variable Cost</h3>
                 <p className="text-gray-600 text-sm">
-                    What are the variable costs for this location?
+                Can sometimes be paused or reduced if needed.
                     <TooltipIcon text={tooltips.variable_costs_description} />
                 </p>
             </div>

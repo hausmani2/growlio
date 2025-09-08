@@ -4,6 +4,7 @@ import createAuthSlice from './slices/authSlice';
 import createOnBoardingSlice from './slices/onBoardingSlice';
 import createDashboardSlice from './slices/dashboardSlice';
 import createDashboardSummarySlice from './slices/dashboardSummary';
+import createSupportSlice from './slices/supportSlice';
 
 const useStore = create(
   devtools(
@@ -13,6 +14,7 @@ const useStore = create(
         ...createOnBoardingSlice(set, get),
         ...createDashboardSlice(set, get),
         ...createDashboardSummarySlice(set, get),
+        ...createSupportSlice(set, get),
       
         
         // Function to completely clear all persisted state
@@ -128,7 +130,19 @@ const useStore = create(
             dashboardSummaryData: null,
             lastFetchedWeek: null,
             lastFetchedMonth: null,
-            currentViewMode: 'weekly'
+            currentViewMode: 'weekly',
+            
+            // Support slice reset
+            supportLoading: false,
+            supportError: null,
+            supportSuccess: false,
+            supportFormData: {
+              fullName: '',
+              email: '',
+              restaurant: '',
+              subject: '',
+              message: ''
+            }
           }));
           
         }

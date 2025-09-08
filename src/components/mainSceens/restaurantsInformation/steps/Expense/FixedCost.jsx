@@ -54,19 +54,19 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
 
     const handleDynamicFieldChange = (id, value) => {
         if (value === '' || parseFloat(value) >= 0) {
-            const updatedFields = dynamicFields.map(field => 
+            const updatedFields = dynamicFields.map(field =>
                 field.id === id ? { ...field, value } : field
             );
             setDynamicFields(updatedFields);
-            
+
             // Update parent with new fields
             memoizedUpdateData('dynamicFixedFields', updatedFields);
-            
+
             // Calculate and update total
             const dynamicTotal = updatedFields.reduce((sum, field) => {
                 return sum + parseFloat(field.value || 0);
             }, 0);
-            
+
             // Only update if the total has actually changed
             const currentTotal = parseFloat(data.totalFixedCost || 0);
             if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
@@ -76,7 +76,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
     };
 
     const handleFrequencyChange = (id, fixed_expense_type) => {
-        const updatedFields = dynamicFields.map(field => 
+        const updatedFields = dynamicFields.map(field =>
             field.id === id ? { ...field, fixed_expense_type } : field
         );
         setDynamicFields(updatedFields);
@@ -86,15 +86,15 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
     const handleDeleteField = (id) => {
         const updatedFields = dynamicFields.filter(field => field.id !== id);
         setDynamicFields(updatedFields);
-        
+
         // Update parent with new fields
         memoizedUpdateData('dynamicFixedFields', updatedFields);
-        
+
         // Calculate and update total
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             return sum + parseFloat(field.value || 0);
         }, 0);
-        
+
         // Only update if the total has actually changed
         const currentTotal = parseFloat(data.totalFixedCost || 0);
         if (Math.abs(dynamicTotal - currentTotal) > 0.01) {
@@ -110,17 +110,17 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600">Fixed Cost</h3>
                 <p className="text-gray-600 text-sm">
-                    What are the fixed costs for this location?
+                    Non-negotiable. Always plan for them.
                 </p>
             </div>
-            
+
             {/* Form Fields */}
             <div className="space-y-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Fixed Costs <span className="text-red-500">*</span>
                     <TooltipIcon text={tooltips['fixed_costs']} />
                 </label>
-                
+
                 <div className="space-y-3">
                     {dynamicFields.map((field) => (
                         <div key={field.id} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center p-3 bg-gray-50 rounded-lg">
@@ -161,7 +161,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                             </Button>
                         </div>
                     ))}
-                    
+
                     <Button
                         type="dashed"
                         icon={<PlusOutlined />}
@@ -171,7 +171,7 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                         Add Fixed Cost
                     </Button>
                 </div>
-                
+
                 {errors.fixedCosts && (
                     <span className="text-red-500 text-xs mt-1">{errors.fixedCosts}</span>
                 )}

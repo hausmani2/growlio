@@ -112,9 +112,19 @@ const SalesDataModal = ({
     }
     
     const startDate = dayjs(selectedWeekData.startDate);
-    
     const currentProviders = getProviders();
-    const dailyData = generateDailyData(startDate, currentProviders);
+    
+    // Check if we have existing daily data to use
+    let dailyData;
+    if (selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0) {
+      // Use existing data
+      console.log('Using existing daily data:', selectedWeekData.dailyData);
+      dailyData = selectedWeekData.dailyData;
+    } else {
+      // Generate new data
+      console.log('Generating new daily data');
+      dailyData = generateDailyData(startDate, currentProviders);
+    }
     
     const initialWeeklyTotals = {
       salesBudget: 0,

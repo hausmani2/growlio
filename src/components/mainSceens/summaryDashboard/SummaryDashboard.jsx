@@ -525,6 +525,13 @@ const SummaryDashboard = () => {
                     error={summaryError}
                     groupBy={groupBy}
                     viewMode={groupBy === 'month' ? 'monthly' : groupBy === 'week' ? 'weekly' : 'daily'}
+                    onDataRefresh={async () => {
+                      if (calendarDateRange && calendarDateRange.length === 2) {
+                        const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+                        const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+                        await fetchSummaryData(startDate, endDate, groupBy);
+                      }
+                    }}
                   />
                 )}
               </>

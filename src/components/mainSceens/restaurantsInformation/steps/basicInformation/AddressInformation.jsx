@@ -139,7 +139,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                {/* Address 2 */}
                <div>
                     <label htmlFor="address2" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Address 2 <span className="text-red-500">*</span>
+                        Address 2 <span className="text-red-500"></span>
                     </label>
                     <Input.TextArea 
                         id="address2" 
