@@ -26,6 +26,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/expense': 'expense',
     '/dashboard/support': 'support',
+    '/dashboard/faq': 'faq',
     '/dashboard/profile': 'profile',
     '/admin/users': 'admin-users',
     '/admin/tooltips': 'admin-tooltips',

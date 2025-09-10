@@ -5,6 +5,7 @@ import createOnBoardingSlice from './slices/onBoardingSlice';
 import createDashboardSlice from './slices/dashboardSlice';
 import createDashboardSummarySlice from './slices/dashboardSummary';
 import createSupportSlice from './slices/supportSlice';
+import createFaqSlice from './slices/faqSlice';
 
 const useStore = create(
   devtools(
@@ -15,6 +16,7 @@ const useStore = create(
         ...createDashboardSlice(set, get),
         ...createDashboardSummarySlice(set, get),
         ...createSupportSlice(set, get),
+        ...createFaqSlice(set, get),
       
         
         // Function to completely clear all persisted state
@@ -142,7 +144,21 @@ const useStore = create(
               restaurant: '',
               subject: '',
               message: ''
-            }
+            },
+            
+            // FAQ slice reset
+            faqLoading: false,
+            faqError: null,
+            faqSuccess: false,
+            faqCreateSuccess: false,
+            faqUpdateSuccess: false,
+            faqDeleteSuccess: false,
+            faqs: [],
+            filteredFaqs: [],
+            searchQuery: '',
+            selectedCategory: 'all',
+            searchLoading: false,
+            searchTimeout: null
           }));
           
         }
