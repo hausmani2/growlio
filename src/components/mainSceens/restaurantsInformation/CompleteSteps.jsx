@@ -13,7 +13,7 @@ const CompleteSteps = () => {
     // Get the store's onboarding check function
     const forceOnboardingCheck = useStore((state) => state.forceOnboardingCheck);
     const setIsOnBoardingCompleted = useStore((state) => state.setIsOnBoardingCompleted);
-
+    const restaurantName = useStore((state) => state.restaurantName());
     // Check if this is a new user completing onboarding
     useEffect(() => {
         const isNewUserCompleting = sessionStorage.getItem('isNewUserCompletingOnboarding') === 'true';
@@ -78,7 +78,9 @@ const CompleteSteps = () => {
             
             {/* Header Section */}
             <div className="flex flex-col justify-center items-center gap-3 text-center">
-                <h2 className="text-2xl sm:text-3xl !font-bold !mb-0 text-gray-800">🎉 Great job getting your restaurant set up in Growlio!</h2>
+                <h2 className="text-2xl sm:text-3xl !font-bold !mb-0 text-gray-800">
+                    🎉 Great job getting your {restaurantName} set up in Growlio!
+                </h2>
                 <p className="text-base sm:text-lg font-medium text-neutral-600 max-w-2xl">
                     You're ready to take the next step toward running profitably.
                 </p>
