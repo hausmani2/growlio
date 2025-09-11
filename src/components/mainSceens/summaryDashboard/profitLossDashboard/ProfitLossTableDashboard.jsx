@@ -1634,7 +1634,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           </Title>
         </div>
         <Space className="flex sm:flex-row gap-2"> 
-        <Dropdown overlay={formatMenu} trigger={['click']} placement="bottomRight">
+        {/* <Dropdown overlay={formatMenu} trigger={['click']} placement="bottomRight">
           <Button 
             className="h-9 px-4 bg-orange-500 text-white border-0 hover:bg-orange-600 transition-all duration-200 font-medium rounded-md shadow-sm flex items-center gap-2"
             size="middle"
@@ -1642,7 +1642,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="hidden sm:inline">{getFormatDisplayText(printFormat)}</span>
             <DownOutlined className="ml-1" />
           </Button>
-        </Dropdown>
+        </Dropdown> */}
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
