@@ -108,6 +108,22 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     });
   };
 
+  // Function to get net sales for a specific date from dashboard data
+  const getNetSalesForDate = (date) => {
+    if (!dashboardData?.daily_entries) return 0;
+    
+    const targetDate = dayjs(date).format('YYYY-MM-DD');
+    const dailyEntry = dashboardData.daily_entries.find(entry => 
+      dayjs(entry.date).format('YYYY-MM-DD') === targetDate
+    );
+    
+    if (!dailyEntry?.['Sales Performance']) return 0;
+    
+    const salesData = dailyEntry['Sales Performance'];
+    const netSales = parseFloat(salesData.net_sales_actual) || 0;
+    return netSales;
+  };
+
   // Process labor data from dashboard data
   const processLaborData = () => {
     if (!dashboardData) {
@@ -394,8 +410,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         // Preserve the existing dailyData from editingWeek with original API values
         const editingWeekWithDefaults = {
           ...editingWeek,
-          // Keep original dailyData with API values, don't recalculate initially
-          dailyData: editingWeek.dailyData || [],
+          // Calculate percentages for existing data
+          dailyData: calculateLaborPercentages(editingWeek.dailyData || []),
           weeklyTotals: editingWeek.weeklyTotals || {
             laborHoursBudget: 0,
             laborHoursActual: 0,
@@ -409,10 +425,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         setWeekFormData(editingWeekWithDefaults);
       } else {
         const newDailyData = generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate);
+        // Calculate percentages for new data as well
+        const newDailyDataWithPercentages = calculateLaborPercentages(newDailyData);
         setWeekFormData({
           weekTitle: `Week ${weeklyData.length + 1}`,
           startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-          dailyData: newDailyData, // Don't calculate percentages for new data initially
+          dailyData: newDailyDataWithPercentages,
           weeklyTotals: {
             laborHoursBudget: 0,
             laborHoursActual: 0,
@@ -426,40 +444,46 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate, dashboardData]);
 
-    // Function to calculate labor percentages using the same method as the API
-    const calculateLaborPercentages = (dailyData) => {
-      return dailyData.map(day => {
-        if (day.restaurantOpen === false) {
-          return { ...day, dailyLaborPercentage: 0, weeklyLaborPercentage: 0 };
-        }
+  // Function to calculate labor percentages using net sales from API
+  const calculateLaborPercentages = (dailyData) => {
+    let cumulativeLaborDollars = 0;
+    let cumulativeNetSales = 0;
+    
+    return dailyData.map((day, index) => {
+      if (day.restaurantOpen === false) {
+        return { ...day, dailyLaborPercentage: 0, weeklyLaborPercentage: 0 };
+      }
 
-        // Use the same calculation method as the API (from handleWeeklySubmit)
-        const actualLaborDollars = parseFloat(day.actualLaborDollars) || 0;
-        const dailyLaborRate = parseFloat(day.dailyLaborRate) || getAverageHourlyRate();
+      const actualLaborDollars = parseFloat(day.actualLaborDollars) || 0;
+      const netSales = getNetSalesForDate(day.date);
+      
+      // Calculate daily labor percentage: (actual labor dollars / net sales) * 100
+      const dailyLaborPercentage = netSales > 0 ? 
+        ((actualLaborDollars / netSales) * 100) : 0;
 
-        // Calculate daily labor percentage: (actual labor dollars / daily labor rate)
-        const dailyLaborPercentage = actualLaborDollars > 0 ? 
-          (actualLaborDollars / dailyLaborRate) : 0;
+      // Calculate weekly labor percentage: (cumulative actual labor $ / cumulative net sales) * 100
+      // Day by day progression starting from Sunday
+      cumulativeLaborDollars += actualLaborDollars;
+      cumulativeNetSales += netSales;
+      
+      const weeklyLaborPercentage = cumulativeNetSales > 0 ? 
+        ((cumulativeLaborDollars / cumulativeNetSales) * 100) : 0;
 
-        // Calculate weekly labor percentage: (total weekly labor / (total weekly labor + 5000)) * 100
-        const totalWeeklyLabor = dailyData.reduce((sum, d) => sum + (parseFloat(d.actualLaborDollars) || 0), 0);
-        const weeklyLaborPercentage = totalWeeklyLabor > 0 ? 
-          ((totalWeeklyLabor / (totalWeeklyLabor + 5000)) * 100) : 0;
-
-        return {
-          ...day,
-          dailyLaborPercentage: parseFloat(dailyLaborPercentage.toFixed(2)),
-          weeklyLaborPercentage: parseFloat(weeklyLaborPercentage.toFixed(2))
-        };
-      });
-    };
+      return {
+        ...day,
+        dailyLaborPercentage: parseFloat(dailyLaborPercentage.toFixed(2)),
+        weeklyLaborPercentage: parseFloat(weeklyLaborPercentage.toFixed(2)),
+        netSales: netSales // Store net sales for display
+      };
+    });
+  };
 
     const handleDailyDataChange = (dayIndex, field, value) => {
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
-      // Only recalculate labor percentages when actual labor dollars change
-      // Don't recalculate for labor hours as it doesn't directly affect percentages
+      // Recalculate labor percentages when actual labor dollars change
+      // This ensures the percentages are updated in real-time
       if (field === 'actualLaborDollars') {
         const updatedDailyData = calculateLaborPercentages(newDailyData);
         setWeekFormData({ ...weekFormData, dailyData: updatedDailyData });
@@ -544,38 +568,56 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
-                                  <Input
-                    value={`$${parseFloat(weeklyTotals.daily_labor_rate || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
-                  />
-              </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Daily Labor % of Sales:</Text>
                 <Input
-                  value={`${parseFloat(weeklyTotals.daily_labour_percent || 0).toFixed(1)}%`}
-                  suffix="%"
+                  value={`$${parseFloat(weeklyTotals.daily_labor_rate || 0).toFixed(2)}`}
+                  className="mt-1"
                   disabled
-                  className="w-full"
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Weekly Labor % of Sales:</Text>
+                <Text strong className="text-sm sm:text-base">Total Net Sales </Text>
                 <Input
-                  value={`${parseFloat(weeklyTotals.weekly_labour_percent || 0).toFixed(1)}%`}
-                  suffix="%"
+                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0).toFixed(2)}`}
+                  className="mt-1"
                   disabled
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Average Daily Labor %:</Text>
+                <Input
+                  value={`${(() => {
+                    const validDays = weekFormData.dailyData.filter(day => day.restaurantOpen !== false && day.netSales > 0);
+                    if (validDays.length === 0) return '0.0';
+                    const avgPercentage = validDays.reduce((sum, day) => sum + (parseFloat(day.dailyLaborPercentage) || 0), 0) / validDays.length;
+                    return avgPercentage.toFixed(1);
+                  })()}%`}
+                  disabled
+                  className="w-full"
+                  style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Final Weekly Labor %:</Text>
+                <Input
+                  value={`${(() => {
+                    const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
+                    const totalSales = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0);
+                    return totalSales > 0 ? ((totalLabor / totalSales) * 100).toFixed(1) : '0.0';
+                  })()}%`}
+                  disabled
+                  style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
                   className="w-full"
                 />
               </div>
             </div>
           </Card>
+
+         
 
           {/* Table Section - Responsive */}
           <div className="overflow-x-auto">
@@ -661,6 +703,80 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                       style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                     />
                   )
+                },
+                {
+                  title: 'Net Sales',
+                  dataIndex: 'netSales',
+                  key: 'netSales',
+                  width: 150,
+                  render: (value, record) => (
+                    <Input
+                      value={record.restaurantOpen === false ? '$0.00' : `$${(parseFloat(record.netSales) || 0).toFixed(2)}`}
+                      className="w-full"
+                      disabled
+                      style={{ 
+                        backgroundColor: '#f0f8ff', 
+                        color: '#1890ff',
+                        fontWeight: 'bold'
+                      }}
+                    />
+                  )
+                },
+                {
+                  title: 'Daily Labor % of Sales',
+                  dataIndex: 'dailyLaborPercentage',
+                  key: 'dailyLaborPercentage',
+                  width: 180,
+                  render: (value, record) => (
+                    <div>
+                      <Input
+                        value={record.restaurantOpen === false ? '0.00%' : `${(parseFloat(record.dailyLaborPercentage) || 0).toFixed(2)}%`}
+                        className="w-full"
+                        disabled
+                        style={{ 
+                          backgroundColor: '#e8f5e8', 
+                          color: '#2e7d32',
+                          fontWeight: 'bold'
+                        }}
+                      />
+                     
+                    </div>
+                  )
+                },
+                {
+                  title: 'Weekly Labor % of Sales',
+                  dataIndex: 'weeklyLaborPercentage',
+                  key: 'weeklyLaborPercentage',
+                  width: 200,
+                  render: (value, record, index) => {
+                    // Calculate cumulative values for display
+                    let cumulativeLabor = 0;
+                    let cumulativeSales = 0;
+                    const daysUpToCurrent = weekFormData.dailyData.slice(0, index + 1);
+                    
+                    daysUpToCurrent.forEach(day => {
+                      if (day.restaurantOpen !== false) {
+                        cumulativeLabor += parseFloat(day.actualLaborDollars) || 0;
+                        cumulativeSales += parseFloat(day.netSales) || 0;
+                      }
+                    });
+
+                    return (
+                      <div>
+                        <Input
+                          value={record.restaurantOpen === false ? '0.00%' : `${(parseFloat(record.weeklyLaborPercentage) || 0).toFixed(2)}%`}
+                          className="w-full"
+                          disabled
+                          style={{ 
+                            backgroundColor: '#fff3e0', 
+                            color: '#f57c00',
+                            fontWeight: 'bold'
+                          }}
+                        />
+                       
+                      </div>
+                    );
+                  }
                 }
               ]}
             />
@@ -778,12 +894,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   <Table.Summary.Cell index={5}>
                                     <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.dailyLaborRate) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={6}>
-                                    <Text strong style={{ color: '#1890ff' }}>{parseFloat(weeklyTotals.daily_labour_percent || 0).toFixed(1)}%</Text>
-                                  </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={7}>
-                                    <Text strong style={{ color: '#1890ff' }}>{parseFloat(weeklyTotals.weekly_labour_percent || 0).toFixed(1)}%</Text>
-                                  </Table.Summary.Cell>
+                               
                                 </Table.Summary.Row>
                               );
                             }}
@@ -901,7 +1012,17 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>;
+                                  // Calculate daily percentage using net sales from API
+                                  const actualLabor = parseFloat(record.actualLaborDollars) || 0;
+                                  const netSales = getNetSalesForDate(record.date);
+                                  const dailyPercentage = netSales > 0 ? ((actualLabor / netSales) * 100) : 0;
+                                  return <Text className="text-sm sm:text-base" style={{ 
+                                    backgroundColor: '#e8f5e8', 
+                                    color: '#2e7d32',
+                                    padding: '2px 6px', 
+                                    borderRadius: '3px',
+                                    fontWeight: 'bold'
+                                  }}>{dailyPercentage.toFixed(2)}%</Text>;
                                 }
                               },
                               {
@@ -909,11 +1030,30 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 dataIndex:"weeklyLaborPercentage",
                                 key:"weeklyLaborPercentage",
                                 width:150,
-                                render:(value, record) => {
+                                render:(value, record, index) => {
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(2)}%</Text>;
+                                  // Calculate cumulative percentage up to this day
+                                  let cumulativeLabor = 0;
+                                  let cumulativeSales = 0;
+                                  const daysUpToCurrent = week.dailyData.slice(0, index + 1);
+                                  
+                                  daysUpToCurrent.forEach(day => {
+                                    if (day.restaurantOpen !== false) {
+                                      cumulativeLabor += parseFloat(day.actualLaborDollars) || 0;
+                                      cumulativeSales += getNetSalesForDate(day.date);
+                                    }
+                                  });
+                                  
+                                  const weeklyPercentage = cumulativeSales > 0 ? ((cumulativeLabor / cumulativeSales) * 100) : 0;
+                                  return <Text className="text-sm sm:text-base" style={{ 
+                                    backgroundColor: '#fff3e0', 
+                                    color: '#f57c00',
+                                    padding: '2px 6px', 
+                                    borderRadius: '3px',
+                                    fontWeight: 'bold'
+                                  }}>{weeklyPercentage.toFixed(2)}%</Text>;
                                 }
                               }
                             ]}
@@ -1015,36 +1155,47 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 </div>
                 
                 <div>
-                  <Text strong className="text-sm sm:text-base">Daily Labor % of Sales:</Text>
+                  <Text strong className="text-sm sm:text-base">Average Daily Labor % of Sales:</Text>
                   <Input
                     value={`${(() => {
-                      // Use the actual API value from weeklyTotals if available
-                      if (weeklyTotals && weeklyTotals.daily_labour_percent !== undefined) {
-                        return parseFloat(weeklyTotals.daily_labour_percent).toFixed(1);
-                      }
-                      // Fallback to calculated value from daily data
-                      return weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.dailyLaborPercentage) || 0), 0).toFixed(1) : '0.0';
+                      if (weeklyData.length === 0) return '0.0';
+                      const validDays = weeklyData[0].dailyData.filter(day => day.restaurantOpen !== false);
+                      if (validDays.length === 0) return '0.0';
+                      
+                      const totalDailyPercentage = validDays.reduce((sum, day) => {
+                        const actualLabor = parseFloat(day.actualLaborDollars) || 0;
+                        const netSales = getNetSalesForDate(day.date);
+                        const dailyPercentage = netSales > 0 ? ((actualLabor / netSales) * 100) : 0;
+                        return sum + dailyPercentage;
+                      }, 0);
+                      
+                      return (totalDailyPercentage / validDays.length).toFixed(1);
                     })()}%`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                    style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
                   />
                 </div>
                 
                 <div>
-                  <Text strong className="text-sm sm:text-base">Weekly Labor % of Sales:</Text>
+                  <Text strong className="text-sm sm:text-base">Final Weekly Labor % of Sales:</Text>
                   <Input
                     value={`${(() => {
-                      // Use the actual API value from weeklyTotals if available
-                      if (weeklyTotals && weeklyTotals.weekly_labour_percent !== undefined) {
-                        return parseFloat(weeklyTotals.weekly_labour_percent).toFixed(1);
-                      }
-                      // Fallback to calculated value from daily data
-                      return weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.weeklyLaborPercentage) || 0), 0).toFixed(1) : '0.0';
+                      if (weeklyData.length === 0) return '0.0';
+                      
+                      const totalLabor = weeklyData[0].dailyData.reduce((sum, day) => {
+                        return day.restaurantOpen !== false ? sum + (parseFloat(day.actualLaborDollars) || 0) : sum;
+                      }, 0);
+                      
+                      const totalSales = weeklyData[0].dailyData.reduce((sum, day) => {
+                        return day.restaurantOpen !== false ? sum + getNetSalesForDate(day.date) : sum;
+                      }, 0);
+                      
+                      return totalSales > 0 ? ((totalLabor / totalSales) * 100).toFixed(1) : '0.0';
                     })()}%`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                    style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
                   />
                 </div>
               </Space>

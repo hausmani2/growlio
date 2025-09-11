@@ -17,18 +17,18 @@ const ExpenseWrapperContent = () => {
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
-    
+
     // Ref for VariableFixed component to access percentage field filtering
     const variableFixedRef = useRef();
-    
+
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
-    
+
     // State for expense data - only dynamic fields
     const [expenseData, setExpenseData] = useState({
         totalFixedCost: "0.00",
         totalVariableCost: "0.00",
-        
+
         // Dynamic fields
         dynamicFixedFields: [],
         dynamicVariableFields: []
@@ -44,10 +44,10 @@ const ExpenseWrapperContent = () => {
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
         const expenseInfoData = completeOnboardingData["Expense"];
-        
+
         if (expenseInfoData && expenseInfoData.data) {
             const data = expenseInfoData.data;
-            
+
             // Load fixed costs
             if (data.fixed_costs && Array.isArray(data.fixed_costs)) {
                 const dynamicFixedCosts = data.fixed_costs.map(cost => ({
@@ -57,21 +57,21 @@ const ExpenseWrapperContent = () => {
                     key: `dynamic_fixed_${Date.now()}_${Math.random()}`,
                     fixed_expense_type: cost.fixed_expense_type || "monthly" // Default to monthly if not present
                 }));
-                
+
                 if (dynamicFixedCosts.length > 0) {
                     // Calculate total fixed cost
                     const totalFixed = dynamicFixedCosts.reduce((sum, field) => {
                         return sum + parseFloat(field.value || 0);
                     }, 0);
-                    
-                    setExpenseData(prev => ({ 
-                        ...prev, 
+
+                    setExpenseData(prev => ({
+                        ...prev,
                         dynamicFixedFields: dynamicFixedCosts,
                         totalFixedCost: totalFixed.toFixed(2)
                     }));
                 }
             }
-            
+
             // Load variable costs
             if (data.variable_costs && Array.isArray(data.variable_costs)) {
                 const dynamicVariableCosts = data.variable_costs.map(cost => ({
@@ -81,7 +81,7 @@ const ExpenseWrapperContent = () => {
                     key: `dynamic_variable_${Date.now()}_${Math.random()}`,
                     variable_expense_type: cost.variable_expense_type || "monthly" // Default to monthly if not present
                 }));
-                
+
                 if (dynamicVariableCosts.length > 0) {
                     // Calculate total variable cost (excluding percentage fields)
                     const totalVariable = dynamicVariableCosts.reduce((sum, field) => {
@@ -89,15 +89,15 @@ const ExpenseWrapperContent = () => {
                         const royaltyFields = ["royalty", "brand and fund"];
                         const labelLower = field.label.toLowerCase();
                         const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
-                        
+
                         if (isPercentageField) {
                             return sum;
                         }
                         return sum + parseFloat(field.value || 0);
                     }, 0);
-                    
-                    setExpenseData(prev => ({ 
-                        ...prev, 
+
+                    setExpenseData(prev => ({
+                        ...prev,
                         dynamicVariableFields: dynamicVariableCosts,
                         totalVariableCost: totalVariable.toFixed(2)
                     }));
@@ -162,7 +162,7 @@ const ExpenseWrapperContent = () => {
         // Only update if the data has actually changed
         const currentDataString = JSON.stringify(apiExpenseData);
         const newDataString = JSON.stringify(newApiData);
-        
+
         if (currentDataString !== newDataString) {
             setApiExpenseData(newApiData);
         }
@@ -181,7 +181,7 @@ const ExpenseWrapperContent = () => {
             const royaltyFields = ["royalty", "brand and fund"];
             const labelLower = field.label.toLowerCase();
             const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
-            
+
             if (isPercentageField) {
                 return sum;
             }
@@ -193,7 +193,7 @@ const ExpenseWrapperContent = () => {
         if (parseFloat(expenseData.totalFixedCost) !== totalFixed) {
             setExpenseData(prev => ({ ...prev, totalFixedCost: totalFixed.toFixed(2) }));
         }
-        
+
         if (parseFloat(expenseData.totalVariableCost) !== totalVariable) {
             setExpenseData(prev => ({ ...prev, totalVariableCost: totalVariable.toFixed(2) }));
         }
@@ -219,11 +219,11 @@ const ExpenseWrapperContent = () => {
     // Custom validation for expense data
     const validateExpenseData = (data) => {
         const errors = {};
-        
+
         // Check if at least one field is added in either fixed or variable costs
         const hasFixedCosts = data.fixed_costs && data.fixed_costs.length > 0;
         const hasVariableCosts = data.variable_costs && data.variable_costs.length > 0;
-        
+
         if (!hasFixedCosts && !hasVariableCosts) {
             errors.no_fields = "Please add at least one expense field before saving";
             return errors;
@@ -262,18 +262,18 @@ const ExpenseWrapperContent = () => {
                 fixed_costs: apiExpenseData.fixed_costs,
                 variable_costs: apiExpenseData.variable_costs,
             };
-            
+
             // Call API through Zustand store with success callback
             const result = await submitStepData("Expense", stepData, async (responseData) => {
                 // Success callback - handle navigation based on mode
-                
+
                 // Clear all validation errors on successful save
                 clearAllErrors();
 
                 const totalFixed = apiExpenseData.fixed_costs.reduce((sum, cost) => sum + cost.amount, 0);
                 const totalVariable = apiExpenseData.variable_costs.reduce((sum, cost) => sum + cost.amount, 0);
                 const grandTotal = totalFixed + totalVariable;
-                
+
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
                 }
@@ -303,7 +303,7 @@ const ExpenseWrapperContent = () => {
             // Check if we have any expenses to save
             const hasFixedCosts = apiExpenseData.fixed_costs && apiExpenseData.fixed_costs.length > 0;
             const hasVariableCosts = apiExpenseData.variable_costs && apiExpenseData.variable_costs.length > 0;
-            
+
             if (!hasFixedCosts && !hasVariableCosts) {
                 // Show confirmation popup asking if user wants to skip expenses
                 Modal.confirm({
@@ -341,9 +341,11 @@ const ExpenseWrapperContent = () => {
         <div className="w-full mx-auto">
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
-                <OnboardingBreadcrumb 
+                <OnboardingBreadcrumb
                     currentStep="Expenses"
-                    description="Configure your restaurant's expense structure including fixed costs, variable costs, and total expense calculations."
+                    description="When running a restaurant, it’s important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
+                    heading="Fixed Costs =" description2=" Non-negotiable. Always plan for them."
+                    heading2="Variable Fixed Costs = " description3=" Can sometimes be paused or reduced if needed."
                 />
 
             </div>

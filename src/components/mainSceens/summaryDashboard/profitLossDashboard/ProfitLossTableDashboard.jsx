@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert, Collapse } from 'antd';
-import { PrinterOutlined, DownloadOutlined, CaretRightOutlined, CaretDownOutlined } from '@ant-design/icons';
+import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert, Collapse, Dropdown, Menu } from 'antd';
+import { PrinterOutlined, DownloadOutlined, CaretRightOutlined, CaretDownOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import SalesDetailDropdown from './SalesDetailDropdown';
 import LaborDetailDropdown from './LaborDetailDropdown';
@@ -15,6 +15,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [printFormat, setPrintFormat] = useState('dollar');
 
   // Helper function to handle None/null/undefined values
   const handleValue = useCallback((value) => {
@@ -871,6 +872,41 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     window.print();
   }, []);
 
+  // Function to get display text for format
+  const getFormatDisplayText = (format) => {
+    switch (format) {
+      case 'dollar':
+        return 'Dollar ($)';
+      case 'percentage':
+        return 'Percentage (%)';
+      case 'number':
+        return 'Number';
+      default:
+        return 'Select Format';
+    }
+  };
+
+  // Create dropdown menu for format selection
+  const formatMenu = (
+    <Menu
+      onClick={({ key }) => setPrintFormat(key)}
+      items={[
+        {
+          key: 'dollar',
+          label: 'Dollar ($)',
+        },
+        {
+          key: 'percentage',
+          label: 'Percentage (%)',
+        },
+        {
+          key: 'number',
+          label: 'Number',
+        },
+      ]}
+    />
+  );
+
 
 
 
@@ -1597,7 +1633,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           Profit & Loss Dashboard
           </Title>
         </div>
-        <Space className="flex sm:flex-row gap-2">
+        <Space className="flex sm:flex-row gap-2"> 
+        <Dropdown overlay={formatMenu} trigger={['click']} placement="bottomRight">
+          <Button 
+            className="h-9 px-4 bg-orange-500 text-white border-0 hover:bg-orange-600 transition-all duration-200 font-medium rounded-md shadow-sm flex items-center gap-2"
+            size="middle"
+          >
+            <span className="hidden sm:inline">{getFormatDisplayText(printFormat)}</span>
+            <DownOutlined className="ml-1" />
+          </Button>
+        </Dropdown>
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
