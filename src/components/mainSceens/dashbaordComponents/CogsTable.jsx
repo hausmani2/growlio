@@ -159,8 +159,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       weeklyTotals.cogsPercentage = weeklyTotals.cogsBudget > 0 ? 
         (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
 
-      // Calculate remaining COGS - if actual exceeds budget, remaining is $0
-      weeklyTotals.weeklyRemainingCog = Math.max(0, weeklyTotals.cogsBudget - weeklyTotals.cogsActual);
+      // Calculate remaining COGS - COGS Budget - COGS Actual (can be negative)
+      weeklyTotals.weeklyRemainingCog = weeklyTotals.cogsBudget - weeklyTotals.cogsActual;
 
       // Extract all daily entries into one consolidated table
       const allDailyEntries = dashboardData.daily_entries?.map((entry) => {
@@ -288,11 +288,13 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       };
 
       // Calculate final totals for this week
+      const totalBudget = weekData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+      const totalActual = weekData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
       const finalTotals = {
-        cogsBudget: weeklyTotals.cogsBudget,
-        cogsActual: weeklyTotals.cogsActual,
-        cogsPercentage: weeklyTotals.cogsPercentage,
-        weeklyRemainingCog: weeklyTotals.weeklyRemainingCog
+        cogsBudget: totalBudget,
+        cogsActual: totalActual,
+        cogsPercentage: totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0,
+        weeklyRemainingCog: totalBudget - totalActual
       };
 
       // Transform data to API format - only save the current week's daily data
@@ -477,14 +479,19 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Total Weekly Remaining:</Text>
+                 <Text strong className="text-sm sm:text-base">Weekly Remaining COGS:</Text>
                  <Input
-                   value={`$${weekFormData.weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
+                   value={`$${(() => {
+                     const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                     return (totalBudget - totalActual).toFixed(2);
+                   })()}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                  />
                </div>
+            
              </div>
            </Card>
 
@@ -751,9 +758,19 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 key: 'remaining',
                                 width: 120,
                                 render: (_, record) => {
-                                  const weeklyRemainingCog = parseFloat(record.weeklyRemainingCog) || 0;
+                                  const budget = parseFloat(record.budget) || 0;
+                                  const actual = parseFloat(record.actual) || 0;
+                                  const weeklyRemainingCog = budget - actual;
+                                  const isNegative = weeklyRemainingCog < 0;
                                   return (
-                                    <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${weeklyRemainingCog.toFixed(2)}</Text>
+                                    <Text style={{ 
+                                      backgroundColor: isNegative ? '#ffebee' : '#f0f8ff', 
+                                      color: isNegative ? '#d32f2f' : '#1890ff',
+                                      padding: '2px 6px', 
+                                      borderRadius: '3px' 
+                                    }}>
+                                      ${weeklyRemainingCog.toFixed(2)}
+                                    </Text>
                                   );
                                 }
                               }
@@ -843,10 +860,30 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    <div>
                      <Text strong>Weekly Remaining COGS:</Text>
                      <Input
-                       value={`$${weeklyTotals.weeklyRemainingCog.toFixed(2)}`}
+                       value={`$${(() => {
+                         if (weeklyData.length === 0) return '0.00';
+                         const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                         const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                         return (totalBudget - totalActual).toFixed(2);
+                       })()}`}
                        className="mt-1"
                        disabled
-                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                       style={{ 
+                         backgroundColor: (() => {
+                           if (weeklyData.length === 0) return '#fff7ed';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           const remaining = totalBudget - totalActual;
+                           return remaining < 0 ? '#ffebee' : '#fff7ed';
+                         })(),
+                         color: (() => {
+                           if (weeklyData.length === 0) return '#1890ff';
+                           const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                           const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                           const remaining = totalBudget - totalActual;
+                           return remaining < 0 ? '#d32f2f' : '#1890ff';
+                         })()
+                       }}
                      />
                    </div>
                </Space>
