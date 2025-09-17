@@ -234,8 +234,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Sales Details',
       detailFields: [
-        { key: 'sales_budget', label: 'Total Sales', type: 'currency' },
-        { key: 'sales_budeget_profit', label: 'Sales Profit %', type: 'percentage' }
+        // { key: 'sales_budget', label: 'Total Sales', type: 'currency' },
+        // { key: 'sales_budeget_profit', label: 'Sales Profit %', type: 'percentage' }
       ]
     },
     { 
@@ -245,9 +245,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Labor Details',
       detailFields: [
-        { key: 'labour', label: 'Labor Hours', type: 'currency' },
-        { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
-        { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
+        // { key: 'labour', label: 'Labor Hours', type: 'currency' },
+        // { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
+        // { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
       ]
     },
     { 
@@ -257,8 +257,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Food Cost Details',
       detailFields: [
-        { key: 'food_cost', label: 'Total Food Cost', type: 'currency' },
-        { key: 'food_cost_profit', label: 'Food Cost Profit %', type: 'percentage' }
+        // { key: 'food_cost', label: 'Total Food Cost', type: 'currency' },
+        // { key: 'food_cost_profit', label: 'Food Cost Profit %', type: 'percentage' }
       ]
     },
     { 
@@ -268,7 +268,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Fixed Cost Breakdown',
       detailFields: [
-        { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
+        // { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
       ]
     },
     { 
@@ -278,7 +278,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Variable Cost Breakdown',
       detailFields: [
-        { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
+        // { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
       ]
     },
     { 
@@ -1173,10 +1173,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       case 'sales_budget':
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="text-center">
-              <div className="text-xs text-gray-600">Total Sales Budget</div>
-              <div className="text-sm font-bold text-blue-900">{formatValue(totals.sales_budget, 'sales_budget')}</div>
-            </div>
+            
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Net Sales</div>
               <div className="text-sm font-bold text-green-900">{formatValue(totals.sales_actual, 'sales_actual')}</div>
