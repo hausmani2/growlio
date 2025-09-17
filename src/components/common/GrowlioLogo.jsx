@@ -36,7 +36,7 @@ const GrowlioLogo = ({
       
       {/* Growlio Text */}
       {showText && (
-        <text x="32" y="22" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" fill="#FF8132">
+        <text x="32" y="22" fontFamily="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontSize="18" fontWeight="700" fill="#FF8132">
           Growlio
         </text>
       )}

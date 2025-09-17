@@ -234,8 +234,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Sales Details',
       detailFields: [
-        { key: 'sales_budget', label: 'Total Sales', type: 'currency' },
-        { key: 'sales_budeget_profit', label: 'Sales Profit %', type: 'percentage' }
+        // { key: 'sales_budget', label: 'Total Sales', type: 'currency' },
+        // { key: 'sales_budeget_profit', label: 'Sales Profit %', type: 'percentage' }
       ]
     },
     { 
@@ -245,9 +245,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Labor Details',
       detailFields: [
-        { key: 'labour', label: 'Labor Hours', type: 'currency' },
-        { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
-        { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
+        // { key: 'labour', label: 'Labor Hours', type: 'currency' },
+        // { key: 'labour_profit', label: 'Labor Profit %', type: 'percentage' },
+        // { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency' }
       ]
     },
     { 
@@ -257,8 +257,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Food Cost Details',
       detailFields: [
-        { key: 'food_cost', label: 'Total Food Cost', type: 'currency' },
-        { key: 'food_cost_profit', label: 'Food Cost Profit %', type: 'percentage' }
+        // { key: 'food_cost', label: 'Total Food Cost', type: 'currency' },
+        // { key: 'food_cost_profit', label: 'Food Cost Profit %', type: 'percentage' }
       ]
     },
     { 
@@ -268,7 +268,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Fixed Cost Breakdown',
       detailFields: [
-        { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
+        // { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
       ]
     },
     { 
@@ -278,7 +278,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hasDetails: true,
       detailLabel: 'Variable Cost Breakdown',
       detailFields: [
-        { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
+        // { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
       ]
     },
     { 
@@ -300,13 +300,30 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return `${numValue > 0 ? '+' : ''}${numValue.toFixed(1)}%`;
   }, []);
 
-  // Helper function to get percentage color
-  const getPercentageColor = useCallback((value) => {
+  // Helper function to get percentage color based on category
+  const getPercentageColor = useCallback((value, categoryKey = null) => {
     if (value === null || value === undefined || value === 'None' || value === '') {
       return 'text-gray-400';
     }
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return 'text-gray-400';
+    
+    
+    // For sales: positive is good (green), negative is bad (red)
+    if (categoryKey === 'sales_actual' || categoryKey === 'sales_budget') {
+      if (numValue > 0) return 'text-green-600';
+      if (numValue < 0) return 'text-red-600';
+      return 'text-gray-600';
+    }
+    
+    // For costs (labor, food): positive is bad (red), negative is good (green)
+    if (categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual') {
+      if (numValue > 0) return 'text-red-600';
+      if (numValue < 0) return 'text-green-600';
+      return 'text-gray-600';
+    }
+    
+    // Default: positive is good (green), negative is bad (red)
     if (numValue > 0) return 'text-green-600';
     if (numValue < 0) return 'text-red-600';
     return 'text-gray-600';
@@ -723,7 +740,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </SalesDetailDropdown>
             {profitPercentage && (
               <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
-                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_amount_percent, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               </SalesDetailDropdown>
@@ -750,7 +767,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </span>
             {profitPercentage && (
               <FoodCostDetailDropdown dayData={dayData} foodCostData={entry}>
-                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               </FoodCostDetailDropdown>
@@ -778,7 +795,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </FixedCostDetailDropdown>
               {profitPercentage && (
-                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry.fixed_costs_profit || entry.fixedCost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               )}
@@ -789,7 +806,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <div className="flex items-start justify-start">
               <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
               {profitPercentage && (
-                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               )}
@@ -817,7 +834,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </VariableCostDetailDropdown>
               {profitPercentage && (
-                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               )}
@@ -828,7 +845,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <div className="flex items-start justify-start">
               <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
               {profitPercentage && (
-                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               )}
@@ -841,7 +858,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         <div className="flex items-start justify-start">
           <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
           {profitPercentage && (
-            <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+            <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
               {profitPercentage}
             </span>
           )}
@@ -873,7 +890,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </span>
             {profitPercentage && (
               <LaborDetailDropdown dayData={dayData} laborData={entry}>
-                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+                <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
               </LaborDetailDropdown>
@@ -886,7 +903,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         <div className="flex items-start justify-start">
           <span className="text-sm text-gray-700">{formattedLabourValue}</span>
           {profitPercentage && (
-            <span className={`text-xs ml-1 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
+            <span className={`text-xs ml-1 ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
               {profitPercentage}
             </span>
           )}
@@ -1211,7 +1228,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <div className="text-center">
               <div className="text-xs text-gray-600">Avg Hourly Rate</div>
               <div className="text-sm font-bold text-gray-900">
-                {totals.hours > 0 ? formatValue(totals.labour_actual / totals.hours, 'labour_actual') : formatValue(0, 'labour_actual')}
+                {tableData && tableData.length > 0 ? formatValue(tableData[0].average_hourly_rate, 'average_hourly_rate') : formatValue(0, 'average_hourly_rate')}
               </div>
             </div>
           </div>
@@ -1342,7 +1359,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   <span className="text-xs font-medium text-gray-700">In-Store Sales:</span>
                 </div>
                 <span className="text-xs font-semibold">
-                  {formatCurrency(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0)}
+                  {printFormat === 'percentage' 
+                    ? formatPercentage(parseFloat(salesData?.percentage_in_store_sales || 0))
+                    : formatCurrency(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0)
+                  }
                 </span>
               </div>
 
@@ -1352,7 +1372,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   <span className="text-gray-600 text-xs">📱</span>
                   <span className="text-xs font-medium text-gray-700">App/Online Sales:</span>
                 </div>
-                <span className="text-xs font-semibold">{formatCurrency(appOnlineSales)}</span>
+                <span className="text-xs font-semibold">
+                  {printFormat === 'percentage' 
+                    ? formatPercentage(parseFloat(salesData?.percentage_app_online_sales || 0))
+                    : formatCurrency(appOnlineSales)
+                  }
+                </span>
               </div>
 
               {/* Third Party Sales */}
@@ -1415,7 +1440,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, printFormat]);
 
   // Render labor details
   const renderLaborDetails = useCallback((laborData) => {
@@ -1433,10 +1458,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const laborHours = parseFloat(laborData.hours) || 
                       parseFloat(laborData.labor_hours_actual) || 
                       parseFloat(laborData.hours_actual) || 0;
-    const averageHourlyRate = parseFloat(laborData.actua_daily_labor_rate) || 
-                             parseFloat(laborData.average_hourly_rate) || 
-                             parseFloat(laborData.daily_labor_rate) || 
-                             parseFloat(laborData.hourly_rate) || 0;
+    const averageHourlyRate = parseFloat(laborData.average_hourly_rate) || 0;
     const amtOverUnder = parseFloat(laborData.labour_amount) || 0;
     const percentOverUnder = parseFloat(laborData.labour_amount_percent) || 0;
 
