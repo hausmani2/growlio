@@ -7,7 +7,8 @@ const { Text } = Typography;
 const SalesDetailDropdown = ({ 
   children, 
   dayData, 
-  salesData 
+  salesData,
+  printFormat = 'dollar' // Default to dollar format
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     salesActual: false,
@@ -78,9 +79,46 @@ const SalesDetailDropdown = ({
     }).format(value);
   };
 
+  // Format number (no currency symbol)
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(value);
+  };
+
   // Format percentage - API provides the value, format to 1 decimal place
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
+    return `${parseFloat(value).toFixed(1)}%`;
+  };
+
+  // Dynamic formatter based on printFormat
+  const formatValue = (value, fieldName) => {
+    if (printFormat === 'percentage') {
+      // For percentage format, try to get percentage value from salesData
+      let percentageField;
+      if (fieldName === 'in-store_sales') {
+        percentageField = 'percentage_in_store_sales';
+      } else if (fieldName === 'app_online_sales') {
+        percentageField = 'percentage_app_online_sales';
+      } else if (fieldName === 'sales_actual') {
+        return '100.0%';
+      } else {
+        percentageField = `percentage_${fieldName}`;
+      }
+      
+      const percentageValue = salesData[percentageField];
+      
+      if (percentageValue !== undefined && percentageValue !== null && percentageValue !== 'None') {
+        return formatPercentage(parseFloat(percentageValue));
+      } else {
+        return '0.0%';
+      }
+    } else if (printFormat === 'number') {
+      return formatNumber(value);
+    } else {
+      return formatCurrency(value);
+    }
   };
 
   // Toggle section expansion
@@ -144,7 +182,7 @@ const SalesDetailDropdown = ({
                     <Text className="text-xs font-medium text-gray-700">In-Store Sales:</Text>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Text className="text-xs font-semibold">{formatCurrency(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0)}</Text>
+                    <Text className="text-xs font-semibold">{formatValue(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0, 'in-store_sales')}</Text>
                     {expandedSections.inStore ? (
                       <MinusOutlined className="text-gray-600 text-xs" />
                     ) : (
@@ -162,7 +200,7 @@ const SalesDetailDropdown = ({
                     </div>
                     <div className="flex items-center justify-between">
                       <Text className="text-xs text-gray-600">AVG Ticket:</Text>
-                      <Text className="text-xs font-semibold">{formatCurrency(avgTicket)}</Text>
+                      <Text className="text-xs font-semibold">{formatValue(avgTicket, 'average_ticket')}</Text>
                     </div>
                   </div>
                 )}
@@ -174,7 +212,7 @@ const SalesDetailDropdown = ({
                   <MobileOutlined className="text-gray-600 text-xs" />
                   <Text className="text-xs font-medium text-gray-700">App/Online Sales:</Text>
                 </div>
-                <Text className="text-xs font-semibold">{formatCurrency(appOnlineSales)}</Text>
+                <Text className="text-xs font-semibold">{formatValue(appOnlineSales, 'app_online_sales')}</Text>
               </div>
 
                                             {/* Third Party Sales - Multi-level Expandable */}

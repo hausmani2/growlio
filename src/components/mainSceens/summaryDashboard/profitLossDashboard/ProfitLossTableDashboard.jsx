@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert, Collapse, Dropdown, Menu } from 'antd';
+import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert, Collapse, Dropdown, Menu, Tooltip } from 'antd';
 import { PrinterOutlined, DownloadOutlined, CaretRightOutlined, CaretDownOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import SalesDetailDropdown from './SalesDetailDropdown';
@@ -16,6 +16,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   const [processedData, setProcessedData] = useState({});
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [printFormat, setPrintFormat] = useState('dollar');
+  const [isFormatChanging, setIsFormatChanging] = useState(false);
+  const [forceRender, setForceRender] = useState(0);
 
   // Helper function to handle None/null/undefined values
   const handleValue = useCallback((value) => {
@@ -109,6 +111,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       return;
     }
 
+
     // Handle API error responses
     if (dataToProcess.status === 'fail' || dataToProcess.status === 'error') {
       setTableData([]);
@@ -154,7 +157,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       average_hourly_rate: {},
       profit_loss: {},
       fixedCost: {},
-      variableCost: {}
+      variableCost: {},
+      fixedCostPercent: {},
+      variableCostPercent: {}
     };
 
     entries.forEach((entry, index) => {
@@ -170,6 +175,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         // For daily data, use date or day field
         dateKey = entry.date || entry.day || `day-${index}`;
       }
+
       
       processed.sales_budget[dateKey] = parseNumericValue(entry.sales_budget);
       processed.sales_actual[dateKey] = parseNumericValue(entry.sales_actual);
@@ -195,19 +201,29 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
          ? entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
          : 0;
        
-       // Get total_days from the entry itself (it's in each entry in the API response)
-       const totalDays = parseNumericValue(entry.total_days) || 1;
+       // Calculate fixed cost percentage total from array
+       const fixedCostPercentTotal = Array.isArray(entry.fixed_costs) 
+         ? entry.fixed_costs.reduce((sum, cost) => sum + parseNumericValue(cost.percent_of_sales), 0)
+         : 0;
        
-       // Apply the formula: Total Cost ÷ Total Days
-       processed.fixedCost[dateKey] = totalDays > 0 ? fixedCostTotal / totalDays : fixedCostTotal;
-       processed.variableCost[dateKey] = totalDays > 0 ? variableCostTotal / totalDays : variableCostTotal;
+       // Calculate variable cost percentage total from array
+       const variableCostPercentTotal = Array.isArray(entry.variable_costs)
+         ? entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.percent_of_sales), 0)
+         : 0;
+       
+       // Store both amount and percentage totals
+       processed.fixedCost[dateKey] = fixedCostTotal;
+       processed.variableCost[dateKey] = variableCostTotal;
+       processed.fixedCostPercent[dateKey] = fixedCostPercentTotal;
+       processed.variableCostPercent[dateKey] = variableCostPercentTotal;
       
 
     });
 
     setProcessedData(processed);
     setTableData(entries);
-  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData, isMonthlyData]);
+    
+  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData, isMonthlyData, printFormat]);
 
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
@@ -247,22 +263,22 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     },
     { 
       key: 'fixedCost', 
-      label: 'Fixed Cost (Daily)', 
+      label: 'Fixed Cost (Total)', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Fixed Cost Breakdown',
       detailFields: [
-        { key: 'fixedCost', label: 'Daily Fixed Cost', type: 'currency' }
+        { key: 'fixedCost', label: 'Total Fixed Cost', type: 'currency' }
       ]
     },
     { 
       key: 'variableCost', 
-      label: 'Variable Cost (Daily)', 
+      label: 'Variable Cost (Total)', 
       type: 'currency',
       hasDetails: true,
       detailLabel: 'Variable Cost Breakdown',
       detailFields: [
-        { key: 'variableCost', label: 'Daily Variable Cost', type: 'currency' }
+        { key: 'variableCost', label: 'Total Variable Cost', type: 'currency' }
       ]
     },
     { 
@@ -296,7 +312,49 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return 'text-gray-600';
   }, []);
 
-  // Formatting utilities
+  // Helper function to get dynamic variable name based on format
+  const getDynamicVariableName = useCallback((baseKey) => {
+    if (printFormat === 'percentage') {
+      let dynamicKey;
+      switch (baseKey) {
+        case 'labour_actual':
+          dynamicKey = 'percentage_labour_actual';
+          break;
+        case 'food_cost_actual':
+          dynamicKey = 'percentage_food_cost_actual';
+          break;
+        case 'profit_loss':
+          dynamicKey = 'percentage_profit_loss';
+          break;
+        case 'in_store_sales':
+          dynamicKey = 'percentage_in_store_sales';
+          break;
+        case 'app_online_sales':
+          dynamicKey = 'percentage_app_online_sales';
+          break;
+        case 'food_cost':
+          dynamicKey = 'percentage_food_cost';
+          break;
+        case 'labour':
+          dynamicKey = 'percentage_labour';
+          break;
+        case 'fixedCost':
+          dynamicKey = 'fixedCostPercent';
+          break;
+        case 'variableCost':
+          dynamicKey = 'variableCostPercent';
+          break;
+        default:
+          dynamicKey = baseKey;
+      }
+      
+      return dynamicKey;
+    }
+    
+    return baseKey;
+  }, [printFormat]);
+
+  // Formatting utilities - Clean and explicit
   const formatCurrency = useCallback((value) => {
     if (value === '-') return '-';
     return new Intl.NumberFormat('en-US', {
@@ -309,11 +367,50 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
   const formatNumber = useCallback((value) => {
     if (value === '-') return '-';
+    // Format as plain number without any currency symbols
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 2
     }).format(value || 0);
   }, []);
+
+  // Format value based on current format setting
+  const formatValue = useCallback((value, categoryKey) => {
+    if (value === '-') return '-';
+    
+    let formattedResult;
+    let formatType;
+    
+    // Handle percentage format
+    if (printFormat === 'percentage') {
+      if (categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual' || categoryKey === 'profit_loss' || categoryKey === 'fixedCost' || categoryKey === 'variableCost') {
+        formattedResult = formatPercentage(value);
+        formatType = 'percentage';
+      } else {
+        // For other fields in percentage mode, still show as currency
+        formattedResult = formatCurrency(value);
+        formatType = 'currency (in percentage mode)';
+      }
+    }
+    // Handle number format
+    else if (printFormat === 'number') {
+      formattedResult = formatNumber(value);
+      formatType = 'number';
+    }
+    // Handle dollar format (default)
+    else if (printFormat === 'dollar') {
+      formattedResult = formatCurrency(value);
+      formatType = 'currency (dollar)';
+    }
+    // Fallback to currency format
+    else {
+      formattedResult = formatCurrency(value);
+      formatType = 'currency (fallback)';
+    }
+    
+    
+    return formattedResult;
+  }, [printFormat, formatCurrency, formatNumber, formatPercentage, forceRender]);
 
   // Color coding for profit/loss values
   const getProfitLossColor = useCallback((value) => {
@@ -329,14 +426,39 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Format profit/loss with trading-like display (+ for positive values)
   const formatProfitLoss = useCallback((value) => {
     if (value === '-') return '-';
-    const formattedValue = formatCurrency(Math.abs(value));
-    if (value > 0) {
-      return `+${formattedValue}`;
-    } else if (value < 0) {
-      return `-${formattedValue}`;
+    
+    // Use the appropriate formatter based on current format
+    let formattedValue;
+    let formatType;
+    
+    if (printFormat === 'number') {
+      formattedValue = formatNumber(Math.abs(value));
+      formatType = 'number';
+    } else if (printFormat === 'percentage') {
+      formattedValue = formatPercentage(value);
+      formatType = 'percentage';
+    } else {
+      formattedValue = formatCurrency(Math.abs(value));
+      formatType = 'currency';
     }
-    return formattedValue;
-  }, [formatCurrency]);
+    
+    let finalResult;
+    if (printFormat === 'percentage') {
+      finalResult = formattedValue; // Percentage already includes +/- signs
+    } else {
+      if (value > 0) {
+        finalResult = `+${formattedValue}`;
+      } else if (value < 0) {
+        finalResult = `-${formattedValue}`;
+      } else {
+        finalResult = formattedValue;
+      }
+    }
+    
+ 
+    
+    return finalResult;
+  }, [formatCurrency, formatNumber, formatPercentage, printFormat, forceRender]);
 
 
 
@@ -487,7 +609,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     });
 
     return groupedColumns;
-  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData]);
+  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData, forceRender]);
 
   // Render cell value with proper formatting
   const renderCellValue = useCallback((value, record, entry, dateInfo) => {
@@ -503,7 +625,37 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     } else {
       dateKey = entry.date || entry.day || 'N/A';
     }
-    const rawValue = processedData[categoryKey]?.[dateKey] || 0;
+    
+    // Get dynamic variable name based on format
+    const dynamicKey = getDynamicVariableName(categoryKey);
+    let rawValue;
+    
+    // Simple logic: just get the value based on format, no auto-calculation
+    if (printFormat === 'percentage' && (
+      categoryKey === 'labour_actual' || 
+      categoryKey === 'food_cost_actual' || 
+      categoryKey === 'profit_loss' ||
+      categoryKey === 'in_store_sales' ||
+      categoryKey === 'app_online_sales' ||
+      categoryKey === 'food_cost' ||
+      categoryKey === 'labour' ||
+      categoryKey === 'fixedCost' ||
+      categoryKey === 'variableCost'
+    )) {
+      // For percentage format, get the percentage value from the entry or processed data
+      if (categoryKey === 'fixedCost' || categoryKey === 'variableCost') {
+        // Use processed percentage data for fixed/variable costs
+        rawValue = processedData[dynamicKey]?.[dateKey] || 0;
+      } else {
+        // For other fields, get the percentage value from the entry
+        const percentageValue = entry[dynamicKey];
+        rawValue = parseNumericValue(percentageValue); // This will return 0 if undefined
+      }
+      
+    } else {
+      // For dollar and number formats, use the processed data
+      rawValue = processedData[categoryKey]?.[dateKey] || 0;
+    }
     
     // Check if the original value was None/null/undefined
     let originalValue, displayValue;
@@ -540,7 +692,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
         categoryKey === 'profit_loss') {
       const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
-      const formattedValue = categoryKey === 'profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
+      
+      // Simple formatting based on format type
+      let formattedValue;
+      
+      if (categoryKey === 'profit_loss') {
+        formattedValue = formatProfitLoss(rawValue);
+      } else {
+        formattedValue = formatValue(rawValue, categoryKey);
+      }
+      
+
       
       // Make sales budget clickable with dropdown
       if (categoryKey === 'sales_actual' && rawValue > 0) {
@@ -551,14 +713,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         return (
           <div className="flex items-start justify-start">
-            <span 
-              className={`text-sm ${colorClass} flex items-center gap-1`}
-              title="Click to view sales details"
-            >
-              {formattedValue}
-            </span>
+            <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
+              <span 
+                className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
+                title="Click to view sales details"
+              >
+                {formattedValue}
+              </span>
+            </SalesDetailDropdown>
             {profitPercentage && (
-              <SalesDetailDropdown dayData={dayData} salesData={entry}>
+              <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -687,6 +851,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     // Handle number fields
     if (categoryKey === 'labour_actual' || categoryKey === 'hours') {
+      // Simple formatting for labour_actual
+      const formattedLabourValue = formatValue(rawValue, categoryKey);
+      
+
+      
       // Make labor clickable with dropdown
       if (categoryKey === 'labour_actual' && rawValue > 0) {
         const dayData = {
@@ -700,7 +869,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               className="text-sm text-gray-700 flex items-center gap-1"
               title="Click to view labor details"
             >
-              {formatCurrency(rawValue)} 
+              {formattedLabourValue} 
             </span>
             {profitPercentage && (
               <LaborDetailDropdown dayData={dayData} laborData={entry}>
@@ -715,7 +884,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       
       return (
         <div className="flex items-start justify-start">
-          <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
+          <span className="text-sm text-gray-700">{formattedLabourValue}</span>
           {profitPercentage && (
             <span className={`text-xs ml-1 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
               {profitPercentage}
@@ -725,8 +894,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       );
     }
     
+    
     return <span className="text-sm text-gray-700">{rawValue}</span>;
-  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData]);
+  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData, getDynamicVariableName, printFormat, parseNumericValue, formatValue, forceRender]);
 
   // Generate expandable row data
   const generateExpandableData = useMemo(() => {
@@ -810,7 +980,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
       return baseRow;
     });
-  }, [categories, tableData, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData]);
+  }, [categories, tableData, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, forceRender]);
 
   // CSV generation
   const generateCSV = useCallback(() => {
@@ -887,25 +1057,54 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   };
 
   // Create dropdown menu for format selection
-  const formatMenu = (
-    <Menu
-      onClick={({ key }) => setPrintFormat(key)}
-      items={[
-        {
-          key: 'dollar',
-          label: 'Dollar ($)',
-        },
-        {
-          key: 'percentage',
-          label: 'Percentage (%)',
-        },
-        {
-          key: 'number',
-          label: 'Number',
-        },
-      ]}
-    />
-  );
+  const formatMenuItems = [
+    {
+      key: 'dollar',
+      label: 'Dollar ($)',
+      icon: '💰',
+    },
+    {
+      key: 'percentage',
+      label: 'Percentage (%)',
+      icon: '📊',
+    },
+    {
+      key: 'number',
+      label: 'Number',
+      icon: '🔢',
+    },
+  ];
+
+  // Handle format change with immediate update
+  const handleFormatChange = useCallback(({ key }) => {
+    if (key === printFormat) return; // Prevent unnecessary updates
+
+    
+    setIsFormatChanging(true);
+    setPrintFormat(key);
+    
+    // Force immediate re-render
+    setForceRender(prev => prev + 1);
+    
+    // Clear loading state after a brief delay to show smooth transition
+    setTimeout(() => {
+      setIsFormatChanging(false);
+    }, 100);
+  }, [printFormat]);
+
+  // Get format icon for display
+  const getFormatIcon = useCallback((format) => {
+    switch (format) {
+      case 'dollar':
+        return '💰';
+      case 'percentage':
+        return '📊';
+      case 'number':
+        return '🔢';
+      default:
+        return '💰';
+    }
+  }, []);
 
 
 
@@ -925,6 +1124,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       hours: 0,
       fixed_costs: 0,
       variable_costs: 0,
+      fixed_costs_percent: 0,
+      variable_costs_percent: 0,
       tickets: 0,
       app_online_sales: 0,
       in_store_sales: 0,
@@ -947,6 +1148,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
        if (Array.isArray(entry.fixed_costs)) {
          entry.fixed_costs.forEach(cost => {
            totals.fixed_costs += parseFloat(cost.amount) || 0;
+           totals.fixed_costs_percent += parseFloat(cost.percent_of_sales) || 0;
          });
        }
 
@@ -954,18 +1156,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
        if (Array.isArray(entry.variable_costs)) {
          entry.variable_costs.forEach(cost => {
            totals.variable_costs += parseFloat(cost.amount) || 0;
+           totals.variable_costs_percent += parseFloat(cost.percent_of_sales) || 0;
          });
        }
      });
 
-     // Get total_days from the first entry (all entries should have the same total_days)
-     const totalDays = parseNumericValue(tableData[0]?.total_days) || 1;
-     
-     // Apply the formula: Total Cost ÷ Total Days
-     if (totalDays > 0) {
-       totals.fixed_costs = totals.fixed_costs / totalDays;
-       totals.variable_costs = totals.variable_costs / totalDays;
-     }
+     // Show total costs without dividing by days
+     // totals.fixed_costs and totals.variable_costs are already the totals
 
     return totals;
      }, [tableData, dashboardSummaryData, dashboardData, parseNumericValue]);
@@ -978,11 +1175,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Sales Budget</div>
-              <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.sales_budget)}</div>
+              <div className="text-sm font-bold text-blue-900">{formatValue(totals.sales_budget, 'sales_budget')}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Net Sales</div>
-              <div className="text-sm font-bold text-green-900">{formatCurrency(totals.sales_actual)}</div>
+              <div className="text-sm font-bold text-green-900">{formatValue(totals.sales_actual, 'sales_actual')}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Tickets</div>
@@ -991,7 +1188,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <div className="text-center">
               <div className="text-xs text-gray-600">Avg Ticket</div>
               <div className="text-sm font-bold text-gray-900">
-                {totals.tickets > 0 ? formatCurrency(totals.sales_actual / totals.tickets) : '$0'}
+                {totals.tickets > 0 ? formatValue(totals.sales_actual / totals.tickets, 'sales_actual') : formatValue(0, 'sales_actual')}
               </div>
             </div>
           </div>
@@ -1001,11 +1198,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Labor Budget</div>
-              <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.labour)}</div>
+              <div className="text-sm font-bold text-blue-900">{formatValue(totals.labour, 'labour')}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Labor Actual</div>
-              <div className="text-sm font-bold text-green-900">{formatCurrency(totals.labour_actual)}</div>
+              <div className="text-sm font-bold text-green-900">{formatValue(totals.labour_actual, 'labour_actual')}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Hours</div>
@@ -1014,7 +1211,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <div className="text-center">
               <div className="text-xs text-gray-600">Avg Hourly Rate</div>
               <div className="text-sm font-bold text-gray-900">
-                {totals.hours > 0 ? formatCurrency(totals.labour_actual / totals.hours) : '$0'}
+                {totals.hours > 0 ? formatValue(totals.labour_actual / totals.hours, 'labour_actual') : formatValue(0, 'labour_actual')}
               </div>
             </div>
           </div>
@@ -1024,32 +1221,36 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Food Cost Budget</div>
-              <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.food_cost)}</div>
+              <div className="text-sm font-bold text-blue-900">{formatValue(totals.food_cost, 'food_cost')}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Food Cost Actual</div>
-              <div className="text-sm font-bold text-green-900">{formatCurrency(totals.food_cost_actual)}</div>
+              <div className="text-sm font-bold text-green-900">{formatValue(totals.food_cost_actual, 'food_cost_actual')}</div>
             </div>
           </div>
         );
              case 'fixedCost':
          return (
            <div className="text-center">
-             <div className="text-xs text-gray-600">Daily Fixed Cost Average</div>
-             <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.fixed_costs)}</div>
+             <div className="text-xs text-gray-600">Total Fixed Cost</div>
+             <div className="text-sm font-bold text-blue-900">
+               {printFormat === 'percentage' ? formatValue(totals.fixed_costs_percent, 'fixedCost') : formatValue(totals.fixed_costs, 'fixedCost')}
+             </div>
            </div>
          );
        case 'variableCost':
          return (
            <div className="text-center">
-             <div className="text-xs text-gray-600">Daily Variable Cost Average</div>
-             <div className="text-sm font-bold text-blue-900">{formatCurrency(totals.variable_costs)}</div>
+             <div className="text-xs text-gray-600">Total Variable Cost</div>
+             <div className="text-sm font-bold text-blue-900">
+               {printFormat === 'percentage' ? formatValue(totals.variable_costs_percent, 'variableCost') : formatValue(totals.variable_costs, 'variableCost')}
+             </div>
            </div>
          );
       default:
         return null;
     }
-  }, [formatCurrency, formatNumber]);
+  }, [formatCurrency, formatNumber, formatValue, printFormat]);
 
   // State for expandable details within each category
   const [expandedDetails, setExpandedDetails] = useState(new Set());
@@ -1141,7 +1342,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   <span className="text-xs font-medium text-gray-700">In-Store Sales:</span>
                 </div>
                 <span className="text-xs font-semibold">
-                  {formatCurrency(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0)}
+                  {printFormat === 'percentage' 
+                    ? formatPercentage(parseFloat(salesData?.percentage_in_store_sales || 0))
+                    : formatCurrency(parseFloat(salesData?.in_store_sales || salesData?.['in-store_sales']) || 0)
+                  }
                 </span>
               </div>
 
@@ -1151,7 +1355,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   <span className="text-gray-600 text-xs">📱</span>
                   <span className="text-xs font-medium text-gray-700">App/Online Sales:</span>
                 </div>
-                <span className="text-xs font-semibold">{formatCurrency(appOnlineSales)}</span>
+                <span className="text-xs font-semibold">
+                  {printFormat === 'percentage' 
+                    ? formatPercentage(parseFloat(salesData?.percentage_app_online_sales || 0))
+                    : formatCurrency(appOnlineSales)
+                  }
+                </span>
               </div>
 
               {/* Third Party Sales */}
@@ -1214,16 +1423,21 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, printFormat]);
 
   // Render labor details
   const renderLaborDetails = useCallback((laborData) => {
     const laborBudget = parseFloat(laborData.labour) || 
                        parseFloat(laborData.labor_budget) || 
                        parseFloat(laborData.budgeted_labor_dollars) || 0;
-    const laborActual = parseFloat(laborData.labour_actual) || 
-                       parseFloat(laborData.amount) || 
-                       parseFloat(laborData.actual_labor_dollars) || 0;
+    
+    // Use dynamic variable based on format
+    const dynamicLaborKey = getDynamicVariableName('labour_actual');
+    const laborActual = printFormat === 'percentage' ? 
+      parseFloat(laborData[dynamicLaborKey]) || 0 :
+      parseFloat(laborData.labour_actual) || 
+      parseFloat(laborData.amount) || 
+      parseFloat(laborData.actual_labor_dollars) || 0;
     const laborHours = parseFloat(laborData.hours) || 
                       parseFloat(laborData.labor_hours_actual) || 
                       parseFloat(laborData.hours_actual) || 0;
@@ -1255,7 +1469,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Labor Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(laborBudget)}</span>
+          <span className="text-sm font-bold text-blue-900">{formatValue(laborBudget, 'labour')}</span>
         </div>
 
         {/* Labor Actual - Expandable */}
@@ -1269,7 +1483,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <span className="text-sm font-semibold text-green-800">Labor Actual</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-900">{formatCurrency(laborActual)}</span>
+              <span className="text-sm font-bold text-green-900">{formatValue(laborActual, 'labour_actual')}</span>
               <button className="text-green-600 hover:text-green-800 transition-colors">
                 {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
               </button>
@@ -1311,12 +1525,18 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, getDynamicVariableName, printFormat, formatValue]);
 
   // Render food cost details
   const renderFoodCostDetails = useCallback((foodCostData) => {
     const foodCostBudget = parseFloat(foodCostData.food_cost) || 0;
-    const foodCostActual = parseFloat(foodCostData.food_cost_actual) || 0;
+    
+    // Use dynamic variable based on format
+    const dynamicFoodCostKey = getDynamicVariableName('food_cost_actual');
+    const foodCostActual = printFormat === 'percentage' ? 
+      parseFloat(foodCostData[dynamicFoodCostKey]) || 0 :
+      parseFloat(foodCostData.food_cost_actual) || 0;
+    
     const amtOverUnder = parseFloat(foodCostData.food_cost_amount) || 0;
     const percentOverUnder = parseFloat(foodCostData.food_cost_amount_percent) || 0;
 
@@ -1337,7 +1557,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Food Cost Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(foodCostBudget)}</span>
+          <span className="text-sm font-bold text-blue-900">{formatValue(foodCostBudget, 'food_cost')}</span>
         </div>
 
         {/* Food Cost Actual - Expandable */}
@@ -1351,7 +1571,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <span className="text-sm font-semibold text-green-800">Food Cost Actual</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-900">{formatCurrency(foodCostActual)}</span>
+              <span className="text-sm font-bold text-green-900">{formatValue(foodCostActual, 'food_cost_actual')}</span>
               <button className="text-green-600 hover:text-green-800 transition-colors">
                 {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
               </button>
@@ -1396,12 +1616,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, getDynamicVariableName, printFormat, formatValue]);
 
   // Render fixed cost details
   const renderFixedCostDetails = useCallback((fixedCostData) => {
     const fixedCosts = Array.isArray(fixedCostData.fixed_costs) ? fixedCostData.fixed_costs : [];
     const totalFixedCost = fixedCosts.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+    const totalFixedCostPercent = fixedCosts.reduce((sum, cost) => sum + parseFloat(cost.percent_of_sales || 0), 0);
 
     const detailKey = `fixed_${fixedCostData.date || fixedCostData.day || 'default'}`;
     const isExpanded = expandedDetails.has(detailKey);
@@ -1414,7 +1635,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Total Fixed Cost:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(totalFixedCost) }</span>
+          <span className="text-sm font-bold text-blue-900">
+            {printFormat === 'percentage' ? formatValue(totalFixedCostPercent, 'fixedCost') : formatValue(totalFixedCost, 'fixedCost')}
+          </span>
         </div>
 
         {/* Fixed Cost Breakdown - Expandable */}
@@ -1434,7 +1657,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 {fixedCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm text-gray-700">{cost.name || `Fixed Cost ${index + 1}`}</span>
-                    <span className="text-sm font-semibold text-gray-900">{formatCurrency(parseFloat(cost.amount || 0))}</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'fixedCost') : formatValue(parseFloat(cost.amount || 0), 'fixedCost')}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1447,12 +1672,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         )}
       </div>
     );
-  }, [formatCurrency, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat]);
 
   // Render variable cost details
   const renderVariableCostDetails = useCallback((variableCostData) => {
     const variableCosts = Array.isArray(variableCostData.variable_costs) ? variableCostData.variable_costs : [];
     const totalVariableCost = variableCosts.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+    const totalVariableCostPercent = variableCosts.reduce((sum, cost) => sum + parseFloat(cost.percent_of_sales || 0), 0);
 
     const detailKey = `variable_${variableCostData.date || variableCostData.day || 'default'}`;
     const isExpanded = expandedDetails.has(detailKey);
@@ -1465,7 +1691,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Total Variable Cost:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(totalVariableCost)}</span>
+          <span className="text-sm font-bold text-blue-900">
+            {printFormat === 'percentage' ? formatValue(totalVariableCostPercent, 'variableCost') : formatValue(totalVariableCost, 'variableCost')}
+          </span>
         </div>
 
         {/* Variable Cost Breakdown - Expandable */}
@@ -1485,7 +1713,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 {variableCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm text-gray-700">{cost.name || `Variable Cost ${index + 1}`}</span>
-                    <span className="text-sm font-semibold text-gray-900">{formatCurrency(parseFloat(cost.amount || 0))}</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'variableCost') : formatValue(parseFloat(cost.amount || 0), 'variableCost')}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -1498,7 +1728,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         )}
       </div>
     );
-  }, [formatCurrency, expandedDetails, toggleDetailExpansion]);
+  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat]);
 
   // Render detailed content for expandable rows - Optimized with memoization
   const renderDetailedContent = useCallback((categoryKey, entry) => {
@@ -1634,15 +1864,28 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           </Title>
         </div>
         <Space className="flex sm:flex-row gap-2"> 
-        {/* <Dropdown overlay={formatMenu} trigger={['click']} placement="bottomRight">
-          <Button 
-            className="h-9 px-4 bg-orange-500 text-white border-0 hover:bg-orange-600 transition-all duration-200 font-medium rounded-md shadow-sm flex items-center gap-2"
-            size="middle"
+        <Tooltip title="Change display format for all values in the dashboard">
+          <Dropdown 
+            menu={{ 
+              items: formatMenuItems,
+              onClick: handleFormatChange,
+              selectable: true,
+              selectedKeys: [printFormat]
+            }} 
+            trigger={['click']} 
+            placement="bottomRight"
           >
-            <span className="hidden sm:inline">{getFormatDisplayText(printFormat)}</span>
-            <DownOutlined className="ml-1" />
-          </Button>
-        </Dropdown> */}
+            <Button 
+              className={`h-9 px-4 bg-orange-500 text-white border-0 hover:bg-orange-600 transition-all duration-200 font-medium rounded-md shadow-sm flex items-center gap-2 ${isFormatChanging ? 'opacity-75' : ''}`}
+              size="middle"
+              loading={isFormatChanging}
+            >
+              {!isFormatChanging && <span className="text-sm">{getFormatIcon(printFormat)}</span>}
+              <span className="hidden sm:inline">{getFormatDisplayText(printFormat)}</span>
+              {!isFormatChanging && <DownOutlined className="ml-1" />}
+            </Button>
+          </Dropdown>
+        </Tooltip>
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
@@ -1663,8 +1906,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       </div>
 
       {/* Desktop table with expandable rows and grouped columns */}
-      <div className="hidden sm:block">
+      <div className={`hidden sm:block transition-opacity duration-200 ${isFormatChanging ? 'opacity-50' : 'opacity-100'}`}>
         <Table
+          key={`table-${printFormat}-${forceRender}`}
           columns={generateGroupedColumns}
           dataSource={generateExpandableData}
           pagination={false}
@@ -1714,7 +1958,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       </div>
 
       {/* Mobile table with expandable cards */}
-      <div className="block sm:hidden">
+      <div key={`mobile-${printFormat}-${forceRender}`} className={`block sm:hidden transition-opacity duration-200 ${isFormatChanging ? 'opacity-50' : 'opacity-100'}`}>
         <div className="space-y-4">
           {generateExpandableData.map((row) => {
             const category = categories.find(cat => cat.key === row.key);
