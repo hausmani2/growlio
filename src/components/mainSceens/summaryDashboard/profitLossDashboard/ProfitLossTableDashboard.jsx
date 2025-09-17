@@ -1019,11 +1019,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
-      return dateInfo.fullDate;
+      // Use the same format as displayed in table columns
+      return `${dateInfo.day} ${dateInfo.date}`;
     });
-    const headers = ['Category', ...dates];
+    const headers = ['"Category"', ...dates.map(date => `"${date}"`)];
     const rows = categories.map(category => {
-      const rowData = [category.label];
+      const rowData = [`"${category.label}"`];
       dates.forEach((_, index) => {
         const entry = tableData[index];
         let dateKey;
@@ -1034,13 +1035,41 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         } else {
           dateKey = entry.date || entry.day || 'N/A';
         }
-        const value = processedData[category.key]?.[dateKey] || 0;
-        rowData.push(value.toString());
+        
+        // Get the appropriate value based on current format
+        let rawValue;
+        if (printFormat === 'percentage' && (
+          category.key === 'labour_actual' || 
+          category.key === 'food_cost_actual' || 
+          category.key === 'profit_loss' ||
+          category.key === 'fixedCost' ||
+          category.key === 'variableCost'
+        )) {
+          // For percentage format, get the percentage value
+          if (category.key === 'fixedCost' || category.key === 'variableCost') {
+            // Use processed percentage data for fixed/variable costs
+            const dynamicKey = getDynamicVariableName(category.key);
+            rawValue = processedData[dynamicKey]?.[dateKey] || 0;
+          } else {
+            // For other fields, get the percentage value from the entry
+            const dynamicKey = getDynamicVariableName(category.key);
+            const percentageValue = entry[dynamicKey];
+            rawValue = parseNumericValue(percentageValue);
+          }
+        } else {
+          // For dollar and number formats, use the processed data
+          rawValue = processedData[category.key]?.[dateKey] || 0;
+        }
+        
+        // Format the value based on current format
+        const formattedValue = formatValue(rawValue, category.key);
+        // Wrap in quotes to preserve commas and other formatting in CSV
+        rowData.push(`"${formattedValue}"`);
       });
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData]);
+  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, printFormat, getDynamicVariableName, parseNumericValue, formatValue]);
 
   // Export handler
   const handleExport = useCallback(() => {
