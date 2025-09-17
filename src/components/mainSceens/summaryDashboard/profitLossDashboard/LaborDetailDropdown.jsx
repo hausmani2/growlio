@@ -31,10 +31,7 @@ const LaborDetailDropdown = ({
                     parseFloat(laborData.labor_hours_actual) || 
                     parseFloat(laborData.hours_actual) || 0;
   
-  const averageHourlyRate = parseFloat(laborData.actua_daily_labor_rate) || 
-                           parseFloat(laborData.average_hourly_rate) || 
-                           parseFloat(laborData.daily_labor_rate) || 
-                           parseFloat(laborData.hourly_rate) || 0;
+  const averageHourlyRate = parseFloat(laborData.average_hourly_rate) || 0;
   
   // Get over/under values directly from API response
   const amtOverUnder = parseFloat(laborData.labour_amount) || 0;
