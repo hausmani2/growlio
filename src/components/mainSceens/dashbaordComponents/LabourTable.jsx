@@ -530,7 +530,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
           {/* Weekly Labor Totals Summary - Auto-calculated from daily inputs */}
           <Card title="Weekly Labor Totals Summary" size="small">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 ${getLaborRecordMethod() === 'daily-hours-costs' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Total Labor Hours - Budget:</Text>
                 <Input
@@ -540,15 +540,18 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Total Labor Hours - Actual:</Text>
-                <Input
-                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1)} hrs`}
-                  className="mt-1"
-                  disabled
-                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
-                />
-              </div>
+              {/* Conditionally show Labor Hours - Actual based on labor_record_method */}
+              {getLaborRecordMethod() !== 'cost-only' && (
+                <div className="w-full">
+                  <Text strong className="text-sm sm:text-base">Total Labor Hours - Actual:</Text>
+                  <Input
+                    value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1)} hrs`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  />
+                </div>
+              )}
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Total Budgeted Labor $:</Text>
                 <Input
@@ -558,15 +561,18 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
                 />
               </div>
-              <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Total Actual Labor $:</Text>
-                <Input
-                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2)}`}
-                  className="mt-1"
-                  disabled
-                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
-                />
-              </div>
+              {/* Conditionally show Actual Labor $ based on labor_record_method */}
+              {getLaborRecordMethod() !== 'hours-only' && (
+                <div className="w-full">
+                  <Text strong className="text-sm sm:text-base">Total Actual Labor $:</Text>
+                  <Input
+                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2)}`}
+                    className="mt-1"
+                    disabled
+                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  />
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <div className="w-full">
@@ -640,17 +646,26 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   actualLaborDollars: 0
                 });
 
+                const laborMethod = getLaborRecordMethod();
+                let cellIndex = 1; // Start after the "Day" column
+
                 return (
                   <Table.Summary.Row style={{ backgroundColor: '#f0f8ff' }}>
                     <Table.Summary.Cell index={0}>
                       <Text strong>Totals:</Text>
                     </Table.Summary.Cell>
-                    <Table.Summary.Cell index={1}>
-                      <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={2}>
-                      <Text strong>${totals.actualLaborDollars.toFixed(2)}</Text>
-                    </Table.Summary.Cell>
+                    {/* Conditionally show Labor Hours total */}
+                    {laborMethod !== 'cost-only' && (
+                      <Table.Summary.Cell index={cellIndex++}>
+                        <Text strong>{totals.laborHoursActual.toFixed(1)} hrs</Text>
+                      </Table.Summary.Cell>
+                    )}
+                    {/* Conditionally show Actual Labor $ total */}
+                    {laborMethod !== 'hours-only' && (
+                      <Table.Summary.Cell index={cellIndex++}>
+                        <Text strong>${totals.actualLaborDollars.toFixed(2)}</Text>
+                      </Table.Summary.Cell>
+                    )}
                   </Table.Summary.Row>
                 );
               }}
@@ -670,7 +685,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     </div>
                   )
                 },
-                {
+                // Conditionally show Labor Hours - Actual based on labor_record_method
+                ...(getLaborRecordMethod() === 'cost-only' ? [] : [{
                   title: 'Labor Hours - Actual',
                   dataIndex: 'laborHoursActual',
                   key: 'laborHoursActual',
@@ -686,8 +702,9 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                       style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                     />
                   )
-                },
-                {
+                }]),
+                // Conditionally show Actual Labor $ based on labor_record_method
+                ...(getLaborRecordMethod() === 'hours-only' ? [] : [{
                   title: 'Actual Labor $',
                   dataIndex: 'actualLaborDollars',
                   key: 'actualLaborDollars',
@@ -703,7 +720,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                       style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
                     />
                   )
-                },
+                }]),
                 {
                   title: 'Net Sales',
                   dataIndex: 'netSales',
@@ -874,24 +891,33 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 actualLaborDollars: 0
                               });
 
+                              const laborMethod = getLaborRecordMethod();
+                              let cellIndex = 1; // Start after the "Day" column
+
                               return (
                                 <Table.Summary.Row style={{ backgroundColor: '#fafafa', fontWeight: 'bold' }}>
                                   <Table.Summary.Cell index={0}>
                                     <Text strong style={{ color: '#1890ff' }}>Week Totals:</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={1}>
+                                  <Table.Summary.Cell index={cellIndex++}>
                                     <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursBudget) || 0), 0).toFixed(1)} hrs</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={2}>
-                                    <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursActual) || 0), 0).toFixed(1)} hrs</Text>
-                                  </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={3}>
+                                  {/* Conditionally show Labor Hours - Actual total */}
+                                  {laborMethod !== 'cost-only' && (
+                                    <Table.Summary.Cell index={cellIndex++}>
+                                      <Text strong style={{ color: '#1890ff' }}>{pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursActual) || 0), 0).toFixed(1)} hrs</Text>
+                                    </Table.Summary.Cell>
+                                  )}
+                                  <Table.Summary.Cell index={cellIndex++}>
                                     <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.budgetedLaborDollars) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={4}>
-                                    <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.actualLaborDollars) || 0), 0).toFixed(2)}</Text>
-                                  </Table.Summary.Cell>
-                                  <Table.Summary.Cell index={5}>
+                                  {/* Conditionally show Actual Labor $ total */}
+                                  {laborMethod !== 'hours-only' && (
+                                    <Table.Summary.Cell index={cellIndex++}>
+                                      <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.actualLaborDollars) || 0), 0).toFixed(2)}</Text>
+                                    </Table.Summary.Cell>
+                                  )}
+                                  <Table.Summary.Cell index={cellIndex++}>
                                     <Text strong style={{ color: '#1890ff' }}>${pageData.reduce((sum, record) => sum + (parseFloat(record.dailyLaborRate) || 0), 0).toFixed(2)}</Text>
                                   </Table.Summary.Cell>
                                
@@ -931,7 +957,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
                                 }
                               },
-                              {
+                              // Conditionally show Labor Hours - Actual based on labor_record_method
+                              ...(getLaborRecordMethod() === 'cost-only' ? [] : [{
                                 title: 'Labor Hours - Actual',
                                 dataIndex: 'laborHoursActual',
                                 key: 'laborHoursActual',
@@ -954,7 +981,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                     </Text>
                                   );
                                 }
-                              },
+                              }]),
                               {
                                 title: 'Budgeted Labor $',
                                 dataIndex: 'budgetedLaborDollars',
@@ -967,7 +994,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   return <Text className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>;
                                 }
                               },
-                              {
+                              // Conditionally show Actual Labor $ based on labor_record_method
+                              ...(getLaborRecordMethod() === 'hours-only' ? [] : [{
                                 title: 'Actual Labor $',
                                 dataIndex: 'actualLaborDollars',
                                 key: 'actualLaborDollars',
@@ -990,7 +1018,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                     </Text>
                                   );
                                 }
-                              },
+                              }]),
                               {
                                 title: 'Daily Labor Rate',
                                 dataIndex: 'dailyLaborRate',
@@ -1088,28 +1116,31 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   />
                 </div>
                 
-                <div>
-                  <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
-                  <Input
-                    value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1) : '0.0'} hrs`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: (() => {
-                        if (weeklyData.length === 0) return '#fff7ed';
-                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
-                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
-                        return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
-                      })(),
-                      color: (() => {
-                        if (weeklyData.length === 0) return '#1890ff';
-                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
-                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
-                        return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
-                      })()
-                    }}
-                  />
-                </div>
+                {/* Conditionally show Labor Hours - Actual based on labor_record_method */}
+                {getLaborRecordMethod() !== 'cost-only' && (
+                  <div>
+                    <Text strong className="text-sm sm:text-base">Labor Hours - Actual:</Text>
+                    <Input
+                      value={`${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1) : '0.0'} hrs`}
+                      className="mt-1"
+                      disabled
+                      style={{ 
+                        backgroundColor: (() => {
+                          if (weeklyData.length === 0) return '#fff7ed';
+                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
+                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
+                          return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                        })(),
+                        color: (() => {
+                          if (weeklyData.length === 0) return '#1890ff';
+                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0);
+                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
+                          return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                        })()
+                      }}
+                    />
+                  </div>
+                )}
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Budgeted Labor $:</Text>
@@ -1121,28 +1152,31 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   />
                 </div>
                 
-                <div>
-                  <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
-                  <Input
-                    value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2) : '0.00'}`}
-                    className="mt-1"
-                    disabled
-                    style={{ 
-                      backgroundColor: (() => {
-                        if (weeklyData.length === 0) return '#fff7ed';
-                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
-                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
-                        return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
-                      })(),
-                      color: (() => {
-                        if (weeklyData.length === 0) return '#1890ff';
-                        const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
-                        const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
-                        return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
-                      })()
-                    }}
-                  />
-                </div>
+                {/* Conditionally show Actual Labor $ based on labor_record_method */}
+                {getLaborRecordMethod() !== 'hours-only' && (
+                  <div>
+                    <Text strong className="text-sm sm:text-base">Actual Labor $:</Text>
+                    <Input
+                      value={`$${weeklyData.length > 0 ? weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2) : '0.00'}`}
+                      className="mt-1"
+                      disabled
+                      style={{ 
+                        backgroundColor: (() => {
+                          if (weeklyData.length === 0) return '#fff7ed';
+                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
+                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
+                          return totalActual > totalBudget ? '#ffebee' : '#fff7ed';
+                        })(),
+                        color: (() => {
+                          if (weeklyData.length === 0) return '#1890ff';
+                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0);
+                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
+                          return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                        })()
+                      }}
+                    />
+                  </div>
+                )}
                 
                 <div>
                   <Text strong className="text-sm sm:text-base">Daily Labor Rate:</Text>
