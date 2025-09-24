@@ -201,14 +201,15 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                     </label>
 
                     <Select 
+                        key={`daily_ticket_count_${data.daily_ticket_count}`}
                         id="daily_ticket_count" 
                         placeholder="No" 
                         className="w-full h-11 rounded-lg text-sm"
-                        value={data.daily_ticket_count}
-                        onChange={(value) => updateData('daily_ticket_count', value)}
+                        value={data.daily_ticket_count === true ? "Yes" : data.daily_ticket_count === false ? "No" : undefined}
+                        onChange={(value) => updateData('daily_ticket_count', value === "Yes")}
                     >
-                        <Select.Option value="1">Yes (recommended)</Select.Option>
-                        <Select.Option value="2">No</Select.Option>
+                        <Select.Option value="No">No</Select.Option>
+                        <Select.Option value="Yes">Yes (recommended)</Select.Option>
                     </Select>                
                 </div>
                 
@@ -216,17 +217,21 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 <div>
                     <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
                         Forward previous week's actual labor rate?
-                        <TooltipIcon text={tooltips['forward_prev_week_rate']} />
+                        <TooltipIcon text={tooltips['forward_previous_week_rate']} />
                     </label>
                     <Select 
-                        id="forward_prev_week_rate" 
+                        key={`forward_previous_week_rate_${data.forward_previous_week_rate}`}
+                        id="forward_previous_week_rate" 
                         placeholder="No" 
                         className="w-full h-11 rounded-lg text-sm"
-                        value={data.forward_prev_week_rate}
-                        onChange={(value) => updateData('forward_prev_week_rate', value)}
+                        value={(() => {
+                            const result = data.forward_previous_week_rate === true ? "Yes" : data.forward_previous_week_rate === false ? "No" : undefined;
+                            return result;
+                        })()}
+                        onChange={(value) => updateData('forward_previous_week_rate', value === "Yes")}
                     >
-                        <Select.Option value="1">No</Select.Option>
-                        <Select.Option value="2">Yes</Select.Option>
+                        <Select.Option value="No">No</Select.Option>
+                        <Select.Option value="Yes">Yes</Select.Option>
                     </Select>                
                 </div>
             </div>

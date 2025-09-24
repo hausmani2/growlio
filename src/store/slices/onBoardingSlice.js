@@ -41,7 +41,7 @@ const createOnBoardingSlice = (set, get) => ({
                 avg_hourly_rate: 0,
                 labor_record_method: "daily-hours-costs",
                 daily_ticket_count: false,
-                forward_prev_week_rate: false
+                forward_previous_week_rate: false
             }
         },
         "Food Cost Details": {
@@ -104,7 +104,7 @@ const createOnBoardingSlice = (set, get) => ({
                 avg_hourly_rate: 0,
                 labor_record_method: "daily-hours-costs",
                 daily_ticket_count: false,
-                forward_prev_week_rate: false
+                forward_previous_week_rate: false
             }
         },
         "Food Cost Details": {
@@ -206,7 +206,7 @@ const createOnBoardingSlice = (set, get) => ({
                     avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                     labor_record_method: laborData.labor_record_method || "daily-hours-costs",
                     daily_ticket_count: laborData.daily_ticket_count || false,
-                    forward_previous_week_rate: laborData.forward_prev_week_rate || false // API expects 'forward_previous_week_rate'
+                    forward_previous_week_rate: laborData.forward_previous_week_rate || false // API expects 'forward_previous_week_rate'
                 };
                 break;
             }
@@ -307,7 +307,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: savedData.avg_hourly_rate || 0,
                         labor_record_method: savedData.labor_record_method || "daily-hours-costs",
                         daily_ticket_count: savedData.daily_ticket_count || false,
-                        forward_prev_week_rate: savedData.forward_prev_week_rate || savedData.forward_previous_week_rate || false
+                        forward_previous_week_rate: savedData.forward_previous_week_rate || false
                     }
                 };
                 
@@ -761,7 +761,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
-                        forward_prev_week_rate: false
+                        forward_previous_week_rate: false
                     }
                 },
                 "Food Cost Details": {
@@ -851,7 +851,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: data.avg_hourly_rate || 0,
                         labor_record_method: data.labor_record_method || "daily-hours-costs",
                         daily_ticket_count: data.daily_ticket_count || false,
-                        forward_prev_week_rate: data.forward_previous_week_rate || data.forward_prev_week_rate || false // Handle both field names
+                        forward_previous_week_rate: data.forward_previous_week_rate || false
                     };
                     
                 } else if (stepName === "Food Cost Details" && data) {
@@ -1052,7 +1052,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
-                        forward_prev_week_rate: false
+                        forward_previous_week_rate: false
                     }
                 },
                 "Food Cost Details": {
@@ -1113,7 +1113,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: 0,
                         labor_record_method: "daily-hours-costs",
                         daily_ticket_count: false,
-                        forward_prev_week_rate: false
+                        forward_previous_week_rate: false
                     }
                 },
                 "Food Cost Details": {
@@ -1257,7 +1257,7 @@ const createOnBoardingSlice = (set, get) => ({
                                 avg_hourly_rate: 0,
                                 labor_record_method: "daily_hours_costs",
                                 daily_ticket_count: false,
-                                forward_prev_week_rate: false
+                                forward_previous_week_rate: false
                             }
                         };
                         break;
@@ -1714,7 +1714,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
-                        forward_prev_week_rate: false
+                        forward_previous_week_rate: false
                     }
                 },
                 "Food Cost Details": {
@@ -1774,7 +1774,7 @@ const createOnBoardingSlice = (set, get) => ({
                         avg_hourly_rate: 0,
                         labor_record_method: "daily_hours_costs",
                         daily_ticket_count: false,
-                        forward_prev_week_rate: false
+                        forward_previous_week_rate: false
                     }
                 },
                 "Food Cost Details": {

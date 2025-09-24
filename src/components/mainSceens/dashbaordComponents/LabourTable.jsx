@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -26,21 +26,43 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     daily_labour_percent: "0.00",
     weekly_labour_percent: "0.00"
   });
+  
+  // State to track API-fetched average hourly rate
+  const [apiAverageHourlyRate, setApiAverageHourlyRate] = useState(null);
+  const [isLoadingAvgRate, setIsLoadingAvgRate] = useState(false);
+  
+  // Ref to track the last fetched week to prevent duplicate API calls
+  const lastFetchedWeekRef = useRef(null);
 
   // Store integration
   const { 
     saveDashboardData, 
     loading: storeLoading, 
     error: storeError,
-    restaurantGoals
+    restaurantGoals,
+    fetchAverageHourlyRate,
+    dashboardSummaryData
   } = useStore();
 
-  // Get average hourly rate from restaurant goals
+  // Get average hourly rate - prioritize API-fetched value, then restaurant goals, then fallback
   const getAverageHourlyRate = () => {
-    if (restaurantGoals && restaurantGoals.avg_hourly_rate) {
+    // First priority: API-fetched average hourly rate
+    if (apiAverageHourlyRate && apiAverageHourlyRate > 0) {
+      return parseFloat(apiAverageHourlyRate);
+    }
+    
+    // Second priority: Dashboard summary data
+    if (dashboardSummaryData?.average_hourly_rate && dashboardSummaryData.average_hourly_rate > 0) {
+      return parseFloat(dashboardSummaryData.average_hourly_rate);
+    }
+    
+    // Third priority: Restaurant goals
+    if (restaurantGoals && restaurantGoals.avg_hourly_rate && restaurantGoals.avg_hourly_rate > 0) {
       return parseFloat(restaurantGoals.avg_hourly_rate);
     }
-    return hourlyRate; // Fallback to static hourly rate
+    
+    // Fallback to static hourly rate
+    return hourlyRate;
   };
 
   // Get labor record method from restaurant goals
@@ -66,6 +88,71 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     const numValue = parseFloat(value) || 0;
     return numValue === 0 ? "0" : numValue.toString();
   };
+
+  // Function to fetch average hourly rate from API
+  const fetchAvgHourlyRateFromAPI = async () => {
+    try {
+      // Get the week start date
+      const weekStart = weekDays.length > 0 
+        ? weekDays[0].date.format('YYYY-MM-DD')
+        : selectedDate 
+          ? selectedDate.format('YYYY-MM-DD')
+          : null;
+      
+      if (!weekStart) {
+        return;
+      }
+      
+      // Check if we've already fetched data for this week
+      if (lastFetchedWeekRef.current === weekStart) {
+        return;
+      }
+      
+      setIsLoadingAvgRate(true);
+      
+      // Fetch average hourly rate from API
+      const avgRate = await fetchAverageHourlyRate(null, weekStart);
+      
+      if (avgRate && avgRate > 0) {
+        setApiAverageHourlyRate(avgRate);
+        lastFetchedWeekRef.current = weekStart; // Mark this week as fetched
+      } else {
+        setApiAverageHourlyRate(null);
+        lastFetchedWeekRef.current = weekStart; // Still mark as fetched to prevent retries
+      }
+    } catch (error) {
+      console.error('Error fetching average hourly rate from API:', error);
+      setApiAverageHourlyRate(null);
+      // Don't mark as fetched on error, so we can retry
+    } finally {
+      setIsLoadingAvgRate(false);
+    }
+  };
+
+  // Create a stable week identifier to prevent unnecessary re-renders
+  const weekIdentifier = useMemo(() => {
+    if (weekDays.length > 0) {
+      return weekDays[0].date.format('YYYY-MM-DD');
+    }
+    if (selectedDate) {
+      return selectedDate.format('YYYY-MM-DD');
+    }
+    return null;
+  }, [weekDays, selectedDate]);
+
+  // Fetch average hourly rate from API when component mounts or week changes
+  useEffect(() => {
+    if (weekIdentifier) {
+      fetchAvgHourlyRateFromAPI();
+    }
+  }, [weekIdentifier]);
+
+  // Reset the fetched week ref when component unmounts
+  useEffect(() => {
+    return () => {
+      lastFetchedWeekRef.current = null;
+    };
+  }, []);
 
   // Process dashboard data when it changes
   useEffect(() => {
@@ -836,7 +923,11 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         {/* Weekly Data Section */}
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
-            title={`Labor @ $${getAverageHourlyRate().toFixed(2)}/Hour`}
+            title={
+              isLoadingAvgRate 
+                ? `Labor @ Loading.../Hour` 
+                : `Labor @ $${getAverageHourlyRate().toFixed(2)}/Hour`
+            }
             extra={
               <Space>
                 <Button 

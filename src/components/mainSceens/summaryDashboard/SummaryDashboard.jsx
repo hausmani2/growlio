@@ -29,12 +29,10 @@ const SummaryDashboard = () => {
   // Initialize with current week
   useEffect(() => {
     try {
-      console.log('Calendar initialization useEffect triggered, calendarDateRange length:', calendarDateRange.length);
       
       if (calendarDateRange.length === 0) {
         const startOfWeek = dayjs().startOf('week');
         const endOfWeek = dayjs().endOf('week');
-        console.log('Setting initial calendar dates:', { startOfWeek: startOfWeek.format('YYYY-MM-DD'), endOfWeek: endOfWeek.format('YYYY-MM-DD') });
         setCalendarDateRange([startOfWeek, endOfWeek]);
         setWeekPickerValue(dayjs());
       }
@@ -136,9 +134,7 @@ const SummaryDashboard = () => {
         if (currentRangeKey !== lastDateRange.current) {
           lastDateRange.current = currentRangeKey;
           fetchSummaryData(startDate, endDate, groupBy);
-        } else {
-          console.log('Skipping API call - already fetched for this date range:', currentRangeKey);
-        }
+        } 
       }
     } catch (error) {
       console.error('Error in auto-fetch useEffect:', error);
@@ -169,17 +165,12 @@ const SummaryDashboard = () => {
     if (!date) return;
     const start = dayjs(date).startOf('week');
     const end = dayjs(date).endOf('week');
-    console.log('📅 Week Picker Changed:', {
-      selectedDate: date.format('YYYY-MM-DD'),
-      weekStart: start.format('YYYY-MM-DD'),
-      weekEnd: end.format('YYYY-MM-DD')
-    });
+
     
     setWeekPickerValue(date);
     setCalendarDateRange([start, end]);
     
     // Reset modal states for new week selection
-    console.log('🔄 Resetting modal states for new week selection');
     setHasManuallyClosedModal(false);
     setIsManuallyTriggered(false);
     hasHandledFailResponse.current = false;
@@ -206,7 +197,6 @@ const SummaryDashboard = () => {
       const currentWeekRange = selectThisWeek();
     }
     
-    console.log('🔘 Manual trigger - opening sales modal with labor rate confirmation');
     setIsSalesModalVisible(true);
     setIsManuallyTriggered(true); // Mark as manually triggered (for future use)
   };
@@ -347,26 +337,12 @@ const SummaryDashboard = () => {
       
       const hasNoData = !hasValidData();
       
-      // Debug log to understand the modal decision
-
-      
-      // Only show modal when there's truly no data (API failed or returned empty array) and groupBy is daily
-      // AND we haven't manually closed it AND it's not already visible AND we haven't handled this response yet
-      console.log('🔍 Modal Decision Check:', {
-        hasNoData,
-        groupBy,
-        hasManuallyClosedModal,
-        isSalesModalVisible,
-        hasHandledFailResponse: hasHandledFailResponse.current,
-        shouldShowModal: hasNoData && groupBy === 'daily' && !hasManuallyClosedModal && !isSalesModalVisible && !hasHandledFailResponse.current
-      });
       
       if (hasNoData && 
           groupBy === 'daily' && 
           !hasManuallyClosedModal && 
           !isSalesModalVisible && 
           !hasHandledFailResponse.current) {
-        console.log('✅ Showing sales modal automatically with labor rate confirmation');
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
         setIsManuallyTriggered(false); // Mark as automatically triggered (for future use)
@@ -583,12 +559,7 @@ const SummaryDashboard = () => {
         )}
       </Space>
 
-      {/* Sales Data Modal */}
-      {console.log('🔍 SalesDataModal props:', {
-        visible: isSalesModalVisible,
-        isManuallyTriggered,
-        calendarDateRange: calendarDateRange?.map(d => d?.format('YYYY-MM-DD'))
-      })}
+
       <SalesDataModal
         visible={isSalesModalVisible}
         onCancel={handleCloseSalesModal}

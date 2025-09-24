@@ -105,7 +105,7 @@ const TooltipsAdmin = () => {
           { label: 'Avg Hourly Rate', value: 'avg_hourly_rate' },
           { label: 'Labor Record Method', value: 'labor_record_method' },
           { label: 'Daily Ticket Count', value: 'daily_ticket_count' },
-          { label: 'Forward Prev Week Rate', value: 'forward_prev_week_rate' },
+          { label: 'Forward Prev Week Rate', value: 'forward_previous_week_rate' },
         ];
       case 'onboarding-food':
         return [

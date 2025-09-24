@@ -25,7 +25,10 @@ const SalesDataModal = ({
     loading: storeLoading, 
     completeOnboardingData,
     restaurantGoals,
-    getRestaurentGoal
+    getRestaurentGoal,
+    dashboardSummaryData,
+    fetchDashboardSummary,
+    hasAverageHourlyRateForWeek
   } = useStore();
 
   // Get providers from onboarding data
@@ -62,6 +65,10 @@ const SalesDataModal = ({
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
   const lastBudgetedSalesValueRef = useRef({});
+  
+  // Add ref to track if average hourly rate is being fetched
+  const avgHourlyRateFetchingRef = useRef(false);
+  const avgHourlyRateFetchedRef = useRef(false);
 
   // Function to check if a day should be closed based on restaurant goals
   const shouldDayBeClosed = (dayName) => {
@@ -90,35 +97,111 @@ const SalesDataModal = ({
     }
   };
 
-  // Fetch restaurant goals on component mount
+  // Fetch restaurant goals and average hourly rate on component mount
   useEffect(() => {
     fetchRestaurantGoals();
   }, []);
 
+  // Function to fetch average hourly rate from API
+  const fetchAverageHourlyRate = async () => {
+    try {
+      if (visible && selectedWeekData?.startDate && !avgHourlyRateFetchingRef.current && !avgHourlyRateFetchedRef.current) {
+        const weekStart = dayjs(selectedWeekData.startDate).format('YYYY-MM-DD');
+        
+        // Check if we already have the average hourly rate for this week
+        if (hasAverageHourlyRateForWeek(weekStart)) {
+          avgHourlyRateFetchedRef.current = true;
+          return;
+        }
+        
+        avgHourlyRateFetchingRef.current = true;
+        
+        const startDate = weekStart;
+        const endDate = dayjs(selectedWeekData.startDate).add(6, 'day').format('YYYY-MM-DD');
+        
+        // Fetch dashboard summary which will automatically include average hourly rate
+        await fetchDashboardSummary(startDate, endDate, 'daily');
+        
+        avgHourlyRateFetchedRef.current = true;
+        avgHourlyRateFetchingRef.current = false;
+      }
+    } catch (error) {
+      console.error('Error fetching average hourly rate:', error);
+      avgHourlyRateFetchingRef.current = false;
+    }
+  };
+
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
-
+      // Reset the fetched flag when modal opens with new week data
+      avgHourlyRateFetchedRef.current = false;
       
-      initializeFormData();
+      // Fetch average hourly rate first, then initialize form data
+      const initializeModal = async () => {
+        await fetchAverageHourlyRate();
+        initializeFormData();
+      };
+      
+      initializeModal();
       
       // Show labor rate confirmation modal with 1.5 second delay
-      setShowPopupDelay(true); // Show delay indicator
-      
-      const popupTimer = setTimeout(() => {
-        setShowLaborRateConfirmationModal(true);
-        setLaborRateConfirmed(false);
-        setShowPopupDelay(false); // Hide delay indicator
-      }, 1500); // 1.5 seconds delay
-      
-      // Cleanup timer if component unmounts or modal closes
-      return () => {
-        clearTimeout(popupTimer);
-      };
+      // Only show if forward_previous_week_rate is false
+      // If forward_previous_week_rate is true, the system will automatically forward the previous week's rate
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false) {
+        setShowPopupDelay(true); // Show delay indicator
+        
+        const popupTimer = setTimeout(() => {
+          setShowLaborRateConfirmationModal(true);
+          setLaborRateConfirmed(false);
+          setShowPopupDelay(false); // Hide delay indicator
+        }, 1500); // 1.5 seconds delay
+        
+        // Cleanup timer if component unmounts or modal closes
+        return () => {
+          clearTimeout(popupTimer);
+        };
+      } else if (restaurantGoals && restaurantGoals.forward_previous_week_rate === true) {
+        // If forward_previous_week_rate is true, skip the confirmation modal
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+      }
     }
-  }, [visible, selectedWeekData, restaurantGoals]);
+  }, [visible, selectedWeekData]);
 
-  // Cleanup timeouts when component unmounts
+  // Separate effect for when restaurant goals change (only reinitialize form data, don't fetch API again)
+  useEffect(() => {
+    if (visible && selectedWeekData && restaurantGoals) {
+      // Only reinitialize form data if we already have the average hourly rate
+      if (avgHourlyRateFetchedRef.current || dashboardSummaryData?.average_hourly_rate) {
+        initializeFormData();
+      }
+      
+      // Handle labor rate confirmation modal based on forward_previous_week_rate
+      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed) {
+        // Show the confirmation modal if forward_previous_week_rate is false
+        setShowPopupDelay(true);
+        
+        const popupTimer = setTimeout(() => {
+          setShowLaborRateConfirmationModal(true);
+          setLaborRateConfirmed(false);
+          setShowPopupDelay(false);
+        }, 1500);
+        
+        return () => {
+          clearTimeout(popupTimer);
+        };
+      } else if (restaurantGoals.forward_previous_week_rate === true) {
+        // Skip the confirmation modal if forward_previous_week_rate is true
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+        setShowLaborRateConfirmationModal(false);
+        setShowPopupDelay(false);
+      }
+    }
+  }, [restaurantGoals]);
+
+  // Cleanup timeouts and reset refs when component unmounts or modal closes
   useEffect(() => {
     return () => {
       // Clear all timeouts when component unmounts
@@ -129,6 +212,14 @@ const SalesDataModal = ({
       });
     };
   }, []);
+
+  // Reset refs when modal closes
+  useEffect(() => {
+    if (!visible) {
+      avgHourlyRateFetchingRef.current = false;
+      avgHourlyRateFetchedRef.current = false;
+    }
+  }, [visible]);
 
   // Initialize form data based on selected week
   const initializeFormData = () => {
@@ -152,12 +243,27 @@ const SalesDataModal = ({
       dailyData = generateDailyData(startDate, currentProviders);
     }
     
+    // Get avg_hourly_rate from API response first, then fallback to restaurant goals
+    let avgHourlyRateFromAPI = 0;
+    if (dashboardSummaryData?.average_hourly_rate) {
+      avgHourlyRateFromAPI = parseFloat(dashboardSummaryData.average_hourly_rate);
+    }
+    
+    // Fallback to restaurant goals if API didn't return a value
+    const avgHourlyRateFromGoals = restaurantGoals?.avg_hourly_rate && restaurantGoals.avg_hourly_rate > 0 
+      ? parseFloat(restaurantGoals.avg_hourly_rate) 
+      : 0;
+    
+    // Use API value if available, otherwise use goals value
+    const finalAvgHourlyRate = avgHourlyRateFromAPI > 0 ? avgHourlyRateFromAPI : avgHourlyRateFromGoals;
+    
     const initialWeeklyTotals = {
       salesBudget: 0,
       actualSalesInStore: 0,
       actualSalesAppOnline: 0,
       dailyTickets: 0,
       averageDailyTicket: 0,
+      average_hourly_rate: finalAvgHourlyRate,
       ...currentProviders.reduce((acc, provider) => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
         acc[providerKey] = 0;
@@ -1286,6 +1392,7 @@ const SalesDataModal = ({
               Before adding sales data, please confirm your labor rate:
             </Text>
             <div className="text-sm text-blue-600 space-y-1">
+              <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
               <p>• Average hourly rate will be used for labor cost calculations</p>
               <p>• You can update the rate if needed</p>
               <p>• Accurate labor rates ensure better profit/loss analysis</p>

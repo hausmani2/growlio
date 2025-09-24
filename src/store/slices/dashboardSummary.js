@@ -64,16 +64,31 @@ const createDashboardSummarySlice = (set, get) => {
                 
                 const response = await apiGet(url);
                 
+                // Automatically fetch average hourly rate when summary API is called
+                let avgHourlyRate = null;
+                try {
+                    // Use the start date as week_start for the average hourly rate API
+                    const weekStartForAvgRate = startDate || dayjs().startOf('week').format('YYYY-MM-DD');
+                    avgHourlyRate = await get().fetchAverageHourlyRate(targetRestaurantId, weekStartForAvgRate);
+                } catch (error) {
+                    console.error('Error fetching average hourly rate during summary fetch:', error);
+                }
+                
+                // Add average hourly rate to the response data
+                const responseData = {
+                    ...response.data,
+                    average_hourly_rate: avgHourlyRate
+                };
                 
                 set({ 
-                    dashboardSummaryData: response.data, 
+                    dashboardSummaryData: responseData, 
                     loading: false,
                     lastFetchedDateRange: `${startDate}-${endDate}`,
                     lastFetchedGroupBy: groupBy,
                     currentViewMode: groupBy === 'weekly' ? 'weekly' : 'daily'
                 });
                 
-                return response.data;
+                return responseData;
             } catch (error) {
                 console.error('Error fetching dashboard summary:', error);
                 set({ error: error.message, loading: false });
@@ -267,6 +282,66 @@ const createDashboardSummarySlice = (set, get) => {
             }));
         },
         
+        // Fetch average hourly rate for a specific week
+        fetchAverageHourlyRate: async (restaurantId = null, weekStart = null) => {
+            try {
+                // Get restaurant ID if not provided
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.error('Error fetching restaurant ID for average hourly rate:', error);
+                        targetRestaurantId = null;
+                    }
+                    
+                    if (!targetRestaurantId) {
+                        return null;
+                    }
+                }
+
+                // Build URL with parameters
+                let url = '/restaurant/avg-hourly-rate/';
+                let params = { 
+                    restaurant_id: targetRestaurantId
+                };
+                
+                if (weekStart) {
+                    params.week_start = weekStart;
+                }
+                
+                // Convert params to query string
+                const queryString = new URLSearchParams(params).toString();
+                if (queryString) {
+                    url += `?${queryString}`;
+                }
+                
+                const response = await apiGet(url);
+                
+                // Return the average hourly rate from the response
+                return response.data?.average_hourly_rate || null;
+            } catch (error) {
+                console.error('Error fetching average hourly rate:', error);
+                return null;
+            }
+        },
+
+        // Check if average hourly rate is already available for the current week
+        hasAverageHourlyRateForWeek: (weekStart) => {
+            const { dashboardSummaryData, lastFetchedDateRange } = get();
+            
+            if (!dashboardSummaryData?.average_hourly_rate || !lastFetchedDateRange || !weekStart) {
+                return false;
+            }
+            
+            // Check if the weekStart falls within the last fetched date range
+            const startDate = dayjs(weekStart).format('YYYY-MM-DD');
+            const endDate = dayjs(weekStart).add(6, 'day').format('YYYY-MM-DD');
+            const currentRange = `${startDate}-${endDate}`;
+            
+            return lastFetchedDateRange === currentRange;
+        },
+
         // Clear all dashboard summary state (for logout)
         clearDashboardSummary: () => {
             set(() => ({
