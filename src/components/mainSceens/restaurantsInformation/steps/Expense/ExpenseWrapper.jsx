@@ -24,6 +24,9 @@ const ExpenseWrapperContent = () => {
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
 
+    // Get is_franchise data from Basic Information
+    const isFranchise = completeOnboardingData["Basic Information"]?.data?.locations?.[0]?.is_franchise || false;
+
     // State for expense data - only dynamic fields
     const [expenseData, setExpenseData] = useState({
         totalFixedCost: "0.00",
@@ -86,7 +89,7 @@ const ExpenseWrapperContent = () => {
                     // Calculate total variable cost (excluding percentage fields)
                     const totalVariable = dynamicVariableCosts.reduce((sum, field) => {
                         // Skip percentage fields (royalty/brand and fund) from total calculation
-                        const royaltyFields = ["royalty", "brand and fund"];
+                        const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
                         const labelLower = field.label.toLowerCase();
                         const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
 
@@ -178,7 +181,7 @@ const ExpenseWrapperContent = () => {
         // Calculate total variable cost (excluding percentage fields)
         const totalVariable = expenseData.dynamicVariableFields.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
-            const royaltyFields = ["royalty", "brand and fund"];
+            const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
             const labelLower = field.label.toLowerCase();
             const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
 
@@ -362,6 +365,7 @@ const ExpenseWrapperContent = () => {
                     data={expenseData}
                     updateData={updateExpenseData}
                     errors={validationErrors}
+                    isFranchise={isFranchise}
                 />
                 <TotalExpense
                     data={expenseData}

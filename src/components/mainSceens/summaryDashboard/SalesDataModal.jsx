@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
@@ -12,8 +13,12 @@ const SalesDataModal = ({
   onCancel, 
   selectedWeekData, 
   onDataSaved,
-  autoOpenFromSummary = false
+  autoOpenFromSummary = false,
+  isManuallyTriggered = false
 }) => {
+  // Navigation hook
+  const navigate = useNavigate();
+  
   // Store integration
   const { 
     saveDashboardData, 
@@ -38,7 +43,8 @@ const SalesDataModal = ({
       actualSalesInStore: 0,
       actualSalesAppOnline: 0,
       dailyTickets: 0,
-      averageDailyTicket: 0
+      averageDailyTicket: 0,
+      average_hourly_rate: 0
     },
     dailyData: []
   });
@@ -46,6 +52,12 @@ const SalesDataModal = ({
   // Add state for the budget validation modal
   const [showBudgetValidationModal, setShowBudgetValidationModal] = useState(false);
   const [openDaysWithoutBudget, setOpenDaysWithoutBudget] = useState([]);
+
+  // Add state for the labor rate confirmation modal
+  const [showLaborRateConfirmationModal, setShowLaborRateConfirmationModal] = useState(false);
+  const [laborRateConfirmed, setLaborRateConfirmed] = useState(false);
+  const [showPopupDelay, setShowPopupDelay] = useState(false);
+  const [showLaborRateInput, setShowLaborRateInput] = useState(false);
 
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
@@ -86,7 +98,23 @@ const SalesDataModal = ({
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
+
+      
       initializeFormData();
+      
+      // Show labor rate confirmation modal with 1.5 second delay
+      setShowPopupDelay(true); // Show delay indicator
+      
+      const popupTimer = setTimeout(() => {
+        setShowLaborRateConfirmationModal(true);
+        setLaborRateConfirmed(false);
+        setShowPopupDelay(false); // Hide delay indicator
+      }, 1500); // 1.5 seconds delay
+      
+      // Cleanup timer if component unmounts or modal closes
+      return () => {
+        clearTimeout(popupTimer);
+      };
     }
   }, [visible, selectedWeekData, restaurantGoals]);
 
@@ -118,11 +146,9 @@ const SalesDataModal = ({
     let dailyData;
     if (selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0) {
       // Use existing data
-      console.log('Using existing daily data:', selectedWeekData.dailyData);
       dailyData = selectedWeekData.dailyData;
     } else {
       // Generate new data
-      console.log('Generating new daily data');
       dailyData = generateDailyData(startDate, currentProviders);
     }
     
@@ -327,6 +353,17 @@ const SalesDataModal = ({
     }));
   };
 
+  // Handle labor rate change
+  const handleLaborRateChange = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      weeklyTotals: {
+        ...prev.weeklyTotals,
+        average_hourly_rate: parseFloat(value) || 0
+      }
+    }));
+  };
+
   // Calculate weekly totals from daily data
   const calculateWeeklyTotals = () => {
     if (!formData.dailyData || formData.dailyData.length === 0) {
@@ -446,6 +483,7 @@ const SalesDataModal = ({
             net_sales_actual: (weeklyTotals.netSalesActual || 0).toFixed(2),
             daily_tickets: weeklyTotals.dailyTickets || 0,
             average_daily_ticket: weeklyTotals.dailyTickets > 0 ? ((weeklyTotals.netSalesActual || 0) / weeklyTotals.dailyTickets).toFixed(2) : '0.00',
+            average_hourly_rate: (formData.weeklyTotals.average_hourly_rate || 0).toFixed(2),
             // Add dynamic provider fields to weekly data
             ...currentProviders.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
@@ -533,6 +571,25 @@ const SalesDataModal = ({
     } else {
       // User wants to proceed with $0 budgets - save the data
       await saveSalesData();
+    }
+  };
+
+  // Handle user choice in labor rate confirmation modal
+  const handleLaborRateConfirmationChoice = (continueWithLaborRate) => {
+    
+    setShowLaborRateConfirmationModal(false);
+    setShowPopupDelay(false); // Reset delay indicator
+    
+    if (continueWithLaborRate) {
+      // User wants to continue with current labor rate - don't show input field
+      setShowLaborRateInput(false);
+      setLaborRateConfirmed(true);
+      message.success('Continuing with current labor rate settings');
+    } else {
+      // User wants to change labor rate - show input field
+      setShowLaborRateInput(true);
+      setLaborRateConfirmed(true);
+      message.info('Please enter your new average hourly rate below');
     }
   };
 
@@ -628,6 +685,8 @@ const SalesDataModal = ({
         </div>
       )}
 
+
+
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         {/* Weekly Totals Section - Only show when not auto-opened from summary */}
         {!autoOpenFromSummary && (
@@ -697,6 +756,7 @@ const SalesDataModal = ({
               </Col>
             </Row>
 
+
             {/* Dynamic Provider Fields */}
             {getProviders().length > 0 && (
               <>
@@ -723,6 +783,48 @@ const SalesDataModal = ({
                 </Row>
               </>
             )}
+          </Card>
+        )}
+
+        {/* Labor Rate Input - Always show when user wants to change labor rate */}
+       
+        {showLaborRateInput && (
+          <Card 
+            title={
+              <div className="flex items-center justify-between w-full">
+                <span>Labor Rate Settings</span>
+                <Button 
+                  type="text" 
+                  size="small" 
+                  onClick={() => setShowLaborRateInput(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕ Close
+                </Button>
+              </div>
+            }
+            size="small"
+            style={{ borderColor: '#1890ff', borderWidth: '2px' }}
+          >
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={8} lg={6}>
+                <div>
+                  <Text strong className="text-sm">Average Hourly Rate:</Text>
+                  <Input
+                    type="number"
+                    value={formData.weeklyTotals.average_hourly_rate}
+                    onChange={(e) => handleLaborRateChange(e.target.value)}
+                    prefix="$"
+                    placeholder="0.00"
+                    className="mt-1"
+                    style={{ borderColor: '#1890ff' }}
+                  />
+                  <Text type="secondary" className="text-xs mt-1 block">
+                    Enter your current average hourly labor rate
+                  </Text>
+                </div>
+              </Col>
+            </Row>
           </Card>
         )}
 
@@ -1135,6 +1237,71 @@ const SalesDataModal = ({
           </div>
         </Card>
       </Space>
+
+ 
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <UserOutlined className="text-blue-500" />
+            <span>Labor Rate Confirmation</span>
+          </div>
+        }
+        open={showLaborRateConfirmationModal}
+        onCancel={() => handleLaborRateConfirmationChoice(true)} // Default to continue if user closes modal
+        footer={[
+          <Button 
+            key="change" 
+            onClick={() => handleLaborRateConfirmationChoice(false)}
+            icon={<UserOutlined />}
+            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
+          >
+            Update Labor Rate
+          </Button>,
+          <Button 
+            key="continue" 
+            type="primary" 
+            onClick={() => handleLaborRateConfirmationChoice(true)}
+            icon={<CalculatorOutlined />}
+          >
+            Continue (No Changes)
+          </Button>
+        ]}
+        width={500}
+        destroyOnClose
+        closable={true}
+        maskClosable={false}
+        zIndex={1001}
+      >
+        <div className="text-center">
+          <QuestionCircleOutlined 
+            className="text-6xl text-blue-500 mb-4" 
+            style={{ fontSize: '64px' }}
+          />
+          <Title level={4} className="mb-4">
+            Would you like to update your average hourly labor rate?
+          </Title>
+          
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <Text strong className="text-blue-700 mb-2 block">
+              Before adding sales data, please confirm your labor rate:
+            </Text>
+            <div className="text-sm text-blue-600 space-y-1">
+              <p>• Average hourly rate will be used for labor cost calculations</p>
+              <p>• You can update the rate if needed</p>
+              <p>• Accurate labor rates ensure better profit/loss analysis</p>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            <p className="mb-2">
+              <strong>Review Labor Rate:</strong> Continue with current rate (no changes needed)
+            </p>
+            <p>
+              <strong>Update Labor Rate:</strong> Enter a new average hourly rate
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       {/* Budget Validation Modal */}
       <Modal

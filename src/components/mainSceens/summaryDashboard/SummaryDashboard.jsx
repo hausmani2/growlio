@@ -73,6 +73,7 @@ const SummaryDashboard = () => {
   // Modal states
   const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
+  const [isManuallyTriggered, setIsManuallyTriggered] = useState(false);
 
   // Flash message state
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
@@ -153,6 +154,11 @@ const SummaryDashboard = () => {
       // Update calendar state first
       handleCalendarDateChange(dates);
       
+      // Reset modal states for new date selection
+      setHasManuallyClosedModal(false);
+      setIsManuallyTriggered(false);
+      hasHandledFailResponse.current = false;
+      
       // Fetch the data directly
       fetchSummaryData(startDate, endDate, groupBy);
     }
@@ -163,8 +169,21 @@ const SummaryDashboard = () => {
     if (!date) return;
     const start = dayjs(date).startOf('week');
     const end = dayjs(date).endOf('week');
+    console.log('📅 Week Picker Changed:', {
+      selectedDate: date.format('YYYY-MM-DD'),
+      weekStart: start.format('YYYY-MM-DD'),
+      weekEnd: end.format('YYYY-MM-DD')
+    });
+    
     setWeekPickerValue(date);
     setCalendarDateRange([start, end]);
+    
+    // Reset modal states for new week selection
+    console.log('🔄 Resetting modal states for new week selection');
+    setHasManuallyClosedModal(false);
+    setIsManuallyTriggered(false);
+    hasHandledFailResponse.current = false;
+    
     fetchSummaryData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), groupBy);
   }, [fetchSummaryData, groupBy]);
 
@@ -187,12 +206,15 @@ const SummaryDashboard = () => {
       const currentWeekRange = selectThisWeek();
     }
     
+    console.log('🔘 Manual trigger - opening sales modal with labor rate confirmation');
     setIsSalesModalVisible(true);
+    setIsManuallyTriggered(true); // Mark as manually triggered (for future use)
   };
 
   const handleCloseSalesModal = () => {
     setIsSalesModalVisible(false);
     setHasManuallyClosedModal(true);
+    setIsManuallyTriggered(false); // Reset manual trigger state
     // Reset the fail response handler when modal is manually closed
     hasHandledFailResponse.current = false;
   };
@@ -200,6 +222,7 @@ const SummaryDashboard = () => {
   // Handle data saved callback
   const handleDataSaved = async () => {
     setHasManuallyClosedModal(false);
+    setIsManuallyTriggered(false); // Reset manual trigger state
     setShowSuccessFlashMessage(true);
 
     if (calendarDateRange && calendarDateRange.length === 2) {
@@ -329,13 +352,24 @@ const SummaryDashboard = () => {
       
       // Only show modal when there's truly no data (API failed or returned empty array) and groupBy is daily
       // AND we haven't manually closed it AND it's not already visible AND we haven't handled this response yet
+      console.log('🔍 Modal Decision Check:', {
+        hasNoData,
+        groupBy,
+        hasManuallyClosedModal,
+        isSalesModalVisible,
+        hasHandledFailResponse: hasHandledFailResponse.current,
+        shouldShowModal: hasNoData && groupBy === 'daily' && !hasManuallyClosedModal && !isSalesModalVisible && !hasHandledFailResponse.current
+      });
+      
       if (hasNoData && 
           groupBy === 'daily' && 
           !hasManuallyClosedModal && 
           !isSalesModalVisible && 
           !hasHandledFailResponse.current) {
+        console.log('✅ Showing sales modal automatically with labor rate confirmation');
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
+        setIsManuallyTriggered(false); // Mark as automatically triggered (for future use)
       }
       // Flash message is now controlled by the hook - no need to manually manage it
       // Ensure modal is closed when we have valid data
@@ -550,6 +584,11 @@ const SummaryDashboard = () => {
       </Space>
 
       {/* Sales Data Modal */}
+      {console.log('🔍 SalesDataModal props:', {
+        visible: isSalesModalVisible,
+        isManuallyTriggered,
+        calendarDateRange: calendarDateRange?.map(d => d?.format('YYYY-MM-DD'))
+      })}
       <SalesDataModal
         visible={isSalesModalVisible}
         onCancel={handleCloseSalesModal}
@@ -576,6 +615,7 @@ const SummaryDashboard = () => {
           }
         })()}
         autoOpenFromSummary={true}
+        isManuallyTriggered={isManuallyTriggered}
       />
     </div>
     </App>
