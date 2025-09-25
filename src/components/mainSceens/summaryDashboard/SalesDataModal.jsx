@@ -1369,7 +1369,7 @@ const SalesDataModal = ({
             onClick={() => handleLaborRateConfirmationChoice(true)}
             icon={<CalculatorOutlined />}
           >
-            Continue (No Changes)
+            Continue
           </Button>
         ]}
         width={500}
@@ -1401,7 +1401,7 @@ const SalesDataModal = ({
           
           <div className="text-sm text-gray-600">
             <p className="mb-2">
-              <strong>Review Labor Rate:</strong> Continue with current rate (no changes needed)
+              <strong>Review Labor Rate:</strong> Continue with previous week's labor rate
             </p>
             <p>
               <strong>Update Labor Rate:</strong> Enter a new average hourly rate

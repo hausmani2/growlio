@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
-import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker } from 'antd';
+import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker, Modal } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -439,7 +439,34 @@ const SummaryDashboard = () => {
 
       {/* Enhanced Flash Message for Sales Budget */}
       {shouldShowPopup && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-4 mb-4">
+        <Modal
+          title="Update My Day"
+          open={shouldShowPopup}
+          onCancel={markPopupAsShown}
+          footer={[
+            <Button
+              key="update"
+              size="middle"
+              type="primary"
+              icon={<DollarOutlined />}
+              onClick={handleFlashMessageButtonClick}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              Update My Day
+              <ArrowRightOutlined />
+            </Button>,
+            <Button
+              key="dismiss"
+              size="middle"
+              onClick={markPopupAsShown}
+              className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              Dismiss
+            </Button>
+          ]}
+        
+        >
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-4 mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
@@ -452,26 +479,11 @@ const SummaryDashboard = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                size="middle"
-                type="primary"
-                icon={<DollarOutlined />}
-                onClick={handleFlashMessageButtonClick}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              >
-                View Dashboard
-                <ArrowRightOutlined />
-              </Button>
-              <Button
-                size="middle"
-                onClick={markPopupAsShown}
-                className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                Dismiss
-              </Button>
+             
             </div>
           </div>
-        </div>
+          </div>
+        </Modal>
       )}
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -591,6 +603,11 @@ const SummaryDashboard = () => {
     </div>
     </App>
   );
+};
+
+// PropTypes for better type safety
+SummaryDashboard.propTypes = {
+  // This component doesn't receive props, but we can document it for future use
 };
 
 export default SummaryDashboard;

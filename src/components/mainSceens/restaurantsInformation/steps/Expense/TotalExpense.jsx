@@ -15,55 +15,71 @@ const TotalExpense = ({ data,  onSave }) => {
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
 
-    // Calculate weekly and monthly totals separately
+    // Calculate weekly and monthly totals with proper conversion
     const { weeklyTotal, monthlyTotal } = useMemo(() => {
-        const variableCost = parseFloat(data.totalVariableCost) || 0;
-        const fixedCost = parseFloat(data.totalFixedCost) || 0;
+        // Conversion factor: 4.33 weeks per month (52 weeks ÷ 12 months)
+        const WEEKS_PER_MONTH = 4.33;
         
-        // Calculate weekly totals from dynamic fields
-        const weeklyVariableTotal = (data.dynamicVariableFields || []).reduce((sum, field) => {
+        // Calculate total monthly expenses by converting all expenses to monthly
+        const totalMonthlyExpenses = (data.dynamicVariableFields || []).reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
+                field.label.toLowerCase().includes(keyword)
+            );
+            if (isPercentageField) {
+                return sum;
+            }
+            
+            const value = parseFloat(field.value || 0);
             if (field.variable_expense_type === 'weekly') {
-                // Skip percentage fields (royalty/brand and fund) from total calculation
-                const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                    field.label.toLowerCase().includes(keyword)
-                );
-                if (!isPercentageField) {
-                    return sum + parseFloat(field.value || 0);
-                }
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (value * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + value;
             }
-            return sum;
-        }, 0);
-
-        const weeklyFixedTotal = (data.dynamicFixedFields || []).reduce((sum, field) => {
+        }, 0) + (data.dynamicFixedFields || []).reduce((sum, field) => {
+            const value = parseFloat(field.value || 0);
             if (field.fixed_expense_type === 'weekly') {
-                return sum + parseFloat(field.value || 0);
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (value * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + value;
             }
-            return sum;
         }, 0);
 
-        // Calculate monthly totals from dynamic fields
-        const monthlyVariableTotal = (data.dynamicVariableFields || []).reduce((sum, field) => {
+        // Calculate total weekly expenses by converting all expenses to weekly
+        const totalWeeklyExpenses = (data.dynamicVariableFields || []).reduce((sum, field) => {
+            // Skip percentage fields (royalty/brand and fund) from total calculation
+            const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
+                field.label.toLowerCase().includes(keyword)
+            );
+            if (isPercentageField) {
+                return sum;
+            }
+            
+            const value = parseFloat(field.value || 0);
             if (field.variable_expense_type === 'monthly') {
-                // Skip percentage fields (royalty/brand and fund) from total calculation
-                const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                    field.label.toLowerCase().includes(keyword)
-                );
-                if (!isPercentageField) {
-                    return sum + parseFloat(field.value || 0);
-                }
+                // Convert monthly to weekly: monthly ÷ 4.33
+                return sum + (value / WEEKS_PER_MONTH);
+            } else {
+                // Already weekly
+                return sum + value;
             }
-            return sum;
-        }, 0);
-
-        const monthlyFixedTotal = (data.dynamicFixedFields || []).reduce((sum, field) => {
+        }, 0) + (data.dynamicFixedFields || []).reduce((sum, field) => {
+            const value = parseFloat(field.value || 0);
             if (field.fixed_expense_type === 'monthly') {
-                return sum + parseFloat(field.value || 0);
+                // Convert monthly to weekly: monthly ÷ 4.33
+                return sum + (value / WEEKS_PER_MONTH);
+            } else {
+                // Already weekly
+                return sum + value;
             }
-            return sum;
         }, 0);
 
-        const weeklyTotal = (weeklyVariableTotal + weeklyFixedTotal).toFixed(2);
-        const monthlyTotal = (monthlyVariableTotal + monthlyFixedTotal).toFixed(2);
+        const weeklyTotal = totalWeeklyExpenses.toFixed(2);
+        const monthlyTotal = totalMonthlyExpenses.toFixed(2);
 
         return { weeklyTotal, monthlyTotal };
     }, [data.dynamicVariableFields, data.dynamicFixedFields]);

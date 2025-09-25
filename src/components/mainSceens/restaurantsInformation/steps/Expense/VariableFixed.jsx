@@ -130,13 +130,22 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
         // Update parent with new fields
         memoizedUpdateData('dynamicVariableFields', updatedFields);
         
-        // Calculate and update total - exclude percentage fields
+        // Calculate and update total - convert all to monthly for consistent calculation, exclude percentage fields
+        const WEEKS_PER_MONTH = 4.33;
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             if (shouldShowPercentageDropdown(field.label)) {
                 return sum;
             }
-            return sum + parseFloat(field.value || 0);
+            
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.variable_expense_type === 'weekly') {
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (fieldValue * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + fieldValue;
+            }
         }, 0);
         
         // Only update if the total has actually changed
@@ -161,13 +170,22 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
         // Update parent with new fields
         memoizedUpdateData('dynamicVariableFields', updatedFields);
         
-        // Calculate and update total - exclude percentage fields
+        // Calculate and update total - convert all to monthly for consistent calculation, exclude percentage fields
+        const WEEKS_PER_MONTH = 4.33;
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             if (shouldShowPercentageDropdown(field.label)) {
                 return sum;
             }
-            return sum + parseFloat(field.value || 0);
+            
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.variable_expense_type === 'weekly') {
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (fieldValue * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + fieldValue;
+            }
         }, 0);
         
         // Only update if the total has actually changed

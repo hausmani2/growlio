@@ -62,9 +62,17 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
             // Update parent with new fields
             memoizedUpdateData('dynamicFixedFields', updatedFields);
 
-            // Calculate and update total
+            // Calculate and update total - convert all to monthly for consistent calculation
+            const WEEKS_PER_MONTH = 4.33;
             const dynamicTotal = updatedFields.reduce((sum, field) => {
-                return sum + parseFloat(field.value || 0);
+                const fieldValue = parseFloat(field.value || 0);
+                if (field.fixed_expense_type === 'weekly') {
+                    // Convert weekly to monthly: weekly * 4.33
+                    return sum + (fieldValue * WEEKS_PER_MONTH);
+                } else {
+                    // Already monthly
+                    return sum + fieldValue;
+                }
             }, 0);
 
             // Only update if the total has actually changed
@@ -90,9 +98,17 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
         // Update parent with new fields
         memoizedUpdateData('dynamicFixedFields', updatedFields);
 
-        // Calculate and update total
+        // Calculate and update total - convert all to monthly for consistent calculation
+        const WEEKS_PER_MONTH = 4.33;
         const dynamicTotal = updatedFields.reduce((sum, field) => {
-            return sum + parseFloat(field.value || 0);
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.fixed_expense_type === 'weekly') {
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (fieldValue * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + fieldValue;
+            }
         }, 0);
 
         // Only update if the total has actually changed

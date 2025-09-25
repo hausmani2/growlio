@@ -5,17 +5,19 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  BarElement,
   LineElement,
   PointElement,
   Tooltip,
   Legend,
   Filler,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  BarElement,
   LineElement,
   PointElement,
   Tooltip,
@@ -56,18 +58,27 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     }
   };
 
-  const { labels, dataset } = useMemo(() => {
+  const { labels, budgetDataset, actualDataset, weekRange } = useMemo(() => {
     const entries = Array.isArray(dashboardData?.data) ? dashboardData.data : [];
     
     if (entries.length === 0) {
-      return { labels: [], dataset: [] };
+      return { labels: [], budgetDataset: [], actualDataset: [], weekRange: '' };
     }
 
     // Determine data format
     const isWeekly = isWeeklyData(entries);
     const isMonthly = isMonthlyData(entries);
     
-    
+    // For weekly data, we need to get the week range for the title
+    let weekRange = '';
+    if (isWeekly && entries.length > 0) {
+      const firstEntry = entries[0];
+      if (firstEntry.week_start && firstEntry.week_end) {
+        const startDate = dayjs(firstEntry.week_start);
+        const endDate = dayjs(firstEntry.week_end);
+        weekRange = `${startDate.format('MMM DD')} - ${endDate.format('MMM DD')}`;
+      }
+    }
 
     const labels = entries.map((entry, index) => {
       // Use appropriate date field based on data format
@@ -85,44 +96,63 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
       return formattedLabel;
     });
 
-    const profits = entries.map((entry, index) => {
-      // Try multiple possible field names for profit/loss data
-      const profitLoss = parseFloat(entry.profit_loss ?? entry.profit ?? entry.net_profit ?? 0) || 0;
+    const budgetProfits = entries.map((entry, index) => {
+      // Calculate budget profit/loss
+      const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
+      const foodCostBudget = parseFloat(entry.food_cost ?? entry.food_cost_budget ?? entry.foodCostBudget ?? 0) || 0;
+      const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
       
-      // If no direct profit field, calculate from components
-      if (profitLoss === 0) {
-        const salesActual = parseFloat(entry.sales_actual ?? entry.actual_sales ?? entry.sales_budget ?? 0) || 0;
-        const foodActual = parseFloat(entry.food_cost_actual ?? entry.cogs_actual ?? entry.food_cost ?? 0) || 0;
-        const laborActual = parseFloat(entry.labour_actual ?? entry.labor_hours_actual ?? entry.actual_labor_dollars ?? entry.labour ?? 0) || 0;
-        
-        // Calculate fixed and variable costs
-        let fixedCosts = 0;
-        let variableCosts = 0;
-        
-        if (Array.isArray(entry.fixed_costs)) {
-          fixedCosts = entry.fixed_costs.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
-        }
-        
-        if (Array.isArray(entry.variable_costs)) {
-          variableCosts = entry.variable_costs.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
-        }
-        
-        const calculatedProfit = salesActual - (foodActual + laborActual + fixedCosts + variableCosts);
-        
-        
-        
-        return Number(calculatedProfit);
+      // Calculate fixed and variable costs from budget
+      let fixedCostsBudget = 0;
+      let variableCostsBudget = 0;
+      
+      if (Array.isArray(entry.fixed_costs_budget)) {
+        fixedCostsBudget = entry.fixed_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.fixed_cost_budget) {
+        fixedCostsBudget = parseFloat(entry.fixed_cost_budget) || 0;
       }
       
+      if (Array.isArray(entry.variable_costs_budget)) {
+        variableCostsBudget = entry.variable_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.variable_cost_budget) {
+        variableCostsBudget = parseFloat(entry.variable_cost_budget) || 0;
+      }
       
-      return Number(profitLoss);
+      const budgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
+      return Number(budgetProfit);
     });
 
-    
+    const actualProfits = entries.map((entry, index) => {
+      // Calculate actual profit/loss
+      const salesActual = parseFloat(entry.sales_actual ?? entry.actual_sales ?? entry.salesActual ?? 0) || 0;
+      const foodCostActual = parseFloat(entry.food_cost_actual ?? entry.food_cost_actuals ?? entry.foodCostActual ?? 0) || 0;
+      const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
+      
+      // Calculate fixed and variable costs from actual
+      let fixedCostsActual = 0;
+      let variableCostsActual = 0;
+      
+      if (Array.isArray(entry.fixed_costs_actual)) {
+        fixedCostsActual = entry.fixed_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.fixed_cost_actual) {
+        fixedCostsActual = parseFloat(entry.fixed_cost_actual) || 0;
+      }
+      
+      if (Array.isArray(entry.variable_costs_actual)) {
+        variableCostsActual = entry.variable_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.variable_cost_actual) {
+        variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
+      }
+      
+      const actualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
+      return Number(actualProfit);
+    });
 
     return {
       labels,
-      dataset: profits,
+      budgetDataset: budgetProfits,
+      actualDataset: actualProfits,
+      weekRange,
     };
   }, [dashboardData, viewMode]);
 
@@ -130,17 +160,18 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     labels,
     datasets: [
       {
-        label: 'Profit/Loss',
-        data: dataset,
+        label: 'Budget',
+        data: budgetDataset,
+        backgroundColor: 'rgba(24, 144, 255, 0.8)',
+        borderColor: 'rgba(24, 144, 255, 1)',
+        borderWidth: 2,
+      },
+      {
+        label: 'Actual',
+        data: actualDataset,
+        backgroundColor: 'rgba(82, 196, 26, 0.8)',
         borderColor: 'rgba(82, 196, 26, 1)',
-        backgroundColor: 'rgba(82, 196, 26, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: 'rgba(82, 196, 26, 1)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 6,
+        borderWidth: 2,
       }
     ]
   };
@@ -154,7 +185,7 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
         callbacks: {
           label: function(context) {
             const value = context.parsed.y || 0;
-            return `Profit/Loss: $${Number(value).toLocaleString()}`;
+            return `${context.dataset.label}: $${Number(value).toLocaleString()}`;
           }
         }
       }
@@ -174,18 +205,18 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
   // Determine the appropriate title based on data format
   const getTitle = () => {
     if (!dashboardData?.data || !Array.isArray(dashboardData.data) || dashboardData.data.length === 0) {
-      return 'Profit/Loss Trend';
+      return 'Daily Profit Loss vs. Actual';
     }
     
     const isWeekly = isWeeklyData(dashboardData.data);
     const isMonthly = isMonthlyData(dashboardData.data);
     
     if (isMonthly) {
-      return 'Monthly Profit/Loss Trend';
+      return 'Monthly Profit Loss vs. Actual';
     } else if (isWeekly) {
-      return 'Weekly Profit/Loss Trend';
+      return `Daily Profit Loss vs. Actual for week of ${weekRange}`;
     } else {
-      return 'Daily Profit/Loss Trend';
+      return 'Daily Profit Loss vs. Actual';
     }
   };
 
@@ -197,14 +228,15 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
         </div>
       </div>
       <div style={{ height: '300px' }}>
-        {dataset.length > 0 && dataset.some(value => value !== 0) ? (
-          <Line data={data} options={options} />
+        {(budgetDataset.length > 0 || actualDataset.length > 0) && 
+         (budgetDataset.some(value => value !== 0) || actualDataset.some(value => value !== 0)) ? (
+          <Bar data={data} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
               <p className="text-sm">No profit/loss data available</p>
               <p className="text-xs text-gray-400 mt-1">
-                {dataset.length > 0 ? 'All values are zero' : 'No data points found'}
+                {(budgetDataset.length > 0 || actualDataset.length > 0) ? 'All values are zero' : 'No data points found'}
               </p>
             </div>
           </div>

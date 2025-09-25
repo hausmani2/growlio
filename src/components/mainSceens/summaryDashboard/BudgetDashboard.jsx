@@ -77,6 +77,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const [chartData, setChartData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
   const [dynamicCategories, setDynamicCategories] = useState([]);
+  const [weekRange, setWeekRange] = useState('');
   const fetchBudgetAllocationSummary = useStore((s) => s.fetchBudgetAllocationSummary);
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
@@ -123,9 +124,40 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       const foodCostActual = parseFloat(entry.food_cost_actual ?? entry.food_cost_actuals ?? entry.foodCostActual ?? 0) || 0;
       const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
       const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
-      const profitValue =
-        parseFloat(entry.profit_loss ?? entry.profit ?? 0) ||
-        (salesActual - (foodCostActual + laborActual));
+      
+      // Calculate fixed and variable costs
+      let fixedCostsBudget = 0;
+      let fixedCostsActual = 0;
+      let variableCostsBudget = 0;
+      let variableCostsActual = 0;
+      
+      if (Array.isArray(entry.fixed_costs_budget)) {
+        fixedCostsBudget = entry.fixed_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.fixed_cost_budget) {
+        fixedCostsBudget = parseFloat(entry.fixed_cost_budget) || 0;
+      }
+      
+      if (Array.isArray(entry.fixed_costs_actual)) {
+        fixedCostsActual = entry.fixed_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.fixed_cost_actual) {
+        fixedCostsActual = parseFloat(entry.fixed_cost_actual) || 0;
+      }
+      
+      if (Array.isArray(entry.variable_costs_budget)) {
+        variableCostsBudget = entry.variable_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.variable_cost_budget) {
+        variableCostsBudget = parseFloat(entry.variable_cost_budget) || 0;
+      }
+      
+      if (Array.isArray(entry.variable_costs_actual)) {
+        variableCostsActual = entry.variable_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (entry.variable_cost_actual) {
+        variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
+      }
+      
+      // Calculate budget and actual profit/loss
+      const budgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
+      const actualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
 
       const processedEntry = {
         day: dayLabel,
@@ -135,13 +167,33 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         foodCostActual,
         laborBudget,
         laborActual,
-        profit: profitValue
+        fixedCostsBudget,
+        fixedCostsActual,
+        variableCostsBudget,
+        variableCostsActual,
+        budgetProfit,
+        actualProfit,
+        profit: actualProfit // Keep for backward compatibility
       };
       
       return processedEntry;
     });
 
     setChartData(processedData);
+
+    // Extract week range for title
+    if (data.length > 0) {
+      const firstEntry = data[0];
+      if (firstEntry.week_start && firstEntry.week_end) {
+        const startDate = new Date(firstEntry.week_start);
+        const endDate = new Date(firstEntry.week_end);
+        const startDay = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endDay = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        setWeekRange(`${startDay} - ${endDay}`);
+      } else {
+        setWeekRange('');
+      }
+    }
 
     // Calculate summary data
     const summary = {
@@ -299,22 +351,23 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     ]
   };
 
-  // Profit trend chart data
+  // Profit trend chart data - now a bar chart with Budget vs Actual
   const profitChartData = {
     labels: chartData.map(item => item.day),
     datasets: [
       {
-        label: 'Profit/Loss',
-        data: chartData.map(item => item.profit),
+        label: 'Budget',
+        data: chartData.map(item => item.budgetProfit),
+        backgroundColor: 'rgba(24, 144, 255, 0.8)',
+        borderColor: 'rgba(24, 144, 255, 1)',
+        borderWidth: 2,
+      },
+      {
+        label: 'Actual',
+        data: chartData.map(item => item.actualProfit),
+        backgroundColor: 'rgba(82, 196, 26, 0.8)',
         borderColor: 'rgba(82, 196, 26, 1)',
-        backgroundColor: 'rgba(82, 196, 26, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: 'rgba(82, 196, 26, 1)',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 6,
+        borderWidth: 2,
       }
     ]
   };
@@ -553,11 +606,13 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           <Card className="h-full">
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-orange-600">Daily Profit/Loss Trend</h2>
+                <h2 className="text-xl font-bold text-orange-600">
+                  {weekRange ? `Daily Profit Loss vs. Actual for week of ${weekRange}` : 'Daily Profit Loss vs. Actual'}
+                </h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
-              <Line data={profitChartData} options={chartOptions} />
+              <Bar data={profitChartData} options={chartOptions} />
             </div>
           </Card>
         </Col>
