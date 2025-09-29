@@ -1968,7 +1968,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                          return percentage < 0 ? '#ff4d4f' : '#52c41a';
                        })(),
                        backgroundColor: '#fff7ed' ,
-                       color: '#1890ff'
                      }}
                      prefix="%"
                    />
@@ -1977,7 +1976,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                  <div>
                    <div className="flex items-center gap-2 mb-1">
                      <Text strong># Daily Tickets:</Text>
-                    
                    </div>
                    <Input
                      value={ensureWholeNumberTickets(weeklyTotals.dailyTickets)}
