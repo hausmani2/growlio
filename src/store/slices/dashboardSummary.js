@@ -65,19 +65,20 @@ const createDashboardSummarySlice = (set, get) => {
                 const response = await apiGet(url);
                 
                 // Automatically fetch average hourly rate when summary API is called
-                let avgHourlyRate = null;
+                let avgHourlyRateData = null;
                 try {
                     // Use the start date as week_start for the average hourly rate API
                     const weekStartForAvgRate = startDate || dayjs().startOf('week').format('YYYY-MM-DD');
-                    avgHourlyRate = await get().fetchAverageHourlyRate(targetRestaurantId, weekStartForAvgRate);
+                    avgHourlyRateData = await get().fetchAverageHourlyRate(targetRestaurantId, weekStartForAvgRate);
                 } catch (error) {
                     console.error('Error fetching average hourly rate during summary fetch:', error);
                 }
                 
-                // Add average hourly rate to the response data
+                // Add average hourly rate data to the response data
                 const responseData = {
                     ...response.data,
-                    average_hourly_rate: avgHourlyRate
+                    average_hourly_rate: avgHourlyRateData?.average_hourly_rate || null,
+                    previous_week_average_hourly_rate: avgHourlyRateData?.previous_week_average_hourly_rate || null
                 };
                 
                 set({ 
@@ -318,8 +319,8 @@ const createDashboardSummarySlice = (set, get) => {
                 
                 const response = await apiGet(url);
                 
-                // Return the average hourly rate from the response
-                return response.data?.average_hourly_rate || null;
+                // Return the full response data to access both current and previous week rates
+                return response.data || null;
             } catch (error) {
                 console.error('Error fetching average hourly rate:', error);
                 return null;

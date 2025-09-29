@@ -61,6 +61,7 @@ const SalesDataModal = ({
   const [laborRateConfirmed, setLaborRateConfirmed] = useState(false);
   const [showPopupDelay, setShowPopupDelay] = useState(false);
   const [showLaborRateInput, setShowLaborRateInput] = useState(false);
+  const [previousWeekLaborRate, setPreviousWeekLaborRate] = useState(null);
 
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
@@ -130,6 +131,7 @@ const SalesDataModal = ({
       avgHourlyRateFetchingRef.current = false;
     }
   };
+
 
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
@@ -247,6 +249,13 @@ const SalesDataModal = ({
     let avgHourlyRateFromAPI = 0;
     if (dashboardSummaryData?.average_hourly_rate) {
       avgHourlyRateFromAPI = parseFloat(dashboardSummaryData.average_hourly_rate);
+    }
+    
+    // Get previous week's rate from API response
+    if (dashboardSummaryData?.previous_week_average_hourly_rate) {
+      setPreviousWeekLaborRate(parseFloat(dashboardSummaryData.previous_week_average_hourly_rate));
+    } else {
+      setPreviousWeekLaborRate(null);
     }
     
     // Fallback to restaurant goals if API didn't return a value
@@ -681,18 +690,42 @@ const SalesDataModal = ({
   };
 
   // Handle user choice in labor rate confirmation modal
-  const handleLaborRateConfirmationChoice = (continueWithLaborRate) => {
+  const handleLaborRateConfirmationChoice = (choice) => {
     
     setShowLaborRateConfirmationModal(false);
     setShowPopupDelay(false); // Reset delay indicator
     
-    if (continueWithLaborRate) {
-      // User wants to continue with current labor rate - don't show input field
+    if (choice === 'previous') {
+      // User wants to use previous week's rate
+      if (previousWeekLaborRate) {
+        setFormData(prev => ({
+          ...prev,
+          weeklyTotals: {
+            ...prev.weeklyTotals,
+            average_hourly_rate: previousWeekLaborRate
+          }
+        }));
+        message.success(`Last week's rate of $${previousWeekLaborRate.toFixed(2)} set in input field. You can modify it if needed.`);
+        setShowLaborRateInput(true); // Show input field so user can see/modify the value
+        setLaborRateConfirmed(true);
+      } else {
+        // No previous week rate available, show input field
+        setShowLaborRateInput(true);
+        setLaborRateConfirmed(true);
+        message.info('No previous week rate available. Please enter your labor rate below');
+      }
+    } else if (choice === 'current') {
+      // User wants to use current rate (explicitly)
+      message.success(`Using current labor rate of $${formData.weeklyTotals.average_hourly_rate || 0}`);
       setShowLaborRateInput(false);
       setLaborRateConfirmed(true);
+    } else if (choice === 'continue') {
+      // User wants to continue with current labor rate
       message.success('Continuing with current labor rate settings');
+      setShowLaborRateInput(false);
+      setLaborRateConfirmed(true);
     } else {
-      // User wants to change labor rate - show input field
+      // Default fallback
       setShowLaborRateInput(true);
       setLaborRateConfirmed(true);
       message.info('Please enter your new average hourly rate below');
@@ -1354,24 +1387,39 @@ const SalesDataModal = ({
         }
         open={showLaborRateConfirmationModal}
         onCancel={() => handleLaborRateConfirmationChoice(true)} // Default to continue if user closes modal
-        footer={[
-          <Button 
-            key="change" 
-            onClick={() => handleLaborRateConfirmationChoice(false)}
-            icon={<UserOutlined />}
-            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
-          >
-            Update Labor Rate
-          </Button>,
-          <Button 
-            key="continue" 
-            type="primary" 
-            onClick={() => handleLaborRateConfirmationChoice(true)}
-            icon={<CalculatorOutlined />}
-          >
-            Continue
-          </Button>
-        ]}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Button 
+              onClick={() => handleLaborRateConfirmationChoice('previous')}
+              icon={<UserOutlined />}
+              style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
+            >
+              {previousWeekLaborRate ? 
+                `Use Last Week's Rate ($${previousWeekLaborRate.toFixed(2)})` :
+                'Update Labor Rate'
+              }
+            </Button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {previousWeekLaborRate ? (
+                <Button 
+                  onClick={() => handleLaborRateConfirmationChoice('current')}
+                  icon={<CalculatorOutlined />}
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                >
+                  Use Current Rate (${formData.weeklyTotals.average_hourly_rate || 0})
+                </Button>
+              ) : (
+                <Button 
+                  type="primary" 
+                  onClick={() => handleLaborRateConfirmationChoice('continue')}
+                  icon={<CalculatorOutlined />}
+                >
+                  Continue
+                </Button>
+              )}
+            </div>
+          </div>
+        }
         width={500}
         destroyOnClose
         closable={true}
@@ -1384,24 +1432,44 @@ const SalesDataModal = ({
             style={{ fontSize: '64px' }}
           />
           <Title level={4} className="mb-4">
-            Would you like to update your average hourly labor rate?
+            {previousWeekLaborRate ? 
+              `Last week's labor rate was $${previousWeekLaborRate.toFixed(2)}. Would you like to use that labor rate this week?` :
+              'Would you like to update your average hourly labor rate?'
+            }
           </Title>
           
           <div className="bg-blue-50 p-4 rounded-lg mb-4">
             <Text strong className="text-blue-700 mb-2 block">
-              Before adding sales data, please confirm your labor rate:
+              {previousWeekLaborRate ? 
+                'Labor rate information:' :
+                'Before adding sales data, please confirm your labor rate:'
+              }
             </Text>
             <div className="text-sm text-blue-600 space-y-1">
-              <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
-              <p>• Average hourly rate will be used for labor cost calculations</p>
-              <p>• You can update the rate if needed</p>
-              <p>• Accurate labor rates ensure better profit/loss analysis</p>
+              {previousWeekLaborRate ? (
+                <>
+                  <p>• Last week's average hourly rate: <strong>${previousWeekLaborRate.toFixed(2)}</strong></p>
+                  <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
+                  <p>• You can use last week's rate or enter a new one</p>
+                  <p>• Accurate labor rates ensure better profit/loss analysis</p>
+                </>
+              ) : (
+                <>
+                  <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
+                  <p>• Average hourly rate will be used for labor cost calculations</p>
+                  <p>• You can update the rate if needed</p>
+                  <p>• Accurate labor rates ensure better profit/loss analysis</p>
+                </>
+              )}
             </div>
           </div>
           
           <div className="text-sm text-gray-600">
             <p className="mb-2">
-              <strong>Review Labor Rate:</strong> Continue with previous week's labor rate
+              <strong>Continue:</strong> {previousWeekLaborRate ? 
+                `Use last week's rate of $${previousWeekLaborRate.toFixed(2)}` :
+                'Continue with current labor rate'
+              }
             </p>
             <p>
               <strong>Update Labor Rate:</strong> Enter a new average hourly rate

@@ -1095,8 +1095,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         return 'Dollar ($)';
       case 'percentage':
         return 'Percentage (%)';
-      case 'number':
-        return 'Number';
       default:
         return 'Select Format';
     }
@@ -1113,11 +1111,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       key: 'percentage',
       label: 'Percentage (%)',
       icon: '📊',
-    },
-    {
-      key: 'number',
-      label: 'Number',
-      icon: '🔢',
     },
   ];
 
@@ -1145,8 +1138,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         return '💰';
       case 'percentage':
         return '📊';
-      case 'number':
-        return '🔢';
       default:
         return '💰';
     }
