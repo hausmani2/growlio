@@ -22,10 +22,8 @@ const ProtectedRoutes = () => {
   // Simple onboarding check function
   const checkOnboardingStatus = async () => {
     try {
-      console.log('🔍 ProtectedRoutes - Checking onboarding status...');
       const result = await forceOnboardingCheck();
-      console.log('🔍 ProtectedRoutes - Onboarding check result:', result);
-      
+        
       if (result.success) {
         console.log('🔍 ProtectedRoutes - Onboarding check successful, isComplete:', result.isComplete);
         

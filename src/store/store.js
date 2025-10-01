@@ -73,7 +73,7 @@ const useStore = create(
                   avg_hourly_rate: 0,
                   labor_record_method: "daily-hours-costs",
                   daily_ticket_count: false,
-                  forward_prev_week_rate: false
+                  forward_previous_week_rate: false
                 }
               },
               "Food Cost Details": {

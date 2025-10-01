@@ -5,11 +5,16 @@ import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 
-const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
+const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise = false }, ref) => {
     const tooltips = useTooltips('onboarding-expense');
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [dynamicFields, setDynamicFields] = useState(data.dynamicVariableFields || []);
+
+    // Memoize the updateData callback to prevent unnecessary re-renders
+    const memoizedUpdateData = useCallback((field, value) => {
+        updateData(field, value);
+    }, [updateData]);
 
     // Update local state when data prop changes (when API data is loaded)
     useEffect(() => {
@@ -18,10 +23,52 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
         }
     }, [data.dynamicVariableFields]);
 
-    // Memoize the updateData callback to prevent unnecessary re-renders
-    const memoizedUpdateData = useCallback((field, value) => {
-        updateData(field, value);
-    }, [updateData]);
+    // Automatically add Royalty and Brand/Ad Fund fields when isFranchise is true
+    useEffect(() => {
+        if (isFranchise) {
+            let updatedFields = [...dynamicFields];
+            let hasChanges = false;
+            
+            // Check if Royalty field already exists
+            const hasRoyaltyField = dynamicFields.some(field => 
+                field.label.toLowerCase().includes('royalty')
+            );
+            
+            if (!hasRoyaltyField) {
+                const royaltyField = {
+                    id: Date.now() + Math.random(),
+                    label: "Royalty",
+                    value: "",
+                    key: `dynamic_variable_royalty_${Date.now()}_${Math.random()}`,
+                    variable_expense_type: "monthly"
+                };
+                updatedFields.push(royaltyField);
+                hasChanges = true;
+            }
+            
+            // Check if Brand/Ad Fund field already exists
+            const hasBrandAdFundField = dynamicFields.some(field => 
+                field.label.toLowerCase().includes('brand') || field.label.toLowerCase().includes('ad fund')
+            );
+            
+            if (!hasBrandAdFundField) {
+                const brandAdFundField = {
+                    id: Date.now() + Math.random() + 1,
+                    label: "Brand/Ad Fund",
+                    value: "",
+                    key: `dynamic_variable_brand_ad_fund_${Date.now()}_${Math.random()}`,
+                    variable_expense_type: "monthly"
+                };
+                updatedFields.push(brandAdFundField);
+                hasChanges = true;
+            }
+            
+            if (hasChanges) {
+                setDynamicFields(updatedFields);
+                memoizedUpdateData('dynamicVariableFields', updatedFields);
+            }
+        }
+    }, [isFranchise]); // Removed dynamicFields and memoizedUpdateData from dependencies to prevent infinite loops
 
     // Helper function to check if field should show percentage dropdown
     const shouldShowPercentageDropdown = (label) => {
@@ -83,13 +130,22 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
         // Update parent with new fields
         memoizedUpdateData('dynamicVariableFields', updatedFields);
         
-        // Calculate and update total - exclude percentage fields
+        // Calculate and update total - convert all to monthly for consistent calculation, exclude percentage fields
+        const WEEKS_PER_MONTH = 4.33;
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             if (shouldShowPercentageDropdown(field.label)) {
                 return sum;
             }
-            return sum + parseFloat(field.value || 0);
+            
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.variable_expense_type === 'weekly') {
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (fieldValue * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + fieldValue;
+            }
         }, 0);
         
         // Only update if the total has actually changed
@@ -114,13 +170,22 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {} }, ref) => {
         // Update parent with new fields
         memoizedUpdateData('dynamicVariableFields', updatedFields);
         
-        // Calculate and update total - exclude percentage fields
+        // Calculate and update total - convert all to monthly for consistent calculation, exclude percentage fields
+        const WEEKS_PER_MONTH = 4.33;
         const dynamicTotal = updatedFields.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             if (shouldShowPercentageDropdown(field.label)) {
                 return sum;
             }
-            return sum + parseFloat(field.value || 0);
+            
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.variable_expense_type === 'weekly') {
+                // Convert weekly to monthly: weekly * 4.33
+                return sum + (fieldValue * WEEKS_PER_MONTH);
+            } else {
+                // Already monthly
+                return sum + fieldValue;
+            }
         }, 0);
         
         // Only update if the total has actually changed

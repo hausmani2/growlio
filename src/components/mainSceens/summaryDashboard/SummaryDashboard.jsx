@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
-import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker } from 'antd';
+import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker, Modal } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -29,12 +29,10 @@ const SummaryDashboard = () => {
   // Initialize with current week
   useEffect(() => {
     try {
-      console.log('Calendar initialization useEffect triggered, calendarDateRange length:', calendarDateRange.length);
       
       if (calendarDateRange.length === 0) {
         const startOfWeek = dayjs().startOf('week');
         const endOfWeek = dayjs().endOf('week');
-        console.log('Setting initial calendar dates:', { startOfWeek: startOfWeek.format('YYYY-MM-DD'), endOfWeek: endOfWeek.format('YYYY-MM-DD') });
         setCalendarDateRange([startOfWeek, endOfWeek]);
         setWeekPickerValue(dayjs());
       }
@@ -73,6 +71,7 @@ const SummaryDashboard = () => {
   // Modal states
   const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
+  const [isManuallyTriggered, setIsManuallyTriggered] = useState(false);
 
   // Flash message state
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
@@ -135,9 +134,7 @@ const SummaryDashboard = () => {
         if (currentRangeKey !== lastDateRange.current) {
           lastDateRange.current = currentRangeKey;
           fetchSummaryData(startDate, endDate, groupBy);
-        } else {
-          console.log('Skipping API call - already fetched for this date range:', currentRangeKey);
-        }
+        } 
       }
     } catch (error) {
       console.error('Error in auto-fetch useEffect:', error);
@@ -153,6 +150,11 @@ const SummaryDashboard = () => {
       // Update calendar state first
       handleCalendarDateChange(dates);
       
+      // Reset modal states for new date selection
+      setHasManuallyClosedModal(false);
+      setIsManuallyTriggered(false);
+      hasHandledFailResponse.current = false;
+      
       // Fetch the data directly
       fetchSummaryData(startDate, endDate, groupBy);
     }
@@ -163,8 +165,16 @@ const SummaryDashboard = () => {
     if (!date) return;
     const start = dayjs(date).startOf('week');
     const end = dayjs(date).endOf('week');
+
+    
     setWeekPickerValue(date);
     setCalendarDateRange([start, end]);
+    
+    // Reset modal states for new week selection
+    setHasManuallyClosedModal(false);
+    setIsManuallyTriggered(false);
+    hasHandledFailResponse.current = false;
+    
     fetchSummaryData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), groupBy);
   }, [fetchSummaryData, groupBy]);
 
@@ -188,11 +198,13 @@ const SummaryDashboard = () => {
     }
     
     setIsSalesModalVisible(true);
+    setIsManuallyTriggered(true); // Mark as manually triggered (for future use)
   };
 
   const handleCloseSalesModal = () => {
     setIsSalesModalVisible(false);
     setHasManuallyClosedModal(true);
+    setIsManuallyTriggered(false); // Reset manual trigger state
     // Reset the fail response handler when modal is manually closed
     hasHandledFailResponse.current = false;
   };
@@ -200,6 +212,7 @@ const SummaryDashboard = () => {
   // Handle data saved callback
   const handleDataSaved = async () => {
     setHasManuallyClosedModal(false);
+    setIsManuallyTriggered(false); // Reset manual trigger state
     setShowSuccessFlashMessage(true);
 
     if (calendarDateRange && calendarDateRange.length === 2) {
@@ -324,11 +337,7 @@ const SummaryDashboard = () => {
       
       const hasNoData = !hasValidData();
       
-      // Debug log to understand the modal decision
-
       
-      // Only show modal when there's truly no data (API failed or returned empty array) and groupBy is daily
-      // AND we haven't manually closed it AND it's not already visible AND we haven't handled this response yet
       if (hasNoData && 
           groupBy === 'daily' && 
           !hasManuallyClosedModal && 
@@ -336,6 +345,7 @@ const SummaryDashboard = () => {
           !hasHandledFailResponse.current) {
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
+        setIsManuallyTriggered(false); // Mark as automatically triggered (for future use)
       }
       // Flash message is now controlled by the hook - no need to manually manage it
       // Ensure modal is closed when we have valid data
@@ -429,7 +439,34 @@ const SummaryDashboard = () => {
 
       {/* Enhanced Flash Message for Sales Budget */}
       {shouldShowPopup && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-4 mb-4">
+        <Modal
+          title="Update My Day"
+          open={shouldShowPopup}
+          onCancel={markPopupAsShown}
+          footer={[
+            <Button
+              key="update"
+              size="middle"
+              type="primary"
+              icon={<DollarOutlined />}
+              onClick={handleFlashMessageButtonClick}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              Update My Day
+              <ArrowRightOutlined />
+            </Button>,
+            <Button
+              key="dismiss"
+              size="middle"
+              onClick={markPopupAsShown}
+              className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+            >
+              Dismiss
+            </Button>
+          ]}
+        
+        >
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-4 mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
@@ -442,26 +479,11 @@ const SummaryDashboard = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                size="middle"
-                type="primary"
-                icon={<DollarOutlined />}
-                onClick={handleFlashMessageButtonClick}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              >
-                View Dashboard
-                <ArrowRightOutlined />
-              </Button>
-              <Button
-                size="middle"
-                onClick={markPopupAsShown}
-                className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                Dismiss
-              </Button>
+             
             </div>
           </div>
-        </div>
+          </div>
+        </Modal>
       )}
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -549,7 +571,7 @@ const SummaryDashboard = () => {
         )}
       </Space>
 
-      {/* Sales Data Modal */}
+
       <SalesDataModal
         visible={isSalesModalVisible}
         onCancel={handleCloseSalesModal}
@@ -576,10 +598,16 @@ const SummaryDashboard = () => {
           }
         })()}
         autoOpenFromSummary={true}
+        isManuallyTriggered={isManuallyTriggered}
       />
     </div>
     </App>
   );
+};
+
+// PropTypes for better type safety
+SummaryDashboard.propTypes = {
+  // This component doesn't receive props, but we can document it for future use
 };
 
 export default SummaryDashboard;
