@@ -82,6 +82,31 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
 
+  // Calculate week range from startDate and endDate props
+  useEffect(() => {
+    console.log('BudgetDashboard - startDate:', startDate, 'endDate:', endDate);
+    if (startDate && endDate) {
+      // Parse the date strings properly
+      const start = new Date(startDate + 'T00:00:00'); // Add time to avoid timezone issues
+      const end = new Date(endDate + 'T00:00:00');
+      
+      // Check if dates are valid
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const startDay = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endDay = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const weekRangeValue = `${startDay} - ${endDay}`;
+        console.log('Setting weekRange to:', weekRangeValue);
+        setWeekRange(weekRangeValue);
+      } else {
+        console.log('Invalid dates:', startDate, endDate);
+        setWeekRange('');
+      }
+    } else {
+      console.log('startDate or endDate is missing');
+      setWeekRange('');
+    }
+  }, [startDate, endDate]);
+
   // Process data for charts
   // 1) Process incoming dashboard data (compute chartData + summaryData)
   useEffect(() => {
@@ -286,6 +311,12 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     scales: {
       y: {
         beginAtZero: true,
+        suggestedMax: function(context) {
+          // Get the maximum value from the sales budget data
+          const maxValue = Math.max(...chartData.map(item => item.salesBudget));
+          // Add 20% padding above the max value
+          return Math.ceil(maxValue * 1.2);
+        },
         ticks: {
           callback: function(value) {
             return formatCurrency(value);
@@ -356,19 +387,12 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     labels: chartData.map(item => item.day),
     datasets: [
       {
-        label: 'Budget',
-        data: chartData.map(item => item.budgetProfit),
+        label: 'Sales Budget',
+        data: chartData.map(item => item.salesBudget),
         backgroundColor: 'rgba(24, 144, 255, 0.8)',
         borderColor: 'rgba(24, 144, 255, 1)',
         borderWidth: 2,
       },
-      {
-        label: 'Actual',
-        data: chartData.map(item => item.actualProfit),
-        backgroundColor: 'rgba(82, 196, 26, 0.8)',
-        borderColor: 'rgba(82, 196, 26, 1)',
-        borderWidth: 2,
-      }
     ]
   };
   
@@ -607,7 +631,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
                 <h2 className="text-xl font-bold text-orange-600">
-                  {weekRange ? `Daily Profit Loss vs. Actual for week of ${weekRange}` : 'Daily Profit Loss vs. Actual'}
+                  {startDate ? `Daily Profit Loss Trend for week of ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Daily Profit Loss Trend'}
                 </h2>
               </div>
             </div>
