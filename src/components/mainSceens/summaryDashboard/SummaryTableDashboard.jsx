@@ -6,7 +6,7 @@ import SalesDataModal from './SalesDataModal';
 
 const { Title, Text } = Typography;
 
-const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy, onDataRefresh }) => {
+const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, groupBy, onDataRefresh, onPrint }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
   const [dataTimestamp, setDataTimestamp] = useState(Date.now());
@@ -297,10 +297,12 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     window.URL.revokeObjectURL(url);
   }, [generateCSV]);
 
-  // Print handler
+  // Print handler - use the passed onPrint function
   const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+    if (onPrint) {
+      onPrint();
+    }
+  }, [onPrint]);
 
   // Edit handler
   const handleEdit = useCallback(() => {
@@ -724,6 +726,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         onDataSaved={handleEditDataSaved}
         autoOpenFromSummary={true}
       />
+
     </Card>
   );
 };

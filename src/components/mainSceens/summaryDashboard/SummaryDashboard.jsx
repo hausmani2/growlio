@@ -10,6 +10,7 @@ import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
+import PrintOptionsModal from '../../common/PrintOptionsModal';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 
@@ -72,6 +73,7 @@ const SummaryDashboard = () => {
   const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
   const [isManuallyTriggered, setIsManuallyTriggered] = useState(false);
+  const [isPrintModalVisible, setIsPrintModalVisible] = useState(false);
 
   // Flash message state
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
@@ -278,6 +280,180 @@ const SummaryDashboard = () => {
     markPopupAsShown();
     navigate('/dashboard');
   };
+
+  // Print handler
+  const handlePrint = useCallback(() => {
+    setIsPrintModalVisible(true);
+  }, []);
+
+  // Handle print with options
+  const handlePrintWithOptions = useCallback((printOption) => {
+    setIsPrintModalVisible(false);
+    
+    if (printOption === 'report-only') {
+      // For report-only, create a new window with minimal content
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      
+      if (dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0) {
+        let tableHTML = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Budget Dashboard Report</title>
+            <style>
+              @page {
+                size: A4 landscape;
+                margin: 0.3in;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0;
+                padding: 0;
+              }
+              th, td {
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: left;
+                font-size: 11px;
+              }
+              th {
+                background-color: #f0f0f0;
+                font-weight: bold;
+              }
+              .title {
+                font-size: 18px;
+                font-weight: bold;
+                color: #f97316;
+                margin-bottom: 15px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="title">Budget Dashboard Report</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Sales Budget</th>
+                  <th>Labor Budget</th>
+                  <th>Food Cost</th>
+                  <th>Fixed Cost</th>
+                  <th>Variable Cost</th>
+                  <th>Profit/Loss</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        dashboardSummaryData.data.forEach((entry, index) => {
+          const date = entry.date || entry.day || entry.month_start || `Day ${index + 1}`;
+          const salesBudget = parseFloat(entry.sales_budget) || 0;
+          const laborBudget = parseFloat(entry.labour) || 0;
+          const foodCost = parseFloat(entry.food_cost) || 0;
+          const fixedCost = parseFloat(entry.fixed_cost) || 0;
+          const variableCost = parseFloat(entry.variable_cost) || 0;
+          const profitLoss = parseFloat(entry.budgeted_profit_loss) || 0;
+          
+          tableHTML += `
+            <tr>
+              <td>${date}</td>
+              <td style="text-align: right;">$${salesBudget.toFixed(2)}</td>
+              <td style="text-align: right;">$${laborBudget.toFixed(2)}</td>
+              <td style="text-align: right;">$${foodCost.toFixed(2)}</td>
+              <td style="text-align: right;">$${fixedCost.toFixed(2)}</td>
+              <td style="text-align: right;">$${variableCost.toFixed(2)}</td>
+              <td style="text-align: right; color: ${profitLoss >= 0 ? 'green' : 'red'}; font-weight: bold;">$${profitLoss.toFixed(2)}</td>
+            </tr>
+          `;
+        });
+        
+        tableHTML += `
+              </tbody>
+            </table>
+          </body>
+          </html>
+        `;
+        
+        printWindow.document.write(tableHTML);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      }
+    } else {
+      // For "Report with Charts" option, use the original method
+      const printContainer = document.createElement('div');
+      printContainer.className = 'print-container';
+      printContainer.style.position = 'absolute';
+      printContainer.style.left = '-9999px';
+      printContainer.style.top = '0';
+      
+      // Add header information
+      const headerDiv = document.createElement('div');
+      headerDiv.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+          <h1 style="margin: 0; color: #f97316; font-size: 24px;">Growlio Budget Report</h1>
+          <p style="margin: 5px 0; color: #666; font-size: 14px;">Generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+      `;
+      printContainer.appendChild(headerDiv);
+      
+      // Add the report content (SummaryTableDashboard)
+      const reportContent = document.querySelector('.summary-table')?.closest('.ant-card');
+      if (reportContent) {
+        const clonedContent = reportContent.cloneNode(true);
+        const buttons = clonedContent.querySelectorAll('.ant-btn');
+        buttons.forEach(btn => btn.remove());
+        printContainer.appendChild(clonedContent);
+      }
+      
+         // Add charts if requested - only if they have actual content
+         const budgetDashboard = document.querySelector('[class*="space-y-6"]');
+         if (budgetDashboard) {
+           const clonedCharts = budgetDashboard.cloneNode(true);
+           const chartButtons = clonedCharts.querySelectorAll('.ant-btn');
+           chartButtons.forEach(btn => btn.remove());
+           
+           // Remove empty chart containers
+           const emptyContainers = clonedCharts.querySelectorAll('.ant-card, .ant-card-body');
+           emptyContainers.forEach(container => {
+             const hasContent = container.querySelector('canvas, svg, [class*="chart"]') && 
+                               container.offsetHeight > 50; // Minimum height check
+             if (!hasContent) {
+               container.remove();
+             }
+           });
+           
+           // Check if charts have actual content (not empty)
+           const chartElements = clonedCharts.querySelectorAll('canvas, svg, [class*="chart"]');
+           const hasValidCharts = Array.from(chartElements).some(element => {
+             // Check if element has content or is not empty
+             return element.offsetHeight > 0 && element.offsetWidth > 0;
+           });
+           
+           // Only add charts if they have valid content
+           if (hasValidCharts && clonedCharts.children.length > 0) {
+             printContainer.appendChild(clonedCharts);
+           }
+         }
+      
+      // Add to document temporarily
+      document.body.appendChild(printContainer);
+      
+      // Print
+      window.print();
+      
+      // Clean up
+      document.body.removeChild(printContainer);
+    }
+  }, [dashboardSummaryData]);
 
   // Sync calendar state with store state (for backward compatibility)
   useEffect(() => {
@@ -554,6 +730,7 @@ const SummaryDashboard = () => {
                         await fetchSummaryData(startDate, endDate, groupBy);
                       }
                     }}
+                    onPrint={handlePrint}
                   />
                 )}
               </>
@@ -599,6 +776,13 @@ const SummaryDashboard = () => {
         })()}
         autoOpenFromSummary={true}
         isManuallyTriggered={isManuallyTriggered}
+      />
+
+      {/* Print Options Modal */}
+      <PrintOptionsModal
+        visible={isPrintModalVisible}
+        onCancel={() => setIsPrintModalVisible(false)}
+        onPrint={handlePrintWithOptions}
       />
     </div>
     </App>
