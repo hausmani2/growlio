@@ -468,7 +468,7 @@ const Dashboard = () => {
           {/* Right Side - Week Picker */}
           <div className="w-full lg:w-auto">
             <div className="min-w-[220px] w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Week Picker</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Select Week</label>
               <DatePicker
                 picker="week"
                 style={{ width: '100%' }}

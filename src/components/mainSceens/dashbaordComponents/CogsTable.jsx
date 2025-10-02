@@ -67,12 +67,36 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   // Listen for custom event to open COGS modal from SalesTable
   useEffect(() => {
     const handleOpenCogsModal = (event) => {      
-      // Store the event data for later use when data is loaded
-      localStorage.setItem('pendingCogsModal', JSON.stringify({
-        shouldOpen: true,
-        weekStartDate: event.detail.weekStartDate,
-        timestamp: Date.now()
-      }));
+      console.log('COGS table received openCogsModal event:', event.detail);
+      
+      // Try to open modal immediately if data is available
+      if (dashboardData !== null) {
+        console.log('Opening COGS modal immediately - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
+        
+        // Add a small delay to ensure the component is fully rendered
+        setTimeout(() => {
+          // Check if we have data or if we need to add data
+          if (dataNotFound || areAllValuesZero(weeklyData)) {
+            // No data exists, open in add mode
+            console.log('Opening COGS modal in ADD mode');
+            showAddWeeklyModal();
+            message.info('Adding COGS data for the selected week...');
+          } else {
+            // Data exists, open in edit mode
+            console.log('Opening COGS modal in EDIT mode');
+            showEditWeeklyModal(weeklyData[0]);
+            message.info('Editing existing COGS data for the selected week...');
+          }
+        }, 100);
+      } else {
+        // Store the event data for later use when data is loaded
+        localStorage.setItem('pendingCogsModal', JSON.stringify({
+          shouldOpen: true,
+          weekStartDate: event.detail.weekStartDate,
+          timestamp: Date.now()
+        }));
+        console.log('Stored pendingCogsModal in localStorage - data not ready yet');
+      }
     };
 
     // Add event listener
@@ -82,7 +106,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     return () => {
       window.removeEventListener('openCogsModal', handleOpenCogsModal);
     };
-  }, []); // No dependencies - only run once
+  }, [dashboardData, dataNotFound, weeklyData]); // Include dependencies to ensure fresh values
 
   // Check for pending COGS modal after data is processed
   useEffect(() => {
@@ -93,17 +117,23 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         const pendingData = JSON.parse(pendingCogsModal);
         
         if (pendingData.shouldOpen) {
+          console.log('Opening COGS modal from localStorage - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
           
-          // Check if we have data or if we need to add data
-          if (dataNotFound || areAllValuesZero(weeklyData)) {
-            // No data exists, open in add mode
-            showAddWeeklyModal();
-            message.info('Adding COGS data for the selected week...');
-          } else {
-            // Data exists, open in edit mode
-            showEditWeeklyModal(weeklyData[0]);
-            message.info('Editing existing COGS data for the selected week...');
-          }
+          // Add a small delay to ensure the component is fully rendered
+          setTimeout(() => {
+            // Check if we have data or if we need to add data
+            if (dataNotFound || areAllValuesZero(weeklyData)) {
+              // No data exists, open in add mode
+              console.log('Opening COGS modal in ADD mode');
+              showAddWeeklyModal();
+              message.info('Adding COGS data for the selected week...');
+            } else {
+              // Data exists, open in edit mode
+              console.log('Opening COGS modal in EDIT mode');
+              showEditWeeklyModal(weeklyData[0]);
+              message.info('Editing existing COGS data for the selected week...');
+            }
+          }, 100);
           
           // Clear the pending modal data
           localStorage.removeItem('pendingCogsModal');
@@ -318,19 +348,54 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       };
 
              await saveDashboardData(transformedData);
-       message.success(isEditMode ? 'COGS data updated successfully!' : 'COGS data saved successfully!');
-       
-       // Refresh all dashboard data to show updated data across all components
-       if (refreshDashboardData) {
-         await refreshDashboardData();
-       } else {
-         // Fallback: reload data after saving to update totals and remaining COGS
-         processCogsData(); 
-       } 
+      message.success(isEditMode ? 'COGS data updated successfully!' : 'COGS data saved successfully!');
       
-      setIsModalVisible(false);
-      setEditingWeek(null);
-      setIsEditMode(false);
+      // Show confirmation popup asking if user wants to add Labor data
+      Modal.confirm({
+        title: '🎉 COGS Data Saved Successfully!',
+        content: (
+          <div>
+            <p>Your COGS performance data has been saved successfully.</p>
+            <p style={{ marginTop: '8px', fontWeight: 'bold', color: '#1890ff' }}>
+              Would you like to add Labor Costs data for this week?
+            </p>
+          </div>
+        ),
+        okText: 'Yes, Add Labor Data',
+        cancelText: 'No, Later',
+        okType: 'primary',
+        onOk: () => {
+          // Close the COGS modal first
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+                    
+          // Trigger Labor modal opening by dispatching a custom event
+          const weekStartDate = weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD');
+          console.log('Dispatching openLaborModal event with weekStartDate:', weekStartDate);
+          
+          const event = new CustomEvent('openLaborModal', {
+            detail: {
+              weekStartDate: weekStartDate
+            }
+          });
+          window.dispatchEvent(event);
+        },
+        onCancel: () => {
+          // Just close the COGS modal
+          setIsModalVisible(false);
+          setEditingWeek(null);
+          setIsEditMode(false);
+        }
+      });
+      
+      // Refresh all dashboard data to show updated data across all components
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      } else {
+        // Fallback: reload data after saving to update totals and remaining COGS
+        processCogsData(); 
+      }
     } catch (error) {
       message.error(`Failed to ${isEditMode ? 'update' : 'save'} COGS data: ${error.message}`);
     } finally {

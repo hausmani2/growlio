@@ -424,14 +424,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             <div className="font-semibold text-xs text-gray-800">
               {dateInfo.day}
             </div>
-            { isMonthlyView && (
+            { isMonthlyView ? (
+              <div className="text-xs text-gray-600">
+                {dateInfo.date}
+              </div>
+            ) : (
               <div className="text-xs text-gray-600">
                 {dateInfo.date}
               </div>
             )}
-            {/* <div className="text-xs text-gray-600">
-              {dateInfo.date}
-            </div> */}
           </div>
         ),
         dataIndex: uniqueKey,

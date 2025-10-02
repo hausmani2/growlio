@@ -174,6 +174,83 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     }
   }, [dashboardData, weekDays]);
 
+  // Listen for custom event to open Labor modal from COGS table
+  useEffect(() => {
+    const handleOpenLaborModal = (event) => {      
+      console.log('Labor table received openLaborModal event:', event.detail);
+      
+      // Try to open modal immediately if data is available
+      if (dashboardData !== null) {
+        console.log('Opening Labor modal immediately - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
+        
+        // Add a small delay to ensure the component is fully rendered
+        setTimeout(() => {
+          // Check if we have data or if we need to add data
+          if (dataNotFound || areAllValuesZero(weeklyData)) {
+            // No data exists, open in add mode
+            showAddWeeklyModal();
+            message.info('Adding Labor data for the selected week...');
+          } else {
+            // Data exists, open in edit mode
+            showEditWeeklyModal(weeklyData[0]);
+            message.info('Editing existing Labor data for the selected week...');
+          }
+        }, 100);
+      } else {
+        // Store the event data for later use when data is loaded
+        localStorage.setItem('pendingLaborModal', JSON.stringify({
+          shouldOpen: true,
+          weekStartDate: event.detail.weekStartDate,
+          timestamp: Date.now()
+        }));
+        console.log('Stored pendingLaborModal in localStorage - data not ready yet');
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('openLaborModal', handleOpenLaborModal);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener('openLaborModal', handleOpenLaborModal);
+    };
+  }, [dashboardData, dataNotFound, weeklyData]); // Include dependencies to ensure fresh values
+
+  // Check for pending Labor modal after data is processed
+  useEffect(() => {
+    const pendingLaborModal = localStorage.getItem('pendingLaborModal');
+    
+    if (pendingLaborModal && dashboardData !== null) { // Only proceed if dashboard data has been loaded
+      try {
+        const pendingData = JSON.parse(pendingLaborModal);
+        
+        if (pendingData.shouldOpen) {
+          
+          // Add a small delay to ensure the component is fully rendered
+          setTimeout(() => {
+            // Check if we have data or if we need to add data
+            if (dataNotFound || areAllValuesZero(weeklyData)) {
+              // No data exists, open in add mode
+              showAddWeeklyModal();
+              message.info('Adding Labor data for the selected week...');
+            } else {
+              // Data exists, open in edit mode
+              console.log('Opening Labor modal in EDIT mode');
+              showEditWeeklyModal(weeklyData[0]);
+              message.info('Editing existing Labor data for the selected week...');
+            }
+          }, 100);
+          
+          // Clear the pending modal data
+          localStorage.removeItem('pendingLaborModal');
+        }
+      } catch (error) {
+        console.error('Error processing pending Labor modal:', error);
+        localStorage.removeItem('pendingLaborModal');
+      }
+    }
+  }, [dashboardData, dataNotFound, weeklyData]); // Depend on processed data
+
   // Helper function to check if all values in weeklyData are zeros
   const areAllValuesZero = (weeklyData) => {
     if (!weeklyData || weeklyData.length === 0) return true;

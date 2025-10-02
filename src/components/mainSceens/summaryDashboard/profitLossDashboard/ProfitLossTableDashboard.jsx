@@ -577,11 +577,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <div className="font-semibold text-sm text-gray-800">
                 {dateInfo.day}
               </div>
-              {viewMode === 'monthly' && (
-                <div className="text-xs text-gray-600">
-                  {dateInfo.date}
-                </div>
-              )}
+              <div className="text-xs text-gray-600">
+                {dateInfo.date}
+              </div>
             </div>
           ),
           dataIndex: uniqueKey,
