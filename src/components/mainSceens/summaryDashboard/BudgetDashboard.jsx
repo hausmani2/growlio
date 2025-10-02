@@ -382,7 +382,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     ]
   };
 
-  // Profit trend chart data - now a bar chart with Budget vs Actual
+  // Sales comparison chart data - Budget vs Actual
   const profitChartData = {
     labels: chartData.map(item => item.day),
     datasets: [
@@ -393,6 +393,13 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         borderColor: 'rgba(24, 144, 255, 1)',
         borderWidth: 2,
       },
+      // {
+      //   label: 'Sales Actual',
+      //   data: chartData.map(item => item.salesActual),
+      //   backgroundColor: 'rgba(82, 196, 26, 0.8)',
+      //   borderColor: 'rgba(82, 196, 26, 1)',
+      //   borderWidth: 2,
+      // }
     ]
   };
   
