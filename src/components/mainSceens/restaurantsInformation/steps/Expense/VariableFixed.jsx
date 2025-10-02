@@ -23,52 +23,89 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
         }
     }, [data.dynamicVariableFields]);
 
-    // Automatically add Royalty and Brand/Ad Fund fields when isFranchise is true
+    // Handle API data vs franchise logic for royalty and brand fields
     useEffect(() => {
-        if (isFranchise) {
-            let updatedFields = [...dynamicFields];
-            let hasChanges = false;
+        // If we have API data, use it as the source of truth
+        if (data.dynamicVariableFields && data.dynamicVariableFields.length > 0) {
+            let apiFields = [...data.dynamicVariableFields];
             
-            // Check if Royalty field already exists
-            const hasRoyaltyField = dynamicFields.some(field => 
-                field.label.toLowerCase().includes('royalty')
-            );
+            if (isFranchise) {
+                // If franchise is true, ensure royalty and brand fields exist
+                const hasRoyaltyField = apiFields.some(field => 
+                    field.label.toLowerCase().includes('royalty')
+                );
+                
+                const hasBrandAdFundField = apiFields.some(field => 
+                    field.label.toLowerCase().includes('brand') || field.label.toLowerCase().includes('ad fund')
+                );
+                
+                // Add missing fields if they don't exist in API data
+                if (!hasRoyaltyField) {
+                    apiFields.push({
+                        id: Date.now() + Math.random(),
+                        label: "Royalty",
+                        value: "",
+                        key: `dynamic_variable_royalty_${Date.now()}_${Math.random()}`,
+                        variable_expense_type: "monthly"
+                    });
+                }
+                
+                if (!hasBrandAdFundField) {
+                    apiFields.push({
+                        id: Date.now() + Math.random() + 1,
+                        label: "Brand/Ad Fund",
+                        value: "",
+                        key: `dynamic_variable_brand_ad_fund_${Date.now()}_${Math.random()}`,
+                        variable_expense_type: "monthly"
+                    });
+                }
+            } else {
+                // If not franchise, remove royalty and brand fields from API data
+                apiFields = apiFields.filter(field => 
+                    !field.label.toLowerCase().includes('royalty') && 
+                    !field.label.toLowerCase().includes('brand') && 
+                    !field.label.toLowerCase().includes('ad fund')
+                );
+            }
             
-            if (!hasRoyaltyField) {
-                const royaltyField = {
+            setDynamicFields(apiFields);
+            memoizedUpdateData('dynamicVariableFields', apiFields);
+        } else if (isFranchise) {
+            // If no API data but franchise is true, add royalty and brand fields
+            const franchiseFields = [
+                {
                     id: Date.now() + Math.random(),
                     label: "Royalty",
                     value: "",
                     key: `dynamic_variable_royalty_${Date.now()}_${Math.random()}`,
                     variable_expense_type: "monthly"
-                };
-                updatedFields.push(royaltyField);
-                hasChanges = true;
-            }
-            
-            // Check if Brand/Ad Fund field already exists
-            const hasBrandAdFundField = dynamicFields.some(field => 
-                field.label.toLowerCase().includes('brand') || field.label.toLowerCase().includes('ad fund')
-            );
-            
-            if (!hasBrandAdFundField) {
-                const brandAdFundField = {
+                },
+                {
                     id: Date.now() + Math.random() + 1,
                     label: "Brand/Ad Fund",
                     value: "",
                     key: `dynamic_variable_brand_ad_fund_${Date.now()}_${Math.random()}`,
                     variable_expense_type: "monthly"
-                };
-                updatedFields.push(brandAdFundField);
-                hasChanges = true;
-            }
+                }
+            ];
             
-            if (hasChanges) {
-                setDynamicFields(updatedFields);
-                memoizedUpdateData('dynamicVariableFields', updatedFields);
+            setDynamicFields(franchiseFields);
+            memoizedUpdateData('dynamicVariableFields', franchiseFields);
+        } else {
+            // If not franchise and no API data, ensure no royalty/brand fields exist
+            const filteredFields = dynamicFields.filter(field => 
+                !field.label.toLowerCase().includes('royalty') && 
+                !field.label.toLowerCase().includes('brand') && 
+                !field.label.toLowerCase().includes('ad fund')
+            );
+            
+            if (filteredFields.length !== dynamicFields.length) {
+                setDynamicFields(filteredFields);
+                memoizedUpdateData('dynamicVariableFields', filteredFields);
             }
         }
-    }, [isFranchise]); // Removed dynamicFields and memoizedUpdateData from dependencies to prevent infinite loops
+    }, [data.dynamicVariableFields, isFranchise]);
+
 
     // Helper function to check if field should show percentage dropdown
     const shouldShowPercentageDropdown = (label) => {
