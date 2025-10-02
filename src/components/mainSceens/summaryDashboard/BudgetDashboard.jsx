@@ -323,6 +323,16 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           }
         }
       }
+    },
+    elements: {
+      line: {
+        tension: 0.4, // Smooth curves
+        borderWidth: 3,
+      },
+      point: {
+        radius: 5,
+        hoverRadius: 8,
+      }
     }
   };
 
@@ -389,16 +399,26 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       {
         label: 'Sales Budget',
         data: chartData.map(item => item.salesBudget),
-        backgroundColor: 'rgba(24, 144, 255, 0.8)',
+        backgroundColor: 'rgba(24, 144, 255, 0.1)',
         borderColor: 'rgba(24, 144, 255, 1)',
-        borderWidth: 2,
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgba(24, 144, 255, 1)',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
       },
       // {
       //   label: 'Sales Actual',
       //   data: chartData.map(item => item.salesActual),
-      //   backgroundColor: 'rgba(82, 196, 26, 0.8)',
+      //   backgroundColor: 'rgba(82, 196, 26, 0.1)',
       //   borderColor: 'rgba(82, 196, 26, 1)',
-      //   borderWidth: 2,
+      //   borderWidth: 3,
+      //   fill: true,
+      //   tension: 0.4,
+      //   pointBackgroundColor: 'rgba(82, 196, 26, 1)',
+      //   pointBorderColor: '#ffffff',
+      //   pointBorderWidth: 2,
       // }
     ]
   };
@@ -643,7 +663,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
               </div>
             </div>
             <div style={{ height: '300px' }}>
-              <Bar data={profitChartData} options={chartOptions} />
+              <Line data={profitChartData} options={chartOptions} />
             </div>
           </Card>
         </Col>
