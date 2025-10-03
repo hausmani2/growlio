@@ -9,6 +9,8 @@ import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
 import ProfitLossCategoryPie from './ProfitLossCategoryPie';
 import ProfitLossTrendLine from './ProfitLossTrendLine';
+import PrintOptionsModal from '../../../common/PrintOptionsModal';
+import { printUtils } from '../../../../utils/printUtils';
 
 /**
  * ProfitLossDashboard Component
@@ -38,6 +40,9 @@ const ProfitLossDashboard = () => {
   const [calendarDateRange, setCalendarDateRange] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(null);
+  
+  // Print functionality state
+  const [isPrintModalVisible, setIsPrintModalVisible] = useState(false);
 
   // Initialize with current week
   useEffect(() => {
@@ -115,6 +120,24 @@ const ProfitLossDashboard = () => {
     }
   }, [calendarDateRange, fetchSummaryData]);
 
+  // Print handlers
+  const handlePrint = useCallback(() => {
+    setIsPrintModalVisible(true);
+  }, []);
+
+  const handlePrintWithOptions = useCallback((printOption) => {
+    setIsPrintModalVisible(false);
+    
+    // Debug logging
+    console.log('Print option:', printOption);
+    console.log('dashboardSummaryData:', dashboardSummaryData);
+    
+    // Use dashboardSummaryData as the data source for printing
+    const dataToUse = dashboardSummaryData?.data || dashboardSummaryData;
+    console.log('Data to use for print:', dataToUse);
+    
+    printUtils.handleProfitLossPrint(printOption, dataToUse, dashboardSummaryData, dashboardSummaryData);
+  }, [dashboardSummaryData]);
 
 
   // Initialize dashboard and fetch initial data
@@ -234,6 +257,7 @@ const ProfitLossDashboard = () => {
                       loading={summaryLoading}
                       error={summaryError}
                       viewMode={groupBy}
+                      onPrint={handlePrint}
                     />
                   </div>
                 </div>
@@ -253,6 +277,13 @@ const ProfitLossDashboard = () => {
         )}
 
       </div>
+      
+      {/* Print Options Modal */}
+      <PrintOptionsModal
+        visible={isPrintModalVisible}
+        onCancel={() => setIsPrintModalVisible(false)}
+        onPrint={handlePrintWithOptions}
+      />
     </div>
   );
 };
