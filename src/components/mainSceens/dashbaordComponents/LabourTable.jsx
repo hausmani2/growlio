@@ -1254,20 +1254,24 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 dataIndex: 'dailyLaborRate',
                                 key: 'dailyLaborRate',
                                 width: 180,
-                                render: (value, record) => {
+                                render: (value, record, index) => {
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  // Calculate weighted average hourly rate for the week
+                                  // Calculate cumulative average hourly rate up to this day
                                   const weekData = weeklyData[0]?.dailyData || [];
-                                  const totalLabor = weekData.reduce((sum, day) => {
+                                  const daysUpToCurrent = weekData.slice(0, index + 1);
+                                  
+                                  const cumulativeLabor = daysUpToCurrent.reduce((sum, day) => {
                                     return day.restaurantOpen !== false ? sum + (parseFloat(day.actualLaborDollars) || 0) : sum;
                                   }, 0);
-                                  const totalHours = weekData.reduce((sum, day) => {
+                                  
+                                  const cumulativeHours = daysUpToCurrent.reduce((sum, day) => {
                                     return day.restaurantOpen !== false ? sum + (parseFloat(day.laborHoursActual) || 0) : sum;
                                   }, 0);
-                                  const weightedAvgRate = totalHours > 0 ? (totalLabor / totalHours) : 0;
-                                  return <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${weightedAvgRate.toFixed(2)}/hr</Text>;
+                                  
+                                  const cumulativeAvgRate = cumulativeHours > 0 ? (cumulativeLabor / cumulativeHours) : 0;
+                                  return <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${cumulativeAvgRate.toFixed(2)}/hr</Text>;
                                 }
                               },
                               {

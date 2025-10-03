@@ -180,9 +180,27 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
       }
       
-      // Calculate budget and actual profit/loss
-      const budgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
-      const actualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
+      // Use the pre-calculated profit/loss values from the data if available
+      const budgetProfit = parseFloat(entry.budgeted_profit_loss ?? entry.budgetProfit ?? 0) || 
+                          (salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget));
+      const actualProfit = parseFloat(entry.actual_profit_loss ?? entry.actualProfit ?? 0) || 
+                          (salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual));
+      
+      // Debug logging to identify the $10 discrepancy
+      if (Math.abs(actualProfit - 530) < 20) { // If we're close to $530
+        const calculatedBudgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
+        const calculatedActualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
+        
+        console.log('Debug Profit Calculation:', {
+          day: dayLabel,
+          preCalculatedBudgetProfit: entry.budgeted_profit_loss,
+          preCalculatedActualProfit: entry.actual_profit_loss,
+          ourCalculatedBudgetProfit: calculatedBudgetProfit,
+          ourCalculatedActualProfit: calculatedActualProfit,
+          difference: calculatedBudgetProfit - (entry.budgeted_profit_loss || 0),
+          rawEntry: entry
+        });
+      }
 
       const processedEntry = {
         day: dayLabel,
@@ -310,12 +328,18 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     },
     scales: {
       y: {
-        beginAtZero: true,
+        beginAtZero: false, // Allow negative values for profit/loss
         suggestedMax: function(context) {
-          // Get the maximum value from the sales budget data
-          const maxValue = Math.max(...chartData.map(item => item.salesBudget));
+          // Get the maximum value from budget profit data only
+          const maxValue = Math.max(...chartData.map(item => item.budgetProfit));
           // Add 20% padding above the max value
           return Math.ceil(maxValue * 1.2);
+        },
+        suggestedMin: function(context) {
+          // Get the minimum value from budget profit data only
+          const minValue = Math.min(...chartData.map(item => item.budgetProfit));
+          // Add 20% padding below the min value
+          return Math.floor(minValue * 1.2);
         },
         ticks: {
           callback: function(value) {
@@ -392,13 +416,13 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     ]
   };
 
-  // Sales comparison chart data - Budget vs Actual
+  // Profit/Loss chart data - Budget only
   const profitChartData = {
     labels: chartData.map(item => item.day),
     datasets: [
       {
-        label: 'Sales Budget',
-        data: chartData.map(item => item.salesBudget),
+        label: 'Budget Profit/Loss',
+        data: chartData.map(item => item.budgetProfit),
         backgroundColor: 'rgba(24, 144, 255, 0.1)',
         borderColor: 'rgba(24, 144, 255, 1)',
         borderWidth: 3,
@@ -407,19 +431,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         pointBackgroundColor: 'rgba(24, 144, 255, 1)',
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
-      },
-      // {
-      //   label: 'Sales Actual',
-      //   data: chartData.map(item => item.salesActual),
-      //   backgroundColor: 'rgba(82, 196, 26, 0.1)',
-      //   borderColor: 'rgba(82, 196, 26, 1)',
-      //   borderWidth: 3,
-      //   fill: true,
-      //   tension: 0.4,
-      //   pointBackgroundColor: 'rgba(82, 196, 26, 1)',
-      //   pointBorderColor: '#ffffff',
-      //   pointBorderWidth: 2,
-      // }
+      }
     ]
   };
   
@@ -658,7 +670,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
                 <h2 className="text-xl font-bold text-orange-600">
-                  {startDate ? `Daily Profit Loss Trend for week of ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Daily Profit Loss Trend'}
+                  {startDate ? `Daily Budgeted Profit Loss Trend for week of ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Daily Budgeted Profit Loss Trend'}
                 </h2>
               </div>
             </div>
