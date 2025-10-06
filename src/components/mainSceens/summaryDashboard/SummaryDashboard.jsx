@@ -10,6 +10,7 @@ import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
+import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 
@@ -278,6 +279,11 @@ const SummaryDashboard = () => {
     markPopupAsShown();
     navigate('/dashboard');
   };
+
+  // Print handler - directly print report only
+  const handlePrint = useCallback(() => {
+    printUtils.handleSummaryPrint(dashboardSummaryData);
+  }, [dashboardSummaryData]);
 
   // Sync calendar state with store state (for backward compatibility)
   useEffect(() => {
@@ -554,6 +560,7 @@ const SummaryDashboard = () => {
                         await fetchSummaryData(startDate, endDate, groupBy);
                       }
                     }}
+                    onPrint={handlePrint}
                   />
                 )}
               </>
@@ -600,6 +607,7 @@ const SummaryDashboard = () => {
         autoOpenFromSummary={true}
         isManuallyTriggered={isManuallyTriggered}
       />
+
     </div>
     </App>
   );

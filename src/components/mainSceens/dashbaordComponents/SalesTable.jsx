@@ -787,13 +787,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           setEditingWeek(null);
           setIsEditMode(false);
           
-          // Show message that COGS modal will open
-          message.info('Opening COGS data modal...');
           
           // Trigger COGS modal opening by dispatching a custom event
+          const weekStartDate = weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null;
+          console.log('Dispatching openCogsModal event with weekStartDate:', weekStartDate);
+          
           const event = new CustomEvent('openCogsModal', {
             detail: {
-              weekStartDate: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null
+              weekStartDate: weekStartDate
             }
           });
           window.dispatchEvent(event);
@@ -1949,7 +1950,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                  </div>
                  
                  <div>
-                   <Text strong>% Actual vs Budgeted Sales:</Text>
+                   <Text strong>Actual vs Budget Sales (% Over/Under):</Text>
                    <Input
                      value={(() => {
                        const budgetedSales = weeklyTotals.budgetedSales || 0;

@@ -11,7 +11,7 @@ import VariableCostDetailDropdown from './VariableCostDetailDropdown';
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
-const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode }) => {
+const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading, error, viewMode, onPrint }) => {
   const [tableData, setTableData] = useState([]);
   const [processedData, setProcessedData] = useState({});
   const [expandedRows, setExpandedRows] = useState(new Set());
@@ -153,8 +153,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       food_cost_actual: {},
       food_cost_profit: {},
       hours: {},
+      hours_actual: {},
       amount: {},
       average_hourly_rate: {},
+      actual_daily_labor_rate: {},
       profit_loss: {},
       fixedCost: {},
       variableCost: {},
@@ -181,6 +183,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       processed.sales_actual[dateKey] = parseNumericValue(entry.sales_actual);
       processed.sales_budeget_profit[dateKey] = parseNumericValue(entry.sales_budeget_profit);
       processed.labour[dateKey] = parseNumericValue(entry.labour);
+      processed.hours_actual[dateKey] = parseNumericValue(entry.hours_actual);
+      processed.actual_daily_labor_rate[dateKey] = parseNumericValue(entry.actual_daily_labor_rate);
       processed.labour_actual[dateKey] = parseNumericValue(entry.labour_actual);
       processed.labour_profit[dateKey] = parseNumericValue(entry.labour_profit);
       processed.food_cost[dateKey] = parseNumericValue(entry.food_cost);
@@ -577,11 +581,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <div className="font-semibold text-sm text-gray-800">
                 {dateInfo.day}
               </div>
-              {viewMode === 'monthly' && (
-                <div className="text-xs text-gray-600">
-                  {dateInfo.date}
-                </div>
-              )}
+              <div className="text-xs text-gray-600">
+                {dateInfo.date}
+              </div>
             </div>
           ),
           dataIndex: uniqueKey,
@@ -706,7 +708,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Handle currency fields
     if (categoryKey === 'sales_actual' || categoryKey === 'food_cost_actual' || 
         categoryKey === 'fixedCost' || categoryKey === 'variableCost' ||
-        categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
+        categoryKey === 'amount' || categoryKey === 'actual_daily_labor_rate' || 
         categoryKey === 'profit_loss') {
       const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
       
@@ -867,7 +869,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     // Handle number fields
-    if (categoryKey === 'labour_actual' || categoryKey === 'hours') {
+    if (categoryKey === 'labour_actual' || categoryKey === 'hours_actual') {
       // Simple formatting for labour_actual
       const formattedLabourValue = formatValue(rawValue, categoryKey);
       
@@ -1083,10 +1085,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     window.URL.revokeObjectURL(url);
   }, [generateCSV]);
 
-  // Print handler
+  // Print handler - use the passed onPrint function
   const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+    if (onPrint) {
+      onPrint();
+    }
+  }, [onPrint]);
 
   // Function to get display text for format
   const getFormatDisplayText = (format) => {
@@ -1159,6 +1163,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       food_cost: 0,
       food_cost_actual: 0,
       hours: 0,
+      hours_actual: 0,
       fixed_costs: 0,
       variable_costs: 0,
       fixed_costs_percent: 0,
@@ -1176,7 +1181,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
        totals.labour_actual += parseFloat(entry.labour_actual || entry.amount) || 0;
        totals.food_cost += parseFloat(entry.food_cost) || 0;
        totals.food_cost_actual += parseFloat(entry.food_cost_actual) || 0;
-       totals.hours += parseFloat(entry.hours) || 0;
+       totals.hours_actual += parseFloat(entry.hours_actual) || 0;
        totals.tickets += parseFloat(entry.tickets) || 0;
        totals.app_online_sales += parseFloat(entry.app_online_sales) || 0;
        totals.in_store_sales += parseFloat(entry.in_store_sales || entry['in-store_sales']) || 0;
@@ -1243,12 +1248,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Total Hours</div>
-              <div className="text-sm font-bold text-gray-900">{formatNumber(totals.hours)}</div>
+              <div className="text-sm font-bold text-gray-900">{formatNumber(totals.hours_actual)}</div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-600">Avg Hourly Rate</div>
               <div className="text-sm font-bold text-gray-900">
-                {tableData && tableData.length > 0 ? formatValue(tableData[0].average_hourly_rate, 'average_hourly_rate') : formatValue(0, 'average_hourly_rate')}
+                {tableData && tableData.length > 0 ? formatValue(tableData[0].actual_daily_labor_rate, 'actual_daily_labor_rate') : formatValue(0, 'actual_daily_labor_rate')}
               </div>
             </div>
           </div>
@@ -1475,10 +1480,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       parseFloat(laborData.labour_actual) || 
       parseFloat(laborData.amount) || 
       parseFloat(laborData.actual_labor_dollars) || 0;
-    const laborHours = parseFloat(laborData.hours) || 
-                      parseFloat(laborData.labor_hours_actual) || 
+    const laborHours = parseFloat(laborData.labor_hours_actual) || 
                       parseFloat(laborData.hours_actual) || 0;
-    const averageHourlyRate = parseFloat(laborData.average_hourly_rate) || 0;
+    const averageHourlyRate = parseFloat(laborData.actual_daily_labor_rate) || 0;
     const amtOverUnder = parseFloat(laborData.labour_amount) || 0;
     const percentOverUnder = parseFloat(laborData.labour_amount_percent) || 0;
 
@@ -2067,6 +2071,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           })}
         </div>
       </div>
+      
     </Card>
   );
 };

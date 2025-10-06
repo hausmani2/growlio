@@ -9,6 +9,7 @@ import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
 import ProfitLossCategoryPie from './ProfitLossCategoryPie';
 import ProfitLossTrendLine from './ProfitLossTrendLine';
+import { printUtils } from '../../../../utils/printUtils';
 
 /**
  * ProfitLossDashboard Component
@@ -38,6 +39,8 @@ const ProfitLossDashboard = () => {
   const [calendarDateRange, setCalendarDateRange] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(null);
+  
+  // Print functionality state
 
   // Initialize with current week
   useEffect(() => {
@@ -115,6 +118,12 @@ const ProfitLossDashboard = () => {
     }
   }, [calendarDateRange, fetchSummaryData]);
 
+  // Print handler - directly print report only
+  const handlePrint = useCallback(() => {
+    // Use dashboardSummaryData as the data source for printing
+    const dataToUse = dashboardSummaryData?.data || dashboardSummaryData;
+    printUtils.handleProfitLossPrint(dataToUse, dashboardSummaryData, dashboardSummaryData);
+  }, [dashboardSummaryData]);
 
 
   // Initialize dashboard and fetch initial data
@@ -234,6 +243,7 @@ const ProfitLossDashboard = () => {
                       loading={summaryLoading}
                       error={summaryError}
                       viewMode={groupBy}
+                      onPrint={handlePrint}
                     />
                   </div>
                 </div>
@@ -253,6 +263,7 @@ const ProfitLossDashboard = () => {
         )}
 
       </div>
+      
     </div>
   );
 };

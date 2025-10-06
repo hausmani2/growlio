@@ -60,35 +60,21 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     lastKey.current = key;
     fetchProfitLossCategorySummary(startDate, endDate).then((res) => {
       if (!res) return;
+      
+      // Handle the new data structure
       const payloadCategories = res.categories || res.data?.categories || [];
+      const subcategories = res.subcategories || res.data?.subcategories || {};
       
-      // Enhanced categories including fixed and variable costs
-      const enhancedCategories = [
-        ...payloadCategories,
-        // Add fixed costs if not already present
-        ...(payloadCategories.find(c => c.key === 'fixed_costs') ? [] : [{
-          key: 'fixed_costs',
-          label: 'Fixed Costs',
-          value: res.fixed_costs || res.data?.fixed_costs || 0
-        }]),
-        // Add variable costs if not already present
-        ...(payloadCategories.find(c => c.key === 'variable_costs') ? [] : [{
-          key: 'variable_costs',
-          label: 'Variable Costs',
-          value: res.variable_costs || res.data?.variable_costs || 0
-        }])
-      ];
+      setCategories(payloadCategories);
+      setSignedValues(payloadCategories.map((c) => c.value));
       
-      setCategories(enhancedCategories);
-      setSignedValues(enhancedCategories.map((c) => c.value));
-      
-      // Store detailed breakdowns for dropdown functionality
+      // Store detailed breakdowns for dropdown functionality using subcategories
       setDetailedBreakdowns({
-        sales: res.sales_breakdown || res.data?.sales_breakdown || [],
-        fixed_costs: res.fixed_costs_breakdown || res.data?.fixed_costs_breakdown || [],
-        variable_costs: res.variable_costs_breakdown || res.data?.variable_costs_breakdown || [],
-        labor: res.labor_breakdown || res.data?.labor_breakdown || [],
-        cogs: res.cogs_breakdown || res.data?.cogs_breakdown || []
+        sales: subcategories.sales || [],
+        labor: subcategories.labor || [],
+        food: subcategories.food || [],
+        fixed_expenses: subcategories.fixed_expenses || [],
+        variable_expenses: subcategories.variable_expenses || [],
       });
     });
   }, [startDate, endDate, fetchProfitLossCategorySummary]);
@@ -99,45 +85,12 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       return categories;
     }
     
-    // For detailed breakdowns, create mock data if not available
+    // For detailed breakdowns, use the actual subcategories data
     const breakdownData = detailedBreakdowns[selectedView] || [];
     
-    // If no breakdown data is available, create some sample data for demonstration
+    // If no breakdown data is available, return empty array
     if (breakdownData.length === 0) {
-      switch (selectedView) {
-        case 'sales':
-          return [
-            { key: 'in_store', label: 'In-Store', value: 4500 },
-            { key: 'third_party', label: '3rd-Party', value: 800 },
-            { key: 'online', label: 'Online Ordering', value: 700 }
-          ];
-        case 'fixed_costs':
-          return [
-            { key: 'rent', label: 'Rent', value: -2000 },
-            { key: 'utilities', label: 'Utilities', value: -500 },
-            { key: 'insurance', label: 'Insurance', value: -300 }
-          ];
-        case 'variable_costs':
-          return [
-            { key: 'marketing', label: 'Marketing', value: -400 },
-            { key: 'packaging', label: 'Packaging', value: -200 },
-            { key: 'supplies', label: 'Supplies', value: -150 }
-          ];
-        case 'labor':
-          return [
-            { key: 'wages', label: 'Wages', value: -2500 },
-            { key: 'benefits', label: 'Benefits', value: -300 },
-            { key: 'overtime', label: 'Overtime', value: -200 }
-          ];
-        case 'cogs':
-          return [
-            { key: 'food', label: 'Food Cost', value: -1800 },
-            { key: 'beverages', label: 'Beverages', value: -400 },
-            { key: 'supplies', label: 'Kitchen Supplies', value: -100 }
-          ];
-        default:
-          return categories;
-      }
+      return [];
     }
     
     return breakdownData;
@@ -148,38 +101,30 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     const colorMap = {
       // Sales categories
       'sales': '#22c55e', // Green
-      'sales_budget': '#22c55e', // Green
-      'sales_actual': '#22c55e', // Green
       'in_store': '#22c55e', // Green
-      'third_party': '#16a34a', // Darker green
-      'online': '#10b981', // Teal green
+      'app_online': '#16a34a', // Darker green
+      'third_party': '#10b981', // Teal green
       
       // Labor categories
       'labor': '#ef4444', // Red
-      'labor_budget': '#ef4444', // Red
       'labor_actual': '#ef4444', // Red
-      'wages': '#ef4444', // Red
-      'benefits': '#dc2626', // Darker red
-      'overtime': '#f87171', // Light red
+      'labor_budget': '#dc2626', // Darker red
       
-      // COGS categories
-      'food_cost': '#3b82f6', // Blue
-      'cogs': '#3b82f6', // Blue
+      // Food/COGS categories
       'food': '#3b82f6', // Blue
-      'beverages': '#2563eb', // Darker blue
-      'kitchen supplies': '#60a5fa', // Light blue
+      'cogs_actual': '#3b82f6', // Blue
+      'cogs_budget': '#2563eb', // Darker blue
       
-      // Fixed costs
-      'fixed_costs': '#f97316', // Orange
-      'rent': '#f97316', // Orange
-      'utilities': '#ea580c', // Darker orange
-      'insurance': '#fb923c', // Light orange
+      // Fixed expenses
+      'fixed_expenses': '#f97316', // Orange
+      'fixed_rent': '#f97316', // Orange
       
-      // Variable costs
-      'variable_costs': '#eab308', // Yellow
-      'marketing': '#eab308', // Yellow
-      'packaging': '#ca8a04', // Darker yellow
-      'supplies': '#facc15', // Light yellow
+      // Variable expenses
+      'variable_expenses': '#eab308', // Yellow
+      'variable_royalty': '#eab308', // Yellow
+      'variable_brand/ad fund': '#ca8a04', // Darker yellow
+      
+
     };
     
     const bg = currentData.map((c) => {
@@ -227,10 +172,10 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
   const dropdownOptions = [
     { value: 'totals', label: 'Totals' },
     { value: 'sales', label: 'Sales Breakdown' },
-    { value: 'fixed_costs', label: 'Fixed Costs Breakdown' },
-    { value: 'variable_costs', label: 'Variable Costs Breakdown' },
     { value: 'labor', label: 'Labor Breakdown' },
-    { value: 'cogs', label: 'COGS Breakdown' }
+    { value: 'food', label: 'Food Cost Breakdown' },
+    { value: 'fixed_expenses', label: 'Fixed Expenses Breakdown' },
+    { value: 'variable_expenses', label: 'Variable Expenses Breakdown' },
   ];
 
   // Handle dropdown change
@@ -268,9 +213,9 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
         <p>
           <span className="font-medium text-green-600">Green</span>: Sales; 
           <span className="font-medium text-red-600"> Red</span>: Labor; 
-          <span className="font-medium text-blue-600"> Blue</span>: COGS; 
-          <span className="font-medium text-orange-600"> Orange</span>: Fixed Costs; 
-          <span className="font-medium text-yellow-600"> Yellow</span>: Variable Costs
+          <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
+          <span className="font-medium text-orange-600"> Orange</span>: Fixed Expenses; 
+          <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses;
         </p>
       </div>
     </Card>

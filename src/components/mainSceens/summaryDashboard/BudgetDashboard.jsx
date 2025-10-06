@@ -82,6 +82,31 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
 
+  // Calculate week range from startDate and endDate props
+  useEffect(() => {
+    console.log('BudgetDashboard - startDate:', startDate, 'endDate:', endDate);
+    if (startDate && endDate) {
+      // Parse the date strings properly
+      const start = new Date(startDate + 'T00:00:00'); // Add time to avoid timezone issues
+      const end = new Date(endDate + 'T00:00:00');
+      
+      // Check if dates are valid
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const startDay = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endDay = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const weekRangeValue = `${startDay} - ${endDay}`;
+        console.log('Setting weekRange to:', weekRangeValue);
+        setWeekRange(weekRangeValue);
+      } else {
+        console.log('Invalid dates:', startDate, endDate);
+        setWeekRange('');
+      }
+    } else {
+      console.log('startDate or endDate is missing');
+      setWeekRange('');
+    }
+  }, [startDate, endDate]);
+
   // Process data for charts
   // 1) Process incoming dashboard data (compute chartData + summaryData)
   useEffect(() => {
@@ -155,9 +180,27 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
       }
       
-      // Calculate budget and actual profit/loss
-      const budgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
-      const actualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
+      // Use the pre-calculated profit/loss values from the data if available
+      const budgetProfit = parseFloat(entry.budgeted_profit_loss ?? entry.budgetProfit ?? 0) || 
+                          (salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget));
+      const actualProfit = parseFloat(entry.actual_profit_loss ?? entry.actualProfit ?? 0) || 
+                          (salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual));
+      
+      // Debug logging to identify the $10 discrepancy
+      if (Math.abs(actualProfit - 530) < 20) { // If we're close to $530
+        const calculatedBudgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
+        const calculatedActualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
+        
+        console.log('Debug Profit Calculation:', {
+          day: dayLabel,
+          preCalculatedBudgetProfit: entry.budgeted_profit_loss,
+          preCalculatedActualProfit: entry.actual_profit_loss,
+          ourCalculatedBudgetProfit: calculatedBudgetProfit,
+          ourCalculatedActualProfit: calculatedActualProfit,
+          difference: calculatedBudgetProfit - (entry.budgeted_profit_loss || 0),
+          rawEntry: entry
+        });
+      }
 
       const processedEntry = {
         day: dayLabel,
@@ -285,12 +328,34 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     },
     scales: {
       y: {
-        beginAtZero: true,
+        beginAtZero: false, // Allow negative values for profit/loss
+        suggestedMax: function(context) {
+          // Get the maximum value from budget profit data only
+          const maxValue = Math.max(...chartData.map(item => item.budgetProfit));
+          // Add 20% padding above the max value
+          return Math.ceil(maxValue * 1.2);
+        },
+        suggestedMin: function(context) {
+          // Get the minimum value from budget profit data only
+          const minValue = Math.min(...chartData.map(item => item.budgetProfit));
+          // Add 20% padding below the min value
+          return Math.floor(minValue * 1.2);
+        },
         ticks: {
           callback: function(value) {
             return formatCurrency(value);
           }
         }
+      }
+    },
+    elements: {
+      line: {
+        tension: 0.4, // Smooth curves
+        borderWidth: 3,
+      },
+      point: {
+        radius: 5,
+        hoverRadius: 8,
       }
     }
   };
@@ -351,23 +416,21 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     ]
   };
 
-  // Profit trend chart data - now a bar chart with Budget vs Actual
+  // Profit/Loss chart data - Budget only
   const profitChartData = {
     labels: chartData.map(item => item.day),
     datasets: [
       {
-        label: 'Budget',
+        label: 'Budget Profit/Loss',
         data: chartData.map(item => item.budgetProfit),
-        backgroundColor: 'rgba(24, 144, 255, 0.8)',
+        backgroundColor: 'rgba(24, 144, 255, 0.1)',
         borderColor: 'rgba(24, 144, 255, 1)',
-        borderWidth: 2,
-      },
-      {
-        label: 'Actual',
-        data: chartData.map(item => item.actualProfit),
-        backgroundColor: 'rgba(82, 196, 26, 0.8)',
-        borderColor: 'rgba(82, 196, 26, 1)',
-        borderWidth: 2,
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgba(24, 144, 255, 1)',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
       }
     ]
   };
@@ -607,12 +670,12 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-gray-200">
                 <h2 className="text-xl font-bold text-orange-600">
-                  {weekRange ? `Daily Profit Loss vs. Actual for week of ${weekRange}` : 'Daily Profit Loss vs. Actual'}
+                  {startDate ? `Daily Budgeted Profit Loss Trend for week of ${new Date(startDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Daily Budgeted Profit Loss Trend'}
                 </h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
-              <Bar data={profitChartData} options={chartOptions} />
+              <Line data={profitChartData} options={chartOptions} />
             </div>
           </Card>
         </Col>
