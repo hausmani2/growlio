@@ -72,7 +72,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         };
       } else {
         return {
-          day: `${date.format('ddd')} ( ${date.format('MMM DD')} )`,
+          day: `${date.format('ddd')}`,
           date: date.format('MMM DD'),
           shortDate: date.format('MMM DD'),
           fullDate: date.format('MMM DD, YYYY')
