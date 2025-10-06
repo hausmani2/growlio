@@ -1,693 +1,610 @@
-// Print utility functions
-export const printUtils = {
-  // Handle print with options for Summary Dashboard
-  handleSummaryPrint: (printOption, dashboardSummaryData) => {
-    if (printOption === 'report-only') {
-      // For report-only, create a new window with minimal content
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      
-      if (dashboardSummaryData && dashboardSummaryData.data && dashboardSummaryData.data.length > 0) {
-        let tableHTML = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Budget Dashboard Report</title>
-            <style>
-              @page {
-                size: A4 landscape;
-                margin: 0.3in;
-              }
-              body {
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin: 0;
-                padding: 0;
-              }
-              th, td {
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: left;
-                font-size: 11px;
-              }
-              th {
-                background-color: #f0f0f0;
-                font-weight: bold;
-              }
-              .title {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f97316;
-                margin-bottom: 15px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="title">Budget Dashboard Report</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Sales Budget</th>
-                  <th>Labor Budget</th>
-                  <th>Food Cost</th>
-                  <th>Fixed Cost</th>
-                  <th>Variable Cost</th>
-                  <th>Profit/Loss</th>
-                </tr>
-              </thead>
-              <tbody>
-        `;
-        
-        dashboardSummaryData.data.forEach((entry, index) => {
-          const date = entry.date || entry.day || entry.month_start || `Day ${index + 1}`;
-          const salesBudget = parseFloat(entry.sales_budget) || 0;
-          const laborBudget = parseFloat(entry.labour) || 0;
-          const foodCost = parseFloat(entry.food_cost) || 0;
-          const fixedCost = parseFloat(entry.fixed_cost) || 0;
-          const variableCost = parseFloat(entry.variable_cost) || 0;
-          const profitLoss = parseFloat(entry.budgeted_profit_loss) || 0;
-          
-          tableHTML += `
-            <tr>
-              <td>${date}</td>
-              <td style="text-align: right;">$${salesBudget.toFixed(2)}</td>
-              <td style="text-align: right;">$${laborBudget.toFixed(2)}</td>
-              <td style="text-align: right;">$${foodCost.toFixed(2)}</td>
-              <td style="text-align: right;">$${fixedCost.toFixed(2)}</td>
-              <td style="text-align: right;">$${variableCost.toFixed(2)}</td>
-              <td style="text-align: right; color: ${profitLoss >= 0 ? 'green' : 'red'}; font-weight: bold;">$${profitLoss.toFixed(2)}</td>
-            </tr>
-          `;
-        });
-        
-        tableHTML += `
-              </tbody>
-            </table>
-          </body>
-          </html>
-        `;
-        
-        printWindow.document.write(tableHTML);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
-      }
-    } else {
-      // For "Report with Charts" option, use the original method
-      const printContainer = document.createElement('div');
-      printContainer.className = 'print-container';
-      printContainer.style.position = 'absolute';
-      printContainer.style.left = '-9999px';
-      printContainer.style.top = '0';
-      
-      // Add header information
-      const headerDiv = document.createElement('div');
-      headerDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
-          <h1 style="margin: 0; color: #f97316; font-size: 24px;">Growlio Budget Report</h1>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;">Generated on ${new Date().toLocaleDateString()}</p>
-        </div>
-      `;
-      printContainer.appendChild(headerDiv);
-      
-      // Add the report content (SummaryTableDashboard)
-      const reportContent = document.querySelector('.summary-table')?.closest('.ant-card');
-      if (reportContent) {
-        const clonedContent = reportContent.cloneNode(true);
-        const buttons = clonedContent.querySelectorAll('.ant-btn');
-        buttons.forEach(btn => btn.remove());
-        printContainer.appendChild(clonedContent);
-      }
-      
-      // Add charts if requested - only if they have actual content
-      const budgetDashboard = document.querySelector('[class*="space-y-6"]');
-      if (budgetDashboard) {
-        const clonedCharts = budgetDashboard.cloneNode(true);
-        const chartButtons = clonedCharts.querySelectorAll('.ant-btn');
-        chartButtons.forEach(btn => btn.remove());
-        
-        // Remove empty chart containers
-        const emptyContainers = clonedCharts.querySelectorAll('.ant-card, .ant-card-body');
-        emptyContainers.forEach(container => {
-          const hasContent = container.querySelector('canvas, svg, [class*="chart"]') && 
-                            container.offsetHeight > 50; // Minimum height check
-          if (!hasContent) {
-            container.remove();
-          }
-        });
-        
-        // Check if charts have actual content (not empty)
-        const chartElements = clonedCharts.querySelectorAll('canvas, svg, [class*="chart"]');
-        const hasValidCharts = Array.from(chartElements).some(element => {
-          // Check if element has content or is not empty
-          return element.offsetHeight > 0 && element.offsetWidth > 0;
-        });
-        
-        // Only add charts if they have valid content
-        if (hasValidCharts && clonedCharts.children.length > 0) {
-          printContainer.appendChild(clonedCharts);
-        }
-      }
-      
-      // Add to document temporarily
-      document.body.appendChild(printContainer);
-      
-      // Print
-      window.print();
-      
-      // Clean up
-      document.body.removeChild(printContainer);
+/**
+ * Professional Print Utilities for Growlio Dashboard
+ * Enterprise-grade printing system with comprehensive error handling,
+ * data validation, and professional formatting
+ */
+
+// Professional data validation and formatting utilities
+const DataValidator = {
+  /**
+   * Safely parse numeric values with comprehensive validation
+   * @param {any} value - The value to parse
+   * @param {number} defaultValue - Default value if parsing fails
+   * @returns {number} - Parsed number or default value
+   */
+  parseNumber: (value, defaultValue = 0) => {
+    if (value === null || value === undefined || value === '') return defaultValue;
+    if (typeof value === 'number') return isNaN(value) ? defaultValue : value;
+    
+    const parsed = parseFloat(String(value).replace(/[,$]/g, ''));
+    return isNaN(parsed) ? defaultValue : parsed;
+  },
+
+  /**
+   * Format currency with professional styling
+   * @param {any} value - The value to format
+   * @param {boolean} showZero - Whether to show zero values or dash
+   * @returns {string} - Formatted currency string
+   */
+  formatCurrency: (value, showZero = true) => {
+    const numValue = DataValidator.parseNumber(value);
+    if (numValue === 0 && !showZero) return '-';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(numValue);
+  },
+
+  /**
+   * Format date with professional styling
+   * @param {any} dateValue - The date value to format
+   * @returns {string} - Formatted date string
+   */
+  formatDate: (dateValue) => {
+    if (!dateValue) return 'N/A';
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit'
+      });
+    } catch (error) {
+      return 'N/A';
     }
   },
 
-  // Handle print with options for Profit Loss Dashboard
-  handleProfitLossPrint: (printOption, tableData, dashboardData, dashboardSummaryData) => {
-    // Debug logging
-    console.log('printUtils - Print option:', printOption);
-    console.log('printUtils - tableData:', tableData);
-    console.log('printUtils - dashboardData:', dashboardData);
-    console.log('printUtils - dashboardSummaryData:', dashboardSummaryData);
-    
-    // Use tableData first, then fallback to other data sources
-    const dataToUse = tableData && tableData.length > 0 ? tableData : 
-                     (dashboardData && dashboardData.length > 0 ? dashboardData : 
-                     (dashboardSummaryData && dashboardSummaryData.data ? dashboardSummaryData.data : null));
-    
-    console.log('printUtils - dataToUse:', dataToUse);
-    console.log('printUtils - dataToUse length:', dataToUse ? dataToUse.length : 'not an array');
-    
-    if (printOption === 'report-only') {
-      // For report-only, create a new window with minimal content
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      
-      if (dataToUse && Array.isArray(dataToUse) && dataToUse.length > 0) {
-        let tableHTML = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Profit Loss Dashboard Report</title>
+  /**
+   * Get profit/loss styling class
+   * @param {number} value - The profit/loss value
+   * @returns {string} - CSS class name
+   */
+  getProfitLossClass: (value) => {
+    const numValue = DataValidator.parseNumber(value);
+    if (numValue > 0) return 'profit-positive';
+    if (numValue < 0) return 'profit-negative';
+    return 'profit-neutral';
+  }
+};
+
+// Professional HTML template generator
+const HTMLTemplateGenerator = {
+  /**
+   * Generate comprehensive CSS for professional printing
+   * @returns {string} - Complete CSS stylesheet
+   */
+  generatePrintCSS: () => `
             <style>
               @page {
                 size: A4 landscape;
-                margin: 0.3in;
-              }
+        margin: 0.5in;
+        @top-center {
+          content: "Growlio Business Report";
+          font-size: 10px;
+          color: #666;
+        }
+        @bottom-center {
+          content: "Page " counter(page) " of " counter(pages);
+          font-size: 10px;
+          color: #666;
+        }
+      }
+      
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      
               body {
                 margin: 0;
                 padding: 0;
-                font-family: Arial, sans-serif;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 font-size: 12px;
+        line-height: 1.4;
+        color: #333;
+        background: white;
               }
-              table {
+      
+      .print-container {
                 width: 100%;
-                border-collapse: collapse;
+        max-width: none;
                 margin: 0;
                 padding: 0;
               }
-              th, td {
-                border: 1px solid #000;
-                padding: 6px;
-                text-align: left;
+      
+      .report-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 3px solid #f97316;
+      }
+      
+      .report-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #f97316;
+        margin: 0 0 10px 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      .report-subtitle {
+        font-size: 14px;
+        color: #666;
+        margin: 0 0 15px 0;
+        font-weight: 500;
+      }
+      
+      .report-meta {
+        font-size: 11px;
+        color: #888;
+        margin: 0;
+      }
+      
+      .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0;
                 font-size: 11px;
-              }
-              th {
-                background-color: #f0f0f0;
-                font-weight: bold;
-              }
-              .title {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f97316;
-                margin-bottom: 15px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="title">Profit Loss Dashboard Report</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Sales</th>
-                  <th>Labor</th>
-                  <th>Food Cost</th>
-                  <th>Fixed Cost</th>
-                  <th>Variable Cost</th>
-                  <th>Profit/Loss</th>
-                </tr>
-              </thead>
-              <tbody>
-        `;
-        
-        dataToUse.forEach((entry, index) => {
-          const date = entry.date || entry.day || entry.month_start || entry.week_start || `Day ${index + 1}`;
-          const sales = parseFloat(entry.sales || entry.sales_actual || entry.sales_budget || 0);
-          const labor = parseFloat(entry.labour || entry.labor_actual || entry.labour_budget || 0);
-          const foodCost = parseFloat(entry.food_cost || entry.food_cost_actual || entry.food_cost_budget || 0);
-          const fixedCost = parseFloat(entry.fixed_cost || entry.fixed_cost_actual || entry.fixed_cost_budget || 0);
-          const variableCost = parseFloat(entry.variable_cost || entry.variable_cost_actual || entry.variable_cost_budget || 0);
-          const profitLoss = parseFloat(entry.profit_loss || entry.profit_loss_actual || entry.budgeted_profit_loss || 0);
-          
-          tableHTML += `
-            <tr>
-              <td>${date}</td>
-              <td style="text-align: right;">$${sales.toFixed(2)}</td>
-              <td style="text-align: right;">$${labor.toFixed(2)}</td>
-              <td style="text-align: right;">$${foodCost.toFixed(2)}</td>
-              <td style="text-align: right;">$${fixedCost.toFixed(2)}</td>
-              <td style="text-align: right;">$${variableCost.toFixed(2)}</td>
-              <td style="text-align: right; color: ${profitLoss >= 0 ? 'green' : 'red'}; font-weight: bold;">$${profitLoss.toFixed(2)}</td>
-            </tr>
-          `;
-        });
-        
-        tableHTML += `
-              </tbody>
-            </table>
-          </body>
-          </html>
-        `;
-        
-        printWindow.document.write(tableHTML);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+        table-layout: fixed;
       }
-    } else {
-      // For "Report with Charts" option, use the original method
-      const printContainer = document.createElement('div');
-      printContainer.className = 'print-container';
-      printContainer.style.position = 'absolute';
-      printContainer.style.left = '-9999px';
-      printContainer.style.top = '0';
       
-      // Add header information
-      const headerDiv = document.createElement('div');
-      headerDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
-          <h1 style="margin: 0; color: #f97316; font-size: 24px;">Growlio Profit Loss Report</h1>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;">Generated on ${new Date().toLocaleDateString()}</p>
-        </div>
+      .data-table th:nth-child(1),
+      .data-table td:nth-child(1) {
+        width: 15%;
+      }
+      
+      .data-table th:nth-child(2),
+      .data-table td:nth-child(2),
+      .data-table th:nth-child(3),
+      .data-table td:nth-child(3),
+      .data-table th:nth-child(4),
+      .data-table td:nth-child(4),
+      .data-table th:nth-child(5),
+      .data-table td:nth-child(5),
+      .data-table th:nth-child(6),
+      .data-table td:nth-child(6),
+      .data-table th:nth-child(7),
+      .data-table td:nth-child(7) {
+        width: 14.2%;
+      }
+      
+      .data-table thead {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: white;
+      }
+      
+      .data-table th {
+        padding: 12px 8px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border: none;
+        white-space: nowrap;
+        vertical-align: middle;
+        line-height: 1.2;
+      }
+      
+      .data-table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 11px;
+        vertical-align: middle;
+        line-height: 1.2;
+      }
+      
+      .data-table th:first-child,
+      .data-table td:first-child {
+        text-align: left;
+        padding-left: 12px;
+      }
+      
+      .data-table th:last-child,
+      .data-table td:last-child {
+        text-align: right;
+        padding-right: 12px;
+      }
+      
+      .data-table th:nth-child(2),
+      .data-table th:nth-child(3),
+      .data-table th:nth-child(4),
+      .data-table th:nth-child(5),
+      .data-table th:nth-child(6),
+      .data-table th:nth-child(7),
+      .data-table td:nth-child(2),
+      .data-table td:nth-child(3),
+      .data-table td:nth-child(4),
+      .data-table td:nth-child(5),
+      .data-table td:nth-child(6),
+      .data-table td:nth-child(7) {
+        text-align: right;
+        padding-right: 12px;
+      }
+      
+      .data-table tbody tr:nth-child(even) {
+        background-color: #f9fafb;
+      }
+      
+      .data-table tbody tr:hover {
+        background-color: #f3f4f6;
+      }
+      
+      .currency-cell {
+        text-align: right;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+        padding-right: 12px !important;
+        white-space: nowrap;
+      }
+      
+      .date-cell {
+        font-weight: 600;
+        color: #374151;
+        text-align: left;
+        padding-left: 12px !important;
+        white-space: nowrap;
+      }
+      
+      .profit-positive {
+        color: #059669;
+        font-weight: 700;
+      }
+      
+      .profit-negative {
+        color: #dc2626;
+        font-weight: 700;
+      }
+      
+      .profit-neutral {
+        color: #6b7280;
+        font-weight: 600;
+      }
+      
+      .summary-section {
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 4px solid #f97316;
+      }
+      
+      .summary-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0 0 15px 0;
+      }
+      
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+      
+      .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .summary-label {
+        font-weight: 600;
+        color: #4b5563;
+      }
+      
+      .summary-value {
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+      }
+      
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+        .data-table { page-break-inside: avoid; }
+        .summary-section { page-break-inside: avoid; }
+      }
+    </style>
+  `,
+
+  /**
+   * Generate professional report header
+   * @param {string} title - Report title
+   * @param {string} subtitle - Report subtitle
+   * @returns {string} - HTML header section
+   */
+  generateHeader: (title, subtitle = '') => `
+    <div class="report-header">
+      <h1 class="report-title">${title}</h1>
+      ${subtitle ? `<p class="report-subtitle">${subtitle}</p>` : ''}
+      <p class="report-meta">
+        Generated on ${new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })} at ${new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })}
+      </p>
+    </div>
+  `,
+
+  /**
+   * Generate professional data table
+   * @param {Array} data - Data array
+   * @param {Array} columns - Column definitions
+   * @returns {string} - HTML table
+   */
+  generateTable: (data, columns) => {
+    if (!data || data.length === 0) {
+      return '<p style="text-align: center; color: #666; font-style: italic;">No data available</p>';
+    }
+
+    const headerRow = columns.map(col => `<th>${col.title}</th>`).join('');
+    const dataRows = data.map((row, index) => {
+      const cells = columns.map(col => {
+        const value = col.accessor ? col.accessor(row, index) : row[col.key];
+        const formattedValue = col.formatter ? col.formatter(value) : value;
+        const cellClass = col.cellClass ? col.cellClass(value) : '';
+        return `<td class="${cellClass}">${formattedValue}</td>`;
+      }).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    return `
+      <table class="data-table">
+        <thead>
+          <tr>${headerRow}</tr>
+        </thead>
+        <tbody>
+          ${dataRows}
+        </tbody>
+      </table>
+    `;
+  }
+};
+
+// Professional print handler with comprehensive error handling
+const ProfessionalPrintHandler = {
+  /**
+   * Safely open print window with error handling
+   * @param {string} htmlContent - HTML content to print
+   * @param {string} title - Window title
+   * @returns {boolean} - Success status
+   */
+  openPrintWindow: (htmlContent, title = 'Print Report') => {
+    try {
+      const printWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+      
+      if (!printWindow) {
+        throw new Error('Popup blocked by browser');
+      }
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load before printing
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          
+          // Close window after printing (with delay for user to cancel if needed)
+          setTimeout(() => {
+            printWindow.close();
+          }, 1000);
+        }, 500);
+      };
+
+      return true;
+    } catch (error) {
+      console.error('Print error:', error);
+      alert('Unable to open print dialog. Please check your browser settings.');
+      return false;
+    }
+  }
+};
+
+// Main print utilities with professional implementation
+export const printUtils = {
+  /**
+   * Handle Summary Dashboard printing with professional formatting
+   * @param {Object} dashboardSummaryData - Dashboard data
+   */
+  handleSummaryPrint: (dashboardSummaryData) => {
+    try {
+      // Validate input data
+      if (!dashboardSummaryData || !dashboardSummaryData.data || !Array.isArray(dashboardSummaryData.data)) {
+        console.warn('Invalid dashboard data for printing');
+        return;
+      }
+
+      const data = dashboardSummaryData.data;
+      if (data.length === 0) {
+        console.warn('No data available for printing');
+        return;
+      }
+
+      // Define table columns with professional formatting
+      const columns = [
+        {
+          title: 'Date',
+          key: 'date',
+          accessor: (row) => DataValidator.formatDate(row.date || row.day || row.month_start),
+          cellClass: () => 'date-cell'
+        },
+        {
+          title: 'Sales Budget',
+          key: 'sales_budget',
+          accessor: (row) => DataValidator.formatCurrency(row.sales_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Labor Budget',
+          key: 'labour',
+          accessor: (row) => DataValidator.formatCurrency(row.labour),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Food Cost',
+          key: 'food_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.food_cost),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Fixed Cost',
+          key: 'fixed_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.fixed_cost),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Variable Cost',
+          key: 'variable_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.variable_cost),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Profit/Loss',
+          key: 'budgeted_profit_loss',
+          accessor: (row) => DataValidator.formatCurrency(row.budgeted_profit_loss),
+          cellClass: (value) => `currency-cell ${DataValidator.getProfitLossClass(value)}`
+        }
+      ];
+
+      // Generate comprehensive HTML
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Budget Dashboard Report</title>
+          ${HTMLTemplateGenerator.generatePrintCSS()}
+        </head>
+        <body>
+          <div class="print-container">
+            ${HTMLTemplateGenerator.generateHeader('Budget Dashboard Report', 'Financial Performance Analysis')}
+            ${HTMLTemplateGenerator.generateTable(data, columns)}
+          </div>
+        </body>
+        </html>
       `;
-      printContainer.appendChild(headerDiv);
+
+      // Open print window
+      ProfessionalPrintHandler.openPrintWindow(htmlContent, 'Budget Dashboard Report');
+
+    } catch (error) {
+      console.error('Error in handleSummaryPrint:', error);
+      alert('An error occurred while preparing the print document. Please try again.');
+    }
+  },
+
+  /**
+   * Handle Profit Loss Dashboard printing with professional formatting
+   * @param {Array} tableData - Table data
+   * @param {Array} dashboardData - Dashboard data
+   * @param {Object} dashboardSummaryData - Summary data
+   */
+  handleProfitLossPrint: (tableData, dashboardData, dashboardSummaryData) => {
+    try {
+      // Determine the best data source with fallback logic
+      let dataToUse = null;
       
-      // Add the report content (ProfitLossTableDashboard) - Look for the specific table
-      const reportContent = document.querySelector('.summary-table')?.closest('.ant-card') || 
-                           document.querySelector('[class*="profit-loss"]')?.closest('.ant-card') ||
-                           document.querySelector('.ant-card');
-      
-      if (reportContent) {
-        const clonedContent = reportContent.cloneNode(true);
-        const buttons = clonedContent.querySelectorAll('.ant-btn');
-        buttons.forEach(btn => btn.remove());
-        
-        // Ensure table is visible in print with enhanced styling
-        const tables = clonedContent.querySelectorAll('table');
-        tables.forEach(table => {
-          // Apply table styling with !important
-          table.setAttribute('style', `
-            display: table !important;
-            width: 100% !important;
-            border-collapse: collapse !important;
-            border: 3px solid #000 !important;
-            border-radius: 8px !important;
-            overflow: hidden !important;
-            font-size: 12px !important;
-            background-color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          `);
-          
-          // Style table headers with !important
-          const headers = table.querySelectorAll('th');
-          headers.forEach(th => {
-            th.setAttribute('style', `
-              border: none !important;
-              border-bottom: 3px solid #000 !important;
-              padding: 12px 10px !important;
-              background-color: #e9ecef !important;
-              font-weight: bold !important;
-              color: #000 !important;
-              text-transform: uppercase !important;
-              letter-spacing: 0.8px !important;
-              font-size: 12px !important;
-              vertical-align: middle !important;
-              text-align: center !important;
-              display: table-cell !important;
-            `);
-          });
-          
-          // Style table cells with !important
-          const cells = table.querySelectorAll('td');
-          cells.forEach((td, index) => {
-            const row = td.parentElement;
-            const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-            
-            // Fix data formatting issues
-            let cellText = td.textContent || td.innerText || '';
-            
-            // Fix percentage formatting (remove 0.00- prefix)
-            if (cellText.includes('0.00-') && cellText.includes('%')) {
-              cellText = cellText.replace('0.00-', '');
-            }
-            
-            // Fix currency formatting
-            if (cellText.includes('$') && cellText.includes('-')) {
-              cellText = cellText.replace(/-/g, '');
-            }
-            
-            // Update cell content
-            td.textContent = cellText;
-            
-            // Apply styling with !important
-            const bgColor = rowIndex % 2 === 0 ? '#ffffff' : '#f8f9fa';
-            const isNumber = cellText.includes('$') || !isNaN(parseFloat(cellText.replace(/[$,]/g, '')));
-            
-            td.setAttribute('style', `
-              border: none !important;
-              padding: 12px 10px !important;
-              font-size: 11px !important;
-              vertical-align: middle !important;
-              line-height: 1.4 !important;
-              font-weight: 500 !important;
-              background-color: ${bgColor} !important;
-              text-align: ${isNumber ? 'right' : 'left'} !important;
-              display: table-cell !important;
-              color: #333 !important;
-            `);
-          });
-        });
-        
-        printContainer.appendChild(clonedContent);
+      if (tableData && Array.isArray(tableData) && tableData.length > 0) {
+        dataToUse = tableData;
+      } else if (dashboardData && Array.isArray(dashboardData) && dashboardData.length > 0) {
+        dataToUse = dashboardData;
+      } else if (dashboardSummaryData && dashboardSummaryData.data && Array.isArray(dashboardSummaryData.data)) {
+        dataToUse = dashboardSummaryData.data;
       }
-      
-      // Always add a fallback table if we have data but no DOM element
-      if (dataToUse && Array.isArray(dataToUse) && dataToUse.length > 0) {
-        // Check if we already have a table in the container
-        const existingTable = printContainer.querySelector('table');
-        if (!existingTable) {
-          // Fallback: Generate table from data if DOM element not found
-          const tableDiv = document.createElement('div');
-          tableDiv.className = 'ant-card';
-          tableDiv.innerHTML = `
-            <div class="ant-card-body" style="padding: 0 !important; background-color: #ffffff !important;">
-              <h3 style="color: #f97316; font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center; border-bottom: 2px solid #f97316; padding-bottom: 10px;">Profit Loss Dashboard</h3>
-              <table style="width: 100% !important; border-collapse: collapse !important; border: 3px solid #000 !important; border-radius: 8px !important; overflow: hidden !important; font-size: 12px !important; background-color: #ffffff !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; margin: 0 !important; padding: 0 !important;">
-                <thead>
-                  <tr style="background-color: #e9ecef !important;">
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Date</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Sales</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Labor</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Food Cost</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Fixed Cost</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Variable Cost</th>
-                    <th style="border: none !important; border-bottom: 3px solid #000 !important; padding: 12px 10px !important; background-color: #e9ecef !important; font-weight: bold !important; color: #000 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-size: 12px !important; vertical-align: middle !important; text-align: center !important; display: table-cell !important;">Profit/Loss</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${dataToUse.map((entry, index) => {
-                    const date = entry.date || entry.day || entry.month_start || entry.week_start || 'N/A';
-                    const sales = parseFloat(entry.sales || entry.sales_actual || entry.sales_budget || 0);
-                    const labor = parseFloat(entry.labour || entry.labor_actual || entry.labour_budget || 0);
-                    const foodCost = parseFloat(entry.food_cost || entry.food_cost_actual || entry.food_cost_budget || 0);
-                    const fixedCost = parseFloat(entry.fixed_cost || entry.fixed_cost_actual || entry.fixed_cost_budget || 0);
-                    const variableCost = parseFloat(entry.variable_cost || entry.variable_cost_actual || entry.variable_cost_budget || 0);
-                    const profitLoss = parseFloat(entry.profit_loss || entry.profit_loss_actual || entry.budgeted_profit_loss || 0);
-                    
-                    const rowBgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
-                    
-                    return `
-                      <tr style="background-color: ${rowBgColor} !important;">
-                        <td style="border: none !important; padding: 12px 10px !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 500 !important; background-color: ${rowBgColor} !important; text-align: left !important; display: table-cell !important; color: #333 !important;">${date}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 600 !important; background-color: ${rowBgColor} !important; display: table-cell !important; color: #333 !important;">$${sales.toFixed(2)}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 600 !important; background-color: ${rowBgColor} !important; display: table-cell !important; color: #333 !important;">$${labor.toFixed(2)}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 600 !important; background-color: ${rowBgColor} !important; display: table-cell !important; color: #333 !important;">$${foodCost.toFixed(2)}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 600 !important; background-color: ${rowBgColor} !important; display: table-cell !important; color: #333 !important;">$${fixedCost.toFixed(2)}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: 600 !important; background-color: ${rowBgColor} !important; display: table-cell !important; color: #333 !important;">$${variableCost.toFixed(2)}</td>
-                        <td style="border: none !important; padding: 12px 10px !important; text-align: right !important; font-size: 11px !important; vertical-align: middle !important; line-height: 1.4 !important; font-weight: bold !important; color: ${profitLoss >= 0 ? '#28a745' : '#dc3545'} !important; background-color: ${profitLoss >= 0 ? '#d4edda' : '#f8d7da'} !important; display: table-cell !important;">$${profitLoss.toFixed(2)}</td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-          printContainer.appendChild(tableDiv);
-        }
+
+      if (!dataToUse || dataToUse.length === 0) {
+        console.warn('No valid data available for profit/loss printing');
+        return;
       }
-      
-      // Add charts if requested - only if they have actual content
-      const budgetDashboard = document.querySelector('[class*="space-y-6"]');
-      if (budgetDashboard) {
-        const clonedCharts = budgetDashboard.cloneNode(true);
-        const chartButtons = clonedCharts.querySelectorAll('.ant-btn');
-        chartButtons.forEach(btn => btn.remove());
-        
-        // Remove empty chart containers
-        const emptyContainers = clonedCharts.querySelectorAll('.ant-card, .ant-card-body');
-        emptyContainers.forEach(container => {
-          const hasContent = container.querySelector('canvas, svg, [class*="chart"]') && 
-                            container.offsetHeight > 50; // Minimum height check
-          if (!hasContent) {
-            container.remove();
-          }
-        });
-        
-        // Check if charts have actual content (not empty)
-        const chartElements = clonedCharts.querySelectorAll('canvas, svg, [class*="chart"]');
-        const hasValidCharts = Array.from(chartElements).some(element => {
-          // Check if element has content or is not empty
-          return element.offsetHeight > 0 && element.offsetWidth > 0;
-        });
-        
-        // Only add charts if they have valid content
-        if (hasValidCharts && clonedCharts.children.length > 0) {
-          printContainer.appendChild(clonedCharts);
+
+      // Define table columns with professional formatting
+      const columns = [
+        {
+          title: 'Date',
+          key: 'date',
+          accessor: (row) => DataValidator.formatDate(row.date || row.day || row.month_start || row.week_start),
+          cellClass: () => 'date-cell'
+        },
+        {
+          title: 'Sales',
+          key: 'sales',
+          accessor: (row) => DataValidator.formatCurrency(row.sales || row.sales_actual || row.sales_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Labor',
+          key: 'labor',
+          accessor: (row) => DataValidator.formatCurrency(row.labour || row.labor_actual || row.labour_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Food Cost',
+          key: 'food_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.food_cost || row.food_cost_actual || row.food_cost_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Fixed Cost',
+          key: 'fixed_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.fixed_cost || row.fixed_cost_actual || row.fixed_cost_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Variable Cost',
+          key: 'variable_cost',
+          accessor: (row) => DataValidator.formatCurrency(row.variable_cost || row.variable_cost_actual || row.variable_cost_budget),
+          cellClass: () => 'currency-cell'
+        },
+        {
+          title: 'Profit/Loss',
+          key: 'profit_loss',
+          accessor: (row) => DataValidator.formatCurrency(row.profit_loss || row.profit_loss_actual || row.budgeted_profit_loss),
+          cellClass: (value) => `currency-cell ${DataValidator.getProfitLossClass(value)}`
         }
-      }
-      
-      // Add comprehensive CSS for print layout
-      const style = document.createElement('style');
-      style.textContent = `
-        @media print {
-          * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          
-          .print-container {
-            width: 100% !important;
-            max-width: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            position: relative !important;
-            top: 0 !important;
-            left: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
-            page-break-inside: avoid !important;
-          }
-          
-          .print-container .ant-card {
-            display: block !important;
-            width: 100% !important;
-            margin: 0 0 20px 0 !important;
-            padding: 20px !important;
-            border: 3px solid #000 !important;
-            border-radius: 12px !important;
-            page-break-inside: avoid !important;
-            background-color: #ffffff !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          
-          .print-container .ant-card-body {
-            padding: 0 !important;
-            background-color: #ffffff !important;
-          }
-          
-          .print-container .ant-card:first-child {
-            width: 100% !important;
-            margin-bottom: 20px !important;
-          }
-          
-          .print-container table {
-            display: table !important;
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 12px !important;
-            border: 3px solid #000 !important;
-            border-radius: 8px !important;
-            overflow: hidden !important;
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            background-color: #ffffff !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-          }
-          
-          .print-container table th,
-          .print-container table td {
-            border: 2px solid #000 !important;
-            padding: 12px 10px !important;
-            text-align: left !important;
-            font-size: 11px !important;
-            display: table-cell !important;
-            vertical-align: middle !important;
-            line-height: 1.4 !important;
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            font-weight: 500 !important;
-          }
-          
-          .print-container table th {
-            background-color: #e9ecef !important;
-            font-weight: bold !important;
-            color: #000 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.8px !important;
-            border-bottom: 3px solid #000 !important;
-            font-size: 12px !important;
-            text-align: center !important;
-          }
-          
-          .print-container table td {
-            background-color: #ffffff !important;
-            color: #333 !important;
-          }
-          
-          .print-container table tbody tr:nth-child(even) td {
-            background-color: #f8f9fa !important;
-          }
-          
-          .print-container table tbody tr:nth-child(odd) td {
-            background-color: #ffffff !important;
-          }
-          
-          .print-container table tbody tr:hover td {
-            background-color: #e3f2fd !important;
-          }
-          
-          .print-container .ant-table {
-            display: table !important;
-            width: 100% !important;
-          }
-          
-          .print-container .ant-table-tbody {
-            display: table-row-group !important;
-          }
-          
-          .print-container .ant-table-tbody > tr {
-            display: table-row !important;
-          }
-          
-          .print-container .ant-table-tbody > tr > td {
-            display: table-cell !important;
-            border: 1px solid #333 !important;
-            padding: 8px 6px !important;
-            font-size: 10px !important;
-            vertical-align: middle !important;
-            line-height: 1.3 !important;
-          }
-          
-          .print-container .ant-table-thead {
-            display: table-header-group !important;
-          }
-          
-          .print-container .ant-table-thead > tr {
-            display: table-row !important;
-          }
-          
-          .print-container .ant-table-thead > tr > th {
-            display: table-cell !important;
-            border: 1px solid #333 !important;
-            padding: 8px 6px !important;
-            background-color: #f8f9fa !important;
-            font-weight: bold !important;
-            color: #000 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            border-bottom: 2px solid #000 !important;
-            font-size: 10px !important;
-            vertical-align: middle !important;
-          }
-          
-          .print-container .ant-table-container {
-            display: block !important;
-            width: 100% !important;
-            overflow: visible !important;
-          }
-          
-          .print-container .ant-table-content {
-            display: table !important;
-            width: 100% !important;
-          }
-          
-          .print-container .ant-table-scroll {
-            display: block !important;
-            overflow: visible !important;
-          }
-          
-          .print-container .ant-table-body {
-            display: table-row-group !important;
-          }
-          
-          .print-container .ant-table-row {
-            display: table-row !important;
-          }
-          
-          .print-container .ant-table-cell {
-            display: table-cell !important;
-            border: 1px solid #000 !important;
-            padding: 4px !important;
-          }
-          
-          .print-container .ant-table-thead .ant-table-cell {
-            background-color: #f0f0f0 !important;
-            font-weight: bold !important;
-          }
-          
-          .print-container .ant-table-tbody .ant-table-cell {
-            background-color: transparent !important;
-          }
-          
-          .print-container .ant-table-tbody .ant-table-row:nth-child(even) .ant-table-cell {
-            background-color: #f9f9f9 !important;
-          }
-          
-          .print-container .ant-table-tbody .ant-table-row:nth-child(odd) .ant-table-cell {
-            background-color: #ffffff !important;
-          }
-          
-          .print-container table tbody tr:nth-child(even) td {
-            background-color: #f8f9fa !important;
-          }
-          
-          .print-container table tbody tr:nth-child(odd) td {
-            background-color: #ffffff !important;
-          }
-        }
+      ];
+
+      // Generate comprehensive HTML
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Profit Loss Dashboard Report</title>
+          ${HTMLTemplateGenerator.generatePrintCSS()}
+        </head>
+        <body>
+          <div class="print-container">
+            ${HTMLTemplateGenerator.generateHeader('Profit & Loss Dashboard Report', 'Financial Performance Analysis')}
+            ${HTMLTemplateGenerator.generateTable(dataToUse, columns)}
+          </div>
+        </body>
+        </html>
       `;
-      printContainer.appendChild(style);
-      
-      // Add to document temporarily
-      document.body.appendChild(printContainer);
-      
-      // Print
-      window.print();
-      
-      // Clean up
-      document.body.removeChild(printContainer);
+
+      // Open print window
+      ProfessionalPrintHandler.openPrintWindow(htmlContent, 'Profit Loss Dashboard Report');
+
+    } catch (error) {
+      console.error('Error in handleProfitLossPrint:', error);
+      alert('An error occurred while preparing the print document. Please try again.');
     }
   }
 };

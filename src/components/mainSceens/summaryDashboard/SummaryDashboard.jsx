@@ -10,7 +10,6 @@ import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
-import PrintOptionsModal from '../../common/PrintOptionsModal';
 import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
@@ -74,7 +73,6 @@ const SummaryDashboard = () => {
   const [isSalesModalVisible, setIsSalesModalVisible] = useState(false);
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
   const [isManuallyTriggered, setIsManuallyTriggered] = useState(false);
-  const [isPrintModalVisible, setIsPrintModalVisible] = useState(false);
 
   // Flash message state
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
@@ -282,15 +280,9 @@ const SummaryDashboard = () => {
     navigate('/dashboard');
   };
 
-  // Print handler
+  // Print handler - directly print report only
   const handlePrint = useCallback(() => {
-    setIsPrintModalVisible(true);
-  }, []);
-
-  // Handle print with options
-  const handlePrintWithOptions = useCallback((printOption) => {
-    setIsPrintModalVisible(false);
-    printUtils.handleSummaryPrint(printOption, dashboardSummaryData);
+    printUtils.handleSummaryPrint(dashboardSummaryData);
   }, [dashboardSummaryData]);
 
   // Sync calendar state with store state (for backward compatibility)
@@ -616,12 +608,6 @@ const SummaryDashboard = () => {
         isManuallyTriggered={isManuallyTriggered}
       />
 
-      {/* Print Options Modal */}
-      <PrintOptionsModal
-        visible={isPrintModalVisible}
-        onCancel={() => setIsPrintModalVisible(false)}
-        onPrint={handlePrintWithOptions}
-      />
     </div>
     </App>
   );
