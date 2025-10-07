@@ -101,7 +101,7 @@ const RestaurantWrapperContent = () => {
                     ...prev,
                     address1: location.address_1 || "",
                     address2: location.address_2 || "",
-                    country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "3",
+                    country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "",
                     city: location.city || "",
                     state: location.state || "", // Keep the actual state code (TX, CA, NY, etc.)
                     zipCode: location.zip_code || ""
@@ -215,7 +215,7 @@ const RestaurantWrapperContent = () => {
                         address_1: addressData.address1,
                         address_2: addressData.address2,
                         city: addressData.city,
-                        country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
+                        country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "",
                         state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
                         zip_code: addressData.zipCode,
                         sqft: parseInt(addressTypeData.sqft),
