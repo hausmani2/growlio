@@ -5,6 +5,7 @@ import DetailsTab from "./DetailsTab";
 import { TabProvider } from "./TabContext";
 import { useTabHook } from "./useTabHook";
 import useStore from "../../../store/store";
+import LoadingSpinner from "../../layout/LoadingSpinner";
 
 const RestaurantContent = () => {
     const navigate = useNavigate();
@@ -41,7 +42,12 @@ const RestaurantContent = () => {
                         
                         {loading && onboardingStatus !== 'incomplete' && onboardingStatus !== null ? (
                             <div className="flex justify-center items-center h-64">
-                                <div className="text-lg">Loading onboarding data...</div>
+                                <LoadingSpinner 
+                                    message="Loading onboarding data..." 
+                                    size="medium" 
+                                    subtext="Please wait while we load your information..."
+                                    showSubtext={true}
+                                />
                             </div>
                         ) : (
                             renderActiveContent()

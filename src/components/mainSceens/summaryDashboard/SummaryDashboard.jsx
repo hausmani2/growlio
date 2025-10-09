@@ -243,23 +243,38 @@ const SummaryDashboard = () => {
             <p style={{ marginBottom: '12px', color: '#666' }}>
               Would you like to add more sales data or edit existing data for this week?
             </p>
-            <Button
-              type="primary"
-              size="small"
-              icon={<DollarOutlined />}
-              onClick={() => {
-                notification.destroy();
-                handleFlashMessageButtonClick();
-              }}
-              style={{
-                marginTop: '8px',
-                backgroundColor: '#52c41a',
-                borderColor: '#52c41a'
-              }}
-            >
-              Add More Sales Data
-              <ArrowRightOutlined />
-            </Button>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <Button
+                type="primary"
+                size="small"
+                icon={<DollarOutlined />}
+                onClick={() => {
+                  notification.destroy();
+                  handleFlashMessageButtonClick();
+                }}
+                style={{
+                  backgroundColor: '#52c41a',
+                  borderColor: '#52c41a'
+                }}
+              >
+                Proceed to Dashboard
+                <ArrowRightOutlined />
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  notification.destroy();
+                }}
+                style={{
+                  backgroundColor: '#f5f5f5',
+                  borderColor: '#d9d9d9',
+                  color: '#666'
+                }}
+              >
+                Close
+              </Button>
+            </div>
+            
           </div>
         ),
         duration: 0,

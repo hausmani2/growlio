@@ -275,13 +275,11 @@ const OnboardingWrapper = () => {
                                 <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer">
                                     <div className="flex items-center gap-3">
                                         <Checkbox defaultChecked />
-                                        <span className="text-base sm:text-lg font-semibold text-orange-800">
-                                            No, I Want to Create a New One
+                                        <span className="text-base sm:text-xl font-semibold text-orange-800">
+                                        I want to Register a New Restaurant on Growlio
                                         </span>
                                     </div>
-                                    <p className="text-sm sm:text-base text-orange-700 leading-relaxed mt-2 ml-6">
-                                        Register a new restaurant on Growlio.
-                                    </p>
+                               
                                 </div>
                             </div>
 

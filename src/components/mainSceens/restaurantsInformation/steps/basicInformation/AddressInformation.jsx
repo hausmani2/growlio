@@ -216,7 +216,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                     )}
                 </div>
                 
-                {/* Zip Code */}
+                {/* Postal Code */}
                 <div>
                     <label htmlFor="zipCode" className="block text-sm font-semibold text-gray-700 mb-2">
                         Zip Code <span className="text-red-500">*</span>
@@ -225,7 +225,13 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                     <Input 
                         type="text" 
                         id="zipCode" 
-                        placeholder="Enter Zip Code" 
+                        placeholder={
+                            data.country === '1' 
+                                ? "Enter ZIP Code (e.g., 12345 or 12345-6789)" 
+                                : data.country === '2' 
+                                ? "Enter Postal Code (e.g., K1A 0A6)" 
+                                : "Enter Postal Code"
+                        }
                         className={`w-full h-11 rounded-lg text-sm ${
                             errors.zipCode ? 'border-red-500' : 'border-gray-300'
                         }`}

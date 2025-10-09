@@ -39,7 +39,7 @@ export const FORM_SECTIONS = {
 
 export const VALIDATION_MESSAGES = {
     REQUIRED: 'This field is required',
-    INVALID_ZIP: 'Please enter a valid zip code',
+    INVALID_ZIP: 'Please enter a valid postal code',
     INVALID_SQFT: 'Please enter a valid square footage',
     RESTAURANT_NAME: 'Restaurant name is required',
     NUMBER_OF_LOCATIONS: 'Number of locations is required',
@@ -47,7 +47,7 @@ export const VALIDATION_MESSAGES = {
     ADDRESS: 'Address is required',
     COUNTRY: 'Country is required',
     STATE: 'State is required',
-    ZIP_CODE: 'Zip code is required',
+    ZIP_CODE: 'Postal code is required',
     SQFT: 'Square footage is required',
     FRANCHISE: 'Please select if this is a franchise',
     RESTAURANT_TYPE: 'Restaurant type is required',

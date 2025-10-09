@@ -18,6 +18,11 @@ const LaborInformationWrapperContent = () => {
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
+    
+    // Scroll to top when component mounts
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
 
     // State for labor data
     const [laborData, setLaborData] = useState({
@@ -25,7 +30,7 @@ const LaborInformationWrapperContent = () => {
         avg_hourly_rate: '',
         labor_record_method: 'daily_hours_costs',
         daily_ticket_count: false,
-        forward_previous_week_rate: true
+        forward_previous_week_rate: false // Always default to false
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -42,7 +47,7 @@ const LaborInformationWrapperContent = () => {
                     avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                     labor_record_method: data.labor_record_method || 'daily_hours_costs',
                     daily_ticket_count: data.daily_ticket_count,
-                    forward_previous_week_rate: data.forward_previous_week_rate !== undefined ? data.forward_previous_week_rate : data.forward_prev_week_rate
+                    forward_previous_week_rate: data.forward_previous_week_rate !== undefined ? data.forward_previous_week_rate : (data.forward_prev_week_rate !== undefined ? data.forward_prev_week_rate : false) // Default to true if not set
                 };
                 console.log('🔍 DEBUG - Setting laborData to:', newData);
                 console.log('🔍 DEBUG - forward_previous_week_rate set to:', newData.forward_previous_week_rate, 'type:', typeof newData.forward_previous_week_rate);
@@ -104,7 +109,7 @@ const LaborInformationWrapperContent = () => {
                 avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                 labor_record_method: laborData.labor_record_method,
                 daily_ticket_count: laborData.daily_ticket_count,
-                forward_previous_week_rate: laborData.forward_previous_week_rate
+                forward_previous_week_rate: false // Always set to true by default
             };
 
             // Step 3: Call API through Zustand store with success callback
@@ -144,8 +149,13 @@ const LaborInformationWrapperContent = () => {
     if (loading) {
         return (
             <div className="relative">
-                <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center">
-                    <LoadingSpinner message="Saving labor information..." size="medium" />
+                <div className="absolute inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center">
+                    <LoadingSpinner 
+                        message="Saving labor information..." 
+                        size="medium" 
+                        subtext="Please wait while we save your changes..."
+                        showSubtext={true}
+                    />
                 </div>
                 <div className="opacity-50 pointer-events-none">
                     <div className="flex flex-col gap-6">

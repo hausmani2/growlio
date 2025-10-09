@@ -186,7 +186,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     }
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return null;
-    return `${numValue > 0 ? '+' : ''}${numValue.toFixed(1)}%`;
+    return `${numValue > 0 ? '+' : ''}${Math.round(numValue)}%`;
   }, []);
 
   // Helper function to get percentage color
@@ -201,15 +201,32 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     return 'text-gray-600';
   }, []);
 
+  // Calculate totals for each category
+  const calculateTotals = useCallback(() => {
+    const totals = {};
+    categories.forEach(category => {
+      let total = 0;
+      tableData.forEach(entry => {
+        const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
+        const value = processedData[category.key]?.[dateKey] || 0;
+        total += value;
+      });
+      totals[category.key] = total;
+    });
+    return totals;
+  }, [categories, tableData, processedData]);
+
+  const totals = calculateTotals();
+
   // Formatting utilities
   const formatCurrency = useCallback((value) => {
     if (value === '-') return '-';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value || 0);
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(Math.round(value || 0));
   }, []);
 
   const formatNumber = useCallback((value) => {
@@ -217,7 +234,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value || 0);
+    }).format(Math.round(value || 0));
   }, []);
 
   // Color coding for profit/loss values
@@ -271,7 +288,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       const dateInfo = formatDateForDisplay(entry.date || entry.day);
       return dateInfo.fullDate;
     });
-    const headers = ['Category', ...dates];
+    const headers = ['Category', ...dates, 'Total'];
     const rows = categories.map(category => {
       const rowData = [category.label];
       dates.forEach((_, index) => {
@@ -280,10 +297,12 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         const value = processedData[category.key]?.[dateKey] || 0;
         rowData.push(value.toString());
       });
+      // Add total value
+      rowData.push((totals[category.key] || 0).toString());
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay]);
+  }, [tableData, categories, processedData, formatDateForDisplay, totals]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -497,14 +516,54 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           return <span className="text-sm text-gray-700">{rawValue}</span>;
         }
       };
-    })
-  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor, isMonthlyView]);
+    }),
+    // Add Total column
+    {
+      title: (
+        <div className="text-center">
+          <div className="font-semibold text-xs text-gray-800">Total</div>
+        </div>
+      ),
+      dataIndex: 'total',
+      key: 'total',
+      width: 120,
+      render: (value, record) => {
+        const categoryKey = record.key;
+        const totalValue = totals[categoryKey] || 0;
+        
+        // Handle currency fields
+        if (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost' || 
+            categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
+            categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
+            categoryKey === 'budgeted_profit_loss') {
+          const colorClass = categoryKey === 'budgeted_profit_loss' ? getProfitLossColor(totalValue) : 'text-gray-700 font-semibold';
+          const formattedValue = categoryKey === 'budgeted_profit_loss' ? formatProfitLoss(totalValue) : formatCurrency(totalValue);
+          
+          return (
+            <div className="flex items-start justify-center">
+              <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
+            </div>
+          );
+        }
+        // Handle number fields
+        if (categoryKey === 'hours') {
+          return (
+            <div className="flex items-start justify-center">
+              <span className="text-sm text-gray-700 font-semibold">{formatNumber(totalValue)}</span>
+            </div>
+          );
+        }
+        return <span className="text-sm text-gray-700 font-semibold">{totalValue}</span>;
+      }
+    }
+  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor, isMonthlyView, totals]);
 
   // Table data source
   const tableDataSource = useMemo(() => 
     categories.map(category => ({
       key: category.key,
       category: category.label,
+      total: totals[category.key] || 0,
       ...tableData.reduce((acc, entry, index) => {
         let uniqueKey, dateKey;
         
@@ -522,7 +581,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         acc[uniqueKey] = processedData[category.key]?.[dateKey] || 0;
         return acc;
       }, {})
-    })), [categories, tableData, processedData, formatDateForDisplay]);
+    })), [categories, tableData, processedData, formatDateForDisplay, totals]);
   
   
 
@@ -712,6 +771,29 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                     </div>
                   );
                 })}
+                {/* Add Total row for mobile */}
+                <div className="col-span-2 border-t pt-2 mt-2">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-gray-800">Total</span>
+                    <div className="flex items-center">
+                      <span className={`font-bold ${
+                        row.key === 'budgeted_profit_loss'
+                          ? getProfitLossColor(totals[row.key]) : 'text-gray-800'
+                      }`}>
+                        {row.key === 'budgeted_profit_loss'
+                          ? formatProfitLoss(totals[row.key])
+                          : row.key === 'sales_budget' || row.key === 'labour' || row.key === 'food_cost' || 
+                            row.key === 'amount' || row.key === 'average_hourly_rate' ||
+                            row.key === 'fixed_cost' || row.key === 'variable_cost'
+                          ? formatCurrency(totals[row.key])
+                          : row.key === 'hours'
+                          ? formatNumber(totals[row.key])
+                          : totals[row.key]
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </Card>
           ))}

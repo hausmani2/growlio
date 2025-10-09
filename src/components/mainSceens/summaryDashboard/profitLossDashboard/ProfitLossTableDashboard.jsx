@@ -7,6 +7,7 @@ import LaborDetailDropdown from './LaborDetailDropdown';
 import FoodCostDetailDropdown from './FoodCostDetailDropdown';
 import FixedCostDetailDropdown from './FixedCostDetailDropdown';
 import VariableCostDetailDropdown from './VariableCostDetailDropdown';
+import { processThirdPartySales, getTotalThirdPartySales, formatThirdPartySalesValue } from '../../../../utils/thirdPartySalesUtils';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -301,7 +302,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return null;
-    return `${numValue > 0 ? '+' : ''}${numValue.toFixed(1)}%`;
+    return `${numValue > 0 ? '+' : ''}${Math.round(numValue)}%`;
   }, []);
 
   // Helper function to get percentage color based on category
@@ -381,9 +382,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value || 0);
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(Math.round(value || 0));
   }, []);
 
   const formatNumber = useCallback((value) => {
@@ -391,8 +392,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Format as plain number without any currency symbols
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(value || 0);
+      maximumFractionDigits: 0
+    }).format(Math.round(value || 0));
   }, []);
 
   // Format value based on current format setting
@@ -1256,36 +1257,39 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           </div>
         );
       case 'food_cost_actual':
-        return (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center">
-              <div className="text-xs text-gray-600">Total Food Cost Budget</div>
-              <div className="text-sm font-bold text-blue-900">{formatValue(totals.food_cost, 'food_cost')}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xs text-gray-600">Total Food Cost Actual</div>
-              <div className="text-sm font-bold text-green-900">{formatValue(totals.food_cost_actual, 'food_cost_actual')}</div>
-            </div>
-          </div>
-        );
+        return 
+        // (
+        //   <div className="grid grid-cols-2 gap-3">
+        //     <div className="text-center">
+        //       <div className="text-xs text-gray-600">Total Food Cost Budget</div>
+        //       <div className="text-sm font-bold text-blue-900">{formatValue(totals.food_cost, 'food_cost')}</div>
+        //     </div>
+        //     <div className="text-center">
+        //       <div className="text-xs text-gray-600">Total Food Cost Actual</div>
+        //       <div className="text-sm font-bold text-green-900">{formatValue(totals.food_cost_actual, 'food_cost_actual')}</div>
+        //     </div>
+        //   </div>
+        // );
              case 'fixedCost':
-         return (
-           <div className="text-center">
-             <div className="text-xs text-gray-600">Total Fixed Cost</div>
-             <div className="text-sm font-bold text-blue-900">
-               {printFormat === 'percentage' ? formatValue(totals.fixed_costs_percent, 'fixedCost') : formatValue(totals.fixed_costs, 'fixedCost')}
-             </div>
-           </div>
-         );
+         return 
+        //  (
+        //    <div className="text-center">
+        //      <div className="text-xs text-gray-600">Total Fixed Cost</div>
+        //      <div className="text-sm font-bold text-blue-900">
+        //        {printFormat === 'percentage' ? formatValue(totals.fixed_costs_percent, 'fixedCost') : formatValue(totals.fixed_costs, 'fixedCost')}
+        //      </div>
+        //    </div>
+        //  );
        case 'variableCost':
-         return (
-           <div className="text-center">
-             <div className="text-xs text-gray-600">Total Variable Cost</div>
-             <div className="text-sm font-bold text-blue-900">
-               {printFormat === 'percentage' ? formatValue(totals.variable_costs_percent, 'variableCost') : formatValue(totals.variable_costs, 'variableCost')}
-             </div>
-           </div>
-         );
+         return
+        //   (
+        //    <div className="text-center">
+        //      <div className="text-xs text-gray-600">Total Variable Cost</div>
+        //      <div className="text-sm font-bold text-blue-900">
+        //        {printFormat === 'percentage' ? formatValue(totals.variable_costs_percent, 'variableCost') : formatValue(totals.variable_costs, 'variableCost')}
+        //      </div>
+        //    </div>
+        //  );
       default:
         return null;
     }
@@ -1317,22 +1321,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
     const percentOverUnder = parseFloat(salesData.sales_amount_percent) || 0;
 
-    // Handle third party sales
-    const thirdPartyProviders = [];
-    if (salesData.third_party_sales && Array.isArray(salesData.third_party_sales)) {
-      salesData.third_party_sales.forEach((provider, index) => {
-        if (provider.provider_name && provider.provider_fee) {
-          const providerFee = parseFloat(provider.provider_fee) || 0;
-          if (providerFee > 0) {
-            thirdPartyProviders.push({
-              name: provider.provider_name,
-              key: `provider_${index}`,
-              sales: providerFee
-            });
-          }
-        }
-      });
-    }
+    // Handle third party sales using utility functions
+    const thirdPartyProviders = processThirdPartySales(salesData.third_party_Sales || salesData.third_party_sales);
+    const totalThirdPartySales = getTotalThirdPartySales(thirdPartyProviders);
 
     const getOverUnderColor = (value) => {
       if (value > 0) return 'text-red-600';
@@ -1402,7 +1393,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </span>
               </div>
 
-              {/* Third Party Sales */}
+              {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (
                 <div className="border border-gray-200 rounded">
                   <div className="flex items-center justify-between p-2 bg-gray-50">
@@ -1411,7 +1402,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                       <span className="text-xs font-medium text-gray-700">Third Party Sales:</span>
                     </div>
                     <span className="text-xs font-semibold">
-                      {thirdPartyProviders.reduce((total, provider) => total + provider.sales, 0)}%
+                      {formatThirdPartySalesValue(totalThirdPartySales, printFormat)}
                     </span>
                   </div>
                   <div className="p-2 bg-white border-t border-gray-200 space-y-2">
@@ -1421,7 +1412,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                           <span className="text-gray-500 text-xs">🚗</span>
                           <span className="text-xs font-medium text-gray-600">{provider.name}:</span>
                         </div>
-                        <span className="text-xs font-semibold">{provider.sales}%</span>
+                        <span className="text-xs font-semibold">
+                          {formatThirdPartySalesValue(provider.sales, printFormat)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1982,7 +1975,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                if (!category?.hasDetails) return null;
                
                return (
-                 <div key={`expanded-${record.key}`} className="bg-gray-50 p-4 rounded-lg">
+                 <div key={`expanded-${record.key}`} className="bg-gray-50 rounded-lg">
                    <h4 className="font-semibold text-gray-800 mb-3">{category.detailLabel}</h4>
                    {renderWeeklyDetailedContent(category.key)}
                  </div>

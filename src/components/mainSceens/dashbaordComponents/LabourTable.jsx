@@ -18,13 +18,13 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [weeklyTotals, setWeeklyTotals] = useState({
-    labor_hours_budget: "0.00",
-    labor_hours_actual: "0.00",
-    budgeted_labor_dollars: "0.00",
-    actual_labor_dollars: "0.00",
-    daily_labor_rate: "0.00",
-    daily_labour_percent: "0.00",
-    weekly_labour_percent: "0.00"
+    labor_hours_budget: "0",
+    labor_hours_actual: "0",
+    budgeted_labor_dollars: "0",
+    actual_labor_dollars: "0",
+    daily_labor_rate: "0",
+    daily_labour_percent: "0",
+    weekly_labour_percent: "0"
   });
   
   // State to track API-fetched average hourly rate
@@ -80,7 +80,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       return parseFloat(weeklyTotals.daily_labor_rate);
     }
     // Otherwise, use the target rate of $50.00
-    return 50.00;
+    return 50;
   };
 
   // Helper function to format display values - show "0" instead of "0.00" for zero values
@@ -450,9 +450,9 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         actualLaborDollars: weeklyTotals.actualLaborDollars,
         dailyLaborRate: weeklyTotals.dailyLaborRate,
         dailyLaborPercentage: weeklyTotals.actualLaborDollars > 0 ? 
-          ((weeklyTotals.actualLaborDollars / weeklyTotals.dailyLaborRate)).toFixed(1) : 0,
+          Math.round(weeklyTotals.actualLaborDollars / weeklyTotals.dailyLaborRate) : 0,
         weeklyLaborPercentage: weeklyTotals.actualLaborDollars > 0 ? 
-          ((weeklyTotals.actualLaborDollars / (weeklyTotals.actualLaborDollars + 5000)) * 100).toFixed(1) : 0
+          Math.round((weeklyTotals.actualLaborDollars / (weeklyTotals.actualLaborDollars + 5000)) * 100) : 0
       };
 
       // Transform data to API format - only save the current week's daily data
@@ -635,8 +635,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
       return {
         ...day,
-        dailyLaborPercentage: parseFloat(dailyLaborPercentage.toFixed(2)),
-        weeklyLaborPercentage: parseFloat(weeklyLaborPercentage.toFixed(2)),
+        dailyLaborPercentage: Math.round(dailyLaborPercentage),
+        weeklyLaborPercentage: Math.round(weeklyLaborPercentage),
         netSales: netSales // Store net sales for display
       };
     });
@@ -693,12 +693,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
           {/* Weekly Labor Totals Summary - Auto-calculated from daily inputs */}
-          <Card title="Weekly Labor Totals Summary" size="small">
+          <Card title="Weekly Labor Totals Summary" size="small" className='opacity-50 bg-gray-50'>
             <div className={`grid grid-cols-1 sm:grid-cols-2 ${getLaborRecordMethod() === 'daily-hours-costs' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Total Labor Hours - Budget:</Text>
                 <Input
-                  value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0).toFixed(1)} hrs`}
+                  value={`${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0))} hrs`}
                   className="mt-1"
                   disabled
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
@@ -709,7 +709,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 <div className="w-full">
                   <Text strong className="text-sm sm:text-base">Total Labor Hours - Actual:</Text>
                   <Input
-                    value={`${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0).toFixed(1)} hrs`}
+                    value={`${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0))} hrs`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
@@ -719,7 +719,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Total Budgeted Labor $:</Text>
                 <Input
-                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0).toFixed(2)}`}
+                  value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0))}`}
                   className="mt-1"
                   disabled
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
@@ -730,7 +730,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 <div className="w-full">
                   <Text strong className="text-sm sm:text-base">Total Actual Labor $:</Text>
                   <Input
-                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0).toFixed(2)}`}
+                    value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0))}`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
@@ -745,7 +745,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   value={`${(() => {
                     const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
                     const totalHours = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0);
-                    return totalHours > 0 ? `$${(totalLabor / totalHours).toFixed(2)}/hr` : '$0.00/hr';
+                    return totalHours > 0 ? `$${Math.round(totalLabor / totalHours)}/hr` : '$0/hr';
                   })()}`}
                   className="mt-1"
                   disabled
@@ -755,7 +755,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Total Net Sales </Text>
                 <Input
-                  value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0).toFixed(2)}`}
+                  value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0))}`}
                   className="mt-1"
                   disabled
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
@@ -766,9 +766,9 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 <Input
                   value={`${(() => {
                     const validDays = weekFormData.dailyData.filter(day => day.restaurantOpen !== false && day.netSales > 0);
-                    if (validDays.length === 0) return '0.0';
+                    if (validDays.length === 0) return 0;
                     const avgPercentage = validDays.reduce((sum, day) => sum + (parseFloat(day.dailyLaborPercentage) || 0), 0) / validDays.length;
-                    return avgPercentage.toFixed(1);
+                    return Math.round(avgPercentage);
                   })()}%`}
                   disabled
                   className="w-full"
@@ -781,7 +781,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   value={`${(() => {
                     const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
                     const totalSales = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0);
-                    return totalSales > 0 ? ((totalLabor / totalSales) * 100).toFixed(1) : '0.0';
+                    return totalSales > 0 ? Math.round((totalLabor / totalSales) * 100) : 0;
                   })()}%`}
                   disabled
                   style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
@@ -1044,6 +1044,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
+                  style={{
+                    backgroundColor: "#85d7a2",
+                    borderColor: "#85d7a2",
+                    color: "white !important",
+                    fontWeight: '500'
+                  }}
                 >
                   {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly Labor" : "Edit Actual Weekly Labor"}
                 </Button>
@@ -1122,7 +1128,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                       {(() => {
                                         const totalLabor = pageData.reduce((sum, record) => sum + (parseFloat(record.actualLaborDollars) || 0), 0);
                                         const totalHours = pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursActual) || 0), 0);
-                                        return totalHours > 0 ? `$${(totalLabor / totalHours).toFixed(2)}/hr` : '$0.00/hr';
+                                        return totalHours > 0 ? `$${Math.round(totalLabor / totalHours)}/hr` : '$0/hr';
                                       })()}
                                     </Text>
                                   </Table.Summary.Cell>
@@ -1131,7 +1137,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                       {(() => {
                                         const totalLabor = pageData.reduce((sum, record) => sum + (parseFloat(record.actualLaborDollars) || 0), 0);
                                         const totalHours = pageData.reduce((sum, record) => sum + (parseFloat(record.laborHoursActual) || 0), 0);
-                                        return totalHours > 0 ? `$${(totalLabor / totalHours).toFixed(2)}/hr` : '$0.00/hr';
+                                        return totalHours > 0 ? `$${Math.round(totalLabor / totalHours)}/hr` : '$0/hr';
                                       })()}
                                     </Text>
                                   </Table.Summary.Cell>
@@ -1432,7 +1438,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                       const totalHours = weeklyData[0].dailyData.reduce((sum, day) => {
                         return day.restaurantOpen !== false ? sum + (parseFloat(day.laborHoursActual) || 0) : sum;
                       }, 0);
-                      return totalHours > 0 ? `$${(totalLabor / totalHours).toFixed(2)}/hr` : '$0.00/hr';
+                      return totalHours > 0 ? `$${Math.round(totalLabor / totalHours)}/hr` : '$0/hr';
                     })()}`}
                     className="mt-1"
                     disabled
@@ -1477,7 +1483,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                         return day.restaurantOpen !== false ? sum + getNetSalesForDate(day.date) : sum;
                       }, 0);
                       
-                      return totalSales > 0 ? ((totalLabor / totalSales) * 100).toFixed(1) : '0.0';
+                      return totalSales > 0 ? Math.round((totalLabor / totalSales) * 100) : 0;
                     })()}%`}
                     className="mt-1"
                     disabled

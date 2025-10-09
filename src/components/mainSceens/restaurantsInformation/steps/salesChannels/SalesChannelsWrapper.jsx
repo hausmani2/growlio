@@ -13,12 +13,17 @@ import SalesDays from "./SalesDays";
 const SalesChannelsWrapperContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, loadExistingOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
+    
+    // Scroll to top when component mounts
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
 
     // State for Sales Channels
     const [salesChannelsData, setSalesChannelsData] = useState({
@@ -105,17 +110,6 @@ const SalesChannelsWrapperContent = () => {
         }
     }, [completeOnboardingData]);
 
-    // Load data when component mounts
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const result = await loadExistingOnboardingData();
-            } catch (error) {
-                console.error("🚀 Error loading data:", error);
-            }
-        };
-        loadData();
-    }, [loadExistingOnboardingData]);
 
     // Clear error when component mounts
     useEffect(() => {
@@ -222,8 +216,13 @@ const SalesChannelsWrapperContent = () => {
     if (loading) {
         return (
             <div className="relative">
-                <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center">
-                    <LoadingSpinner message="Saving sales channels..." size="medium" />
+                <div className="absolute inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center">
+                    <LoadingSpinner 
+                        message="Saving sales channels..." 
+                        size="medium" 
+                        subtext="Please wait while we save your changes..."
+                        showSubtext={true}
+                    />
                 </div>
                 <div className="opacity-50 pointer-events-none">
                     <div className="flex flex-col gap-6">

@@ -204,10 +204,18 @@ export const TabProvider = ({ children }) => {
             // Check if user can navigate to this tab (don't show messages for URL-based navigation)
             if (canNavigateToTab(targetTabId, false)) {
                 setActiveTab(targetTabId);
+                // Scroll to top when URL changes (e.g., direct navigation or browser back/forward)
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
             } else {
                 // In update mode, don't redirect to onboarding - just set to first tab
                 if (isUpdateMode) {
                     setActiveTab(0);
+                    // Scroll to top when redirecting in update mode
+                    setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
                 } else {
                     // Only redirect to onboarding in onboarding mode
                     setActiveTab(0);
@@ -243,10 +251,16 @@ export const TabProvider = ({ children }) => {
         if (tab) {
             if (isUpdateMode) {
                 // In update mode, stay on the same page - don't navigate
+                // Scroll to top when switching tabs in update mode
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
                 // In onboarding mode, navigate to onboarding path
                 const targetPath = `/onboarding/${tab.path}`;
                 navigate(targetPath);
+                // Scroll to top after navigation
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
             }
         } else {
             console.error(`❌ Tab not found for id: ${tabId}`);
@@ -275,10 +289,16 @@ export const TabProvider = ({ children }) => {
                 if (tab) {
                     if (isUpdateMode) {
                         // In update mode, stay on the same page - don't navigate
+                        // Scroll to top when switching tabs in update mode
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else {
                         // In onboarding mode, navigate to onboarding path
                         const targetPath = `/onboarding/${tab.path}`;
                         navigate(targetPath);
+                        // Scroll to top after navigation
+                        setTimeout(() => {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }, 100);
                     }
                 } else {
                     console.error(`❌ Tab not found for id: ${nextTabId}`);
@@ -340,10 +360,18 @@ export const TabProvider = ({ children }) => {
             // Set a flag to indicate this is a new user completing onboarding
             sessionStorage.setItem('isNewUserCompletingOnboarding', 'true');
             navigate('/onboarding/complete', { replace: true });
+            // Scroll to top after navigation
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
         } else {
             // For existing users in update mode, navigate to dashboard
             message.success('Settings updated successfully!');
             navigate('/dashboard/budget', { replace: true });
+            // Scroll to top after navigation
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
         }
     };
 

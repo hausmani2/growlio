@@ -131,7 +131,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value || 0);
+    }).format(Math.round(value || 0));
   }, []);
 
   const formatNumber = useCallback((value) => {
@@ -139,7 +139,7 @@ const WeeklySummaryTable = ({ dashboardData, dashboardSummaryData, loading, erro
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value || 0);
+    }).format(Math.round(value || 0));
   }, []);
 
   // Color coding for profit/loss values - Same as SummaryTableDashboard

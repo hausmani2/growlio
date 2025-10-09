@@ -23,6 +23,11 @@ const ExpenseWrapperContent = () => {
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
+    
+    // Scroll to top when component mounts
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
 
     // Get is_franchise data from Basic Information
     const isFranchise = completeOnboardingData["Basic Information"]?.data?.locations?.[0]?.is_franchise || false;
@@ -374,13 +379,75 @@ const ExpenseWrapperContent = () => {
         }
     };
 
+    // Show loading spinner overlay when loading
+    if (loading) {
+        return (
+            <div className="relative">
+                <div className="absolute inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center">
+                    <LoadingSpinner 
+                        message="Saving expense information..." 
+                        size="medium" 
+                        subtext="Please wait while we save your changes..."
+                        showSubtext={true}
+                    />
+                </div>
+                <div className="opacity-50 pointer-events-none">
+                    <div className="w-full mx-auto">
+                        {/* Header Section with same styling as dashboard */}
+                        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
+                            <OnboardingBreadcrumb
+                                currentStep="Expenses"
+                                description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
+                                heading="Fixed Costs =" description2=" Non-negotiable. Always plan for them."
+                                heading2="Variable Fixed Costs = " description3=" Can sometimes be paused or reduced if needed."
+                            />
+                        </div>
+
+                        {/* Content Section */}
+                        <div className="space-y-6">
+                            <FixedCost
+                                data={expenseData}
+                                updateData={updateExpenseData}
+                                errors={validationErrors}
+                            />
+                            <VariableFixed
+                                ref={variableFixedRef}
+                                data={expenseData}
+                                updateData={updateExpenseData}
+                                errors={validationErrors}
+                                isFranchise={isFranchise}
+                            />
+                            <TotalExpense
+                                data={expenseData}
+                                onSave={handleSave}
+                                loading={loading}
+                            />
+                        </div>
+
+                        {isUpdateMode && (
+                            <div className="flex justify-end mt-8 pt-6">
+                                <button
+                                    onClick={handleSave}
+                                    className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
+                                    disabled={loading}
+                                >
+                                    {loading ? "Saving..." : "Save Changes"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="w-full mx-auto">
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
                 <OnboardingBreadcrumb
                     currentStep="Expenses"
-                    description="When running a restaurant, it’s important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
+                    description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
                     heading="Fixed Costs =" description2=" Non-negotiable. Always plan for them."
                     heading2="Variable Fixed Costs = " description3=" Can sometimes be paused or reduced if needed."
                 />

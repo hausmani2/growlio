@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { Popover, Typography } from 'antd';
 import { DollarOutlined, ShoppingOutlined, MobileOutlined, CarOutlined, PlusOutlined, MinusOutlined } from '@ant-design/icons';
+import { 
+  processThirdPartySales, 
+  getTotalThirdPartySales, 
+  formatThirdPartySalesValue,
+  createProviderKey 
+} from '../../../../utils/thirdPartySalesUtils';
 
 const { Text } = Typography;
 
@@ -31,27 +37,11 @@ const SalesDetailDropdown = ({
   const salesActual = parseFloat(salesData.sales_actual) || 0;
   const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
   
-  // Handle third party sales from new structure - array format
-  const thirdPartyProviders = [];
-  
-  if (salesData.third_party_sales && Array.isArray(salesData.third_party_sales)) {
-    // Process array of third party providers
-    salesData.third_party_sales.forEach((provider, index) => {
-      if (provider.provider_name && provider.provider_fee) {
-        const providerFee = parseFloat(provider.provider_fee) || 0;
-        if (providerFee > 0) {
-          thirdPartyProviders.push({
-            name: provider.provider_name,
-            key: `provider_${index}`,
-            sales: providerFee
-          });
-        }
-      }
-    });
-  }
+  // Handle third party sales using utility functions
+  const thirdPartyProviders = processThirdPartySales(salesData.third_party_Sales || salesData.third_party_sales);
 
-  // Individual third party providers (if they exist in the response)
-  // Only Door Dash is currently supported
+  // Calculate total third-party sales
+  const totalThirdPartySales = getTotalThirdPartySales(thirdPartyProviders);
   
   // Use sales_actual directly from API (not calculated)
   const totalActualSales = salesActual;
@@ -215,55 +205,48 @@ const SalesDetailDropdown = ({
                 <Text className="text-xs font-semibold">{formatValue(appOnlineSales, 'app_online_sales')}</Text>
               </div>
 
-                                            {/* Third Party Sales - Multi-level Expandable */}
-                {thirdPartyProviders.length > 0 && (
-                  <div className="border border-gray-200 rounded">
-                    <div 
-                      className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                      onClick={() => toggleSection('thirdParty')}
-                    >
-                      <div className="flex items-center gap-2">
-                        <CarOutlined className="text-gray-600 text-xs" />
-                        <Text className="text-xs font-medium text-gray-700">Third Party Sales:</Text>
-                      </div>
-                                             <div className="flex items-center gap-2">
-                         <Text className="text-xs font-semibold">
-                           {thirdPartyProviders.reduce((total, provider) => total + provider.sales, 0)}%
-                         </Text>
-                        {expandedSections.thirdParty ? (
-                          <MinusOutlined className="text-gray-600 text-xs" />
-                        ) : (
-                          <PlusOutlined className="text-gray-600 text-xs" />
-                        )}
-                      </div>
+              {/* Third Party Sales - Professional Display */}
+              {thirdPartyProviders.length > 0 && (
+                <div className="border border-gray-200 rounded">
+                  <div 
+                    className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    onClick={() => toggleSection('thirdParty')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CarOutlined className="text-gray-600 text-xs" />
+                      <Text className="text-xs font-medium text-gray-700">Third Party Sales:</Text>
                     </div>
-                    
-                    {/* Expanded Third Party Content */}
-                    {expandedSections.thirdParty && (
-                      <div className="p-2 bg-white border-t border-gray-200 space-y-2">
-                        {/* Dynamic Provider List */}
-                        {thirdPartyProviders.map((provider) => (
-                          <div key={provider.key} className="border border-gray-200 rounded">
-                            <div 
-                              className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                              onClick={() => toggleSection(provider.key)}
-                            >
-                              <div className="flex items-center gap-2">
-                                <CarOutlined className="text-gray-500 text-xs" />
-                                <Text className="text-xs font-medium text-gray-600">{provider.name}:</Text>
-                              </div>
-                                                             <div className="flex items-center gap-2">
-                                 <Text className="text-xs font-semibold">{provider.sales}%</Text>
-                               </div>
-                            </div>
-                            
-
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Text className="text-xs font-semibold">
+                        {formatThirdPartySalesValue(totalThirdPartySales, printFormat)}
+                      </Text>
+                      {expandedSections.thirdParty ? (
+                        <MinusOutlined className="text-gray-600 text-xs" />
+                      ) : (
+                        <PlusOutlined className="text-gray-600 text-xs" />
+                      )}
+                    </div>
                   </div>
-                )}
+                  
+                  {/* Expanded Third Party Content */}
+                  {expandedSections.thirdParty && (
+                    <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+                      {/* Dynamic Provider List with Professional Names */}
+                      {thirdPartyProviders.map((provider, index) => (
+                        <div key={provider.key} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                          <div className="flex items-center gap-2">
+                            <CarOutlined className="text-gray-500 text-xs" />
+                            <Text className="text-xs font-medium text-gray-600">{provider.name}:</Text>
+                          </div>
+                          <Text className="text-xs font-semibold">
+                            {formatThirdPartySalesValue(provider.sales, printFormat)}
+                          </Text>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
                                             {/* Show message if no detailed sales data available */}
                 {salesActual === 0 && appOnlineSales === 0 && thirdPartyProviders.length === 0 && (

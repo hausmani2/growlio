@@ -510,8 +510,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
                      {/* Weekly COGS Totals Summary - Auto-calculated from daily inputs */}
-           <Card title="Weekly COGS Totals Summary" size="small">
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+           <Card title="Weekly COGS Totals Summary" size="small" className='bg-gray-50 opacity-50'>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
                <div className="w-full">
                  <Text strong className="text-sm sm:text-base">Total COGS Budget:</Text>
                  <Input
@@ -669,6 +669,12 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
+                  style={{
+                    backgroundColor: "#85d7a2",
+                    borderColor: "#80ed99",
+                    color: "white !important",
+                    fontWeight: '500'
+                  }}
                 >
                   {dataNotFound || areAllValuesZero(weeklyData) ? "Add Actual Weekly COGS" : "Edit Actual Weekly COGS"}
                 </Button>
@@ -898,10 +904,10 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                      <Text strong>COGS Percentage:</Text>
                      <Input
                        value={`${(() => {
-                         if (weeklyData.length === 0) return '0.0';
+                         if (weeklyData.length === 0) return 0;
                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
-                         return totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) : '0.0';
+                         return totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
                        })()}%`}
                        className="mt-1"
                        disabled
@@ -926,10 +932,10 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                      <Text strong>Weekly Remaining COGS:</Text>
                      <Input
                        value={`$${(() => {
-                         if (weeklyData.length === 0) return '0.00';
+                         if (weeklyData.length === 0) return 0;
                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
-                         return (totalBudget - totalActual).toFixed(2);
+                         return Math.round(totalBudget - totalActual);
                        })()}`}
                        className="mt-1"
                        disabled

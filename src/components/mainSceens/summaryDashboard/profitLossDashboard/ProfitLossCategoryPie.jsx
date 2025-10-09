@@ -81,19 +81,21 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
 
   // Get current data based on selected view
   const currentData = useMemo(() => {
+    let data = [];
+    
     if (selectedView === 'totals') {
-      return categories;
+      data = categories;
+    } else {
+      // For detailed breakdowns, use the actual subcategories data
+      const breakdownData = detailedBreakdowns[selectedView] || [];
+      data = breakdownData;
     }
     
-    // For detailed breakdowns, use the actual subcategories data
-    const breakdownData = detailedBreakdowns[selectedView] || [];
-    
-    // If no breakdown data is available, return empty array
-    if (breakdownData.length === 0) {
-      return [];
-    }
-    
-    return breakdownData;
+    // Filter out "Labor Budget" entries - only keep "Labor Actual"
+    return data.filter(item => {
+      const key = item.key?.toLowerCase() || item.label?.toLowerCase() || '';
+      return key !== 'labor_budget';
+    });
   }, [selectedView, categories, detailedBreakdowns]);
 
   // Colors: sales green, others red/blue/orange/yellow
@@ -108,7 +110,6 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       // Labor categories
       'labor': '#ef4444', // Red
       'labor_actual': '#ef4444', // Red
-      'labor_budget': '#dc2626', // Darker red
       
       // Food/COGS categories
       'food': '#3b82f6', // Blue
@@ -212,7 +213,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       <div className="mt-3 text-sm text-gray-600">
         <p>
           <span className="font-medium text-green-600">Green</span>: Sales; 
-          <span className="font-medium text-red-600"> Red</span>: Labor; 
+          <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
           <span className="font-medium text-orange-600"> Orange</span>: Fixed Expenses; 
           <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses;

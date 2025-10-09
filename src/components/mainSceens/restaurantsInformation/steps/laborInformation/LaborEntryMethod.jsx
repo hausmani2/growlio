@@ -196,7 +196,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 {/* Daily Ticket Count */}
                 <div>
                     <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Would you like to enter your daily ticket count?
+                    Would you like to record your daily transaction count?
                         <TooltipIcon text={tooltips['daily_ticket_count']} />
                     </label>
 
@@ -213,26 +213,13 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                     </Select>                
                 </div>
                 
-                {/* Forward Previous Week Rate */}
-                <div>
-                    <label htmlFor="previousLaborReport" className="block text-sm font-semibold text-gray-700 mb-2">
-                        Forward previous week's actual labor rate?
-                        <TooltipIcon text={tooltips['forward_previous_week_rate']} />
-                    </label>
-                    <Select 
-                        key={`forward_previous_week_rate_${data.forward_previous_week_rate}`}
-                        id="forward_previous_week_rate" 
-                        placeholder="No" 
-                        className="w-full h-11 rounded-lg text-sm"
-                        value={(() => {
-                            const result = data.forward_previous_week_rate === true ? "Yes" : data.forward_previous_week_rate === false ? "No" : undefined;
-                            return result;
-                        })()}
-                        onChange={(value) => updateData('forward_previous_week_rate', value === "Yes")}
-                    >
-                        <Select.Option value="No">No</Select.Option>
-                        <Select.Option value="Yes">Yes</Select.Option>
-                    </Select>                
+                {/* Forward Previous Week Rate - Hidden field, always false by default */}
+                <div style={{ display: 'none' }}>
+                    <input 
+                        type="hidden" 
+                        name="forward_previous_week_rate" 
+                        value={data.forward_previous_week_rate || false}
+                    />
                 </div>
             </div>
             
