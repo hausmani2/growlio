@@ -46,7 +46,7 @@ const useStepValidation = () => {
                 }
                 if (!location.zip_code?.trim()) {
                     errors[`location_${index}_zip`] = "Zip code is required";
-                } else if (!/^\d{5}(-\d{4})?$/.test(location.zip_code)) {
+                } else if (!/^[A-Za-z0-9\s-]{2,20}$/.test(location.zip_code)) {
                     errors[`location_${index}_zip`] = "Please enter a valid zip code";
                 }
                 if (!location.sqft || isNaN(location.sqft) || parseInt(location.sqft) <= 0) {

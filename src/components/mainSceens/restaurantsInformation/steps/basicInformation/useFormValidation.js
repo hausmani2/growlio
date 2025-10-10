@@ -47,20 +47,11 @@ const useFormValidation = () => {
         if (!addressData.zipCode?.trim()) {
             errors.zipCode = VALIDATION_MESSAGES.ZIP_CODE;
         } else {
-            // Country-specific validation
+            // Flexible validation - allow any combination of letters and numbers
             const zipCode = addressData.zipCode.trim();
-            let isValid = false;
-            
-            if (addressData.country === '1') { // United States
-                // US ZIP code: 5 digits or 5 digits + 4 digits (12345 or 12345-6789)
-                isValid = /^\d{5}(-\d{4})?$/.test(zipCode);
-            } else if (addressData.country === '2') { // Canada
-                // Canadian postal code: A1A 1A1 format (letter-digit-letter space digit-letter-digit)
-                isValid = /^[A-Za-z]\d[A-Za-z] \d[A-Za-z]\d$/.test(zipCode);
-            } else {
-                // For other countries, use flexible alphanumeric validation
-                isValid = /^[A-Za-z0-9\s-]{3,10}$/.test(zipCode);
-            }
+            // Allow any combination of letters, numbers, spaces, and hyphens
+            // Minimum 2 characters, maximum 20 characters
+            const isValid = /^[A-Za-z0-9\s-]{2,20}$/.test(zipCode);
             
             if (!isValid) {
                 errors.zipCode = VALIDATION_MESSAGES.INVALID_ZIP;
