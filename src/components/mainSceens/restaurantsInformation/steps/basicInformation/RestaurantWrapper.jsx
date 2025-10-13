@@ -29,6 +29,11 @@ const RestaurantWrapperContent = () => {
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
     
+    // Scroll to top when component mounts
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
+    
     // Get temporary form data from store
     const tempFormData = getTempFormData("Basic Information");
     
@@ -101,7 +106,7 @@ const RestaurantWrapperContent = () => {
                     ...prev,
                     address1: location.address_1 || "",
                     address2: location.address_2 || "",
-                    country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "3",
+                    country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "",
                     city: location.city || "",
                     state: location.state || "", // Keep the actual state code (TX, CA, NY, etc.)
                     zipCode: location.zip_code || ""
@@ -215,7 +220,7 @@ const RestaurantWrapperContent = () => {
                         address_1: addressData.address1,
                         address_2: addressData.address2,
                         city: addressData.city,
-                        country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
+                        country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "",
                         state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
                         zip_code: addressData.zipCode,
                         sqft: parseInt(addressTypeData.sqft),
@@ -281,8 +286,13 @@ const RestaurantWrapperContent = () => {
         return (
             <StepDataManager stepName="Basic Information">
                 <div className="relative">
-                    <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center">
-                        <LoadingSpinner message="Saving basic information..." size="medium" />
+                    <div className="absolute inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center">
+                        <LoadingSpinner 
+                            message="Saving basic information..." 
+                            size="medium" 
+                            subtext="Please wait while we save your changes..."
+                            showSubtext={true}
+                        />
                     </div>
                     <div className="opacity-50 pointer-events-none">
                         <div className="flex flex-col gap-6">

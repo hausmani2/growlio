@@ -315,38 +315,62 @@ const Register = () => {
           </div>
           
           {/* Terms and Conditions */}
-          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+          <div 
+            className="bg-gray-50 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => {
+              if (!disclaimerAccepted) {
+                // If not checked, open modal and auto-check
+                setShowDisclaimerModal(true);
+                setDisclaimerAccepted(true);
+              }
+            }}
+          >
             <div className="flex items-start gap-3">
-            <Tooltip title="Please read the Terms and Conditions and Privacy Policy before you continue">
+            <Tooltip title={disclaimerAccepted ? "Terms and Conditions accepted" : "Click to read Terms and Conditions"}>
               <Checkbox
                 checked={disclaimerAccepted}
-                onChange={(e) => setDisclaimerAccepted(e.target.checked)}
-                disabled={!disclaimerAccepted && !showDisclaimerModal}
+                onChange={(e) => {
+                  e.stopPropagation(); // Prevent div click when clicking checkbox directly
+                  if (!disclaimerAccepted) {
+                    // If not checked, open modal and auto-check
+                    setShowDisclaimerModal(true);
+                    setDisclaimerAccepted(true);
+                  }
+                  // If already checked, do nothing (disabled)
+                }}
+                disabled={disclaimerAccepted}
                 className="mt-1"
               />
                           </Tooltip>
 
               <div className="flex-1">
-                <p className="text-sm text-gray-700 leading-relaxed cursor-pointer"  onClick={() => setShowDisclaimerModal(true)}>
-                  I have read and agree to the{' '}
-                  <button
+                <p className={`text-sm leading-relaxed ${disclaimerAccepted ? 'text-gray-500' : 'text-gray-700'}`}>
+                To proceed, you must read the {' '}
+                <button
                     type="button"
-                    onClick={() => setShowDisclaimerModal(true)}
-                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
-                  >
-                    Terms and Conditions
-                  </button>
-                  {' '}and{' '}
-                  <button
-                    type="button"
-                    onClick={() => setShowDisclaimerModal(true)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent div click
+                      setShowDisclaimerModal(true);
+                    }}
                     className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
                   >
                     Privacy Policy
                   </button>
+                  {' '}&{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent div click
+                      setShowDisclaimerModal(true);
+                    }}
+                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                  >
+                    Terms and Conditions
+                  </button>
+                 
                 </p>
                 </div>
-              </div>
+            </div>
           </div>
         </div>
         

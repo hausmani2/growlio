@@ -212,12 +212,12 @@ body {
 }
 
 .ant-btn-color-default{
-  background-color: transparent !important;
-  color: black !important;
+  background-color: transparent ;
+  color: black ;
 }
 .ant-btn-color-default:hover{
-  background-color: transparent !important;
-  color: black !important;
+  background-color: transparent ;
+  color: black ;
 }
 
 

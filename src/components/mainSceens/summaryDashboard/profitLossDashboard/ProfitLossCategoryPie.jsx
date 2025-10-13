@@ -81,19 +81,18 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
 
   // Get current data based on selected view
   const currentData = useMemo(() => {
+    let data = [];
+    
     if (selectedView === 'totals') {
-      return categories;
+      data = categories;
+    } else {
+      // For detailed breakdowns, use the actual subcategories data
+      const breakdownData = detailedBreakdowns[selectedView] || [];
+      data = breakdownData;
     }
     
-    // For detailed breakdowns, use the actual subcategories data
-    const breakdownData = detailedBreakdowns[selectedView] || [];
-    
-    // If no breakdown data is available, return empty array
-    if (breakdownData.length === 0) {
-      return [];
-    }
-    
-    return breakdownData;
+    // Keep all data including both labor actual and budget
+    return data;
   }, [selectedView, categories, detailedBreakdowns]);
 
   // Colors: sales green, others red/blue/orange/yellow
@@ -212,7 +211,8 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       <div className="mt-3 text-sm text-gray-600">
         <p>
           <span className="font-medium text-green-600">Green</span>: Sales; 
-          <span className="font-medium text-red-600"> Red</span>: Labor; 
+          <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
+          <span className="font-medium text-red-800"> Dark Red</span>: Labor Budget; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
           <span className="font-medium text-orange-600"> Orange</span>: Fixed Expenses; 
           <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses;

@@ -1155,6 +1155,9 @@ src/
 - **Success**: `text-green-600`, `bg-green-100`
 - **Error**: `text-red-600`, `bg-red-100`
 - **Info**: `text-blue-500`, `bg-blue-100`
+- **orange**: `text-orange-500`, `bg-orange-100`
+
+
 
 ## 📋 Project Summary
 

@@ -46,8 +46,16 @@ const useFormValidation = () => {
         }
         if (!addressData.zipCode?.trim()) {
             errors.zipCode = VALIDATION_MESSAGES.ZIP_CODE;
-        } else if (!/^\d{5}(-\d{4})?$/.test(addressData.zipCode)) {
-            errors.zipCode = VALIDATION_MESSAGES.INVALID_ZIP;
+        } else {
+            // Flexible validation - allow any combination of letters and numbers
+            const zipCode = addressData.zipCode.trim();
+            // Allow any combination of letters, numbers, spaces, and hyphens
+            // Minimum 2 characters, maximum 20 characters
+            const isValid = /^[A-Za-z0-9\s-]{2,20}$/.test(zipCode);
+            
+            if (!isValid) {
+                errors.zipCode = VALIDATION_MESSAGES.INVALID_ZIP;
+            }
         }
 
         return errors;

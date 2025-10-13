@@ -41,8 +41,8 @@ const DisclaimerModal = ({
       onCancel={handleCancel}
       footer={
         showAcceptButton ? [
-          <Button key="cancel" onClick={handleCancel}>
-            Cancel
+          <Button key="close" onClick={handleCancel}>
+            Close
           </Button>,
           <Button 
             key="accept" 

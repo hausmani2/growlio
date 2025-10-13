@@ -445,9 +445,9 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     };
   }, [summaryData]);
 
-  // Build categories for Total Budget allocation pie (Labor, Food, Fixed, Variable, Sale Cost)
+  // Build categories for Total Budget allocation pie (Labor, Food, Fixed, Variable) - excluding Sales Budget
   const computedCategories = dynamicCategories.length
-    ? dynamicCategories
+    ? dynamicCategories.filter(category => category.key !== 'sales_budget')
     : [];
 
   // Themed colors (matching orange brand) for budget categories (not profit/loss)
@@ -683,14 +683,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           <Card className="h-full">
             <div className="mb-2">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-orange-600">Total Budget Allocation</h2>
+                <h2 className="text-xl font-bold text-orange-600">Total Expense  Allocation</h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
               <Pie data={categoryPieData} options={categoryPieOptions} />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p>This chart shows how your weekly budget is allocated across Labor, Food, Fixed and Variable costs. Remaining amount appears as Sale Cost.</p>
+              <p>This chart shows how your weekly expenses are allocated across Labor, Food, Fixed and Variable costs.</p>
             </div>
           </Card>
         </Col>
