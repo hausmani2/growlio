@@ -342,6 +342,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return 'text-gray-600';
   }, []);
 
+  // Helper function to check if a day is closed
+  const isDayClosed = useCallback((entry) => {
+    if (!entry) return false;
+    
+    // Handle both boolean and integer values for restaurant_open
+    if (typeof entry.restaurant_open === 'boolean') {
+      return !entry.restaurant_open;
+    }
+    return entry.restaurant_open === 0;
+  }, []);
+
   // Helper function to get dynamic variable name based on format
   const getDynamicVariableName = useCallback((baseKey) => {
     if (printFormat === 'percentage') {
@@ -584,13 +595,15 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         const { entry, index, dateInfo } = weekGroup.dates[0];
         const uniqueKey = `${dateInfo.fullDate}-${index}`;
         
+        const isClosed = isDayClosed(entry);
         groupedColumns.push({
           title: (
-            <div className="">
-              <div className="font-semibold text-sm text-gray-800">
+            <div className={`${isClosed ? 'opacity-60' : ''}`}>
+              <div className={`font-semibold text-sm ${isClosed ? 'text-gray-500' : 'text-gray-800'}`}>
                 {dateInfo.day}
+                {isClosed && <span className="ml-1 text-xs">🔒</span>}
               </div>
-              <div className="text-xs text-gray-600">
+              <div className={`text-xs ${isClosed ? 'text-gray-400' : 'text-gray-600'}`}>
                 {dateInfo.date}
               </div>
             </div>
@@ -604,14 +617,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         // Multiple days - create grouped header
         const children = weekGroup.dates.map(({ entry, index, dateInfo }) => {
           const uniqueKey = `${dateInfo.fullDate}-${index}`;
+          const isClosed = isDayClosed(entry);
           
           return {
             title: (
-              <div className="">
-                <div className="font-semibold text-xs text-gray-800">
+              <div className={`${isClosed ? 'opacity-60' : ''}`}>
+                <div className={`font-semibold text-xs ${isClosed ? 'text-gray-500' : 'text-gray-800'}`}>
                   {dateInfo.day}
+                  {isClosed && <span className="ml-1 text-xs">🔒</span>}
                 </div>
-                <div className="text-xs text-gray-600">
+                <div className={`text-xs ${isClosed ? 'text-gray-400' : 'text-gray-600'}`}>
                   {dateInfo.date}
                 </div>
               </div>
@@ -642,6 +657,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render cell value with proper formatting
   const renderCellValue = useCallback((value, record, entry, dateInfo) => {
     const categoryKey = record.key;
+    const isClosed = isDayClosed(entry);
+    
     // Determine data format and use appropriate date key
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
@@ -695,7 +712,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     if (displayValue === '-') {
-      return <span className="text-xs text-gray-500">-</span>;
+      return (
+        <span className={`text-xs ${isClosed ? 'text-gray-300 opacity-30' : 'text-gray-500'}`}>
+          {isClosed ? 'Closed' : '-'}
+        </span>
+      );
     }
     
     // Get profit percentage for inline display
@@ -740,16 +761,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         };
         
         return (
-          <div className="flex items-start justify-start">
+          <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
             <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
               <span 
-                className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
-                title="Click to view sales details"
+                className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center gap-1 ${isClosed ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                title={isClosed ? "Restaurant is closed on this day" : "Click to view sales details"}
               >
                 {formattedValue}
               </span>
             </SalesDetailDropdown>
-            {profitPercentage && (
+            {profitPercentage && !isClosed && (
               <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_amount_percent, categoryKey)} font-bold`}>
                   {profitPercentage}
@@ -769,14 +790,14 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         };
         
         return (
-          <div className="flex items-start justify-start">
+          <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
             <span 
-              className={`text-sm ${colorClass} flex items-center`}
-              title="Click to view food cost details"
+              className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center`}
+              title={isClosed ? "Restaurant is closed on this day" : "Click to view food cost details"}
             >
               {formattedValue}
             </span>
-            {profitPercentage && (
+            {profitPercentage && !isClosed && (
               <FoodCostDetailDropdown dayData={dayData} foodCostData={entry}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
@@ -796,16 +817,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         if (rawValue > 0) {
           return (
-            <div className="flex items-start justify-start">
+            <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
               <FixedCostDetailDropdown dayData={dayData} fixedCostData={entry}>
                 <span 
-                  className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
-                  title="Click to view fixed cost details"
+                  className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center gap-1 ${isClosed ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                  title={isClosed ? "Restaurant is closed on this day" : "Click to view fixed cost details"}
                 >
                   {formattedValue} ⓘ
                 </span>
               </FixedCostDetailDropdown>
-              {profitPercentage && (
+              {profitPercentage && !isClosed && (
                 <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry.fixed_costs_profit || entry.fixedCost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -814,9 +835,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           );
         } else {
           return (
-            <div className="flex items-start justify-start">
-              <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-              {profitPercentage && (
+            <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
+              <span className={`text-sm ${isClosed ? 'text-gray-400' : colorClass}`}>{formattedValue}</span>
+              {profitPercentage && !isClosed && (
                 <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -835,16 +856,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         if (rawValue > 0) {
           return (
-            <div className="flex items-start justify-start">
+            <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
               <VariableCostDetailDropdown dayData={dayData} variableCostData={entry}>
                 <span 
-                  className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
-                  title="Click to view variable cost details"
+                  className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center gap-1 ${isClosed ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
+                  title={isClosed ? "Restaurant is closed on this day" : "Click to view variable cost details"}
                 >
                   {formattedValue} ⓘ
                 </span>
               </VariableCostDetailDropdown>
-              {profitPercentage && (
+              {profitPercentage && !isClosed && (
                 <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -853,9 +874,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           );
         } else {
           return (
-            <div className="flex items-start justify-start">
-              <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-              {profitPercentage && (
+            <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
+              <span className={`text-sm ${isClosed ? 'text-gray-400' : colorClass}`}>{formattedValue}</span>
+              {profitPercentage && !isClosed && (
                 <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -866,9 +887,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       return (
-        <div className="flex items-start justify-start">
-          <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-          {profitPercentage && (
+        <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
+          <span className={`text-sm ${isClosed ? 'text-gray-400' : colorClass}`}>{formattedValue}</span>
+          {profitPercentage && !isClosed && (
             <span className={`text-xs ml-1 mb-2 ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit, categoryKey)} font-bold`}>
               {profitPercentage}
             </span>
@@ -892,14 +913,14 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         };
         
         return (
-          <div className="flex items-start justify-start">
+          <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
             <span 
-              className="text-sm text-gray-700 flex items-center gap-1"
-              title="Click to view labor details"
+              className={`text-sm ${isClosed ? 'text-gray-400' : 'text-gray-700'} flex items-center gap-1`}
+              title={isClosed ? "Restaurant is closed on this day" : "Click to view labor details"}
             >
               {formattedLabourValue} 
             </span>
-            {profitPercentage && (
+            {profitPercentage && !isClosed && (
               <LaborDetailDropdown dayData={dayData} laborData={entry}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
@@ -911,9 +932,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
       
       return (
-        <div className="flex items-start justify-start">
-          <span className="text-sm text-gray-700">{formattedLabourValue}</span>
-          {profitPercentage && (
+        <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
+          <span className={`text-sm ${isClosed ? 'text-gray-400' : 'text-gray-700'}`}>{formattedLabourValue}</span>
+          {profitPercentage && !isClosed && (
             <span className={`text-xs ml-1 ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
               {profitPercentage}
             </span>
@@ -923,8 +944,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     }
     
     
-    return <span className="text-sm text-gray-700">{rawValue}</span>;
-  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData, getDynamicVariableName, printFormat, parseNumericValue, formatValue, forceRender]);
+    return <span className={`text-sm ${isClosed ? 'text-gray-400 opacity-50' : 'text-gray-700'}`}>{rawValue}</span>;
+  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData, getDynamicVariableName, printFormat, parseNumericValue, formatValue, forceRender, isDayClosed]);
 
   // Generate expandable row data
   const generateExpandableData = useMemo(() => {
@@ -1324,6 +1345,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
   // Render sales details
   const renderSalesDetails = useCallback((salesData) => {
+    const isClosed = isDayClosed(salesData);
     const salesBudget = parseFloat(salesData.sales_budget) || 0;
     const salesActual = parseFloat(salesData.sales_actual) || 0;
     const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
@@ -1354,35 +1376,37 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isExpanded = expandedDetails.has(detailKey);
 
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isClosed ? 'opacity-60' : ''}`}>
         {/* Sales Budget */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+        <div className={`flex items-center justify-between p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600 text-sm">💰</span>
-            <span className="text-sm font-semibold text-blue-800">Sales Budget:</span>
+            <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-blue-600'}`}>💰</span>
+            <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-blue-800'}`}>Sales Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatCurrency(salesBudget)}</span>
+          <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-blue-900'}`}>{formatCurrency(salesBudget)}</span>
         </div>
 
         {/* Net Sales - Expandable */}
-        <div className="border border-gray-200 rounded">
+        <div className={`border rounded ${isClosed ? 'border-gray-300' : 'border-gray-200'}`}>
           <div 
-            className="flex items-center justify-between p-3 bg-green-50 cursor-pointer hover:bg-green-100 transition-colors"
-            onClick={() => toggleDetailExpansion(detailKey)}
+            className={`flex items-center justify-between p-3 transition-colors ${isClosed ? 'bg-gray-100 cursor-default' : 'bg-green-50 cursor-pointer hover:bg-green-100'}`}
+            onClick={() => !isClosed && toggleDetailExpansion(detailKey)}
           >
             <div className="flex items-center gap-2">
-              <span className="text-green-600 text-sm">🛒</span>
-              <span className="text-sm font-semibold text-green-800">Net Sales</span>
+              <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-green-600'}`}>🛒</span>
+              <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-green-800'}`}>Net Sales</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-900">{formatCurrency(salesActual)}</span>
-              <button className="text-green-600 hover:text-green-800 transition-colors">
-                {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-              </button>
+              <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-green-900'}`}>{formatCurrency(salesActual)}</span>
+              {!isClosed && (
+                <button className="text-green-600 hover:text-green-800 transition-colors">
+                  {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </button>
+              )}
             </div>
           </div>
           
-          {isExpanded && (
+          {isExpanded && !isClosed && (
             <div className="p-3 bg-white border-t border-gray-200 space-y-3">
               {/* In-Store Sales */}
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
@@ -1459,17 +1483,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
 
         {/* Over/Under Analysis */}
-        <div className="p-3 bg-orange-50 rounded border border-orange-200">
+        <div className={`p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-orange-50 border-orange-200'}`}>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-700">Amt Over/Under:</span>
-              <span className={`text-xs font-bold ${getOverUnderColor(amtOverUnder)}`}>
+              <span className={`text-xs font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-700'}`}>Amt Over/Under:</span>
+              <span className={`text-xs font-bold ${isClosed ? 'text-gray-500' : getOverUnderColor(amtOverUnder)}`}>
                 {formatCurrency(amtOverUnder)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-700">% Over/Under:</span>
-              <span className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
+              <span className={`text-xs font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-700'}`}>% Over/Under:</span>
+              <span className={`text-xs font-bold ${isClosed ? 'text-gray-500' : getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </span>
             </div>
@@ -1477,10 +1501,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, printFormat]);
+  }, [formatCurrency, formatPercentage, expandedDetails, toggleDetailExpansion, printFormat, isDayClosed]);
 
   // Render labor details
   const renderLaborDetails = useCallback((laborData) => {
+    const isClosed = isDayClosed(laborData);
     const laborBudget = parseFloat(laborData.labour) || 
                        parseFloat(laborData.labor_budget) || 
                        parseFloat(laborData.budgeted_labor_dollars) || 0;
@@ -1512,35 +1537,37 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isExpanded = expandedDetails.has(detailKey);
 
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isClosed ? 'opacity-60' : ''}`}>
         {/* Labor Budget */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+        <div className={`flex items-center justify-between p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600 text-sm">💰</span>
-            <span className="text-sm font-semibold text-blue-800">Labor Budget:</span>
+            <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-blue-600'}`}>💰</span>
+            <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-blue-800'}`}>Labor Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatValue(laborBudget, 'labour')}</span>
+          <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-blue-900'}`}>{formatValue(laborBudget, 'labour')}</span>
         </div>
 
         {/* Labor Actual - Expandable */}
-        <div className="border border-gray-200 rounded">
+        <div className={`border rounded ${isClosed ? 'border-gray-300' : 'border-gray-200'}`}>
           <div 
-            className="flex items-center justify-between p-3 bg-green-50 cursor-pointer hover:bg-green-100 transition-colors"
-            onClick={() => toggleDetailExpansion(detailKey)}
+            className={`flex items-center justify-between p-3 transition-colors ${isClosed ? 'bg-gray-100 cursor-default' : 'bg-green-50 cursor-pointer hover:bg-green-100'}`}
+            onClick={() => !isClosed && toggleDetailExpansion(detailKey)}
           >
             <div className="flex items-center gap-2">
-              <span className="text-green-600 text-sm">⏰</span>
-              <span className="text-sm font-semibold text-green-800">Labor Actual</span>
+              <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-green-600'}`}>⏰</span>
+              <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-green-800'}`}>Labor Actual</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-900">{formatValue(laborActual, 'labour_actual')}</span>
-              <button className="text-green-600 hover:text-green-800 transition-colors">
-                {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-              </button>
+              <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-green-900'}`}>{formatValue(laborActual, 'labour_actual')}</span>
+              {!isClosed && (
+                <button className="text-green-600 hover:text-green-800 transition-colors">
+                  {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </button>
+              )}
             </div>
           </div>
           
-          {isExpanded && (
+          {isExpanded && !isClosed && (
             <div className="p-3 bg-white border-t border-gray-200 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -1579,6 +1606,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
   // Render food cost details
   const renderFoodCostDetails = useCallback((foodCostData) => {
+    const isClosed = isDayClosed(foodCostData);
     const foodCostBudget = parseFloat(foodCostData.food_cost) || 0;
     
     // Use dynamic variable based on format
@@ -1600,35 +1628,37 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isExpanded = expandedDetails.has(detailKey);
 
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isClosed ? 'opacity-60' : ''}`}>
         {/* Food Cost Budget */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+        <div className={`flex items-center justify-between p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600 text-sm">💰</span>
-            <span className="text-sm font-semibold text-blue-800">Food Cost Budget:</span>
+            <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-blue-600'}`}>💰</span>
+            <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-blue-800'}`}>Food Cost Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatValue(foodCostBudget, 'food_cost')}</span>
+          <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-blue-900'}`}>{formatValue(foodCostBudget, 'food_cost')}</span>
         </div>
 
         {/* Food Cost Actual - Expandable */}
-        <div className="border border-gray-200 rounded">
+        <div className={`border rounded ${isClosed ? 'border-gray-300' : 'border-gray-200'}`}>
           <div 
-            className="flex items-center justify-between p-3 bg-green-50 cursor-pointer hover:bg-green-100 transition-colors"
-            onClick={() => toggleDetailExpansion(detailKey)}
+            className={`flex items-center justify-between p-3 transition-colors ${isClosed ? 'bg-gray-100 cursor-default' : 'bg-green-50 cursor-pointer hover:bg-green-100'}`}
+            onClick={() => !isClosed && toggleDetailExpansion(detailKey)}
           >
             <div className="flex items-center gap-2">
-              <span className="text-green-600 text-sm">🍽️</span>
-              <span className="text-sm font-semibold text-green-800">Food Cost Actual</span>
+              <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-green-600'}`}>🍽️</span>
+              <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-green-800'}`}>Food Cost Actual</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-green-900">{formatValue(foodCostActual, 'food_cost_actual')}</span>
-              <button className="text-green-600 hover:text-green-800 transition-colors">
-                {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-              </button>
+              <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-green-900'}`}>{formatValue(foodCostActual, 'food_cost_actual')}</span>
+              {!isClosed && (
+                <button className="text-green-600 hover:text-green-800 transition-colors">
+                  {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </button>
+              )}
             </div>
           </div>
           
-          {isExpanded && (
+          {isExpanded && !isClosed && (
             <div className="p-3 bg-white border-t border-gray-200 space-y-3">
               {/* Food Cost Breakdown */}
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
@@ -1670,6 +1700,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
   // Render fixed cost details
   const renderFixedCostDetails = useCallback((fixedCostData) => {
+    const isClosed = isDayClosed(fixedCostData);
     const fixedCosts = Array.isArray(fixedCostData.fixed_costs) ? fixedCostData.fixed_costs : [];
     const totalFixedCost = fixedCosts.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
     const totalFixedCostPercent = fixedCosts.reduce((sum, cost) => sum + parseFloat(cost.percent_of_sales || 0), 0);
@@ -1678,31 +1709,33 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isExpanded = expandedDetails.has(detailKey);
 
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isClosed ? 'opacity-60' : ''}`}>
         {/* Total Fixed Cost */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+        <div className={`flex items-center justify-between p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600 text-sm">💰</span>
-            <span className="text-sm font-semibold text-blue-800">Total Fixed Cost:</span>
+            <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-blue-600'}`}>💰</span>
+            <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-blue-800'}`}>Total Fixed Cost:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">
+          <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-blue-900'}`}>
             {printFormat === 'percentage' ? formatValue(totalFixedCostPercent, 'fixedCost') : formatValue(totalFixedCost, 'fixedCost')}
           </span>
         </div>
 
         {/* Fixed Cost Breakdown - Expandable */}
         {fixedCosts.length > 0 ? (
-          <div className="border border-gray-200 rounded">
+          <div className={`border rounded ${isClosed ? 'border-gray-300' : 'border-gray-200'}`}>
             <div 
-              className="p-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-between"
-              onClick={() => toggleDetailExpansion(detailKey)}
+              className={`p-3 border-b transition-colors flex items-center justify-between ${isClosed ? 'bg-gray-100 cursor-default' : 'bg-gray-50 cursor-pointer hover:bg-gray-100'}`}
+              onClick={() => !isClosed && toggleDetailExpansion(detailKey)}
             >
-              <span className="text-sm font-semibold text-gray-800">Fixed Cost Breakdown</span>
-              <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-              </button>
+              <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-800'}`}>Fixed Cost Breakdown</span>
+              {!isClosed && (
+                <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                  {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </button>
+              )}
             </div>
-            {isExpanded && (
+            {isExpanded && !isClosed && (
               <div className="p-3 bg-white space-y-2">
                 {fixedCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -1716,16 +1749,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             )}
           </div>
         ) : (
-          <div className="text-center py-4 bg-gray-50 rounded border border-gray-200">
-            <span className="text-sm text-gray-500 italic">No fixed cost data available</span>
+          <div className={`text-center py-4 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-gray-50 border-gray-200'}`}>
+            <span className={`text-sm italic ${isClosed ? 'text-gray-400' : 'text-gray-500'}`}>No fixed cost data available</span>
           </div>
         )}
       </div>
     );
-  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat]);
+  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat, isDayClosed]);
 
   // Render variable cost details
   const renderVariableCostDetails = useCallback((variableCostData) => {
+    const isClosed = isDayClosed(variableCostData);
     const variableCosts = Array.isArray(variableCostData.variable_costs) ? variableCostData.variable_costs : [];
     const totalVariableCost = variableCosts.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
     const totalVariableCostPercent = variableCosts.reduce((sum, cost) => sum + parseFloat(cost.percent_of_sales || 0), 0);
@@ -1734,31 +1768,33 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isExpanded = expandedDetails.has(detailKey);
 
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isClosed ? 'opacity-60' : ''}`}>
         {/* Total Variable Cost */}
-        <div className="flex items-center justify-between p-3 bg-blue-50 rounded border border-blue-200">
+        <div className={`flex items-center justify-between p-3 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600 text-sm">💰</span>
-            <span className="text-sm font-semibold text-blue-800">Total Variable Cost:</span>
+            <span className={`text-sm ${isClosed ? 'text-gray-500' : 'text-blue-600'}`}>💰</span>
+            <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-blue-800'}`}>Total Variable Cost:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">
+          <span className={`text-sm font-bold ${isClosed ? 'text-gray-500' : 'text-blue-900'}`}>
             {printFormat === 'percentage' ? formatValue(totalVariableCostPercent, 'variableCost') : formatValue(totalVariableCost, 'variableCost')}
           </span>
         </div>
 
         {/* Variable Cost Breakdown - Expandable */}
         {variableCosts.length > 0 ? (
-          <div className="border border-gray-200 rounded">
+          <div className={`border rounded ${isClosed ? 'border-gray-300' : 'border-gray-200'}`}>
             <div 
-              className="p-3 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-between"
-              onClick={() => toggleDetailExpansion(detailKey)}
+              className={`p-3 border-b transition-colors flex items-center justify-between ${isClosed ? 'bg-gray-100 cursor-default' : 'bg-gray-50 cursor-pointer hover:bg-gray-100'}`}
+              onClick={() => !isClosed && toggleDetailExpansion(detailKey)}
             >
-              <span className="text-sm font-semibold text-gray-800">Variable Cost Breakdown</span>
-              <button className="text-gray-600 hover:text-gray-800 transition-colors">
-                {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
-              </button>
+              <span className={`text-sm font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-800'}`}>Variable Cost Breakdown</span>
+              {!isClosed && (
+                <button className="text-gray-600 hover:text-gray-800 transition-colors">
+                  {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
+                </button>
+              )}
             </div>
-            {isExpanded && (
+            {isExpanded && !isClosed && (
               <div className="p-3 bg-white space-y-2">
                 {variableCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -1772,13 +1808,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             )}
           </div>
         ) : (
-          <div className="text-center py-4 bg-gray-50 rounded border border-gray-200">
-            <span className="text-sm text-gray-500 italic">No variable cost data available</span>
+          <div className={`text-center py-4 rounded border ${isClosed ? 'bg-gray-100 border-gray-300' : 'bg-gray-50 border-gray-200'}`}>
+            <span className={`text-sm italic ${isClosed ? 'text-gray-400' : 'text-gray-500'}`}>No variable cost data available</span>
           </div>
         )}
       </div>
     );
-  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat]);
+  }, [formatCurrency, expandedDetails, toggleDetailExpansion, formatValue, printFormat, isDayClosed]);
 
   // Render detailed content for expandable rows - Optimized with memoization
   const renderDetailedContent = useCallback((categoryKey, entry) => {
@@ -1796,7 +1832,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       default:
         return null;
     }
-  }, [renderSalesDetails, renderLaborDetails, renderFoodCostDetails, renderFixedCostDetails, renderVariableCostDetails]);
+  }, [renderSalesDetails, renderLaborDetails, renderFoodCostDetails, renderFixedCostDetails, renderVariableCostDetails, isDayClosed]);
 
   // Render weekly/monthly detailed content for all periods - Optimized with memoization
   const renderWeeklyDetailedContent = useCallback((categoryKey) => {
@@ -1841,13 +1877,15 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               periodLabel = `Day ${index + 1}`;
             }
             
+            const isClosed = isDayClosed(entry);
             return (
-              <div key={detailKey} className="bg-white p-4 rounded-lg border border-gray-200 min-w-[280px] flex-shrink-0">
+              <div key={detailKey} className={`bg-white p-4 rounded-lg border border-gray-200 min-w-[280px] flex-shrink-0 ${isClosed ? 'opacity-60' : ''}`}>
                 <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
-                  <h5 className="font-semibold text-gray-800 text-sm">
+                  <h5 className={`font-semibold text-sm ${isClosed ? 'text-gray-500' : 'text-gray-800'} flex items-center gap-2`}>
                     {dateInfo.day} - {dateInfo.fullDate}
+                    {isClosed && <span className="text-xs">🔒</span>}
                   </h5>
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  <span className={`text-xs px-2 py-1 rounded ${isClosed ? 'text-gray-400 bg-gray-200' : 'text-gray-500 bg-gray-100'}`}>
                     {periodLabel}
                   </span>
                 </div>
@@ -1858,7 +1896,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary, isWeeklyData, isMonthlyData]);
+  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary, isWeeklyData, isMonthlyData, isDayClosed]);
 
   // Check if we have data
   const hasData = tableData.length > 0;
@@ -2058,10 +2096,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                     
                     const rawValue = processedData[row.key]?.[dateKey] || 0;
                     
+                    const isClosed = isDayClosed(entry);
                     return (
-                      <div key={uniqueKey} className="flex justify-between text-xs">
-                        <span className="text-gray-600">
+                      <div key={uniqueKey} className={`flex justify-between text-xs ${isClosed ? 'opacity-50' : ''}`}>
+                        <span className={`${isClosed ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
                           {dateInfo.day} {dateInfo.date}
+                          {isClosed && <span className="text-xs">🔒</span>}
                         </span>
                         <div className="flex items-center">
                           {renderCellValue(rawValue, row, entry, dateInfo)}
