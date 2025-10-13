@@ -5,7 +5,11 @@ import {
   processThirdPartySales, 
   getTotalThirdPartySales, 
   formatThirdPartySalesValue,
-  createProviderKey 
+  createProviderKey,
+  processThirdPartySalesWithPercentages,
+  getTotalThirdPartySalesByFormat,
+  formatThirdPartySalesValueWithPercentage,
+  getTotalThirdPartySalesFromAPI
 } from '../../../../utils/thirdPartySalesUtils';
 
 const { Text } = Typography;
@@ -37,11 +41,19 @@ const SalesDetailDropdown = ({
   const salesActual = parseFloat(salesData.sales_actual) || 0;
   const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
   
-  // Handle third party sales using utility functions
-  const thirdPartyProviders = processThirdPartySales(salesData.third_party_Sales || salesData.third_party_sales);
+  // Handle third party sales using utility functions with percentage support
+  // Check if third-party sales data is nested or at root level
+  const thirdPartyData = salesData.third_party_Sales || salesData.third_party_sales || salesData;
+  const thirdPartyProviders = processThirdPartySalesWithPercentages(
+    thirdPartyData, 
+    printFormat
+  );
 
-  // Calculate total third-party sales
-  const totalThirdPartySales = getTotalThirdPartySales(thirdPartyProviders);
+  // Calculate total third-party sales based on format
+  // Try to get total from API first, fallback to calculated total
+  const apiTotal = getTotalThirdPartySalesFromAPI(salesData, printFormat);
+  const calculatedTotal = getTotalThirdPartySalesByFormat(thirdPartyProviders, printFormat);
+  const totalThirdPartySales = apiTotal > 0 ? apiTotal : calculatedTotal;
   
   // Use sales_actual directly from API (not calculated)
   const totalActualSales = salesActual;
@@ -66,20 +78,20 @@ const SalesDetailDropdown = ({
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value);
+    }).format(Math.round(value));
   };
 
   // Format number (no currency symbol)
   const formatNumber = (value) => {
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(value);
+      maximumFractionDigits: 0
+    }).format(Math.round(value));
   };
 
-  // Format percentage - API provides the value, format to 1 decimal place
+  // Format percentage - API provides the value, round to whole number
   const formatPercentage = (value) => {
-    return `${parseFloat(value).toFixed(1)}%`;
+    return `${Math.round(parseFloat(value))}%`;
   };
 
   // Dynamic formatter based on printFormat
@@ -218,7 +230,7 @@ const SalesDetailDropdown = ({
                     </div>
                     <div className="flex items-center gap-2">
                       <Text className="text-xs font-semibold">
-                        {formatThirdPartySalesValue(totalThirdPartySales, printFormat)}
+                        {formatThirdPartySalesValueWithPercentage(totalThirdPartySales, printFormat)}
                       </Text>
                       {expandedSections.thirdParty ? (
                         <MinusOutlined className="text-gray-600 text-xs" />
@@ -239,7 +251,10 @@ const SalesDetailDropdown = ({
                             <Text className="text-xs font-medium text-gray-600">{provider.name}:</Text>
                           </div>
                           <Text className="text-xs font-semibold">
-                            {formatThirdPartySalesValue(provider.sales, printFormat)}
+                            {formatThirdPartySalesValueWithPercentage(
+                              printFormat === 'percentage' ? provider.percentage : provider.sales, 
+                              printFormat
+                            )}
                           </Text>
                         </div>
                       ))}

@@ -91,11 +91,8 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       data = breakdownData;
     }
     
-    // Filter out "Labor Budget" entries - only keep "Labor Actual"
-    return data.filter(item => {
-      const key = item.key?.toLowerCase() || item.label?.toLowerCase() || '';
-      return key !== 'labor_budget';
-    });
+    // Keep all data including both labor actual and budget
+    return data;
   }, [selectedView, categories, detailedBreakdowns]);
 
   // Colors: sales green, others red/blue/orange/yellow
@@ -110,6 +107,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       // Labor categories
       'labor': '#ef4444', // Red
       'labor_actual': '#ef4444', // Red
+      'labor_budget': '#dc2626', // Darker red
       
       // Food/COGS categories
       'food': '#3b82f6', // Blue
@@ -214,6 +212,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
         <p>
           <span className="font-medium text-green-600">Green</span>: Sales; 
           <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
+          <span className="font-medium text-red-800"> Dark Red</span>: Labor Budget; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
           <span className="font-medium text-orange-600"> Orange</span>: Fixed Expenses; 
           <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses;

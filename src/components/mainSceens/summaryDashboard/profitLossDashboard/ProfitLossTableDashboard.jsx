@@ -7,7 +7,15 @@ import LaborDetailDropdown from './LaborDetailDropdown';
 import FoodCostDetailDropdown from './FoodCostDetailDropdown';
 import FixedCostDetailDropdown from './FixedCostDetailDropdown';
 import VariableCostDetailDropdown from './VariableCostDetailDropdown';
-import { processThirdPartySales, getTotalThirdPartySales, formatThirdPartySalesValue } from '../../../../utils/thirdPartySalesUtils';
+import { 
+  processThirdPartySales, 
+  getTotalThirdPartySales, 
+  formatThirdPartySalesValue,
+  processThirdPartySalesWithPercentages,
+  getTotalThirdPartySalesByFormat,
+  formatThirdPartySalesValueWithPercentage,
+  getTotalThirdPartySalesFromAPI
+} from '../../../../utils/thirdPartySalesUtils';
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -1321,9 +1329,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
     const percentOverUnder = parseFloat(salesData.sales_amount_percent) || 0;
 
-    // Handle third party sales using utility functions
-    const thirdPartyProviders = processThirdPartySales(salesData.third_party_Sales || salesData.third_party_sales);
-    const totalThirdPartySales = getTotalThirdPartySales(thirdPartyProviders);
+    // Handle third party sales using utility functions with percentage support
+    // Check if third-party sales data is nested or at root level
+    const thirdPartyData = salesData.third_party_Sales || salesData.third_party_sales || salesData;
+    const thirdPartyProviders = processThirdPartySalesWithPercentages(
+      thirdPartyData, 
+      printFormat
+    );
+    // Try to get total from API first, fallback to calculated total
+    const apiTotal = getTotalThirdPartySalesFromAPI(salesData, printFormat);
+    const calculatedTotal = getTotalThirdPartySalesByFormat(thirdPartyProviders, printFormat);
+    const totalThirdPartySales = apiTotal > 0 ? apiTotal : calculatedTotal;
 
     const getOverUnderColor = (value) => {
       if (value > 0) return 'text-red-600';
@@ -1402,7 +1418,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                       <span className="text-xs font-medium text-gray-700">Third Party Sales:</span>
                     </div>
                     <span className="text-xs font-semibold">
-                      {formatThirdPartySalesValue(totalThirdPartySales, printFormat)}
+                      {formatThirdPartySalesValueWithPercentage(totalThirdPartySales, printFormat)}
                     </span>
                   </div>
                   <div className="p-2 bg-white border-t border-gray-200 space-y-2">
@@ -1413,7 +1429,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                           <span className="text-xs font-medium text-gray-600">{provider.name}:</span>
                         </div>
                         <span className="text-xs font-semibold">
-                          {formatThirdPartySalesValue(provider.sales, printFormat)}
+                          {formatThirdPartySalesValueWithPercentage(
+                            printFormat === 'percentage' ? provider.percentage : provider.sales, 
+                            printFormat
+                          )}
                         </span>
                       </div>
                     ))}
