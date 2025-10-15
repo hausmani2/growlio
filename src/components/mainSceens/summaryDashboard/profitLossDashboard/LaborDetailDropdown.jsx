@@ -7,7 +7,8 @@ const { Text } = Typography;
 const LaborDetailDropdown = ({ 
   children, 
   dayData, 
-  laborData 
+  laborData,
+  printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     laborActual: false
@@ -53,9 +54,9 @@ const LaborDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage - API provides the value, format to 1 decimal place
+  // Format percentage - API provides the value, format to whole number
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
+    return `${value > 0 ? '+' : ''}${Math.round(parseFloat(value))}%`;
   };
 
   // Format hours
@@ -87,7 +88,12 @@ const LaborDetailDropdown = ({
             <DollarOutlined className="text-blue-600 text-sm" />
             <Text className="text-sm font-semibold text-blue-800">Labor Budget:</Text>
           </div>
-          <Text strong className="text-sm text-blue-900">{formatCurrency(laborBudget)}</Text>
+          <Text strong className="text-sm text-blue-900">
+            {printFormat === 'percentage' && laborData.percentage_labour
+              ? formatPercentage(laborData.percentage_labour)
+              : formatCurrency(laborBudget)
+            }
+          </Text>
         </div>
 
         {/* Labor Actual - Expandable */}
@@ -101,7 +107,12 @@ const LaborDetailDropdown = ({
               <Text className="text-sm font-semibold text-green-800">Labor Actual:</Text>
             </div>
             <div className="flex items-center gap-2">
-              <Text strong className="text-sm text-green-900">{formatCurrency(laborActual)}</Text>
+              <Text strong className="text-sm text-green-900">
+                {printFormat === 'percentage' && laborData.percentage_labour_actual
+                  ? formatPercentage(laborData.percentage_labour_actual)
+                  : formatCurrency(laborActual)
+                }
+              </Text>
               {expandedSections.laborActual ? (
                 <MinusOutlined className="text-green-600 text-xs" />
               ) : (
@@ -113,52 +124,23 @@ const LaborDetailDropdown = ({
           {/* Expanded Labor Actual Content */}
           {expandedSections.laborActual && (
             <div className="p-2 bg-white border-t border-gray-200 space-y-2">
-              {/* Labor Hours */}
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <ClockCircleOutlined className="text-gray-600 text-xs" />
-                  <Text className="text-xs font-medium text-gray-700">Labor Hours:</Text>
+              {/* Over/Under Analysis */}
+              <div className="p-2 bg-orange-50 rounded border border-orange-200">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Text className="text-xs font-semibold text-gray-700">Amt Over/Under:</Text>
+                    <Text className={`text-xs font-bold ${getOverUnderColor(amtOverUnder)}`}>
+                      {formatCurrency(amtOverUnder)}
+                    </Text>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Text className="text-xs font-semibold text-gray-700">% Over/Under:</Text>
+                    <Text className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
+                      {formatPercentage(percentOverUnder)}
+                    </Text>
+                  </div>
                 </div>
-                <Text className="text-xs font-semibold">{formatHours(laborHours)}</Text>
               </div>
-
-          
-              
-        {/* Over/Under Analysis */}
-        <div className="p-2 bg-orange-50 rounded border border-orange-200">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Text className="text-xs font-semibold text-gray-700">Amt Over/Under:</Text>
-              <Text className={`text-xs font-bold ${getOverUnderColor(amtOverUnder)}`}>
-                {formatCurrency(amtOverUnder)}
-              </Text>
-            </div>
-            <div className="flex items-center justify-between">
-              <Text className="text-xs font-semibold text-gray-700">% Over/Under:</Text>
-              <Text className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
-                {formatPercentage(percentOverUnder)}
-              </Text>
-            </div>
-          </div>
-        </div>
-            {/* Average Hourly Rate */}
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                <div className="flex items-center gap-2">
-                  <DollarOutlined className="text-gray-600 text-xs" />
-                  <Text className="text-xs font-medium text-gray-700">Average Hourly Rate:</Text>
-                </div>
-                <Text className="text-xs font-semibold">{formatCurrency(averageHourlyRate)}</Text>
-              </div>
-
-
-              {/* Show message if no detailed labor data available */}
-              {laborHours === 0 && averageHourlyRate === 0 && (
-                <div className="text-center py-2 bg-gray-50 rounded border border-gray-200">
-                  <Text className="text-xs text-gray-500 italic">
-                    No detailed labor data available
-                  </Text>
-                </div>
-              )}
             </div>
           )}
         </div>

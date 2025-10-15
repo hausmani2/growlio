@@ -7,7 +7,8 @@ const { Text } = Typography;
 const FixedCostDetailDropdown = ({ 
   children, 
   dayData, 
-  fixedCostData 
+  fixedCostData,
+  printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     fixedCostActual: false
@@ -36,6 +37,11 @@ const FixedCostDetailDropdown = ({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value);
+  };
+
+  // Format percentage
+  const formatPercentage = (value) => {
+    return `${value > 0 ? '+' : ''}${Math.round(parseFloat(value))}%`;
   };
 
 
@@ -70,7 +76,12 @@ const FixedCostDetailDropdown = ({
               <Text className="text-sm font-semibold text-green-800">Fixed Cost:</Text>
             </div>
             <div className="flex items-center gap-2">
-              <Text strong className="text-sm text-green-900">{formatCurrency(fixedCostActual)}</Text>
+              <Text strong className="text-sm text-green-900">
+                {printFormat === 'percentage' && fixedCostData.percentage_fixed_cost_total
+                  ? formatPercentage(fixedCostData.percentage_fixed_cost_total)
+                  : formatCurrency(fixedCostActual)
+                }
+              </Text>
               {expandedSections.fixedCostActual ? (
                 <MinusOutlined className="text-green-600 text-xs" />
               ) : (
@@ -88,7 +99,12 @@ const FixedCostDetailDropdown = ({
                     <div className="flex items-center gap-2">
                       <Text className="text-xs font-medium text-gray-700">{cost.name}:</Text>
                     </div>
-                    <Text className="text-xs font-semibold">{formatCurrency(cost.amount)}</Text>
+                    <Text className="text-xs font-semibold">
+                      {printFormat === 'percentage' && cost.percent_of_sales
+                        ? formatPercentage(cost.percent_of_sales)
+                        : formatCurrency(cost.amount)
+                      }
+                    </Text>
                   </div>
                 ))
               ) : (

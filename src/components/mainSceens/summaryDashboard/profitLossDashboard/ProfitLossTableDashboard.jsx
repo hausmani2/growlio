@@ -170,7 +170,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       fixedCost: {},
       variableCost: {},
       fixedCostPercent: {},
-      variableCostPercent: {}
+      variableCostPercent: {},
+      percentage_food_cost: {},
+      percentage_fixed_cost_total: {},
+      percentage_variable_cost_total: {}
     };
 
     entries.forEach((entry, index) => {
@@ -203,6 +206,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
       processed.profit_loss[dateKey] = parseNumericValue(entry.profit_loss);
+      
+      // Process the new percentage fields
+      processed.percentage_food_cost[dateKey] = parseNumericValue(entry.percentage_food_cost);
+      processed.percentage_fixed_cost_total[dateKey] = parseNumericValue(entry.percentage_fixed_cost_total);
+      processed.percentage_variable_cost_total[dateKey] = parseNumericValue(entry.percentage_variable_cost_total);
       
              // Calculate fixed cost total from array
        const fixedCostTotal = Array.isArray(entry.fixed_costs) 
@@ -299,7 +307,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       label: 'Profit & Loss', 
       type: 'currency',
       hasDetails: false
-    },
+    }
  
   ], []);
 
@@ -374,6 +382,15 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         case 'variableCost':
           dynamicKey = 'variableCostPercent';
           break;
+        case 'percentage_food_cost':
+          dynamicKey = 'percentage_food_cost';
+          break;
+        case 'percentage_fixed_cost_total':
+          dynamicKey = 'percentage_fixed_cost_total';
+          break;
+        case 'percentage_variable_cost_total':
+          dynamicKey = 'percentage_variable_cost_total';
+          break;
         default:
           dynamicKey = baseKey;
       }
@@ -413,7 +430,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     // Handle percentage format
     if (printFormat === 'percentage') {
-      if (categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual' || categoryKey === 'profit_loss' || categoryKey === 'fixedCost' || categoryKey === 'variableCost') {
+      if (categoryKey === 'labour_actual' || categoryKey === 'food_cost_actual' || categoryKey === 'profit_loss' || categoryKey === 'fixedCost' || categoryKey === 'variableCost' || categoryKey === 'percentage_food_cost' || categoryKey === 'percentage_fixed_cost_total' || categoryKey === 'percentage_variable_cost_total') {
         formattedResult = formatPercentage(value);
         formatType = 'percentage';
       } else {
@@ -668,11 +685,20 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       categoryKey === 'food_cost' ||
       categoryKey === 'labour' ||
       categoryKey === 'fixedCost' ||
-      categoryKey === 'variableCost'
+      categoryKey === 'variableCost' ||
+      categoryKey === 'percentage_food_cost' ||
+      categoryKey === 'percentage_fixed_cost_total' ||
+      categoryKey === 'percentage_variable_cost_total'
     )) {
       // For percentage format, get the percentage value from the entry or processed data
-      if (categoryKey === 'fixedCost' || categoryKey === 'variableCost') {
-        // Use processed percentage data for fixed/variable costs
+      if (categoryKey === 'fixedCost') {
+        // Use direct API percentage value for fixed cost
+        rawValue = parseNumericValue(entry.percentage_fixed_cost_total);
+      } else if (categoryKey === 'variableCost') {
+        // Use direct API percentage value for variable cost
+        rawValue = parseNumericValue(entry.percentage_variable_cost_total);
+      } else if (categoryKey === 'percentage_food_cost' || categoryKey === 'percentage_fixed_cost_total' || categoryKey === 'percentage_variable_cost_total') {
+        // Use processed percentage data for the new percentage fields
         rawValue = processedData[dynamicKey]?.[dateKey] || 0;
       } else {
         // For other fields, get the percentage value from the entry
@@ -687,7 +713,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     // Check if the original value was None/null/undefined
     let originalValue, displayValue;
-    if (categoryKey === 'fixedCost' || categoryKey === 'variableCost') {
+    if (categoryKey === 'fixedCost' || categoryKey === 'variableCost' || categoryKey === 'percentage_food_cost' || categoryKey === 'percentage_fixed_cost_total' || categoryKey === 'percentage_variable_cost_total') {
       displayValue = rawValue > 0 ? rawValue.toString() : '-';
     } else {
       originalValue = entry[categoryKey];
@@ -718,7 +744,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     if (categoryKey === 'sales_actual' || categoryKey === 'food_cost_actual' || 
         categoryKey === 'fixedCost' || categoryKey === 'variableCost' ||
         categoryKey === 'amount' || categoryKey === 'actual_daily_labor_rate' || 
-        categoryKey === 'profit_loss') {
+        categoryKey === 'profit_loss' || categoryKey === 'percentage_food_cost' ||
+        categoryKey === 'percentage_fixed_cost_total' || categoryKey === 'percentage_variable_cost_total') {
       const colorClass = categoryKey === 'profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
       
       // Simple formatting based on format type
@@ -777,7 +804,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               {formattedValue}
             </span>
             {profitPercentage && (
-              <FoodCostDetailDropdown dayData={dayData} foodCostData={entry}>
+              <FoodCostDetailDropdown dayData={dayData} foodCostData={entry} printFormat={printFormat}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -797,7 +824,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         if (rawValue > 0) {
           return (
             <div className="flex items-start justify-start">
-              <FixedCostDetailDropdown dayData={dayData} fixedCostData={entry}>
+              <FixedCostDetailDropdown dayData={dayData} fixedCostData={entry} printFormat={printFormat}>
                 <span 
                   className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
                   title="Click to view fixed cost details"
@@ -836,7 +863,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         if (rawValue > 0) {
           return (
             <div className="flex items-start justify-start">
-              <VariableCostDetailDropdown dayData={dayData} variableCostData={entry}>
+              <VariableCostDetailDropdown dayData={dayData} variableCostData={entry} printFormat={printFormat}>
                 <span 
                   className={`text-sm ${colorClass} flex items-center gap-1 cursor-pointer hover:text-blue-600 hover:underline`}
                   title="Click to view variable cost details"
@@ -900,7 +927,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               {formattedLabourValue} 
             </span>
             {profitPercentage && (
-              <LaborDetailDropdown dayData={dayData} laborData={entry}>
+              <LaborDetailDropdown dayData={dayData} laborData={entry} printFormat={printFormat}>
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -1054,11 +1081,18 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           category.key === 'food_cost_actual' || 
           category.key === 'profit_loss' ||
           category.key === 'fixedCost' ||
-          category.key === 'variableCost'
+          category.key === 'variableCost' ||
+          category.key === 'percentage_food_cost' ||
+          category.key === 'percentage_fixed_cost_total' ||
+          category.key === 'percentage_variable_cost_total'
         )) {
           // For percentage format, get the percentage value
           if (category.key === 'fixedCost' || category.key === 'variableCost') {
             // Use processed percentage data for fixed/variable costs
+            const dynamicKey = getDynamicVariableName(category.key);
+            rawValue = processedData[dynamicKey]?.[dateKey] || 0;
+          } else if (category.key === 'percentage_food_cost' || category.key === 'percentage_fixed_cost_total' || category.key === 'percentage_variable_cost_total') {
+            // Use processed percentage data for the new percentage fields
             const dynamicKey = getDynamicVariableName(category.key);
             rawValue = processedData[dynamicKey]?.[dateKey] || 0;
           } else {
@@ -1516,7 +1550,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Labor Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatValue(laborBudget, 'labour')}</span>
+          <span className="text-sm font-bold text-blue-900">
+            {printFormat === 'percentage' && laborData.percentage_labour
+              ? formatPercentage(laborData.percentage_labour)
+              : formatValue(laborBudget, 'labour')
+            }
+          </span>
         </div>
 
         {/* Labor Actual - Expandable */}
@@ -1542,11 +1581,25 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <span className="text-xs text-gray-600">Hours:</span>
-                  <span className="text-xs font-semibold">{formatHours(laborHours)}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold">{formatHours(laborHours)}</span>
+                    {printFormat === 'percentage' && laborData.percentage_labour_actual && (
+                      <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                        {formatPercentage(laborData.percentage_labour_actual)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <span className="text-xs text-gray-600">Avg Hourly Rate:</span>
-                  <span className="text-xs font-semibold">{formatCurrency(averageHourlyRate)}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold">{formatCurrency(averageHourlyRate)}</span>
+                    {printFormat === 'percentage' && laborData.percentage_labour && (
+                      <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                        {formatPercentage(laborData.percentage_labour)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1604,7 +1657,12 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-blue-600 text-sm">💰</span>
             <span className="text-sm font-semibold text-blue-800">Food Cost Budget:</span>
           </div>
-          <span className="text-sm font-bold text-blue-900">{formatValue(foodCostBudget, 'food_cost')}</span>
+          <span className="text-sm font-bold text-blue-900">
+            {printFormat === 'percentage' && foodCostData.percentage_food_cost 
+              ? formatPercentage(foodCostData.percentage_food_cost)
+              : formatValue(foodCostBudget, 'food_cost')
+            }
+          </span>
         </div>
 
         {/* Food Cost Actual - Expandable */}
@@ -1633,7 +1691,14 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   <span className="text-gray-600 text-xs">🍽️</span>
                   <span className="text-xs font-medium text-gray-700">Total Food Cost:</span>
                 </div>
-                <span className="text-xs font-semibold">{formatCurrency(foodCostActual)}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-semibold">{formatCurrency(foodCostActual)}</span>
+                  {printFormat === 'percentage' && foodCostData.percentage_food_cost_actual && (
+                    <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                      {formatPercentage(foodCostData.percentage_food_cost_actual)}
+                    </span>
+                  )}
+                </div>
               </div>
               
               {/* Additional food cost details can be added here */}
@@ -1683,7 +1748,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-sm font-semibold text-blue-800">Total Fixed Cost:</span>
           </div>
           <span className="text-sm font-bold text-blue-900">
-            {printFormat === 'percentage' ? formatValue(totalFixedCostPercent, 'fixedCost') : formatValue(totalFixedCost, 'fixedCost')}
+            {printFormat === 'percentage' && fixedCostData.percentage_fixed_cost_total
+              ? formatPercentage(fixedCostData.percentage_fixed_cost_total)
+              : formatValue(totalFixedCost, 'fixedCost')
+            }
           </span>
         </div>
 
@@ -1704,9 +1772,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 {fixedCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm text-gray-700">{cost.name || `Fixed Cost ${index + 1}`}</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'fixedCost') : formatValue(parseFloat(cost.amount || 0), 'fixedCost')}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'fixedCost') : formatValue(parseFloat(cost.amount || 0), 'fixedCost')}
+                      </span>
+                      {printFormat === 'percentage' && cost.percent_of_sales && (
+                        <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                          {formatPercentage(parseFloat(cost.percent_of_sales))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1739,7 +1814,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             <span className="text-sm font-semibold text-blue-800">Total Variable Cost:</span>
           </div>
           <span className="text-sm font-bold text-blue-900">
-            {printFormat === 'percentage' ? formatValue(totalVariableCostPercent, 'variableCost') : formatValue(totalVariableCost, 'variableCost')}
+            {printFormat === 'percentage' && variableCostData.percentage_variable_cost_total
+              ? formatPercentage(variableCostData.percentage_variable_cost_total)
+              : formatValue(totalVariableCost, 'variableCost')
+            }
           </span>
         </div>
 
@@ -1760,9 +1838,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 {variableCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm text-gray-700">{cost.name || `Variable Cost ${index + 1}`}</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'variableCost') : formatValue(parseFloat(cost.amount || 0), 'variableCost')}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {printFormat === 'percentage' ? formatValue(parseFloat(cost.percent_of_sales || 0), 'variableCost') : formatValue(parseFloat(cost.amount || 0), 'variableCost')}
+                      </span>
+                      {printFormat === 'percentage' && cost.percent_of_sales && (
+                        <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                          {formatPercentage(parseFloat(cost.percent_of_sales))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

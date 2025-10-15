@@ -7,7 +7,8 @@ const { Text } = Typography;
 const VariableCostDetailDropdown = ({ 
   children, 
   dayData, 
-  variableCostData 
+  variableCostData,
+  printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     variableCostActual: false
@@ -36,6 +37,11 @@ const VariableCostDetailDropdown = ({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value);
+  };
+
+  // Format percentage
+  const formatPercentage = (value) => {
+    return `${value > 0 ? '+' : ''}${Math.round(parseFloat(value))}%`;
   };
 
 
@@ -68,7 +74,12 @@ const VariableCostDetailDropdown = ({
               <Text className="text-sm font-semibold text-green-800">Variable Fixed Cost:</Text>
             </div>
             <div className="flex items-center gap-2">
-              <Text strong className="text-sm text-green-900">{formatCurrency(variableCostActual)}</Text>
+              <Text strong className="text-sm text-green-900">
+                {printFormat === 'percentage' && variableCostData.percentage_variable_cost_total
+                  ? formatPercentage(variableCostData.percentage_variable_cost_total)
+                  : formatCurrency(variableCostActual)
+                }
+              </Text>
               {expandedSections.variableCostActual ? (
                 <MinusOutlined className="text-green-600 text-xs" />
               ) : (
@@ -86,7 +97,12 @@ const VariableCostDetailDropdown = ({
                     <div className="flex items-center gap-2">
                       <Text className="text-xs font-medium text-gray-700">{cost.name}:</Text>
                     </div>
-                    <Text className="text-xs font-semibold">{formatCurrency(cost.amount)}</Text>
+                    <Text className="text-xs font-semibold">
+                      {printFormat === 'percentage' && cost.percent_of_sales
+                        ? formatPercentage(cost.percent_of_sales)
+                        : formatCurrency(cost.amount)
+                      }
+                    </Text>
                   </div>
                 ))
               ) : (

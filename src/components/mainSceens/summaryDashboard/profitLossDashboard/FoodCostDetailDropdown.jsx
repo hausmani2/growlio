@@ -7,7 +7,8 @@ const { Text } = Typography;
 const FoodCostDetailDropdown = ({ 
   children, 
   dayData, 
-  foodCostData 
+  foodCostData,
+  printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     foodCostActual: false
@@ -51,9 +52,9 @@ const FoodCostDetailDropdown = ({
     }).format(value);
   };
 
-  // Format percentage - API provides the value, format to 1 decimal place
+  // Format percentage - API provides the value, format to whole number
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${parseFloat(value).toFixed(1)}%`;
+    return `${value > 0 ? '+' : ''}${Math.round(parseFloat(value))}%`;
   };
 
   // Toggle section expansion
@@ -80,7 +81,12 @@ const FoodCostDetailDropdown = ({
             <DollarOutlined className="text-blue-600 text-sm" />
             <Text className="text-sm font-semibold text-blue-800">FC Budget:</Text>
           </div>
-          <Text strong className="text-sm text-blue-900">{formatCurrency(foodCostBudget)}</Text>
+          <Text strong className="text-sm text-blue-900">
+            {printFormat === 'percentage' && foodCostData.percentage_food_cost
+              ? formatPercentage(foodCostData.percentage_food_cost)
+              : formatCurrency(foodCostBudget)
+            }
+          </Text>
         </div>
 
         {/* FC Actual - Expandable */}
@@ -94,7 +100,12 @@ const FoodCostDetailDropdown = ({
               <Text className="text-sm font-semibold text-green-800">FC Actual:</Text>
             </div>
             <div className="flex items-center gap-2">
-              <Text strong className="text-sm text-green-900">{formatCurrency(foodCostActual)}</Text>
+              <Text strong className="text-sm text-green-900">
+                {printFormat === 'percentage' && foodCostData.percentage_food_cost_actual
+                  ? formatPercentage(foodCostData.percentage_food_cost_actual)
+                  : formatCurrency(foodCostActual)
+                }
+              </Text>
               {expandedSections.foodCostActual ? (
                 <MinusOutlined className="text-green-600 text-xs" />
               ) : (
