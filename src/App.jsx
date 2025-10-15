@@ -5,6 +5,7 @@ import useStore from './store/store';
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
+import SuperAdminLoginPage from './components/authScreens/SuperAdminLoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
 import Congratulations from './components/authScreens/auth/Congratulations';
 import ForgotPassword from './components/authScreens/auth/ForgotPassword';
@@ -26,6 +27,8 @@ import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profit
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
+import SuperAdminDashboard from './components/superadmin/SuperAdminDashboard';
+import SuperAdminUsers from './components/superadmin/SuperAdminUsers';
 import SupportPage from './components/mainSceens/support/SupportPage';
 
 function App() {
@@ -53,6 +56,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/superadmin-login" element={<SuperAdminLoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -83,6 +87,11 @@ function App() {
           {/* Admin */}
           <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
+          
+          {/* SuperAdmin */}
+          <Route path="/superadmin" element={<Navigate to="/superadmin/dashboard" replace />} />
+          <Route path="/superadmin/dashboard" element={<Wrapper showSidebar={true} children={<SuperAdminDashboard />} />} />
+          <Route path="/superadmin/users" element={<Wrapper showSidebar={true} children={<SuperAdminUsers />} />} />
 
         </Route>
 

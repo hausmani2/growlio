@@ -24,7 +24,6 @@ export const clearStoreAndRedirectToLogin = () => {
   if (store.clearPersistedState) {
     store.clearPersistedState();
   } else {
-    console.warn('⚠️ clearPersistedState function not found in store');
   }
   
   // Also clear any remaining localStorage items
@@ -32,11 +31,28 @@ export const clearStoreAndRedirectToLogin = () => {
   localStorage.removeItem('restaurant_id');
   localStorage.removeItem('growlio-store');
   
+  // Clear impersonation data if exists (but keep superadmin tokens)
+  localStorage.removeItem('impersonated_user');
+  localStorage.removeItem('impersonated_user_data');
+  localStorage.removeItem('impersonation_access_token');
+  localStorage.removeItem('impersonation_refresh_token');
+  localStorage.removeItem('impersonation_message');
+  localStorage.removeItem('original_superadmin');
+  
+  // Note: We intentionally keep original_superadmin_token and original_superadmin_refresh
+  // These are only cleared when stopping impersonation, not on logout
+  
   // Clear sessionStorage
   sessionStorage.clear();
   
-  // Redirect to login page if not already there
-  if (window.location.pathname !== '/login') {
+  // Check if user was on admin route and redirect accordingly
+  const currentPath = window.location.pathname;
+  const isAdminPath = currentPath.startsWith('/admin');
+  
+  // Redirect to appropriate login page
+  if (isAdminPath && currentPath !== '/superadmin-login') {
+    window.location.href = '/superadmin-login';
+  } else if (currentPath !== '/login') {
     window.location.href = '/login';
   }
 };
@@ -53,12 +69,54 @@ const api = axios.create({
 // Request Interceptor: Attach token if available
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    // Check if this is a user management API call that needs super admin token
+    const isUserManagementCall = config.url && (
+      config.url.includes('/authentication/users/') ||
+      config.url.includes('/admin_access/dashboard/') ||
+      config.url.includes('/superadmin/analytics/')
+    );
     
+    // Check if we're currently impersonating
+    const isImpersonating = localStorage.getItem('impersonated_user');
+    const originalSuperadminToken = localStorage.getItem('original_superadmin_token');
+    const mainToken = localStorage.getItem('token');
+    
+    // Debug logging
+    console.log('🔍 API Request Debug:', {
+      url: config.url,
+      isUserManagementCall,
+      isImpersonating,
+      hasOriginalSuperadminToken: !!originalSuperadminToken,
+      hasMainToken: !!mainToken,
+      originalSuperadminTokenPreview: originalSuperadminToken ? originalSuperadminToken.substring(0, 20) + '...' : 'null',
+      mainTokenPreview: mainToken ? mainToken.substring(0, 20) + '...' : 'null'
+    });
+    
+    let token;
+    
+    // If we're impersonating and this is a user management call, use super admin token
+    if (isImpersonating && isUserManagementCall) {
+      if (originalSuperadminToken) {
+        token = originalSuperadminToken;
+        console.log('✅ Using Super Admin Token for:', config.url);
+      } else {
+        // If no original super admin token, try to use the main token as fallback
+        token = mainToken;
+        console.log('⚠️ No original super admin token, using main token as fallback for:', config.url);
+      }
+    } else {
+      // Otherwise use the main token
+      token = mainToken;
+      console.log('✅ Using Main Token for:', config.url);
+    }
     
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 Token attached:', token.substring(0, 20) + '...');
+    } else {
+      console.error('❌ No token available for request:', config.url);
     }
+    
     return config;
   },
   (error) => Promise.reject(error)

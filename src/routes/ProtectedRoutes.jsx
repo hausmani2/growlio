@@ -91,6 +91,13 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // SuperAdmin route guard
+  const isSuperAdminPath = location.pathname.startsWith('/superadmin');
+  const isSuperAdminUser = user?.is_superuser;
+  if (isSuperAdminPath && !isSuperAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Simple logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
   // If onboarding is incomplete, only allow onboarding routes
   const isOnboardingPath = location.pathname.includes('onboarding');

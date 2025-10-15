@@ -8,6 +8,7 @@ import useStore from '../../store/store';
 import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiActualbudget, SiExpensify } from 'react-icons/si';
+import ImpersonationBanner from '../superadmin/components/ImpersonationBanner';
 const { Content } = Layout;
 
 /**
@@ -21,7 +22,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
-
+  const isSuperAdmin = user?.is_superuser;
   const menuItems = [
     {
       key: 'dashboard-summary',
@@ -114,6 +115,27 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         ],
       },
     ] : []),
+    ...(isSuperAdmin ? [
+      {
+        key: 'superadmin',
+        icon: <SettingOutlined />,
+        label: 'SuperAdmin',
+        children: [
+          {
+            key: 'superadmin-dashboard',
+            icon: <FaChartLine />,
+            label: 'Dashboard',
+            onClick: () => navigate('/superadmin'),
+          },
+          {
+            key: 'superadmin-users',
+            icon: <UserOutlined />,
+            label: 'User Management',
+            onClick: () => navigate('/superadmin/users'),
+          },
+        ],
+      }
+    ] : []),
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -155,6 +177,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         )}
         <div className={`flex-1 min-h-0 overflow-auto`}>
           <Content className={`px-2 sm:px-4 py-2 sm:py-1 bg-gray-100 w-full ${className}`}>
+            <ImpersonationBanner />
             {children}
           </Content>
         </div>
