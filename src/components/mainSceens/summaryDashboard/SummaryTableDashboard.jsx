@@ -130,30 +130,42 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
       
-       // Handle fixed_costs array structure and divide by total days
+       // Handle fixed_costs - use raw API values without calculation
        let fixedCostTotal = 0;
-       if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
+       // First try to get from direct API fields
+       if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
+         fixedCostTotal = parseNumericValue(entry.fixed_cost_total);
+       } else if (entry.budgeted_fixed_cost_total !== undefined && entry.budgeted_fixed_cost_total !== null && entry.budgeted_fixed_cost_total !== 'None') {
+         fixedCostTotal = parseNumericValue(entry.budgeted_fixed_cost_total);
+       } else if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
+         // Fallback to array structure
          fixedCostTotal = entry.fixed_costs.reduce((sum, cost) => {
            const costAmount = parseNumericValue(cost.amount);
            return sum + costAmount;
          }, 0);
        } else {
+         // Final fallback to direct field
          fixedCostTotal = parseNumericValue(entry.fixed_cost);
        }
-       // Store the per-day fixed cost (divided by total days) in the main fixed_cost field
-       const fixedCostPerDay = fixedCostTotal / totalDays;
-       processed.fixed_cost[dateKey] = fixedCostPerDay;
+       // Store the raw fixed cost value (no division by total days)
+       processed.fixed_cost[dateKey] = fixedCostTotal;
        
-       // Handle variable_costs array structure and divide by total days
+       // Handle variable_costs - use raw API values without calculation
        let variableCostTotal = 0;
-       if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
+       // First try to get from direct API fields
+       if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
+         variableCostTotal = parseNumericValue(entry.variable_cost_total);
+       } else if (entry.budgeted_variable_cost_total !== undefined && entry.budgeted_variable_cost_total !== null && entry.budgeted_variable_cost_total !== 'None') {
+         variableCostTotal = parseNumericValue(entry.budgeted_variable_cost_total);
+       } else if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
+         // Fallback to array structure
          variableCostTotal = entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
        } else {
+         // Final fallback to direct field
          variableCostTotal = parseNumericValue(entry.variable_cost);
        }
-       // Store the per-day variable cost (divided by total days) in the main variable_cost field
-       const variableCostPerDay = variableCostTotal / totalDays;
-       processed.variable_cost[dateKey] = variableCostPerDay;
+       // Store the raw variable cost value (no division by total days)
+       processed.variable_cost[dateKey] = variableCostTotal;
       
       processed.budgeted_profit_loss[dateKey] = parseNumericValue(entry.budgeted_profit_loss);
     });
@@ -174,8 +186,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     { key: 'hours', label: 'Hours', type: 'number' },
     { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
     { key: 'food_cost', label: 'Food Cost', type: 'currency' },
-    { key: 'fixed_cost', label: 'Fixed Cost (Per Day)', type: 'currency' },
-    { key: 'variable_cost', label: 'Variable Cost (Per Day)', type: 'currency' },
+    { key: 'fixed_cost', label: 'Fixed Cost', type: 'currency' },
+    { key: 'variable_cost', label: 'Variable Cost', type: 'currency' },
     { key: 'budgeted_profit_loss', label: 'Profit/Loss', type: 'currency' },
   ], []);
 
@@ -633,7 +645,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           </h2>
           {dataToProcess?.total_days && (
             <p className="text-sm text-gray-600 mt-1">
-              Fixed and Variable costs calculated per day (Total days: {dataToProcess.total_days})
+              Fixed and Variable costs from API (Total days: {dataToProcess.total_days})
             </p>
           )}
         </div>
