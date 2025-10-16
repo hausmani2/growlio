@@ -113,7 +113,7 @@ const SimpleUserTable = () => {
   const getRoleTag = (user) => {
     if (user.is_superuser) {
       return <Tag color="purple">Superuser</Tag>;
-    } else if (user.is_staff || user.role === 'admin') {
+    } else if (user.is_staff || user.role === 'ADMIN' || user.role === 'admin') {
       return <Tag color="orange">Admin</Tag>;
     } else {
       return <Tag color="blue">User</Tag>;
@@ -163,12 +163,6 @@ const SimpleUserTable = () => {
       render: (_, record) => getStatusTag(record),
     },
     {
-      title: 'Joined',
-      dataIndex: 'date_joined',
-      key: 'date_joined',
-      render: (date) => new Date(date).toLocaleDateString(),
-    },
-    {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
@@ -181,23 +175,10 @@ const SimpleUserTable = () => {
               onClick={() => handleImpersonate(record)}
               loading={loading}
               disabled={record.is_superuser}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-md hover:shadow-lg"
             >
               {isImpersonating() ? 'Switch To' : 'Impersonate'}
             </Button>
-          </Tooltip>
-          <Tooltip title="View Details">
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewUser(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit User">
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEditUser(record)}
-            />
           </Tooltip>
           <Popconfirm
             title="Are you sure you want to delete this user?"
@@ -229,7 +210,9 @@ const SimpleUserTable = () => {
   };
 
   return (
-    <Card title="User Management Table" className="mt-6">
+    <Card  
+      className="mt-6 shadow-lg border-0 rounded-xl">
+
       <Table
         columns={columns}
         dataSource={users}
@@ -247,6 +230,7 @@ const SimpleUserTable = () => {
         onChange={handleTableChange}
         scroll={{ x: 800 }}
         size="middle"
+        className="modern-table"
       />
     </Card>
   );

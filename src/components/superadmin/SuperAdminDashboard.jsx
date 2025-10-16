@@ -35,9 +35,12 @@ import SuperAdminUsers from './SuperAdminUsers';
 import SystemSettings from './components/SystemSettings';
 import AuditLogs from './components/AuditLogs';
 import CorporateSupportAccess from './components/CorporateSupportAccess';
+import SuperAdminTooltips from './components/SuperAdminTooltips';
+import SuperAdminUserManagement from './components/SuperAdminUserManagement';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import TokenStateDebugger from '../debug/TokenStateDebugger'; // Uncomment for debugging
+import '../mainSceens/summaryDashboard/SummaryDashboard.css';
 
 const { Title, Text } = Typography;
 
@@ -99,158 +102,136 @@ const SuperAdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <LoadingSpinner size="large" />
+      <div className="w-full mx-auto">
+        {/* Enhanced Header Section - Matching other dashboards */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+            {/* Left Side - Title and Description */}
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-orange-600 mb-2">
+                SuperAdmin Dashboard
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Complete platform management, user analytics, and system administration
+              </p>
+            </div>
+            
+            {/* Right Side - Admin Badge */}
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-orange-100 to-orange-200 px-4 py-2 rounded-lg border border-orange-300">
+                <div className="flex items-center gap-2">
+                  <CrownOutlined className="text-orange-600 text-lg" />
+                  <span className="text-orange-800 font-semibold">Super Admin</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Loading State */}
+        <Card className="shadow-lg border-0 rounded-xl">
+          <div className="flex justify-center items-center h-96">
+            <div className="text-center">
+              <LoadingSpinner size="large" />
+              <p className="mt-4 text-gray-600 text-lg">Loading dashboard data...</p>
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
 
   const tabItems = [
     {
-      key: 'overview',
-      label: (
-        <span>
-          <DashboardOutlined />
-          <span className="ml-2">Overview</span>
-        </span>
-      ),
-      children: (
-        <div className="space-y-6">
-          {/* Welcome Section */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-0">
-            <Row align="middle" justify="space-between">
-              <Col>
-                <Title level={2} className="mb-2">
-                  Welcome to SuperAdmin Dashboard
-                </Title>
-                <Text type="secondary" className="text-lg">
-                  Complete platform management and analytics
-                </Text>
-              </Col>
-              <Col>
-                <Avatar 
-                  size={64} 
-                  icon={<CrownOutlined />} 
-                  className="bg-gradient-to-r from-yellow-400 to-orange-500"
-                />
-              </Col>
-            </Row>
-          </Card>
-
-          {/* Quick Stats */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={6}>
-              <Card className="text-center hover:shadow-lg transition-shadow">
-                <Statistic
-                  title="Total Users"
-                  value={dashboardStats?.totalUsers || 0}
-                  prefix={<TeamOutlined className="text-blue-500" />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card className="text-center hover:shadow-lg transition-shadow">
-                <Statistic
-                  title="Active Restaurants"
-                  value={dashboardStats?.totalRestaurants || 0}
-                  prefix={<ShopOutlined className="text-green-500" />}
-                  valueStyle={{ color: '#52c41a' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card className="text-center hover:shadow-lg transition-shadow">
-                <Statistic
-                  title="Total Revenue"
-                  value={dashboardStats?.totalRevenue || 0}
-                  prefix={<DollarOutlined className="text-yellow-500" />}
-                  valueStyle={{ color: '#faad14' }}
-                  formatter={(value) => `$${value.toLocaleString()}`}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <Card className="text-center hover:shadow-lg transition-shadow">
-                <Statistic
-                  title="Platform Health"
-                  value={dashboardStats?.platformHealth || 98.5}
-                  suffix="%"
-                  prefix={<TrophyOutlined className="text-purple-500" />}
-                  valueStyle={{ color: '#722ed1' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-
-          {/* Charts Section */}
-          <Row gutter={[16, 16]}>
-            <Col xs={24} lg={12}>
-              {/* <Card title="User Analytics" className="h-96">
-                <UserCharts userData={dashboardData} loading={loading} />
-              </Card> */}
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="Recent Activity" className="h-auto">
-                <RecentTables 
-                  recentUsers={recentUsers} 
-                  recentRestaurants={recentRestaurants} 
-                  loading={loading} 
-                />
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      ),
-    },
-    {
       key: 'analytics',
       label: (
         <span>
           <BarChartOutlined />
-          <span className="ml-2">Analytics</span>
+          <span className="">Analytics</span>
         </span>
       ),
       children: (
-        <div>
+        <div className="p-6">
           <AnalyticsCharts loading={loading} dashboardData={dashboardData} />
         </div>
       ),
     },
-
+    {
+      key: 'users',
+      label: (
+        <span>
+          <UserOutlined />
+          <span className="">User Management</span>
+        </span>
+      ),
+      children: (
+        <div className="p-6">
+          <SuperAdminUserManagement />
+        </div>
+      ),
+    },
+    {
+      key: 'tooltips',
+      label: (
+        <span>
+          <BellOutlined />
+          <span className="">Tooltips</span>
+        </span>
+      ),
+      children: (
+        <div className="p-6">
+          <SuperAdminTooltips />
+        </div>
+      ),
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-2">
-        {/* Header */}
-        <div className="mb-2">
-          <Row align="middle" justify="space-between">
-            <Col>
-              <Title level={1} className="mb-2">
-                SuperAdmin Dashboard
-              </Title>
-            </Col>
-          </Row>
+    <div className="w-full mx-auto">
+      {/* Enhanced Header Section - Matching other dashboards */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              SuperAdmin Dashboard
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Complete platform management, user analytics, and system administration
+            </p>
+          </div>
+          
+          {/* Right Side - Admin Badge */}
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-orange-100 to-orange-200 px-4 py-2 rounded-lg border border-orange-300">
+              <div className="flex items-center gap-2">
+                <CrownOutlined className="text-orange-600 text-lg" />
+                <span className="text-orange-800 font-semibold">Super Admin</span>
+              </div>
+            </div>
+          </div>
         </div>
-
-
-        {/* Debug Component - Remove in production */}
-        {/* <TokenStateDebugger /> */}
-
-        {/* Main Content */}
-        <Card className="shadow-sm">
-          <Tabs 
-            defaultActiveKey="overview" 
-            items={tabItems} 
-            size="large"
-            tabBarStyle={{
-              marginBottom: 24,
-              borderBottom: '1px solid #f0f0f0'
-            }}
-          />
-        </Card>
       </div>
+
+      {/* Debug Component - Remove in production */}
+      {/* <TokenStateDebugger /> */}
+
+      {/* Main Content with Enhanced Styling */}
+      <Card className="shadow-lg border-0 rounded-xl overflow-hidden">
+        <Tabs 
+          defaultActiveKey="overview" 
+          items={tabItems} 
+          size="large"
+          tabBarStyle={{
+            marginBottom: 0,
+            borderBottom: '1px solid #f0f0f0',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            padding: '0 24px',
+            radius: '12px',
+          }}
+          className="modern-tabs"
+        />
+      </Card>
     </div>
   );
 };

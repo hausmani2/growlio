@@ -74,96 +74,93 @@ const SuperAdminUsers = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Row align="middle" justify="space-between">
-          <Col>
-            <Title level={3}>User Management</Title>
-            <Text type="secondary">
+      {/* Header Section - Matching other dashboards */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              User Management
+            </h1>
+            <p className="text-gray-600 text-lg">
               Manage all platform users with superadmin privileges including impersonation
-            </Text>
-          </Col>
-          <Col>
-            <Space>
-              {isImpersonating() && (
-                <Alert
-                  message={
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Text strong>Impersonating: {getImpersonatedUser()}</Text>
-                        {getImpersonatedUserData() && (
-                          <Text type="secondary" className="ml-2">
-                            ({getImpersonatedUserData().username} - {getImpersonatedUserData().role})
-                          </Text>
-                        )}
-                      </div>
-                      <Button 
-                        size="small"
-                        type="primary" 
-                        danger 
-                        onClick={handleStopImpersonation}
-                        icon={<UserSwitchOutlined />}
-                      >
-                        Stop
-                      </Button>
+            </p>
+          </div>
+          
+          {/* Right Side - Actions */}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {isImpersonating() && (
+              <Alert
+                message={
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Text strong className="text-orange-800">Impersonating: {getImpersonatedUser()}</Text>
+                      {getImpersonatedUserData() && (
+                        <Text className="text-orange-600 ml-2">
+                          ({getImpersonatedUserData().username} - {getImpersonatedUserData().role})
+                        </Text>
+                      )}
                     </div>
-                  }
-                  type="warning"
-                  showIcon={false}
-                  className="mb-0"
-                />
-              )}
-              <Button 
-                type="primary" 
-                icon={<UserAddOutlined />}
-                onClick={() => {/* Handle add user */}}
-              >
-                Add User
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+                    <Button 
+                      size="small"
+                      type="primary" 
+                      danger 
+                      onClick={handleStopImpersonation}
+                      icon={<UserSwitchOutlined />}
+                      className="bg-gradient-to-r from-red-500 to-red-600 border-0 shadow-md hover:shadow-lg"
+                    >
+                      Stop
+                    </Button>
+                  </div>
+                }
+                type="warning"
+                showIcon={false}
+                className="mb-0 bg-gradient-to-r from-orange-100 to-orange-200 border-orange-300"
+              />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* User Statistics */}
+      {/* Enhanced User Statistics */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="text-center hover:shadow-lg transition-shadow">
+          <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
             <Statistic
-              title="Total Users"
+              title={<span className="text-gray-600 font-semibold">Total Users</span>}
               value={users.length}
-              prefix={<TeamOutlined className="text-blue-500" />}
-              valueStyle={{ color: '#1890ff' }}
+              prefix={<TeamOutlined className="text-orange-500" />}
+              valueStyle={{ color: '#FF8132', fontSize: '24px', fontWeight: 'bold' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="text-center hover:shadow-lg transition-shadow">
+          <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
             <Statistic
-              title="Active Users"
-              value={users.filter(u => u.is_active).length}
+              title={<span className="text-gray-600 font-semibold"> Users</span>}
+              value={users.filter(u => u.role === 'user' || u.role === 'USER').length}
               prefix={<UserOutlined className="text-green-500" />}
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#22c55e', fontSize: '24px', fontWeight: 'bold' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="text-center hover:shadow-lg transition-shadow">
+          <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
             <Statistic
-              title="Admins"
-              value={users.filter(u => u.role === 'admin' || u.is_staff).length}
-              prefix={<CrownOutlined className="text-orange-500" />}
-              valueStyle={{ color: '#fa8c16' }}
+              title={<span className="text-gray-600 font-semibold">Admins</span>}
+              value={users.filter(u => u.role === 'admin' || u.role === 'ADMIN').length}
+              prefix={<CrownOutlined className="text-blue-500" />}
+              valueStyle={{ color: '#3b82f6', fontSize: '24px', fontWeight: 'bold' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="text-center hover:shadow-lg transition-shadow">
+          <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
             <Statistic
-              title="Superusers"
+              title={<span className="text-gray-600 font-semibold">Superusers</span>}
               value={users.filter(u => u.is_superuser).length}
               prefix={<CrownOutlined className="text-purple-500" />}
-              valueStyle={{ color: '#722ed1' }}
+              valueStyle={{ color: '#8b5cf6', fontSize: '24px', fontWeight: 'bold' }}
             />
           </Card>
         </Col>
