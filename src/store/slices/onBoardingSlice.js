@@ -1818,6 +1818,12 @@ const createOnBoardingSlice = (set, get) => ({
             restaurantNameExists: false
         }));
     },
+
+    // Getter for restaurant name
+    restaurantName: () => {
+        const state = get();
+        return state.completeOnboardingData?.["Basic Information"]?.data?.restaurant_name || "";
+    },
 });
 
 export default createOnBoardingSlice;

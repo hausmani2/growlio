@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -92,6 +92,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
     },
+  
     
     ...(isAdmin ? [
       {
@@ -110,6 +111,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
             icon: <InfoCircleOutlined />,
             label: 'Tooltips',
             onClick: () => navigate('/admin/tooltips'),
+          },
+          {
+            key: 'faq',
+            icon: <FileTextOutlined />,
+            label: 'FAQ',
+            onClick: () => navigate('/dashboard/faq'),
           },
         ],
       },

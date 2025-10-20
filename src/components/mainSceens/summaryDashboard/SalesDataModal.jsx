@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined, UserOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined, UserOutlined, QuestionCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
+import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 
 const { Title, Text } = Typography;
 
@@ -62,6 +63,11 @@ const SalesDataModal = ({
   const [showPopupDelay, setShowPopupDelay] = useState(false);
   const [showLaborRateInput, setShowLaborRateInput] = useState(false);
   const [previousWeekLaborRate, setPreviousWeekLaborRate] = useState(null);
+
+  // Add state for the week confirmation modal
+  const [showWeekConfirmationModal, setShowWeekConfirmationModal] = useState(false);
+  const [weekStatus, setWeekStatus] = useState(null);
+  const [weekConfirmed, setWeekConfirmed] = useState(false);
 
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
@@ -138,6 +144,18 @@ const SalesDataModal = ({
     if (visible && selectedWeekData) {
       // Reset the fetched flag when modal opens with new week data
       avgHourlyRateFetchedRef.current = false;
+      
+      // Check week status first
+      const weekStartDate = selectedWeekData.startDate;
+      const status = CalendarHelpers.getWeekStatus(weekStartDate);
+      setWeekStatus(status);
+      
+      // If it's not the current week, show confirmation modal
+      if (!status.isCurrentWeek) {
+        setShowWeekConfirmationModal(true);
+        setWeekConfirmed(false);
+        return; // Don't proceed with initialization until confirmed
+      }
       
       // Fetch average hourly rate first, then initialize form data
       const initializeModal = async () => {
@@ -729,6 +747,45 @@ const SalesDataModal = ({
       setShowLaborRateInput(true);
       setLaborRateConfirmed(true);
       message.info('Please enter your new average hourly rate below');
+    }
+  };
+
+  // Handle user choice in week confirmation modal
+  const handleWeekConfirmationChoice = async (proceed) => {
+    setShowWeekConfirmationModal(false);
+    
+    if (proceed) {
+      // User confirmed they want to proceed with this week
+      setWeekConfirmed(true);
+      
+      // Now proceed with the normal initialization
+      const initializeModal = async () => {
+        await fetchAverageHourlyRate();
+        initializeFormData();
+      };
+      
+      await initializeModal();
+      
+      // Show labor rate confirmation modal if needed
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false) {
+        setShowPopupDelay(true);
+        
+        const popupTimer = setTimeout(() => {
+          setShowLaborRateConfirmationModal(true);
+          setLaborRateConfirmed(false);
+          setShowPopupDelay(false);
+        }, 1500);
+        
+        return () => {
+          clearTimeout(popupTimer);
+        };
+      } else if (restaurantGoals && restaurantGoals.forward_previous_week_rate === true) {
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+      }
+    } else {
+      // User cancelled - close the modal
+      onCancel();
     }
   };
 
@@ -1540,6 +1597,95 @@ const SalesDataModal = ({
             </p>
             <p>
               <strong>No:</strong> Save the data with $0 budgeted sales for these days
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Week Confirmation Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <CalendarOutlined className="text-blue-500" />
+            <span>Week Selection Confirmation</span>
+          </div>
+        }
+        open={showWeekConfirmationModal}
+        onCancel={() => handleWeekConfirmationChoice(false)}
+        footer={[
+          <Button key="cancel" onClick={() => handleWeekConfirmationChoice(false)}>
+            Cancel
+          </Button>,
+          <Button 
+            key="proceed" 
+            type="primary" 
+            onClick={() => handleWeekConfirmationChoice(true)}
+            icon={<CalendarOutlined />}
+            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+          >
+            Yes, Proceed
+          </Button>
+        ]}
+        width={600}
+        destroyOnClose
+        maskClosable={false}
+        zIndex={1002}
+      >
+        <div className="text-center">
+          <WarningOutlined 
+            className="text-6xl mb-4" 
+            style={{ fontSize: '64px', color: weekStatus?.isPastWeek ? '#ff4d4f' : '#faad14' }}
+          />
+          <Title level={4} className="mb-4">
+            {weekStatus?.isPastWeek ? 'Adding Data to Past Week' : 'Adding Data to Future Week'}
+          </Title>
+          
+          <div className={`p-4 rounded-lg mb-4 ${
+            weekStatus?.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'
+          }`}>
+            <Text strong className={`mb-2 block ${
+              weekStatus?.isPastWeek ? 'text-red-700' : 'text-yellow-700'
+            }`}>
+              Week Information:
+            </Text>
+            <div className={`text-sm space-y-1 ${
+              weekStatus?.isPastWeek ? 'text-red-600' : 'text-yellow-600'
+            }`}>
+              <p>• Selected week: <strong>{weekStatus?.weekStart} - {weekStatus?.weekEnd}</strong></p>
+              <p>• Current week: <strong>{weekStatus?.currentWeekStart} - {weekStatus?.currentWeekEnd}</strong></p>
+              <p>• Week difference: <strong>{Math.abs(weekStatus?.daysDifference || 0)} days {weekStatus?.isPastWeek ? 'ago' : 'ahead'}</strong></p>
+            </div>
+          </div>
+          
+          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+            <Text strong className="text-blue-700 mb-2 block">
+              {weekStatus?.isPastWeek ? 'Past Week Warning:' : 'Future Week Warning:'}
+            </Text>
+            <div className="text-sm text-blue-600 space-y-1">
+              {weekStatus?.isPastWeek ? (
+                <>
+                  <p>• You are adding sales data to a week that has already passed</p>
+                  <p>• This may affect historical reporting and analysis</p>
+                  <p>• Make sure you have the correct week selected</p>
+                  <p>• Consider if this data should be added to the current week instead</p>
+                </>
+              ) : (
+                <>
+                  <p>• You are adding sales data to a future week</p>
+                  <p>• This is typically used for planning and forecasting</p>
+                  <p>• Make sure you have the correct week selected</p>
+                  <p>• Consider if this data should be added to the current week instead</p>
+                </>
+              )}
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            <p className="mb-2">
+              <strong>Proceed:</strong> Continue adding data to this week
+            </p>
+            <p>
+              <strong>Cancel:</strong> Close this dialog and select a different week
             </p>
           </div>
         </div>

@@ -370,7 +370,7 @@ const SupportPage = () => {
                 <Collapse 
                   accordion 
                   size="large"
-                  className="support-faq"
+                  className=""
                   items={faqData}
                 />
               </div>

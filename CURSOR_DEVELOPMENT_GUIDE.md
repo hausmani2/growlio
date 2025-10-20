@@ -2,7 +2,152 @@
 
 ## 📋 Project Overview
 
-**Growlio** is a React-based restaurant management application with a focus on financial analytics, onboarding workflows, and user management. This guide provides comprehensive instructions for maintaining consistency when creating new pages and components.
+**Growlio** is a comprehensive React-based restaurant management application designed for financial analytics, business intelligence, and operational management. The application provides restaurant owners with powerful tools for budgeting, sales tracking, expense management, and performance analytics.
+
+### 🎯 Core Application Features
+
+#### 📊 **Dashboard & Analytics**
+- **Weekly Data Entry Dashboard**: Interactive tables for sales, labor, and COGS data entry
+- **Budget Dashboard**: Weekly budgeted sales planning and tracking
+- **Profit & Loss Dashboard**: Budget vs actual sales comparison with trend analysis
+- **Summary Analytics**: Comprehensive financial reporting with charts and visualizations
+- **Data Tables**: Sales, Labor, COGS, Fixed Expenses, and Net Profit tracking tables
+
+#### 🏢 **Restaurant Onboarding System**
+- **5-Step Onboarding Process**:
+  1. **Basic Information**: Restaurant details, locations, and business type
+  2. **Labor Information**: Staff management, hourly rates, and labor goals
+  3. **Food Cost Details**: COGS goals and delivery scheduling
+  4. **Sales Channels**: Revenue streams (in-store, online, third-party)
+  5. **Expense Management**: Fixed and variable cost configuration
+
+#### 👥 **User Management & Authentication**
+- **User Authentication**: Login, registration, password reset
+- **Profile Management**: User profile editing and account settings
+- **Admin Panel**: User management, role assignment, and system administration
+- **Role-Based Access**: Admin and regular user permissions
+
+#### 🛠️ **Administrative Features**
+- **User Administration**: Create, edit, delete users with role management
+- **Tooltip Management**: System-wide tooltip configuration
+- **FAQ Management**: Dynamic FAQ creation and management
+- **Support System**: Ticket submission and customer support
+
+#### 📈 **Financial Management**
+- **Sales Tracking**: Daily and weekly sales data entry
+- **Labor Management**: Staff scheduling and cost tracking
+- **Expense Tracking**: Fixed and variable expense management
+- **Profit Analysis**: Automated profit/loss calculations
+- **Budget Planning**: Weekly budget creation and monitoring
+
+#### 🎨 **User Experience Features**
+- **Responsive Design**: Mobile-first approach with tablet and desktop optimization
+- **Interactive Tables**: Real-time data entry with validation
+- **Date/Calendar Integration**: Week selection and date range pickers
+- **Print Functionality**: Report generation and printing
+- **Notification System**: Success/error messaging and user feedback
+
+## 🛠️ Technical Stack & Architecture
+
+### **Frontend Technologies**
+- **React 18.2.0**: Modern React with hooks and functional components
+- **Vite 5.0.8**: Fast build tool and development server
+- **React Router DOM 6.20.1**: Client-side routing and navigation
+- **Zustand 5.0.6**: Lightweight state management with persistence
+- **Ant Design 5.26.3**: Comprehensive UI component library
+- **Tailwind CSS 3.4.1**: Utility-first CSS framework
+- **Chart.js 4.5.0 + React-ChartJS-2 5.3.0**: Data visualization and charts
+- **Day.js 1.11.13**: Date manipulation and formatting
+- **Axios 1.10.0**: HTTP client for API communication
+
+### **Development Tools**
+- **ESLint**: Code linting and quality assurance
+- **PostCSS + Autoprefixer**: CSS processing and vendor prefixing
+- **TypeScript Support**: Type definitions for React and React DOM
+
+### **Application Architecture**
+
+#### **State Management Structure**
+```javascript
+// Zustand Store Slices
+├── authSlice.js          // User authentication & profile
+├── onBoardingSlice.js    // Onboarding workflow state
+├── dashboardSlice.js     // Dashboard data & date selection
+├── dashboardSummary.js   // Summary analytics state
+├── supportSlice.js       // Support ticket management
+└── faqSlice.js          // FAQ management state
+```
+
+#### **Component Architecture**
+```
+src/
+├── components/
+│   ├── authScreens/          # Authentication pages
+│   │   ├── LoginPage.jsx
+│   │   ├── SignUpPage.jsx
+│   │   └── auth/             # Auth components
+│   ├── buttons/              # Reusable UI components
+│   │   ├── Buttons.jsx
+│   │   ├── ToggleSwitch.jsx
+│   │   └── MonthlyWeeklyToggle.jsx
+│   ├── layout/               # Layout components
+│   │   ├── Header.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── Wrapper.jsx
+│   │   └── LoadingSpinner.jsx
+│   ├── mainScreens/          # Main application pages
+│   │   ├── dashbaordComponents/    # Dashboard tables
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── SalesTable.jsx
+│   │   │   ├── LabourTable.jsx
+│   │   │   ├── CogsTable.jsx
+│   │   │   └── RestaurantInfoCard.jsx
+│   │   ├── restaurantsInformation/ # Onboarding workflow
+│   │   │   ├── RestaurantInfo.jsx
+│   │   │   ├── CompleteSteps.jsx
+│   │   │   └── steps/        # Onboarding steps
+│   │   ├── summaryDashboard/       # Analytics & reporting
+│   │   │   ├── SummaryDashboard.jsx
+│   │   │   ├── ProfitLossDashboard.jsx
+│   │   │   ├── SalesDataModal.jsx
+│   │   │   └── profitLossDashboard/
+│   │   ├── Profile/          # User profile management
+│   │   ├── support/          # Support system
+│   │   └── faq/              # FAQ management
+│   ├── admin/                # Administrative features
+│   │   ├── UsersAdmin.jsx
+│   │   └── TooltipsAdmin.jsx
+│   └── common/               # Shared components
+│       ├── GrowlioLogo.jsx
+│       └── OnboardingBreadcrumb.jsx
+├── store/                    # Zustand state management
+├── utils/                    # Utility functions
+├── routes/                   # Route definitions
+└── assets/                   # Static assets
+```
+
+#### **Key Application Routes**
+```javascript
+// Public Routes
+/login, /signup, /forgot-password, /reset-password, /congratulations
+
+// Protected Routes
+/dashboard                    # Main dashboard
+/dashboard/budget             # Budget planning
+/dashboard/profit-loss        # Profit & loss analysis
+/dashboard/basic-information  # Restaurant info management
+/dashboard/labor-information  # Labor management
+/dashboard/food-cost-details  # COGS management
+/dashboard/sales-channels     # Sales channel configuration
+/dashboard/expense           # Expense management
+/dashboard/profile           # User profile
+/dashboard/support          # Support system
+/dashboard/faq              # FAQ management
+
+// Admin Routes
+/admin/users                 # User management
+/admin/tooltips             # Tooltip management
+```
 
 ## 🎨 Design System & Styling
 
@@ -64,6 +209,51 @@
 </div>
 ```
 
+## 🚀 Main Application Workflows
+
+### **1. User Onboarding Flow**
+```javascript
+// Complete onboarding process
+1. User Registration → Email verification
+2. Basic Information → Restaurant details & locations
+3. Labor Information → Staff management & hourly rates
+4. Food Cost Details → COGS goals & delivery scheduling
+5. Sales Channels → Revenue stream configuration
+6. Expense Management → Fixed & variable costs
+7. Completion → Dashboard access granted
+```
+
+### **2. Dashboard Data Entry Workflow**
+```javascript
+// Weekly data entry process
+1. Select Week → Date picker for week selection
+2. Sales Data → Daily sales entry with channel breakdown
+3. Labor Data → Staff hours and costs
+4. COGS Data → Food cost tracking
+5. Expense Data → Fixed and variable expenses
+6. Review → Data validation and submission
+```
+
+### **3. Analytics & Reporting Workflow**
+```javascript
+// Budget and analytics process
+1. Budget Planning → Weekly sales budget creation
+2. Data Entry → Daily actual sales input
+3. Analysis → Budget vs actual comparison
+4. Reporting → Profit/loss calculations
+5. Insights → Trend analysis and recommendations
+```
+
+### **4. Administrative Workflow**
+```javascript
+// Admin management process
+1. User Management → Create, edit, delete users
+2. Role Assignment → Admin/user permissions
+3. System Configuration → Tooltips and settings
+4. FAQ Management → Content creation and updates
+5. Support Tickets → Customer support handling
+```
+
 ## 🔐 Authentication & User Management
 
 ### Protected Routes
@@ -80,6 +270,46 @@
 - **Forgot Password**: `/forgot-password` - email input form
 - **Reset Password**: `/reset-password` - token + new password form
 - **Email Design**: Professional HTML emails with direct reset links
+
+## 🧩 Key Components & Functionality
+
+### **Dashboard Components**
+- **`Dashboard.jsx`**: Main dashboard with week selection and data tables
+- **`SalesTable.jsx`**: Interactive sales data entry with channel breakdown
+- **`LabourTable.jsx`**: Labor cost tracking and staff management
+- **`CogsTable.jsx`**: Food cost tracking and COGS management
+- **`RestaurantInfoCard.jsx`**: Restaurant information display
+
+### **Summary Dashboard Components**
+- **`SummaryDashboard.jsx`**: Budget planning and weekly overview
+- **`ProfitLossDashboard.jsx`**: Budget vs actual analysis with charts
+- **`SalesDataModal.jsx`**: Sales data entry modal with validation
+- **`BudgetDashboard.jsx`**: Budget creation and management
+- **`SummaryTableDashboard.jsx`**: Data table with filtering and sorting
+
+### **Onboarding Components**
+- **`RestaurantInfo.jsx`**: Main onboarding container with step navigation
+- **`CompleteSteps.jsx`**: Onboarding completion page
+- **Step Components**: Individual onboarding step forms
+  - Basic Information, Labor, Food Costs, Sales Channels, Expenses
+
+### **Administrative Components**
+- **`UsersAdmin.jsx`**: User management with role assignment
+- **`TooltipsAdmin.jsx`**: System tooltip configuration
+- **`FaqPage.jsx`**: FAQ management with search and filtering
+- **`SupportPage.jsx`**: Support ticket submission system
+
+### **Layout & Navigation**
+- **`Wrapper.jsx`**: Main application layout with sidebar
+- **`Header.jsx`**: Application header with navigation
+- **`Sidebar.jsx`**: Navigation sidebar with role-based menu items
+- **`LoadingSpinner.jsx`**: Loading state component
+
+### **Utility Components**
+- **`ToggleSwitch.jsx`**: Custom toggle switch component
+- **`Buttons.jsx`**: Standardized button components
+- **`GrowlioLogo.jsx`**: Application logo component
+- **`OnboardingBreadcrumb.jsx`**: Onboarding step navigation
 
 ## 📊 Dashboard & Data Tables
 
@@ -240,6 +470,125 @@
 - **Server-Side**: Final validation before saving
 - **Error Display**: Clear, specific error messages
 - **Required Fields**: Visual indicators for mandatory inputs
+
+## 📊 Data Models & API Integration
+
+### **Core Data Models**
+```javascript
+// Restaurant Data Structure
+{
+  restaurant_id: string,
+  restaurant_name: string,
+  restaurant_type: string,
+  menu_type: string,
+  number_of_locations: number,
+  locations: [
+    {
+      location_name: string,
+      address_1: string,
+      country: string,
+      state: string,
+      zip_code: string,
+      sqft: number,
+      is_franchise: boolean
+    }
+  ]
+}
+
+// Sales Data Structure
+{
+  date: string,
+  budgeted_sales: number,
+  actual_sales_in_store: number,
+  actual_sales_app_online: number,
+  net_sales_actual: number,
+  daily_tickets: number,
+  average_daily_ticket: number,
+  is_closed: boolean
+}
+
+// Labor Data Structure
+{
+  date: string,
+  labor_hours: number,
+  labor_cost: number,
+  hourly_rate: number,
+  is_closed: boolean
+}
+
+// COGS Data Structure
+{
+  date: string,
+  cogs_amount: number,
+  cogs_percentage: number,
+  is_closed: boolean
+}
+```
+
+### **API Endpoints Structure**
+```javascript
+// Authentication Endpoints
+POST /authentication/login/
+POST /authentication/register/
+POST /authentication/forgot-password/
+POST /authentication/reset-password/
+GET  /authentication/profile/
+PUT  /authentication/profile/
+
+// Dashboard Endpoints
+GET  /dashboard/data/
+POST /dashboard/data/
+PUT  /dashboard/data/
+GET  /dashboard/summary/
+
+// Restaurant Endpoints
+GET  /restaurant/info/
+POST /restaurant/info/
+PUT  /restaurant/info/
+
+// Admin Endpoints
+GET  /admin/users/
+POST /admin/users/
+PUT  /admin/users/{id}/
+DELETE /admin/users/{id}/
+
+// Support Endpoints
+POST /support/tickets/
+GET  /support/faqs/
+POST /admin/faqs/
+```
+
+### **State Management Patterns**
+```javascript
+// Zustand Store Structure
+const useStore = create((set, get) => ({
+  // Auth State
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  
+  // Onboarding State
+  completeOnboardingData: {
+    restaurant_id: null,
+    "Basic Information": { status: false, data: {} },
+    "Labor Information": { status: false, data: {} },
+    "Food Cost Details": { status: false, data: {} },
+    "Sales Channels": { status: false, data: {} },
+    "Expense": { status: false, data: {} }
+  },
+  
+  // Dashboard State
+  dashboardData: null,
+  selectedDate: null,
+  selectedYear: null,
+  selectedMonth: null,
+  selectedWeek: null,
+  
+  // Summary State
+  dashboardSummaryData: null,
+  currentViewMode: 'weekly'
+}));
+```
 
 ## 🔧 State Management
 
@@ -509,6 +858,190 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 ```
 
+## 🎯 Development Best Practices
+
+### **Component Development Standards**
+```javascript
+// 1. Component Structure Pattern
+const ComponentName = ({ prop1, prop2, onAction }) => {
+  // Hooks at the top
+  const [state, setState] = useState(initialValue);
+  const { data, loading, error } = useStore();
+  
+  // Event handlers
+  const handleAction = useCallback((value) => {
+    // Implementation
+  }, [dependencies]);
+  
+  // Effects
+  useEffect(() => {
+    // Side effects
+  }, [dependencies]);
+  
+  // Early returns for loading/error states
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage error={error} />;
+  
+  // Main render
+  return (
+    <div className="component-wrapper">
+      {/* Component content */}
+    </div>
+  );
+};
+```
+
+### **State Management Best Practices**
+```javascript
+// 1. Zustand Store Pattern
+const createSlice = (set, get) => ({
+  // State
+  data: null,
+  loading: false,
+  error: null,
+  
+  // Actions
+  setData: (data) => set({ data }),
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
+  
+  // Async actions
+  fetchData: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await api.get('/endpoint');
+      set({ data: response.data, loading: false });
+    } catch (error) {
+      set({ error: error.message, loading: false });
+    }
+  }
+});
+```
+
+### **API Integration Patterns**
+```javascript
+// 1. Axios Interceptor Pattern
+const apiGet = async (url, config = {}) => {
+  try {
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      ...config
+    });
+    return response;
+  } catch (error) {
+    handleApiError(error);
+    throw error;
+  }
+};
+
+// 2. Error Handling Pattern
+const handleApiError = (error) => {
+  if (error.response?.status === 401) {
+    // Handle unauthorized
+    clearAuth();
+    redirectToLogin();
+  } else if (error.response?.status === 403) {
+    // Handle forbidden
+    message.error('You do not have permission to perform this action');
+  } else {
+    // Handle other errors
+    message.error(error.response?.data?.message || 'An error occurred');
+  }
+};
+```
+
+### **Form Handling Best Practices**
+```javascript
+// 1. Form Validation Pattern
+const validateForm = (values) => {
+  const errors = {};
+  
+  if (!values.email) {
+    errors.email = 'Email is required';
+  } else if (!/\S+@\S+\.\S+/.test(values.email)) {
+    errors.email = 'Email is invalid';
+  }
+  
+  if (!values.password) {
+    errors.password = 'Password is required';
+  } else if (values.password.length < 6) {
+    errors.password = 'Password must be at least 6 characters';
+  }
+  
+  return errors;
+};
+
+// 2. Form Submission Pattern
+const handleSubmit = async (values) => {
+  try {
+    setSubmitting(true);
+    await apiPost('/endpoint', values);
+    message.success('Data saved successfully');
+    onSuccess?.();
+  } catch (error) {
+    message.error('Failed to save data');
+  } finally {
+    setSubmitting(false);
+  }
+};
+```
+
+### **Performance Optimization**
+```javascript
+// 1. Memoization Pattern
+const ExpensiveComponent = React.memo(({ data, onUpdate }) => {
+  const processedData = useMemo(() => {
+    return data.map(item => ({
+      ...item,
+      computed: expensiveCalculation(item)
+    }));
+  }, [data]);
+  
+  const handleUpdate = useCallback((id, value) => {
+    onUpdate(id, value);
+  }, [onUpdate]);
+  
+  return <div>{/* Component content */}</div>;
+});
+
+// 2. Lazy Loading Pattern
+const LazyComponent = React.lazy(() => import('./LazyComponent'));
+
+const App = () => (
+  <Suspense fallback={<LoadingSpinner />}>
+    <LazyComponent />
+  </Suspense>
+);
+```
+
+### **Testing Patterns**
+```javascript
+// 1. Component Testing Pattern
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import Component from './Component';
+
+const renderWithProviders = (component) => {
+  return render(
+    <Provider store={mockStore}>
+      {component}
+    </Provider>
+  );
+};
+
+test('renders component correctly', () => {
+  renderWithProviders(<Component />);
+  expect(screen.getByText('Expected Text')).toBeInTheDocument();
+});
+
+// 2. API Testing Pattern
+test('handles API success', async () => {
+  const mockApi = jest.fn().mockResolvedValue({ data: mockData });
+  const result = await mockApi('/endpoint');
+  expect(result.data).toEqual(mockData);
+});
+```
+
 ## 🚫 Common Anti-Patterns to Avoid
 
 ### Frontend UI/UX Issues
@@ -626,10 +1159,51 @@ src/
 
 
 
+## 📋 Project Summary
+
+### **Growlio Application Overview**
+Growlio is a comprehensive restaurant management platform that provides restaurant owners with powerful tools for financial analytics, business intelligence, and operational management. The application is built with modern React technologies and follows industry best practices for scalability, maintainability, and user experience.
+
+### **Key Application Capabilities**
+- **Financial Management**: Complete sales tracking, labor cost management, and expense tracking
+- **Analytics & Reporting**: Budget vs actual analysis, profit/loss calculations, and trend analysis
+- **User Management**: Role-based access control with admin and user permissions
+- **Onboarding System**: 5-step restaurant setup process with data validation
+- **Administrative Tools**: User management, FAQ system, and support ticket handling
+- **Responsive Design**: Mobile-first approach with tablet and desktop optimization
+
+### **Technical Highlights**
+- **Modern React**: Built with React 18.2.0 using hooks and functional components
+- **State Management**: Zustand for lightweight, persistent state management
+- **UI Framework**: Ant Design 5.26.3 for comprehensive component library
+- **Styling**: Tailwind CSS 3.4.1 for utility-first styling approach
+- **Charts & Visualization**: Chart.js 4.5.0 for data visualization and analytics
+- **Build Tool**: Vite 5.0.8 for fast development and optimized builds
+
+### **Development Standards**
+- **Component Architecture**: Modular, reusable components with clear separation of concerns
+- **State Management**: Centralized state with Zustand slices for different features
+- **API Integration**: Axios interceptors for consistent API communication
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+- **Performance**: Memoization, lazy loading, and optimized rendering
+- **Testing**: Component testing patterns and API testing strategies
+
+### **File Organization**
+```
+src/
+├── components/          # All React components
+├── store/              # Zustand state management
+├── utils/              # Utility functions and helpers
+├── routes/             # Route definitions
+├── assets/             # Static assets and images
+└── main.jsx           # Application entry point
+```
+
 ---
 
 **Last Updated**: December 2024  
-**Version**: 1.0  
-**Maintainer**: Development Team
+**Version**: 2.0  
+**Maintainer**: Development Team  
+**Project**: Growlio Restaurant Management Platform
 
-*This guide should be updated whenever new patterns or standards are established in the Growlio application.*
+*This guide provides comprehensive documentation for the Growlio application. It should be updated whenever new features, patterns, or standards are established.*

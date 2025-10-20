@@ -27,6 +27,7 @@ import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
 import SupportPage from './components/mainSceens/support/SupportPage';
+import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -80,6 +81,7 @@ function App() {
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />
+          <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           {/* Admin */}
           <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />

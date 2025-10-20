@@ -169,6 +169,46 @@ export const CalendarHelpers = {
   },
 
   /**
+   * Determine if a week is current, past, or future
+   * @param {dayjs.Dayjs|Date|string} weekStartDate - The start date of the week to check
+   * @returns {Object} Object with week status and details
+   */
+  getWeekStatus: (weekStartDate) => {
+    const now = dayjs();
+    const weekStart = dayjs(weekStartDate);
+    const weekEnd = weekStart.endOf('week');
+    
+    // Get current week boundaries
+    const currentWeekStart = now.startOf('week');
+    const currentWeekEnd = now.endOf('week');
+    
+    // Check if the week is current
+    const isCurrentWeek = weekStart.isSame(currentWeekStart, 'day') || 
+                         (weekStart.isBefore(currentWeekStart) && weekEnd.isAfter(currentWeekStart)) ||
+                         (weekStart.isBefore(currentWeekEnd) && weekEnd.isAfter(currentWeekEnd));
+    
+    // Check if the week is in the past
+    const isPastWeek = weekEnd.isBefore(currentWeekStart, 'day');
+    
+    // Check if the week is in the future
+    const isFutureWeek = weekStart.isAfter(currentWeekEnd, 'day');
+    
+    // Calculate days difference
+    const daysDifference = weekStart.diff(currentWeekStart, 'day');
+    
+    return {
+      isCurrentWeek,
+      isPastWeek,
+      isFutureWeek,
+      daysDifference,
+      weekStart: weekStart.format('MMM DD, YYYY'),
+      weekEnd: weekEnd.format('MMM DD, YYYY'),
+      currentWeekStart: currentWeekStart.format('MMM DD, YYYY'),
+      currentWeekEnd: currentWeekEnd.format('MMM DD, YYYY')
+    };
+  },
+
+  /**
    * Format a single date
    * @param {dayjs.Dayjs|Date|string} date - The date to format
    * @param {string} format - Date format (default: 'MMM DD, YYYY')
