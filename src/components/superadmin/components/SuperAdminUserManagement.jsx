@@ -7,13 +7,13 @@ import {
   CrownOutlined,
   TeamOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 
 const roleOptions = [
-  { label: 'Superuser', value: 'SUPERUSER' },
   { label: 'Admin', value: 'ADMIN' },
   { label: 'User', value: 'USER' },
 ];
@@ -67,12 +67,19 @@ const SuperAdminUserManagement = () => {
     pageSize: 10,
     total: 0
   });
+  const [search, setSearch] = useState('');
 
-  const fetchUsers = async (page = 1, pageSize = 10) => {
+  const fetchUsers = async (page = 1, pageSize = 10, searchQuery = '') => {
     setLoading(true);
     try {
-      const res = await apiGet(`/authentication/users/?page=${page}&page_size=${pageSize}`);
-      setUsers(res.data.results || res.data || []);
+      const params = new URLSearchParams({
+        page: String(page),
+        page_size: String(pageSize),
+        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
+      }).toString();
+      const res = await apiGet(`/authentication/users/?${params}`);
+      const incoming = res.data.results || res.data || [];
+      setUsers(incoming);
       setPagination(prev => ({
         ...prev,
         current: page,
@@ -131,16 +138,6 @@ const SuperAdminUserManagement = () => {
   };
 
 
-  const getRoleTag = (user) => {
-    if (user.is_superuser) {
-      return <Tag color="purple" icon={<CrownOutlined />}>Superuser</Tag>;
-    } else if (user.is_staff || user.role === 'ADMIN') {
-      return <Tag color="orange" icon={<CrownOutlined />}>Admin</Tag>;
-    } else {
-      return <Tag color="blue" icon={<UserOutlined />}>User</Tag>;
-    }
-  };
-
   const getStatusTag = (user) => {
     return user.is_active ? (
       <Tag color="green" icon={<CheckCircleOutlined />}>Active</Tag>
@@ -191,7 +188,7 @@ const SuperAdminUserManagement = () => {
       key: 'role',
       render: (role, record) => (
         <Select
-          value={role || (record.is_superuser ? 'SUPERUSER' : record.is_staff ? 'ADMIN' : 'USER')}
+          value={role || (record.role ? 'ADMIN' : record.is_staff ? 'ADMIN' : 'USER')}
           style={{ width: 140 , height: 40 }}
           options={roleOptions}
           onChange={(val) => handleRoleChange(record.id, val)}
@@ -263,51 +260,44 @@ const SuperAdminUserManagement = () => {
   };
 
   const handleTableChange = (paginationConfig) => {
-    fetchUsers(paginationConfig.current, paginationConfig.pageSize);
+    fetchUsers(paginationConfig.current, paginationConfig.pageSize, search);
   };
+
+  // Debounce search to call API-side filtering
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      fetchUsers(1, pagination.pageSize, search);
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [search]);
 
   return (
     <div className="space-y-6">
 
-      {/* Enhanced User Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
-          <div className="text-3xl font-bold text-orange-600 mb-2">{pagination.total}</div>
-          <div className="text-gray-600 font-semibold">Total Users</div>
-        </Card>
-        <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
-          <div className="text-3xl font-bold text-green-600 mb-2">
-            {users.filter(u => u.is_active).length}
-          </div>
-          <div className="text-gray-600 font-semibold">Active Users</div>
-        </Card>
-        <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
-          <div className="text-3xl font-bold text-blue-600 mb-2">
-            {users.filter(u => u.is_staff || u.role === 'ADMIN').length}
-          </div>
-          <div className="text-gray-600 font-semibold">Admins</div>
-        </Card>
-        <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 rounded-xl border-0 shadow-md">
-          <div className="text-3xl font-bold text-purple-600 mb-2">
-            {users.filter(u => u.is_superuser).length}
-          </div>
-          <div className="text-gray-600 font-semibold">Superusers</div>
-        </Card>
-      </div>
 
       {/* Enhanced User Table */}
       <Card className="shadow-lg border-0 rounded-xl">
-        <div className="mb-4 flex justify-between items-center">
-          <h3 className="text-lg font-bold text-orange-600 mb-2">User Management Table</h3>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={openCreate}
-            size="large"
-            className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-          >
-            Add User
-          </Button>
+        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <h3 className="text-lg font-bold text-orange-600">User Management Table</h3>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Input
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              allowClear
+              prefix={<SearchOutlined />}
+              style={{height:40}}
+            />
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={openCreate}
+              size="large"
+              className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              Add User
+            </Button>
+          </div>
         </div>
         <Table
           rowKey="id"
