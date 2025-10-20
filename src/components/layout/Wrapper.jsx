@@ -9,6 +9,7 @@ import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiActualbudget, SiExpensify } from 'react-icons/si';
 import ImpersonationBanner from '../superadmin/components/ImpersonationBanner';
+import { isImpersonating } from '../../utils/tokenManager';
 const { Content } = Layout;
 
 /**
@@ -23,7 +24,9 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
   const isSuperAdmin = user?.is_superuser;
-  const menuItems = [
+  const impersonating = isImpersonating();
+
+  const userMenus = [
     {
       key: 'dashboard-summary',
       icon: <FaChartLine />,
@@ -47,7 +50,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Budget vs Actual Sales',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
- 
       ],
     },
     {
@@ -93,49 +95,53 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
     },
-    
-    ...(isAdmin ? [
-      {
-        key: 'admin',
-        icon: <SettingOutlined />,
-        label: 'Admin',
-        children: [
-          {
-            key: 'admin-users',
-            icon: <UserOutlined />,
-            label: 'Users',
-            onClick: () => navigate('/admin/users'),
-          },
-          {
-            key: 'admin-tooltips',
-            icon: <InfoCircleOutlined />,
-            label: 'Tooltips',
-            onClick: () => navigate('/admin/tooltips'),
-          },
-        ],
-      },
-    ] : []),
-    ...(isSuperAdmin ? [
-      {
-        key: 'superadmin',
-        icon: <SettingOutlined />,
-        label: 'SuperAdmin',
-        children: [
-          {
-            key: 'superadmin-dashboard',
-            icon: <FaChartLine />,
-            label: 'Dashboard',
-            onClick: () => navigate('/superadmin'),
-          },
-          {
-            key: 'superadmin-users',
-            icon: <UserOutlined />,
-            label: 'User Management',
-            onClick: () => navigate('/superadmin/users'),
-          },
-        ],
-      }
-    ] : []),
+  ];
+
+  const adminMenu = isAdmin ? [
+    {
+      key: 'admin',
+      icon: <SettingOutlined />,
+      label: 'Admin',
+      children: [
+        {
+          key: 'admin-users',
+          icon: <UserOutlined />,
+          label: 'Users',
+          onClick: () => navigate('/admin/users'),
+        },
+        {
+          key: 'admin-tooltips',
+          icon: <InfoCircleOutlined />,
+          label: 'Tooltips',
+          onClick: () => navigate('/admin/tooltips'),
+        },
+      ],
+    },
+  ] : [];
+
+  const superAdminMenu = (isSuperAdmin && !impersonating) ? [
+    {
+      key: 'superadmin',
+      icon: <SettingOutlined />,
+      label: 'SuperAdmin',
+      children: [
+        {
+          key: 'superadmin-dashboard',
+          icon: <FaChartLine />,
+          label: 'Dashboard',
+          onClick: () => navigate('/superadmin/dashboard'),
+        },
+        {
+          key: 'superadmin-users',
+          icon: <UserOutlined />,
+          label: 'User Management',
+          onClick: () => navigate('/superadmin/users'),
+        },
+      ],
+    }
+  ] : [];
+
+  const settingsMenu = [
     {
       key: 'settings',
       icon: <SettingOutlined />,
@@ -149,6 +155,15 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
+  ];
+
+  // Show user menus for non-superadmin users, or when superadmin is impersonating
+  const showUserMenus = !isSuperAdmin || impersonating;
+  const menuItems = [
+    ...(showUserMenus ? userMenus : []),
+    ...adminMenu,
+    ...superAdminMenu,
+    ...settingsMenu,
   ];
 
   const handleMenuClick = () => {

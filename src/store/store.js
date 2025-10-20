@@ -24,10 +24,9 @@ const useStore = create(
           
           // Clear localStorage
           localStorage.removeItem('growlio-store');
-          localStorage.removeItem('token');
           localStorage.removeItem('restaurant_id');
           
-          // Clear sessionStorage
+          // Clear sessionStorage (including tokens)
           sessionStorage.clear();
           
           // Reset all slices to initial state

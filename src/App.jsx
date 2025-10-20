@@ -47,8 +47,20 @@ function App() {
   }, []);
   
   useEffect(() => {
-    initializeAuth();
+    console.log('🔍 App - Initializing auth...');
+    try {
+      initializeAuth();
+      console.log('🔍 App - Auth initialized successfully');
+    } catch (error) {
+      console.error('❌ App - Auth initialization failed:', error);
+    }
   }, [initializeAuth]);
+  
+  console.log('🔍 App - Render state:', {
+    isAuthenticated,
+    hasToken: !!token,
+    currentPath: window.location.pathname
+  });
 
 
   return (

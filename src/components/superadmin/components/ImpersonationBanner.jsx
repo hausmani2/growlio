@@ -2,15 +2,17 @@ import React from 'react';
 import { Alert, Button, Space } from 'antd';
 import { UserSwitchOutlined, StopOutlined } from '@ant-design/icons';
 import useStore from '../../../store/store';
+import { 
+  isImpersonating, 
+  getImpersonatedUser, 
+  getImpersonatedUserData, 
+  getImpersonationMessage 
+} from '../../../utils/tokenManager';
 
 const ImpersonationBanner = () => {
-  const { 
-    isImpersonating, 
-    getImpersonatedUser, 
-    getImpersonatedUserData,
-    getImpersonationMessage,
-    stopImpersonation 
-  } = useStore();
+  const stopImpersonation = useStore((state) => state.stopImpersonation);
+  
+  // Use tokenManager's isImpersonating function to avoid persisted key collisions
 
   const handleStopImpersonation = async () => {
     try {

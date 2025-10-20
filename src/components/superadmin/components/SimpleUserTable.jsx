@@ -9,7 +9,8 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  Card
+  Card,
+  Modal
 } from 'antd';
 import { 
   UserSwitchOutlined, 
@@ -32,7 +33,8 @@ const SimpleUserTable = () => {
     fetchAllUsers,
     allUsers,
     usersTotal,
-    loading
+    loading,
+    clearError
   } = useStore();
   
   const [users, setUsers] = useState([]);
@@ -40,6 +42,11 @@ const SimpleUserTable = () => {
     current: 1,
     pageSize: 10,
     total: 0
+  });
+  const [errorModal, setErrorModal] = useState({
+    visible: false,
+    title: '',
+    message: ''
   });
 
   // Fetch users from API
@@ -74,7 +81,12 @@ const SimpleUserTable = () => {
         if (result.success) {
           message.success(`Switched to impersonating ${user.username || user.email}`);
         } else {
-          message.error(result.error || 'Failed to switch impersonation');
+          // Show error modal instead of just message
+          setErrorModal({
+            visible: true,
+            title: 'API Failed - Cannot Switch User',
+            message: result.error || 'Failed to switch impersonation. Please try again.'
+          });
         }
       } else {
         // Start new impersonation
@@ -82,11 +94,21 @@ const SimpleUserTable = () => {
         if (result.success) {
           message.success(`Now impersonating ${user.username || user.email}`);
         } else {
-          message.error(result.error || 'Failed to start impersonation');
+          // Show error modal instead of just message
+          setErrorModal({
+            visible: true,
+            title: 'API Failed - Cannot Impersonate User',
+            message: result.error || 'Failed to start impersonation. Please try again.'
+          });
         }
       }
     } catch (error) {
-      message.error('An error occurred while starting impersonation');
+      // Show error modal for unexpected errors
+      setErrorModal({
+        visible: true,
+        title: 'API Failed - Cannot Impersonate User',
+        message: 'An unexpected error occurred while starting impersonation. Please try again.'
+      });
     }
   };
 
@@ -232,6 +254,51 @@ const SimpleUserTable = () => {
         size="middle"
         className="modern-table"
       />
+      
+      {/* Error Modal */}
+      <Modal
+        title={
+          <div className="flex items-center space-x-2">
+            <CloseCircleOutlined className="text-red-500" />
+            <span className="text-red-600 font-semibold">{errorModal.title}</span>
+          </div>
+        }
+        open={errorModal.visible}
+        onCancel={() => {
+          setErrorModal({ visible: false, title: '', message: '' });
+          clearError();
+        }}
+        footer={[
+          <Button 
+            key="ok" 
+            type="primary" 
+            onClick={() => {
+              setErrorModal({ visible: false, title: '', message: '' });
+              clearError();
+            }}
+            className="bg-red-500 border-red-500 hover:bg-red-600 hover:border-red-600"
+          >
+            OK
+          </Button>
+        ]}
+        centered
+        width={500}
+        className="error-modal"
+      >
+        <div className="py-4">
+          <div className="flex items-start space-x-3">
+            <CloseCircleOutlined className="text-red-500 text-xl mt-1 flex-shrink-0" />
+            <div>
+              <p className="text-gray-700 text-base leading-relaxed">
+                {errorModal.message}
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                The user will remain on the current page. Please try again or contact support if the issue persists.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </Card>
   );
 };

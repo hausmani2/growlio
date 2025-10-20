@@ -82,6 +82,43 @@ const createSuperAdminSlice = (set, get) => {
       }
     },
 
+    // SuperAdmin login via dedicated endpoint
+    superAdminLogin: async (credentials) => {
+      set(() => ({ loading: true, error: null }));
+      try {
+        const response = await apiPost('/authentication/superadmin-login/', credentials);
+
+        // Support both { data: { access, ...user } } and flat { access, ...user }
+        const { access, refresh, ...userData } = response.data?.data || response.data || {};
+
+        if (!access) {
+          throw new Error('No authentication token received');
+        }
+
+        // Persist token and user in session storage
+        try {
+          sessionStorage.setItem('token', access);
+          sessionStorage.setItem('user', JSON.stringify(userData));
+        } catch {}
+
+        // Update global auth state from here to avoid waiting for other actions
+        set(() => ({
+          user: userData,
+          token: access,
+          activeToken: access,
+          isAuthenticated: true,
+          loading: false,
+          error: null,
+        }));
+
+        return { success: true, data: response.data };
+      } catch (error) {
+        const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'SuperAdmin login failed';
+        set(() => ({ loading: false, error: errorMessage }));
+        return { success: false, error: errorMessage };
+      }
+    },
+
     // Fetch user analytics
     fetchUserAnalytics: async () => {
       set(() => ({ loading: true, error: null }));
@@ -216,7 +253,13 @@ const createSuperAdminSlice = (set, get) => {
       try {
         const userResponse = await apiGet(`/authentication/users/${userId}/`);
         const userEmail = userResponse.data.email;
-        return await get().impersonateUser(userEmail);
+        
+        // Call impersonateUser and handle the result
+        const result = await get().impersonateUser(userEmail);
+        
+        // If successful, the redirect will happen in impersonateUser
+        // If failed, return the error without redirect
+        return result;
       } catch (error) {
         console.error('Error fetching user for impersonation:', error);
         return { success: false, error: 'Failed to fetch user data' };
@@ -237,23 +280,30 @@ const createSuperAdminSlice = (set, get) => {
           return await apiPost('/admin_access/impersonate/', { email: userEmail });
         });
         
+        // Check if API call was successful (status 200-299) and has valid data
+        if (!response || response.status < 200 || response.status >= 300 || 
+            !response.data || !response.data.access || !response.data.impersonated_user) {
+          const errorMessage = response?.data?.message || response?.data?.error || 'API failed - cannot switch impersonation';
+          return { success: false, error: errorMessage };
+        }
+        
         // Update impersonation data with new user
         storeImpersonationData(response.data);
         
-        // Update the main token to new impersonation token
-        localStorage.setItem('token', response.data.access);
+        // Update the main token to new impersonation token (session)
+        sessionStorage.setItem('token', response.data.access);
         
         // IMPORTANT: Ensure original super admin token is preserved
-        const originalSuperadminToken = localStorage.getItem('original_superadmin_token');
+        const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
         if (!originalSuperadminToken) {
           console.log('⚠️ Original super admin token missing, attempting to restore...');
           const currentState = get();
-          const mainToken = localStorage.getItem('token');
+          const mainToken = sessionStorage.getItem('token');
           if (currentState.user && mainToken) {
             const userWithToken = {
               ...currentState.user,
               access: currentState.user.access || mainToken,
-              refresh: currentState.user.refresh || localStorage.getItem('refresh_token') || mainToken
+              refresh: currentState.user.refresh || sessionStorage.getItem('refresh_token') || mainToken
             };
             storeOriginalSuperAdminData(userWithToken);
             console.log('✅ Original super admin token restored during switch');
@@ -304,6 +354,16 @@ const createSuperAdminSlice = (set, get) => {
           return await apiPost('/admin_access/impersonate/', { email });
         });
         
+        // Check if API call was successful (status 200-299)
+        if (!response || response.status < 200 || response.status >= 300) {
+          const errorMessage = 'API failed - cannot impersonate user';
+          set(() => ({ 
+            loading: false, 
+            error: errorMessage 
+          }));
+          return { success: false, error: errorMessage };
+        }
+        
         set(() => ({ 
           loading: false,
           error: null 
@@ -311,7 +371,7 @@ const createSuperAdminSlice = (set, get) => {
         
         // Store original super admin data first (if not already stored)
         const currentState = get();
-        const mainToken = localStorage.getItem('token');
+        const mainToken = sessionStorage.getItem('token');
         
         console.log('🔍 Current State Before Impersonation:', {
           hasUser: !!currentState.user,
@@ -327,7 +387,7 @@ const createSuperAdminSlice = (set, get) => {
           const userWithToken = {
             ...currentState.user,
             access: currentState.user.access || mainToken,
-            refresh: currentState.user.refresh || localStorage.getItem('refresh_token') || mainToken
+            refresh: currentState.user.refresh || sessionStorage.getItem('refresh_token') || mainToken
           };
           storeOriginalSuperAdminData(userWithToken);
         } else {
@@ -361,7 +421,7 @@ const createSuperAdminSlice = (set, get) => {
         // Update the auth state with impersonated user data
         if (currentState.setUser) {
           currentState.setUser({
-            ...impersonatedUser,
+            ...response.data.impersonated_user,
             access: response.data.access,
             refresh: response.data.refresh,
             is_impersonated: true,
@@ -372,17 +432,29 @@ const createSuperAdminSlice = (set, get) => {
         // Store original superadmin data for when we stop impersonation
         // (This is now handled by storeOriginalSuperAdminData above)
         
-        // Redirect to dashboard as the impersonated user
-        window.location.href = '/dashboard';
-        
-        return { success: true, data: response.data };
+        // Only redirect if we have valid response data AND the API call was successful
+        if (response && response.status >= 200 && response.status < 300 && 
+            response.data && response.data.access && response.data.impersonated_user) {
+          // Redirect to dashboard as the impersonated user
+          window.location.href = '/dashboard';
+          return { success: true, data: response.data };
+        } else {
+          // If response data is invalid or API failed, treat as error
+          const errorMessage = response?.data?.message || response?.data?.error || 'API failed - cannot impersonate user';
+          set(() => ({ 
+            loading: false, 
+            error: errorMessage 
+          }));
+          return { success: false, error: errorMessage };
+        }
       } catch (error) {
         console.error('Error impersonating user:', error);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to impersonate user';
+        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'API failed - cannot impersonate user';
         set(() => ({ 
           loading: false, 
           error: errorMessage 
         }));
+        // DO NOT redirect on error - let the UI handle the error display
         return { success: false, error: errorMessage };
       }
     },
@@ -393,10 +465,10 @@ const createSuperAdminSlice = (set, get) => {
         console.log('🛑 Stopping impersonation...');
         
         // Get original super admin data before clearing anything
-        const originalSuperadmin = localStorage.getItem('original_superadmin');
-        const originalSuperadminToken = localStorage.getItem('original_superadmin_token');
-        const originalSuperadminRefresh = localStorage.getItem('original_superadmin_refresh');
-        const originalRestaurantId = localStorage.getItem('original_restaurant_id');
+        const originalSuperadmin = sessionStorage.getItem('original_superadmin');
+        const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
+        const originalSuperadminRefresh = sessionStorage.getItem('original_superadmin_refresh');
+        const originalRestaurantId = sessionStorage.getItem('original_restaurant_id');
         
         console.log('🔍 Original super admin data check:', {
           hasOriginalSuperadmin: !!originalSuperadmin,
@@ -411,7 +483,7 @@ const createSuperAdminSlice = (set, get) => {
         
         // Restore the main token to super admin token
         if (originalSuperadminToken) {
-          localStorage.setItem('token', originalSuperadminToken);
+          sessionStorage.setItem('token', originalSuperadminToken);
           console.log('✅ Restored main token to super admin token');
         } else {
           console.log('⚠️ No original super admin token found');
@@ -464,6 +536,11 @@ const createSuperAdminSlice = (set, get) => {
 
     // Get impersonation message
     getImpersonationMessage,
+
+    // Clear error state
+    clearError: () => {
+      set(() => ({ error: null }));
+    },
 
     // Clear superadmin state
     clearSuperAdmin: () => {

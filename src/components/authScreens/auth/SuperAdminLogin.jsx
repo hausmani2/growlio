@@ -5,7 +5,7 @@ import GrowlioLogo from '../../common/GrowlioLogo';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button, Spin, Card } from 'antd';
+import { Input, message, Button, Spin, Card, Checkbox, Divider } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 
 const SuperAdminLogin = () => {
@@ -18,11 +18,11 @@ const SuperAdminLogin = () => {
   
   // Zustand store hooks
   const { 
-    login, 
     error, 
     isAuthenticated, 
     clearError
   } = useStore();
+  const superAdminLogin = useStore((state) => state.superAdminLogin);
   
   // Get onboarding status check from onboarding slice
   const checkOnboardingCompletion = useStore((state) => state.checkOnboardingCompletion);
@@ -32,7 +32,7 @@ const SuperAdminLogin = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/admin/users');
+      navigate('/superadmin/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
@@ -93,7 +93,7 @@ const SuperAdminLogin = () => {
     setIsSubmitting(true);
     
     try {
-      const result = await login(form);
+      const result = await superAdminLogin(form);
       
       if (result.success) {
         message.success('SuperAdmin login successful! Redirecting...');
@@ -103,8 +103,8 @@ const SuperAdminLogin = () => {
         if (userData.is_superuser) {
           // Superuser - redirect to superadmin dashboard
           setTimeout(() => {
-            navigate('/superadmin');
-          }, 1000);
+            navigate('/superadmin/dashboard');
+          }, 700);
         } else if (userData.is_staff || userData.role === 'admin') {
           // Regular admin - redirect to admin panel
           setTimeout(() => {
@@ -129,15 +129,17 @@ const SuperAdminLogin = () => {
   const isFormValid = form.email && form.password;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 rounded-2xl">
-        <div className="text-center mb-8">
-          <GrowlioLogo />
-          <h1 className="text-2xl font-bold text-gray-800 mt-4">SuperAdmin Login</h1>
-          <p className="text-gray-600 mt-2">Access the administrative panel</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg border border-gray-100 rounded-xl">
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center">
+            <GrowlioLogo />
+          </div>
+          <h1 className="text-2xl font-semibold text-gray-900 mt-3">SuperAdmin Sign In</h1>
+          <p className="text-gray-500 mt-1">Manage users and platform settings</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -151,7 +153,8 @@ const SuperAdminLogin = () => {
                 value={form.email}
                 onChange={handleChange}
                 placeholder="Enter your email"
-                className={`h-12 px-4 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                size="large"
+                className={`h-12 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                   formErrors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 prefix={<img src={Message} alt="Email" className="w-5 h-5" />}
@@ -175,7 +178,8 @@ const SuperAdminLogin = () => {
                 value={form.password}
                 onChange={handleChange}
                 placeholder="Enter your password"
-                className={`h-12 px-4 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                size="large"
+                className={`h-12 px-4 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                   formErrors.password ? 'border-red-500' : 'border-gray-300'
                 }`}
                 prefix={<img src={Lock} alt="Password" className="w-5 h-5" />}
@@ -187,6 +191,7 @@ const SuperAdminLogin = () => {
             )}
           </div>
 
+
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -194,13 +199,13 @@ const SuperAdminLogin = () => {
             </div>
           )}
 
+          <Divider className="my-0" style={{ marginTop: 0 }} />
           {/* Submit Button */}
           <Button
             type="primary"
             htmlType="submit"
             disabled={!isFormValid || isSubmitting}
-            className="w-full h-12 bg-blue-600 hover:bg-blue-700 border-0 rounded-lg font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            loading={isSubmitting}
+            className="w-full h-12 border-0 rounded-lg font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <Spin indicator={<LoadingOutlined style={{ fontSize: 16, color: 'white' }} spin />} />

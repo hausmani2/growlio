@@ -7,7 +7,7 @@ const hasToken = (token) => {
 
 // Auth slice
 const createAuthSlice = (set, get) => {
-  const storedToken = localStorage.getItem('token');
+  const storedToken = sessionStorage.getItem('token');
   const hasStoredToken = hasToken(storedToken);
   
   
@@ -16,6 +16,11 @@ const createAuthSlice = (set, get) => {
     user: null,
     token: hasStoredToken ? storedToken : null,
     isAuthenticated: hasStoredToken,
+    // Impersonation session state (avoid name collision with function isImpersonating())
+    isImpersonatingSession: !!sessionStorage.getItem('impersonated_user'),
+    impersonatorId: sessionStorage.getItem('original_superadmin') ? (JSON.parse(sessionStorage.getItem('original_superadmin'))?.id || null) : null,
+    originalToken: sessionStorage.getItem('original_superadmin_token') || null,
+    activeToken: hasStoredToken ? storedToken : null,
     loading: false,
     error: null,
     // Note: Onboarding status checking is now handled by onBoardingSlice
@@ -42,13 +47,25 @@ const createAuthSlice = (set, get) => {
           currentState.clearPersistedState();
         }
         
-        // Store access token in localStorage
-        localStorage.setItem('token', access);
+        // Store access token and user data in sessionStorage
+        sessionStorage.setItem('token', access);
+        sessionStorage.setItem('user', JSON.stringify(userData));
         
         // Update store state
+        console.log('🔍 AuthSlice - Login successful, setting user data:', {
+          userEmail: userData?.email,
+          isSuperuser: userData?.is_superuser,
+          role: userData?.role,
+          hasAccess: !!access
+        });
+        
         set(() => ({ 
           user: userData, 
-          token: access, 
+          token: access,
+          activeToken: access,
+          isImpersonatingSession: false,
+          impersonatorId: null,
+          originalToken: null,
           isAuthenticated: true, 
           loading: false, 
           error: null 
@@ -148,6 +165,10 @@ const createAuthSlice = (set, get) => {
       set(() => ({ 
         user: null, 
         token: null, 
+        activeToken: null,
+        isImpersonatingSession: false,
+        impersonatorId: null,
+        originalToken: null,
         isAuthenticated: false, 
         error: null, 
         loading: false
@@ -167,11 +188,16 @@ const createAuthSlice = (set, get) => {
         
         if (hasToken(access)) {
           // Registration successful with token - user is automatically authenticated
-          localStorage.setItem('token', access);
+          sessionStorage.setItem('token', access);
+          sessionStorage.setItem('user', JSON.stringify(userData));
           
           set(() => ({ 
             user: userData, 
             token: access, 
+            activeToken: access,
+            isImpersonatingSession: false,
+            impersonatorId: null,
+            originalToken: null,
             isAuthenticated: true, 
             loading: false, 
             error: null 
@@ -273,13 +299,37 @@ const createAuthSlice = (set, get) => {
       
     },
     
-    // Initialize authentication state from localStorage
+    // Initialize authentication state from sessionStorage
     initializeAuth: () => {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       
       if (hasToken(token)) {
+        // Try to get user data from sessionStorage (stored during login)
+        const storedUser = sessionStorage.getItem('user');
+        let userData = null;
+        
+        if (storedUser) {
+          try {
+            userData = JSON.parse(storedUser);
+          } catch (error) {
+            console.warn('Failed to parse stored user data:', error);
+          }
+        }
+        
+        console.log('🔍 AuthSlice - InitializeAuth:', {
+          hasToken: !!token,
+          hasStoredUser: !!userData,
+          userEmail: userData?.email,
+          isSuperuser: userData?.is_superuser
+        });
+        
         set(() => ({ 
-          token, 
+          user: userData,
+          token,
+          activeToken: token,
+          isImpersonatingSession: !!sessionStorage.getItem('impersonated_user'),
+          impersonatorId: sessionStorage.getItem('original_superadmin') ? (JSON.parse(sessionStorage.getItem('original_superadmin'))?.id || null) : null,
+          originalToken: sessionStorage.getItem('original_superadmin_token') || null,
           isAuthenticated: true 
         }));
         
@@ -287,11 +337,10 @@ const createAuthSlice = (set, get) => {
         const restaurantId = localStorage.getItem('restaurant_id');
         if (restaurantId) {
           set(() => ({ restaurantId }));
-          
         }
       } else {
         // Clear invalid token
-        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
         set(() => ({ 
           token: null, 
           isAuthenticated: false 

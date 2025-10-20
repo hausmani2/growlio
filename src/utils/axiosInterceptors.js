@@ -1,5 +1,6 @@
 import axios from 'axios';
 import useStore from '../store/store';
+import { clearImpersonationData } from './tokenManager';
 
 /**
  * Utility function to clear all store data and redirect to login
@@ -31,13 +32,8 @@ export const clearStoreAndRedirectToLogin = () => {
   localStorage.removeItem('restaurant_id');
   localStorage.removeItem('growlio-store');
   
-  // Clear impersonation data if exists (but keep superadmin tokens)
-  localStorage.removeItem('impersonated_user');
-  localStorage.removeItem('impersonated_user_data');
-  localStorage.removeItem('impersonation_access_token');
-  localStorage.removeItem('impersonation_refresh_token');
-  localStorage.removeItem('impersonation_message');
-  localStorage.removeItem('original_superadmin');
+  // Clear impersonation data kept in sessionStorage
+  try { clearImpersonationData(); } catch {}
   
   // Note: We intentionally keep original_superadmin_token and original_superadmin_refresh
   // These are only cleared when stopping impersonation, not on logout
@@ -69,6 +65,20 @@ const api = axios.create({
 // Request Interceptor: Attach token if available
 api.interceptors.request.use(
   (config) => {
+    // Skip token attachment for authentication endpoints
+    const isAuthEndpoint = config.url && (
+      config.url.includes('/authentication/login/') ||
+      config.url.includes('/authentication/superadmin-login/') ||
+      config.url.includes('/authentication/register/') ||
+      config.url.includes('/authentication/forgot-password/') ||
+      config.url.includes('/authentication/reset-password/')
+    );
+    
+    if (isAuthEndpoint) {
+      console.log('🔐 Skipping token attachment for auth endpoint:', config.url);
+      return config;
+    }
+    
     // Check if this is a user management API call that needs super admin token
     const isUserManagementCall = config.url && (
       config.url.includes('/authentication/users/') ||
@@ -77,9 +87,9 @@ api.interceptors.request.use(
     );
     
     // Check if we're currently impersonating
-    const isImpersonating = localStorage.getItem('impersonated_user');
-    const originalSuperadminToken = localStorage.getItem('original_superadmin_token');
-    const mainToken = localStorage.getItem('token');
+    const isImpersonating = sessionStorage.getItem('impersonated_user');
+    const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
+    const mainToken = sessionStorage.getItem('token');
     
     // Debug logging
     console.log('🔍 API Request Debug:', {
@@ -130,7 +140,20 @@ api.interceptors.response.use(
       // Handle specific status codes
       switch (error.response.status) {
         case 401:
-          // Unauthorized - clear token and all store data, then redirect to login
+          // Unauthorized: if impersonating, auto-restore original session
+          try {
+            const hasImpersonation = !!sessionStorage.getItem('impersonation_access_token');
+            const originalToken = sessionStorage.getItem('original_superadmin_token');
+            if (hasImpersonation && originalToken) {
+              // Clear impersonation and restore original
+              clearImpersonationData();
+              sessionStorage.setItem('token', originalToken);
+              // Soft reload to refresh app state
+              window.location.reload();
+              break;
+            }
+          } catch {}
+          // Otherwise, clear and redirect to login
           clearStoreAndRedirectToLogin();
           break;
         case 403:
