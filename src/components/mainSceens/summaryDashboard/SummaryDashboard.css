@@ -126,6 +126,92 @@
   display: none;  /* Safari and Chrome */
 }
 
+/* SuperAdmin Dashboard Tab Styling */
+.modern-tabs .ant-tabs-tab {
+  border-radius: 8px 8px 0 0 !important;
+  margin-right: 4px !important;
+  padding: 12px 20px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.modern-tabs .ant-tabs-tab:hover {
+  background: rgba(255, 129, 50, 0.05) !important;
+  color: #FF8132 !important;
+  border-color: rgba(255, 129, 50, 0.2) !important;
+}
+
+.modern-tabs .ant-tabs-tab-active {
+  background: white !important;
+  color: #FF8132 !important;
+  border-color: #e2e8f0 !important;
+  border-bottom-color: white !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.modern-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #FF8132 !important;
+  font-weight: 700 !important;
+}
+
+.modern-tabs .ant-tabs-ink-bar {
+  background: #FF8132 !important;
+  height: 3px !important;
+}
+
+.modern-tabs .ant-tabs-content-holder {
+  background: white !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+/* Modern Table Styling */
+.modern-table .ant-table-thead > tr > th {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  padding: 16px 12px !important;
+}
+
+.modern-table .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 129, 50, 0.05) !important;
+}
+
+.modern-table .ant-table-tbody > tr > td {
+  padding: 12px !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.modern-table .ant-pagination .ant-pagination-item-active {
+  background: #FF8132 !important;
+  border-color: #FF8132 !important;
+}
+
+.modern-table .ant-pagination .ant-pagination-item-active a {
+  color: white !important;
+}
+
+.modern-table .ant-pagination .ant-pagination-item:hover {
+  border-color: #FF8132 !important;
+}
+
+.modern-table .ant-pagination .ant-pagination-item:hover a {
+  color: #FF8132 !important;
+}
+
+/* Modern Modal Styling */
+.modern-modal .ant-modal-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.modern-modal .ant-modal-content {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .modern-dashboard {

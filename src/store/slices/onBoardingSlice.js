@@ -1418,17 +1418,45 @@ const createOnBoardingSlice = (set, get) => ({
                     };
                 }
             } else {
-                set(() => ({ 
-                    isOnBoardingCompleted: false,
-                    onboardingLoading: false, 
-                    onboardingError: null 
-                }));
+                // No restaurants found - check if user is superuser
+                const currentState = get();
+                const isSuperUser = currentState.user?.is_superuser;
                 
-                return { 
-                    success: true, 
-                    isComplete: false,
-                    message: 'No restaurants found'
-                };
+                console.log('🔍 OnboardingSlice - No restaurants found:', {
+                    isSuperUser,
+                    userEmail: currentState.user?.email,
+                    hasUser: !!currentState.user
+                });
+                
+                if (isSuperUser) {
+                    // Superuser with no restaurants - skip onboarding and go to dashboard
+                    console.log('🔍 OnboardingSlice - Superuser with no restaurants, skipping onboarding');
+                    set(() => ({ 
+                        isOnBoardingCompleted: true,
+                        onboardingLoading: false, 
+                        onboardingError: null 
+                    }));
+                    
+                    return { 
+                        success: true, 
+                        isComplete: true,
+                        message: 'Superuser with no restaurants - onboarding skipped',
+                        restaurantId: null
+                    };
+                } else {
+                    // Regular user with no restaurants - needs onboarding
+                    set(() => ({ 
+                        isOnBoardingCompleted: false,
+                        onboardingLoading: false, 
+                        onboardingError: null 
+                    }));
+                    
+                    return { 
+                        success: true, 
+                        isComplete: false,
+                        message: 'No restaurants found - onboarding required'
+                    };
+                }
             }
             
         } catch (error) {

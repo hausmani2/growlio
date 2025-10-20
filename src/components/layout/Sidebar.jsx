@@ -30,6 +30,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/profile': 'profile',
     '/admin/users': 'admin-users',
     '/admin/tooltips': 'admin-tooltips',
+    '/superadmin/dashboard': 'superadmin-dashboard',
+    '/superadmin/users': 'superadmin-users',
   };
   
   // Determine selected key based on current path

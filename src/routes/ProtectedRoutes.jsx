@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useStore from '../store/store';
 import LoadingSpinner from '../components/layout/LoadingSpinner';
+import { isImpersonating } from '../utils/tokenManager';
 
 const ProtectedRoutes = () => {
   const location = useLocation();
@@ -12,8 +13,16 @@ const ProtectedRoutes = () => {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const storeToken = useStore((state) => state.token);
   const user = useStore((state) => state.user);
-  const localStorageToken = localStorage.getItem('token');
-  const token = storeToken || localStorageToken;
+  const sessionToken = sessionStorage.getItem('token');
+  const token = storeToken || sessionToken;
+  
+  console.log('🔍 ProtectedRoutes - Component render:', {
+    pathname: location.pathname,
+    isAuthenticated,
+    hasToken: !!token,
+    hasUser: !!user,
+    isLoading
+  });
   
   // Get onboarding status from store and check function from onBoardingSlice
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
@@ -63,6 +72,29 @@ const ProtectedRoutes = () => {
   // Check onboarding status when component mounts
   useEffect(() => {
     if (isAuthenticated && token) {
+      // Skip onboarding check for superadmins when not impersonating
+      const isSuperAdminUser = user?.is_superuser;
+      const impersonating = isImpersonating();
+      
+      console.log('🔍 ProtectedRoutes - User check:', {
+        isAuthenticated,
+        hasToken: !!token,
+        isSuperAdminUser,
+        impersonating,
+        userEmail: user?.email,
+        userRole: user?.role
+      });
+      
+      if (isSuperAdminUser && !impersonating) {
+        // SuperAdmin doesn't need onboarding check - set completion to true and go directly to superadmin
+        console.log('🔍 ProtectedRoutes - SuperAdmin detected, bypassing onboarding check');
+        const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
+        setIsOnBoardingCompleted(true);
+        setIsLoading(false);
+        console.log('🔍 ProtectedRoutes - SuperAdmin onboarding bypassed, will redirect to /superadmin/dashboard');
+        return;
+      }
+      
       // Clear any cached onboarding status to force fresh check
       sessionStorage.removeItem('onboarding_completion_check_time');
       
@@ -70,7 +102,7 @@ const ProtectedRoutes = () => {
     } else {
       setIsLoading(false);
     }
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, user]);
 
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
@@ -91,6 +123,18 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // SuperAdmin route guard + redirect logic
+  const isSuperAdminPath = location.pathname.startsWith('/superadmin');
+  const isSuperAdminUser = user?.is_superuser;
+  const impersonating = isImpersonating();
+  if (isSuperAdminPath && !isSuperAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  // If current user is SuperAdmin and not impersonating, always send them to SuperAdmin dashboard
+  if (isSuperAdminUser && !impersonating && !isSuperAdminPath) {
+    return <Navigate to="/superadmin/dashboard" replace />;
+  }
+
   // Simple logic: If onboarding is complete, block access to onboarding paths and redirect to dashboard
   // If onboarding is incomplete, only allow onboarding routes
   const isOnboardingPath = location.pathname.includes('onboarding');
@@ -101,7 +145,10 @@ const ProtectedRoutes = () => {
   console.log('🔍 ProtectedRoutes - isOnboardingPath:', isOnboardingPath);
   console.log('🔍 ProtectedRoutes - isCompleteStepsPath:', isCompleteStepsPath);
   
-  if (isOnBoardingCompleted) {
+  if (isSuperAdminUser && !impersonating && !isSuperAdminPath) {
+    // SuperAdmin should never see onboarding; force superadmin dashboard
+    return <Navigate to="/superadmin/dashboard" replace />;
+  } else if (isOnBoardingCompleted) {
     // User has completed onboarding
     if (isOnboardingPath && !isCompleteStepsPath) {
       // User is trying to access onboarding path (but not completion page) - redirect to dashboard

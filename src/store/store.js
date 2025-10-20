@@ -5,6 +5,7 @@ import createOnBoardingSlice from './slices/onBoardingSlice';
 import createDashboardSlice from './slices/dashboardSlice';
 import createDashboardSummarySlice from './slices/dashboardSummary';
 import createSupportSlice from './slices/supportSlice';
+import createSuperAdminSlice from './slices/superAdminSlice';
 import createFaqSlice from './slices/faqSlice';
 
 const useStore = create(
@@ -16,6 +17,7 @@ const useStore = create(
         ...createDashboardSlice(set, get),
         ...createDashboardSummarySlice(set, get),
         ...createSupportSlice(set, get),
+        ...createSuperAdminSlice(set, get),
         ...createFaqSlice(set, get),
       
         
@@ -24,10 +26,9 @@ const useStore = create(
           
           // Clear localStorage
           localStorage.removeItem('growlio-store');
-          localStorage.removeItem('token');
           localStorage.removeItem('restaurant_id');
           
-          // Clear sessionStorage
+          // Clear sessionStorage (including tokens)
           sessionStorage.clear();
           
           // Reset all slices to initial state
