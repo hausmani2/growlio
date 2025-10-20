@@ -1,4 +1,6 @@
 import React from 'react';
+import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
 import { 
   Card, 
   Row, 
@@ -6,7 +8,8 @@ import {
   Statistic, 
   Typography, 
   Spin,
-  Empty
+  Empty,
+  Table
 } from 'antd';
 import { 
   ShoppingOutlined,
@@ -16,6 +19,8 @@ import {
 import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Text } = Typography;
+
+ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const AnalyticsCharts = ({ loading, dashboardData }) => {
   // Safely extract data with fallbacks
@@ -31,6 +36,158 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
   const totalRestaurants = locationsPerUser.reduce((sum, user) => sum + (user.total_restaurants || 0), 0);
   const totalCountries = new Set(usersByCountry.map(u => u.country)).size;
   const franchiseLocations = franchiseStats.find(f => f.is_franchise)?.total_locations || 0;
+
+  // Palette
+  const palette = ['#FF8132', '#22C55E', '#3B82F6', '#8B5CF6', '#F97316', '#06B6D4', '#EF4444', '#14B8A6', '#A855F7', '#0EA5E9'];
+
+  // Helpers
+  const numberFormatter = (n) => (typeof n === 'number' ? n.toLocaleString() : '0');
+  const percentFormatter = (part, total) => {
+    if (!total) return '0%';
+    const pct = (part / total) * 100;
+    return `${pct.toFixed(pct >= 10 ? 0 : 1)}%`;
+  };
+
+  // Aggregate users by country
+  const usersByCountryAgg = Object.values(
+    (usersByCountry || []).reduce((acc, item) => {
+      const key = item.country || 'Unknown';
+      acc[key] = acc[key] || { country: key, user_count: 0 };
+      acc[key].user_count += item.user_count || 0;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.user_count - a.user_count);
+
+  const topCountries = usersByCountryAgg.slice(0, 8);
+  const usersByStateAgg = Object.values(
+    (usersByCountry || []).reduce((acc, item) => {
+      const key = `${item.country || 'Unknown'}::${item.state || 'Unknown'}`;
+      acc[key] = acc[key] || { country: item.country || 'Unknown', state: item.state || 'Unknown', user_count: 0 };
+      acc[key].user_count += item.user_count || 0;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.user_count - a.user_count);
+  const topStates = usersByStateAgg.slice(0, 8);
+
+  const usersByCountryBarData = {
+    labels: topCountries.map(c => c.country),
+    datasets: [
+      {
+        label: 'Users',
+        data: topCountries.map(c => c.user_count || 0),
+        backgroundColor: topCountries.map((_, i) => palette[i % palette.length]),
+        borderRadius: 6
+      }
+    ]
+  };
+
+  const usersByStateBarData = {
+    labels: topStates.map(s => `${s.country} - ${s.state}`),
+    datasets: [
+      {
+        label: 'Users',
+        data: topStates.map(s => s.user_count || 0),
+        backgroundColor: topStates.map((_, i) => palette[(i + 3) % palette.length]),
+        borderRadius: 6
+      }
+    ]
+  };
+
+  const baseBarOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${numberFormatter(ctx.parsed.y ?? ctx.parsed)}`
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { callback: (v) => numberFormatter(v) } }
+    }
+  };
+
+  // Franchise vs Independent doughnut
+  const franchiseTotal = franchiseStats.find(f => f.is_franchise)?.total_locations || 0;
+  const independentTotal = franchiseStats.find(f => !f.is_franchise)?.total_locations || 0;
+  const franchiseVsTotal = franchiseTotal + independentTotal;
+  const franchiseDoughnutData = {
+    labels: ['Franchise', 'Independent'],
+    datasets: [
+      {
+        data: [franchiseTotal, independentTotal],
+        backgroundColor: [palette[1], palette[2]],
+        borderWidth: 0
+      }
+    ]
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const value = ctx.parsed;
+            const total = ctx.dataset.data.reduce((s, v) => s + v, 0);
+            return `${ctx.label}: ${numberFormatter(value)} (${percentFormatter(value, total)})`;
+          }
+        }
+      }
+    },
+    cutout: '65%'
+  };
+
+  // Center label plugin for doughnut charts (shows total)
+  const centerLabelPlugin = {
+    id: 'centerLabelPlugin',
+    afterDraw(chart, args, options) {
+      const { ctx, chartArea } = chart;
+      const dataset = chart.data.datasets?.[0];
+      if (!dataset) return;
+      const total = dataset.data.reduce((s, v) => s + v, 0);
+      ctx.save();
+      ctx.font = '600 14px sans-serif';
+      ctx.fillStyle = '#111827';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const centerX = (chartArea.left + chartArea.right) / 2;
+      const centerY = (chartArea.top + chartArea.bottom) / 2;
+      ctx.fillText(numberFormatter(total), centerX, centerY);
+      ctx.restore();
+    }
+  };
+
+  // Restaurant types bar
+  const restaurantTypesBarData = {
+    labels: (restaurantTypes || []).map(t => t.restaurant_type),
+    datasets: [
+      {
+        label: 'Restaurants',
+        data: (restaurantTypes || []).map(t => t.total_restaurants || 0),
+        backgroundColor: (restaurantTypes || []).map((_, i) => palette[i % palette.length]),
+        borderRadius: 6
+      }
+    ]
+  };
+
+  // Menu types doughnut
+  const menuTypesDoughnutData = {
+    labels: (menuTypes || []).map(m => m.menu_type),
+    datasets: [
+      {
+        data: (menuTypes || []).map(m => m.total_restaurants || 0),
+        backgroundColor: (menuTypes || []).map((_, i) => palette[i % palette.length]),
+        borderWidth: 0
+      }
+    ]
+  };
+  const menuTypesTotal = (menuTypes || []).reduce((s, m) => s + (m.total_restaurants || 0), 0);
 
   if (loading) {
     return (
@@ -106,66 +263,29 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
         </Col>
       </Row>
 
-      {/* Geographic Distribution */}
+      {/* Geographic Distribution */
+      }
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
-          <Card title="Users by Country & State" size="small">
-            <div className="space-y-3">
-              {usersByCountry.length > 0 ? (
-                usersByCountry.map((location, index) => (
-                  <div key={`${location.country}-${location.state}`} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: ['#1890ff', '#52c41a', '#fa8c16', '#722ed1', '#f5222d'][index % 5]
-                        }}
-                      />
-                      <Text className="font-medium">{location.country} - {location.state}</Text>
-                    </div>
-                    <div className="text-right">
-                      <Text strong>{location.user_count || 0}</Text>
-                      <div>
-                        <Text type="secondary" className="text-xs">users</Text>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <Empty description="No geographic data available" />
-              )}
-            </div>
+          <Card title="Users by Country (Top 8)" size="small">
+            {topCountries.length > 0 ? (
+              <div style={{ height: 300 }}>
+                <Bar data={usersByCountryBarData} options={baseBarOptions} />
+              </div>
+            ) : (
+              <Empty description="No geographic data available" />
+            )}
           </Card>
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Franchise vs Independent" size="small">
-            <div className="space-y-3">
-              {franchiseStats.length > 0 ? (
-                franchiseStats.map((franchise, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: franchise.is_franchise ? '#52c41a' : '#1890ff'
-                        }}
-                      />
-                      <Text className="font-medium">
-                        {franchise.is_franchise ? 'Franchise' : 'Independent'}
-                      </Text>
-                    </div>
-                    <div className="text-right">
-                      <Text strong>{franchise.total_locations || 0}</Text>
-                      <div>
-                        <Text type="secondary" className="text-xs">locations</Text>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <Empty description="No franchise data available" />
-              )}
-            </div>
+            {(franchiseTotal + independentTotal) > 0 ? (
+              <div style={{ height: 300 }}>
+                <Doughnut data={franchiseDoughnutData} options={{doughnutOptions, cutout: '40%'}} plugins={[centerLabelPlugin]} />
+              </div>
+            ) : (
+              <Empty description="No franchise data available" />
+            )}
           </Card>
         </Col>
       </Row>
@@ -174,60 +294,73 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Restaurant Types" size="small">
-            <div className="space-y-3">
-              {restaurantTypes.length > 0 ? (
-                restaurantTypes.map((type, index) => (
-                  <div key={type.restaurant_type} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: ['#1890ff', '#52c41a', '#fa8c16', '#722ed1', '#f5222d'][index % 5]
-                        }}
-                      />
-                      <Text className="font-medium">{type.restaurant_type}</Text>
-                    </div>
-                    <div className="text-right">
-                      <Text strong>{type.total_restaurants || 0}</Text>
-                      <div>
-                        <Text type="secondary" className="text-xs">restaurants</Text>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <Empty description="No restaurant type data available" />
-              )}
-            </div>
+            {restaurantTypes.length > 0 ? (
+              <div style={{ height: 300 }}>
+                <Bar data={restaurantTypesBarData} options={baseBarOptions} />
+              </div>
+            ) : (
+              <Empty description="No restaurant type data available" />
+            )}
           </Card>
         </Col>
         <Col xs={24} lg={12}>
           <Card title="Menu Types" size="small">
-            <div className="space-y-3">
-              {menuTypes.length > 0 ? (
-                menuTypes.map((menu, index) => (
-                  <div key={menu.menu_type} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ 
-                          backgroundColor: ['#1890ff', '#52c41a', '#fa8c16', '#722ed1', '#f5222d'][index % 5]
-                        }}
-                      />
-                      <Text className="font-medium">{menu.menu_type}</Text>
-                    </div>
-                    <div className="text-right">
-                      <Text strong>{menu.total_restaurants || 0}</Text>
-                      <div>
-                        <Text type="secondary" className="text-xs">restaurants</Text>
+            {menuTypes.length > 0 ? (
+              <div className="flex gap-4">
+                <div style={{ height: 300, width: '60%' }}>
+                  <Doughnut data={menuTypesDoughnutData} options={doughnutOptions} plugins={[centerLabelPlugin]}  />
+                </div>
+                <div className="flex-1 overflow-auto" style={{ maxHeight: 300 }}>
+                  <div className="space-y-2">
+                    {menuTypes.map((m, i) => (
+                      <div key={m.menu_type} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: palette[i % palette.length] }} />
+                          <span className="truncate" title={m.menu_type}>{m.menu_type}</span>
+                        </div>
+                        <span className="ml-2 whitespace-nowrap">{numberFormatter(m.total_restaurants || 0)} ({percentFormatter(m.total_restaurants || 0, menuTypesTotal)})</span>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))
-              ) : (
-                <Empty description="No menu type data available" />
-              )}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <Empty description="No menu type data available" />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Country & State Detailed Breakdown */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title="Top States (by Users)" size="small">
+            {topStates.length > 0 ? (
+              <div style={{ height: 300 }}>
+                <Bar data={usersByStateBarData} options={baseBarOptions} />
+              </div>
+            ) : (
+              <Empty description="No state-level data available" />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="Users by Country & State" size="small">
+            {usersByStateAgg.length > 0 ? (
+              <Table
+                size="small"
+                rowKey={(r) => `${r.country}-${r.state}`}
+                dataSource={usersByStateAgg}
+                columns={[
+                  { title: 'Country', dataIndex: 'country', key: 'country', sorter: (a, b) => a.country.localeCompare(b.country) },
+                  { title: 'State', dataIndex: 'state', key: 'state', sorter: (a, b) => a.state.localeCompare(b.state) },
+                  { title: 'Users', dataIndex: 'user_count', key: 'user_count', sorter: (a, b) => a.user_count - b.user_count, render: (v) => numberFormatter(v) }
+                ]}
+                pagination={{ pageSize: 8, showSizeChanger: false }}
+              />
+            ) : (
+              <Empty description="No data available" />
+            )}
           </Card>
         </Col>
       </Row>

@@ -97,7 +97,8 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     },
   ];
 
-  const adminMenu = isAdmin ? [
+  // Show Admin menu only when user is admin, not superadmin
+  const adminMenu = (isAdmin && !isSuperAdmin) ? [
     {
       key: 'admin',
       icon: <SettingOutlined />,
