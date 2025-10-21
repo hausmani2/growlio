@@ -130,8 +130,13 @@ const ProtectedRoutes = () => {
   if (isSuperAdminPath && !isSuperAdminUser) {
     return <Navigate to="/dashboard" replace />;
   }
-  // If current user is SuperAdmin and not impersonating, always send them to SuperAdmin dashboard
-  if (isSuperAdminUser && !impersonating && !isSuperAdminPath) {
+  
+  // Allow superadmin to access profile page
+  const isProfilePath = location.pathname === '/dashboard/profile';
+  
+  // If current user is SuperAdmin and not impersonating, redirect to SuperAdmin dashboard
+  // EXCEPT for profile page which should be accessible to all users
+  if (isSuperAdminUser && !impersonating && !isSuperAdminPath && !isProfilePath) {
     return <Navigate to="/superadmin/dashboard" replace />;
   }
 
@@ -145,8 +150,9 @@ const ProtectedRoutes = () => {
   console.log('🔍 ProtectedRoutes - isOnboardingPath:', isOnboardingPath);
   console.log('🔍 ProtectedRoutes - isCompleteStepsPath:', isCompleteStepsPath);
   
-  if (isSuperAdminUser && !impersonating && !isSuperAdminPath) {
+  if (isSuperAdminUser && !impersonating && !isSuperAdminPath && !isProfilePath) {
     // SuperAdmin should never see onboarding; force superadmin dashboard
+    // EXCEPT for profile page which should be accessible to all users
     return <Navigate to="/superadmin/dashboard" replace />;
   } else if (isOnBoardingCompleted) {
     // User has completed onboarding
