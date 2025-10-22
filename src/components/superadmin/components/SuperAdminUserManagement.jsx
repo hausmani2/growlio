@@ -69,6 +69,18 @@ const SuperAdminUserManagement = () => {
   });
   const [search, setSearch] = useState('');
 
+  // Calculate counts for admin and users
+  const userCounts = useMemo(() => {
+    const adminCount = users.filter(user => 
+      user.role === 'ADMIN' || user.is_staff || user.is_superuser
+    ).length;
+    const regularUserCount = users.filter(user => 
+      user.role === 'USER' && !user.is_staff && !user.is_superuser
+    ).length;
+    
+    return { adminCount, regularUserCount };
+  }, [users]);
+
   const fetchUsers = async (page = 1, pageSize = 10, searchQuery = '') => {
     setLoading(true);
     try {
@@ -273,7 +285,35 @@ const SuperAdminUserManagement = () => {
 
   return (
     <div className="space-y-6">
-
+      {/* User Statistics */}
+      <div className="">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex items-center p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-100">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                <CrownOutlined className="text-indigo-600 text-lg" />
+              </div>
+            </div>
+            <div className="ml-4 flex-1">
+              <p className="text-sm font-medium text-gray-600">Administrators</p>
+              <p className="text-3xl font-bold text-indigo-900">{userCounts.adminCount}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                <TeamOutlined className="text-emerald-600 text-lg" />
+              </div>
+            </div>
+            <div className="ml-4 flex-1">
+              <p className="text-sm font-medium text-gray-600">Regular Users</p>
+              <p className="text-3xl font-bold text-emerald-900">{userCounts.regularUserCount}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Enhanced User Table */}
       <Card className="shadow-lg border-0 rounded-xl">

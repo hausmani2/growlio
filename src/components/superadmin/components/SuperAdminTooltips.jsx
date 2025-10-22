@@ -37,6 +37,15 @@ const SuperAdminTooltips = () => {
     fetchData();
   }, [pageFilter]);
 
+  // Debug form values when modal opens
+  useEffect(() => {
+    if (isModalOpen && editing) {
+      const formValues = form.getFieldsValue();
+      console.log('🔍 Form values after modal opens:', formValues);
+      console.log('🔍 is_active form value:', form.getFieldValue('is_active'));
+    }
+  }, [isModalOpen, editing, form]);
+
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
@@ -47,9 +56,19 @@ const SuperAdminTooltips = () => {
   };
 
   const openEdit = (record) => {
+    console.log('🔍 Editing record:', record);
+    console.log('🔍 is_active value:', record.is_active, 'Type:', typeof record.is_active);
     setEditing(record);
     setSelectedPage(record.page);
-    form.setFieldsValue(record);
+    // Reset form first to clear any previous values
+    form.resetFields();
+    // Set the form values with the record data
+    const formValues = {
+      ...record,
+      is_active: Boolean(record.is_active) // Ensure boolean conversion
+    };
+    console.log('🔍 Setting form values:', formValues);
+    form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };
 
@@ -66,6 +85,7 @@ const SuperAdminTooltips = () => {
       setIsModalOpen(false);
       setEditing(null);
       setSelectedPage('onboarding-basic');
+      form.resetFields();
       fetchData();
     } catch (e) {
       // validation or api error handled by antd or message above
@@ -281,6 +301,7 @@ const SuperAdminTooltips = () => {
           setIsModalOpen(false);
           setEditing(null);
           setSelectedPage('onboarding-basic');
+          form.resetFields();
         }}
         okText={editing ? 'Save Changes' : 'Create Tooltip'}
         cancelText="Cancel"
@@ -312,10 +333,7 @@ const SuperAdminTooltips = () => {
             />
           </Form.Item>
           <Form.Item name="is_active" label="Active Status" valuePropName="checked">
-            <div className="flex items-center space-x-2">
-              <Switch />
-              <span className="text-sm text-gray-500">Enable this tooltip</span>
-            </div>
+            <Switch />
           </Form.Item>
         </Form>
       </Modal>
