@@ -276,13 +276,6 @@ const SuperAdminTooltips = () => {
           loading={loading} 
           dataSource={items} 
           columns={columns}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total, range) => 
-              `${range[0]}-${range[1]} of ${total} tooltips`,
-          }}
           scroll={{ x: 800 }}
         />
       </Card>

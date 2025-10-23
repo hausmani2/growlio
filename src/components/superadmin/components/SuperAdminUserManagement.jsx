@@ -272,12 +272,18 @@ const SuperAdminUserManagement = () => {
   };
 
   const handleTableChange = (paginationConfig) => {
+    setPagination(prev => ({
+      ...prev,
+      current: paginationConfig.current,
+      pageSize: paginationConfig.pageSize
+    }));
     fetchUsers(paginationConfig.current, paginationConfig.pageSize, search);
   };
 
   // Debounce search to call API-side filtering
   useEffect(() => {
     const handle = setTimeout(() => {
+      setPagination(prev => ({ ...prev, current: 1 }));
       fetchUsers(1, pagination.pageSize, search);
     }, 350);
     return () => clearTimeout(handle);
