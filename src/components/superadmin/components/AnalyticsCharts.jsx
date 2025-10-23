@@ -280,8 +280,8 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
         <Col xs={24} lg={12}>
           <Card title="Franchise vs Independent" size="small">
             {(franchiseTotal + independentTotal) > 0 ? (
-              <div style={{ height: 300 }}>
-                <Doughnut data={franchiseDoughnutData} options={{doughnutOptions, cutout: '40%'}} plugins={[centerLabelPlugin]} />
+              <div style={{ height: 300, width: '100%' }} className='mx-auto flex justify-center items-center'>
+                <Doughnut data={franchiseDoughnutData} options={{doughnutOptions, cutout: '50%'}} plugins={[centerLabelPlugin]} />
               </div>
             ) : (
               <Empty description="No franchise data available" />

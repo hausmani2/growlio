@@ -238,7 +238,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
           
           {/* Settings section at the bottom */}
           <div className="border-t border-gray-200 pt-4 px-2 bg-gray-50">
-            <div className="px-2 mb-2">
+            <div className={`px-2 mb-2 ${collapsed ? 'lg:hidden' : ''}`}>
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Settings</span>
             </div>
             <nav className="space-y-1">

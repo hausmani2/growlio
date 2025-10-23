@@ -10,7 +10,7 @@ const { TabPane } = Tabs;
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { logout } = useStore();
+  const { logout, user } = useStore();
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [deleteForm] = Form.useForm();
@@ -323,30 +323,32 @@ const Profile = () => {
                 </Form>
               </Card>
 
-              {/* Danger Zone Card */}
-              <Card className="shadow-sm border-0 border-red-200 bg-red-50">
-                <div className="pb-3 border-b border-red-200 mb-6">
-                  <h3 className="text-xl font-bold text-red-600">Danger Zone</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Text strong className="text-red-600">Delete Account</Text>
-                    <Text className="text-gray-600 block mt-2">
-                      Once you delete your account, there is no going back. Please be certain.
-                    </Text>
+              {/* Danger Zone Card - Only show for non-super admin users */}
+              {!user?.is_superuser && (
+                <Card className="shadow-sm border-0 border-red-200 bg-red-50">
+                  <div className="pb-3 border-b border-red-200 mb-6">
+                    <h3 className="text-xl font-bold text-red-600">Danger Zone</h3>
                   </div>
                   
-                  <Button
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => setIsDeleteModalVisible(true)}
-                    size="large"
-                  >
-                    Delete Account
-                  </Button>
-                </div>
-              </Card>
+                  <div className="space-y-4">
+                    <div>
+                      <Text strong className="text-red-600">Delete Account</Text>
+                      <Text className="text-gray-600 block mt-2">
+                        Once you delete your account, there is no going back. Please be certain.
+                      </Text>
+                    </div>
+                    
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => setIsDeleteModalVisible(true)}
+                      size="large"
+                    >
+                      Delete Account
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
           </TabPane>
 
