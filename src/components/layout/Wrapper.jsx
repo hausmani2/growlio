@@ -139,12 +139,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Dashboard',
           onClick: () => navigate('/superadmin/dashboard'),
         },
-        // {
-        //   key: 'superadmin-users',
-        //   icon: <UserOutlined />,
-        //   label: 'User Management',
-        //   onClick: () => navigate('/superadmin/users'),
-        // },
+        {
+          key: 'superadmin-users',
+          icon: <UserOutlined />,
+          label: 'User Management',
+          onClick: () => navigate('/superadmin/users'),
+        },
       ],
     }
   ] : [];
