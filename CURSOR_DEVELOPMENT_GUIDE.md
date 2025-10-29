@@ -8,7 +8,7 @@
 
 #### 📊 **Dashboard & Analytics**
 - **Weekly Data Entry Dashboard**: Interactive tables for sales, labor, and COGS data entry
-- **Budget Dashboard**: Weekly budgeted sales planning and tracking
+- **Your Budget Dashboard**: Weekly budgeted sales planning and tracking
 - **Profit & Loss Dashboard**: Budget vs actual sales comparison with trend analysis
 - **Summary Analytics**: Comprehensive financial reporting with charts and visualizations
 - **Data Tables**: Sales, Labor, COGS, Fixed Expenses, and Net Profit tracking tables

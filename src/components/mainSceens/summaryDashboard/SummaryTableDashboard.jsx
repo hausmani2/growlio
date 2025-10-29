@@ -53,6 +53,36 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     return '';
   }, [tableData]);
 
+  // Helper function to get week start date for title
+  const getWeekStartDate = useCallback(() => {
+    if (!tableData || tableData.length === 0) return '';
+    
+    try {
+      // Check if this is monthly data by looking for month_start field
+      const hasMonthlyData = tableData.some(entry => entry.month_start);
+      if (hasMonthlyData) return '';
+      
+      // Find the earliest date in the data
+      const dates = tableData
+        .map(entry => entry.date || entry.day)
+        .filter(Boolean)
+        .map(dateStr => dayjs(dateStr))
+        .filter(date => date.isValid());
+      
+      if (dates.length === 0) return '';
+      
+      // Get the earliest date (week start)
+      const weekStart = dates.reduce((earliest, current) => 
+        current.isBefore(earliest) ? current : earliest
+      );
+      
+      return weekStart.format('MMM DD, YYYY');
+    } catch (error) {
+      console.error('Error formatting week start date:', error);
+    }
+    return '';
+  }, [tableData]);
+
   // Process data
   useEffect(() => {
     const dataToProcess = dashboardSummaryData || dashboardData;
@@ -415,6 +445,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   // Determine if we're in monthly view
   const isMonthlyView = viewMode === 'monthly' || groupBy === 'month' || dataToProcess?.group_by === 'month';
   const monthDisplayName = getMonthDisplayName();
+  const weekStartDay = getWeekStartDate();
 
   // Table columns configuration
   const tableColumns = useMemo(() => [
@@ -641,7 +672,11 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
-              {viewMode === 'monthly' && monthDisplayName ? `Budget Dashboard - ${monthDisplayName}` : "Budget Dashboard"}
+              {isMonthlyView && monthDisplayName 
+                ? `Your Budget For The Month of ${monthDisplayName}` 
+                : weekStartDay 
+                  ? `Your Budget For The Week of ${weekStartDay}` 
+                  : "Your Budget Dashboard"}
           </h2>
           {dataToProcess?.total_days && (
             <p className="text-sm text-gray-600 mt-1">
