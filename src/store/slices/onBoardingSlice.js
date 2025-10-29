@@ -1422,16 +1422,9 @@ const createOnBoardingSlice = (set, get) => ({
                 const currentState = get();
                 const isSuperUser = currentState.user?.is_superuser;
                 
-                console.log('🔍 OnboardingSlice - No restaurants found:', {
-                    isSuperUser,
-                    userEmail: currentState.user?.email,
-                    hasUser: !!currentState.user
-                });
-                
                 if (isSuperUser) {
                     // Superuser with no restaurants - skip onboarding and go to dashboard
-                    console.log('🔍 OnboardingSlice - Superuser with no restaurants, skipping onboarding');
-                    set(() => ({ 
+                        set(() => ({ 
                         isOnBoardingCompleted: true,
                         onboardingLoading: false, 
                         onboardingError: null 

@@ -74,13 +74,6 @@ export const getImpersonationMessage = () => {
 export const storeImpersonationData = (impersonationData) => {
   const { impersonated_user, access, refresh, message } = impersonationData;
   
-  console.log('🔍 Storing Impersonation Data:', {
-    impersonatedUser: impersonated_user?.email,
-    hasAccess: !!access,
-    hasRefresh: !!refresh,
-    message: message
-  });
-  
   // Store impersonation data
   storage.setItem(TOKEN_KEYS.IMPERSONATED_USER, impersonated_user.email);
   storage.setItem(TOKEN_KEYS.IMPERSONATED_USER_DATA, JSON.stringify(impersonated_user));
@@ -91,7 +84,6 @@ export const storeImpersonationData = (impersonationData) => {
   // Update main token to impersonation token
   storage.setItem(TOKEN_KEYS.MAIN_TOKEN, access);
   
-  console.log('✅ Impersonation data stored, main token updated to impersonation token');
 };
 
 /**
@@ -99,39 +91,27 @@ export const storeImpersonationData = (impersonationData) => {
  * @param {Object} superAdminData - The original super admin user data
  */
 export const storeOriginalSuperAdminData = (superAdminData) => {
-  console.log('🔍 Storing Original Super Admin Data:', {
-    hasAccess: !!superAdminData.access,
-    hasRefresh: !!superAdminData.refresh,
-    email: superAdminData.email,
-    alreadyStored: !!storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN)
-  });
   
   // Always store original super admin tokens if we have access token
   if (superAdminData.access) {
     storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN, superAdminData.access);
     storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_REFRESH, superAdminData.refresh);
-    console.log('✅ Stored original super admin tokens');
-  } else {
-    console.log('❌ No access token available in super admin data');
   }
   
   // Store original restaurant_id if not already stored
   const originalRestaurantId = localStorage.getItem('restaurant_id');
   if (originalRestaurantId && !storage.getItem(TOKEN_KEYS.ORIGINAL_RESTAURANT_ID)) {
     storage.setItem(TOKEN_KEYS.ORIGINAL_RESTAURANT_ID, originalRestaurantId);
-    console.log('✅ Stored original restaurant ID');
   }
   
   // Store original super admin user data
   storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN, JSON.stringify(superAdminData));
-  console.log('✅ Stored original super admin user data');
 };
 
 /**
  * Clear all impersonation data
  */
 export const clearImpersonationData = () => {
-  console.log('🧹 Clearing impersonation data...');
   
   // Clear only impersonation-related data
   storage.removeItem(TOKEN_KEYS.IMPERSONATED_USER);
@@ -141,26 +121,17 @@ export const clearImpersonationData = () => {
   storage.removeItem(TOKEN_KEYS.IMPERSONATION_MESSAGE);
   storage.removeItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN);
   
-  console.log('✅ Impersonation data cleared');
-  console.log('ℹ️ Super admin tokens preserved:', {
-    hasOriginalToken: !!storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN),
-    hasOriginalRefresh: !!storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_REFRESH),
-    hasOriginalRestaurantId: !!storage.getItem(TOKEN_KEYS.ORIGINAL_RESTAURANT_ID)
-  });
 };
 
 /**
  * Clear original super admin tokens (called after successful restoration)
  */
 export const clearOriginalSuperAdminTokens = () => {
-  console.log('🧹 Clearing temporary original super admin tokens...');
   
   storage.removeItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN);
   storage.removeItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_REFRESH);
   storage.removeItem(TOKEN_KEYS.ORIGINAL_RESTAURANT_ID);
   
-  console.log('✅ Temporary original super admin tokens cleared');
-  console.log('ℹ️ Main token and user data preserved');
 };
 
 /**
@@ -244,31 +215,14 @@ export const getCurrentTokenType = () => {
   }
 };
 
-/**
- * Debug function to log current token state
- */
-export const debugTokenState = () => {
-  console.log('=== Token State Debug ===');
-  console.log('Is Impersonating:', isImpersonating());
-  console.log('Current Token Type:', getCurrentTokenType());
-  console.log('Has Original Super Admin Token:', !!storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN));
-  console.log('Has Impersonation Token:', !!storage.getItem(TOKEN_KEYS.IMPERSONATION_ACCESS));
-  console.log('Main Token (first 20 chars):', storage.getItem(TOKEN_KEYS.MAIN_TOKEN)?.substring(0, 20));
-  console.log('Original Super Admin Token (first 20 chars):', storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN)?.substring(0, 20));
-  console.log('Impersonation Token (first 20 chars):', storage.getItem(TOKEN_KEYS.IMPERSONATION_ACCESS)?.substring(0, 20));
-  console.log('Impersonated User:', storage.getItem(TOKEN_KEYS.IMPERSONATED_USER));
-  console.log('========================');
-};
 
 /**
  * Force store original super admin token (for debugging)
  */
 export const forceStoreOriginalToken = (superAdminData) => {
-  console.log('🔧 Force storing original super admin token...');
   storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN, superAdminData.access);
   storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_REFRESH, superAdminData.refresh);
   storage.setItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN, JSON.stringify(superAdminData));
-  console.log('✅ Original super admin token force stored');
 };
 
 /**
@@ -282,7 +236,6 @@ export const withSuperAdminTokenForImpersonation = async (apiCall) => {
   
   // If we have an original super admin token and we're not already using it
   if (originalSuperadminToken && currentToken !== originalSuperadminToken) {
-    console.log('🔑 Temporarily switching to super admin token for impersonation API call');
     storage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
   }
   
@@ -293,7 +246,6 @@ export const withSuperAdminTokenForImpersonation = async (apiCall) => {
     // Always restore the current token after the request
     if (currentToken !== originalSuperadminToken) {
       storage.setItem(TOKEN_KEYS.MAIN_TOKEN, currentToken);
-      console.log('🔑 Restored impersonation token after API call');
     }
   }
 };

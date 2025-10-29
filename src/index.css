@@ -476,4 +476,15 @@ body {
 }
 .ant-card .ant-card-body {
   padding: 12px !important;
+}
+
+/* Ensure Weekly Average Data Available modal always shows on top */
+.weekly-average-modal-top,
+.weekly-average-modal-top .ant-modal,
+.weekly-average-modal-top .ant-modal-wrap {
+  z-index: 10000 !important;
+}
+
+.weekly-average-modal-top .ant-modal-mask {
+  z-index: 9999 !important;
 } 

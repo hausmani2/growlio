@@ -45,8 +45,6 @@ const UsersAdmin = () => {
       user.role === 'USER' && !user.is_superuser && !user.is_staff
     ).length;
     
-    console.log('Stats calculated:', { total, active, inactive, admins, regularUsers });
-    
     return { total, active, inactive, admins, regularUsers };
   }, [users]);
 
@@ -69,12 +67,10 @@ const UsersAdmin = () => {
         : '/authentication/users/';
       
       const res = await apiGet(url);
-      console.log('API Response:', res.data); // Debug log
       
       // The API response has structure: { message, count, data: [...] }
       // Extract the users array from res.data.data
       const usersData = res.data?.data || res.data || [];
-      console.log('Users Data:', usersData); // Debug log
       
       // Display exactly what the API returns - no additional filtering
       setUsers(Array.isArray(usersData) ? usersData : []);

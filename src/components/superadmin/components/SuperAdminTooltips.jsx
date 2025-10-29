@@ -41,8 +41,6 @@ const SuperAdminTooltips = () => {
   useEffect(() => {
     if (isModalOpen && editing) {
       const formValues = form.getFieldsValue();
-      console.log('🔍 Form values after modal opens:', formValues);
-      console.log('🔍 is_active form value:', form.getFieldValue('is_active'));
     }
   }, [isModalOpen, editing, form]);
 
@@ -56,8 +54,6 @@ const SuperAdminTooltips = () => {
   };
 
   const openEdit = (record) => {
-    console.log('🔍 Editing record:', record);
-    console.log('🔍 is_active value:', record.is_active, 'Type:', typeof record.is_active);
     setEditing(record);
     setSelectedPage(record.page);
     // Reset form first to clear any previous values
@@ -67,7 +63,6 @@ const SuperAdminTooltips = () => {
       ...record,
       is_active: Boolean(record.is_active) // Ensure boolean conversion
     };
-    console.log('🔍 Setting form values:', formValues);
     form.setFieldsValue(formValues);
     setIsModalOpen(true);
   };

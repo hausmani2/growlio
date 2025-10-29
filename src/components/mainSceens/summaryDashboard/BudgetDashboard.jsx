@@ -84,7 +84,6 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
 
   // Calculate week range from startDate and endDate props
   useEffect(() => {
-    console.log('BudgetDashboard - startDate:', startDate, 'endDate:', endDate);
     if (startDate && endDate) {
       // Parse the date strings properly
       const start = new Date(startDate + 'T00:00:00'); // Add time to avoid timezone issues
@@ -95,14 +94,11 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         const startDay = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const endDay = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const weekRangeValue = `${startDay} - ${endDay}`;
-        console.log('Setting weekRange to:', weekRangeValue);
         setWeekRange(weekRangeValue);
       } else {
-        console.log('Invalid dates:', startDate, endDate);
         setWeekRange('');
       }
     } else {
-      console.log('startDate or endDate is missing');
       setWeekRange('');
     }
   }, [startDate, endDate]);
@@ -186,22 +182,6 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       const actualProfit = parseFloat(entry.actual_profit_loss ?? entry.actualProfit ?? 0) || 
                           (salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual));
       
-      // Debug logging to identify the $10 discrepancy
-      if (Math.abs(actualProfit - 530) < 20) { // If we're close to $530
-        const calculatedBudgetProfit = salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget);
-        const calculatedActualProfit = salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual);
-        
-        console.log('Debug Profit Calculation:', {
-          day: dayLabel,
-          preCalculatedBudgetProfit: entry.budgeted_profit_loss,
-          preCalculatedActualProfit: entry.actual_profit_loss,
-          ourCalculatedBudgetProfit: calculatedBudgetProfit,
-          ourCalculatedActualProfit: calculatedActualProfit,
-          difference: calculatedBudgetProfit - (entry.budgeted_profit_loss || 0),
-          rawEntry: entry
-        });
-      }
-
       const processedEntry = {
         day: dayLabel,
         salesBudget,

@@ -20,26 +20,3 @@ const isValidToken = (token) => {
   
   return true;
 };
-
-// Test current localStorage token
-console.log('=== Token Debug ===');
-const currentToken = localStorage.getItem('token');
-console.log('Current token from localStorage:', currentToken);
-console.log('Token type:', typeof currentToken);
-console.log('Token length:', currentToken ? currentToken.length : 0);
-console.log('Is valid token:', isValidToken(currentToken));
-
-// Test various token scenarios
-console.log('\n=== Token Validation Tests ===');
-console.log('null token:', isValidToken(null));
-console.log('undefined token:', isValidToken(undefined));
-console.log('empty string:', isValidToken(''));
-console.log('invalid format:', isValidToken('invalid.token'));
-console.log('missing parts:', isValidToken('part1.part2'));
-console.log('empty parts:', isValidToken('..'));
-
-// Check Zustand store state (if available)
-if (window.__ZUSTAND_DEVTOOLS__) {
-  console.log('\n=== Zustand Store State ===');
-  console.log('Store state:', window.__ZUSTAND_DEVTOOLS__.getState());
-} 

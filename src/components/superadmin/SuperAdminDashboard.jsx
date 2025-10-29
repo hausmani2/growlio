@@ -71,7 +71,6 @@ const SuperAdminDashboard = () => {
         const hasUser = user;
         
         if (!hasOriginalToken && hasMainToken && hasUser) {
-          console.log('🔧 Auto-fixing missing original super admin token...');
           // Import the force store function
           const { forceStoreOriginalToken } = await import('../../utils/tokenManager');
           const userWithToken = {
@@ -80,7 +79,6 @@ const SuperAdminDashboard = () => {
             refresh: localStorage.getItem('refresh_token') || hasMainToken
           };
           forceStoreOriginalToken(userWithToken);
-          console.log('✅ Original super admin token auto-restored');
         }
         
         // Fetch all dashboard data in parallel

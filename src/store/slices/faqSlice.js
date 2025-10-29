@@ -114,7 +114,6 @@ const createFaqSlice = (set, get) => ({
         }));
         
         try {
-            console.log('FAQ Slice - Searching FAQs with query and section:', { query, section });
             
             // Build the API URL with parameters
             let apiUrl = '/admin_access/faqs/?';
@@ -130,11 +129,9 @@ const createFaqSlice = (set, get) => ({
             
             apiUrl += params.join('&');
             
-            console.log('FAQ Slice - API URL:', apiUrl);
             
             const response = await apiGet(apiUrl);
             
-            console.log('FAQ Slice - Search API response:', response);
             
             // Validate response structure
             if (!response || !response.data) {
@@ -145,7 +142,6 @@ const createFaqSlice = (set, get) => ({
             const responseData = response.data;
             const rawFaqs = Array.isArray(responseData.data) ? responseData.data : [];
             
-            console.log('FAQ Slice - Raw search results:', rawFaqs);
             
             // Map API response to expected format
             const searchResults = rawFaqs.map(faq => ({
@@ -156,7 +152,6 @@ const createFaqSlice = (set, get) => ({
                 created_at: faq.created_at
             }));
             
-            console.log('FAQ Slice - Mapped search results:', searchResults);
             
             set(() => ({ 
                 filteredFaqs: searchResults,
@@ -220,7 +215,6 @@ const createFaqSlice = (set, get) => ({
         try {
             const response = await apiGet('/admin_access/faqs/');
             
-            console.log('FAQ Slice - Full API response:', response);
             
             // Validate response structure
             if (!response || !response.data) {
@@ -231,7 +225,6 @@ const createFaqSlice = (set, get) => ({
             const responseData = response.data;
             const rawFaqs = Array.isArray(responseData.data) ? responseData.data : [];
             
-            console.log('FAQ Slice - Raw FAQs from API:', rawFaqs);
             
             // Map API response to expected format
             const faqs = rawFaqs.map(faq => ({
@@ -242,7 +235,6 @@ const createFaqSlice = (set, get) => ({
                 created_at: faq.created_at
             }));
             
-            console.log('FAQ Slice - Mapped FAQs:', faqs);
             
             set(() => ({ 
                 faqs,
@@ -357,7 +349,6 @@ const createFaqSlice = (set, get) => ({
             const updatedFaqs = [...state.faqs, mappedFaq];
             const filtered = state.filterFaqs(updatedFaqs, state.searchQuery, state.selectedCategory);
             
-            console.log('FAQ Slice - Setting success state after create');
             set(() => ({ 
                 faqs: updatedFaqs,
                 filteredFaqs: filtered,
