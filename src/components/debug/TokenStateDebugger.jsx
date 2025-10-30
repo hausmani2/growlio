@@ -6,7 +6,6 @@ import {
   getImpersonatedUserData, 
   getImpersonationMessage,
   getCurrentTokenType,
-  debugTokenState,
   forceStoreOriginalToken
 } from '../../utils/tokenManager';
 import useStore from '../../store/store';
@@ -48,9 +47,7 @@ const TokenStateDebugger = () => {
     restaurantId: localStorage.getItem('restaurant_id')
   };
 
-  const handleDebugTokens = () => {
-    debugTokenState();
-  };
+
 
   const handleClearAllTokens = () => {
     if (window.confirm('Are you sure you want to clear all tokens? This will log you out.')) {
