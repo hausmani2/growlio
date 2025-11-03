@@ -47,8 +47,7 @@ const { Title, Text } = Typography;
 const SuperAdminDashboard = () => {
   // Get state and actions from Redux store
   const { 
-    dashboardStats, 
-    userAnalytics, 
+    dashboardStats,   
     recentUsers, 
     recentRestaurants, 
     dashboardData,
@@ -56,7 +55,6 @@ const SuperAdminDashboard = () => {
     error,
     user,
     fetchDashboardStats, 
-    fetchUserAnalytics, 
     fetchRecentUsers, 
     fetchRecentRestaurants,
     fetchAnalyticsData 
@@ -84,10 +82,6 @@ const SuperAdminDashboard = () => {
         // Fetch all dashboard data in parallel
         await Promise.all([
           fetchDashboardStats(),
-          fetchUserAnalytics(),
-          fetchRecentUsers(5),
-          fetchRecentRestaurants(5),
-          fetchAnalyticsData()
         ]);
       } catch (error) {
         message.error('Failed to load dashboard data');
@@ -96,7 +90,7 @@ const SuperAdminDashboard = () => {
     };
 
     loadDashboardData();
-  }, [fetchDashboardStats, fetchUserAnalytics, fetchRecentUsers, fetchRecentRestaurants, fetchAnalyticsData, user]);
+  }, [fetchDashboardStats, fetchRecentUsers, fetchRecentRestaurants, fetchAnalyticsData, user]);
 
   if (loading) {
     return (

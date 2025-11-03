@@ -119,31 +119,6 @@ const createSuperAdminSlice = (set, get) => {
       }
     },
 
-    // Fetch user analytics
-    fetchUserAnalytics: async () => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet('/superadmin/analytics/users/');
-        
-        set(() => ({ 
-          userAnalytics: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching user analytics:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch user analytics';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
     // Fetch all users for user management
     fetchAllUsers: async (page = 1, limit = 50) => {
       set(() => ({ loading: true, error: null }));
@@ -189,56 +164,6 @@ const createSuperAdminSlice = (set, get) => {
       } catch (error) {
         console.error('Error fetching recent users:', error);
         const errorMessage = error.response?.data?.message || 'Failed to fetch recent users';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
-    // Fetch recent restaurants
-    fetchRecentRestaurants: async (limit = 5) => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet(`/restaurants/?limit=${limit}&ordering=-created_date`);
-        
-        set(() => ({ 
-          recentRestaurants: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching recent restaurants:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch recent restaurants';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
-    // Fetch analytics data
-    fetchAnalyticsData: async () => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet('/superadmin/analytics/');
-        
-        set(() => ({ 
-          analyticsData: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching analytics data:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch analytics data';
         set(() => ({ 
           loading: false, 
           error: errorMessage 

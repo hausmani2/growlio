@@ -81,8 +81,7 @@ api.interceptors.request.use(
     // Check if this is a user management API call that needs super admin token
     const isUserManagementCall = config.url && (
       config.url.includes('/authentication/users/') ||
-      config.url.includes('/admin_access/dashboard/') ||
-      config.url.includes('/superadmin/analytics/')
+      config.url.includes('/admin_access/dashboard/')
     );
     
     // Check if we're currently impersonating
