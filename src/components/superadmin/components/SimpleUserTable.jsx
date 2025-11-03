@@ -10,7 +10,8 @@ import {
   Avatar,
   Typography,
   Card,
-  Modal
+  Modal,
+  Input
 } from 'antd';
 import { 
   UserSwitchOutlined, 
@@ -18,8 +19,10 @@ import {
   EditOutlined, 
   DeleteOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
+import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 
 const { Text } = Typography;
@@ -30,46 +33,54 @@ const SimpleUserTable = () => {
     switchImpersonation,
     isImpersonating,
     getImpersonatedUser,
-    fetchAllUsers,
-    allUsers,
-    usersTotal,
-    loading,
     clearError
   } = useStore();
   
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0
   });
+  const [search, setSearch] = useState('');
   const [errorModal, setErrorModal] = useState({
     visible: false,
     title: '',
     message: ''
   });
 
-  // Fetch users from API
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const result = await fetchAllUsers(pagination.current, pagination.pageSize);
-        if (result.success) {
-          setUsers(result.data);
-          setPagination(prev => ({
-            ...prev,
-            total: usersTotal
-          }));
-        } else {
-          message.error(result.error || 'Failed to load users');
-        }
-      } catch (error) {
-        message.error('Error loading users');
-      }
-    };
+  // Fetch users from API with search support
+  const fetchUsers = async (page = 1, pageSize = 10, searchQuery = '') => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(pageSize),
+        ordering: '-created_date',
+        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
+      }).toString();
+      
+      const res = await apiGet(`/authentication/users/?${params}`);
+      const incoming = res.data.results || res.data || [];
+      setUsers(incoming);
+      setPagination(prev => ({
+        ...prev,
+        current: page,
+        pageSize: pageSize,
+        total: res.data.count || res.data.length || 0
+      }));
+    } catch (error) {
+      message.error('Error loading users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadUsers();
-  }, [pagination.current, pagination.pageSize, fetchAllUsers, usersTotal]);
+  // Initial load
+  useEffect(() => {
+    fetchUsers(pagination.current, pagination.pageSize);
+  }, []);
 
   const handleImpersonate = async (user) => {
     try {
@@ -126,7 +137,8 @@ const SimpleUserTable = () => {
     try {
       // Implement delete user functionality
       message.success(`User ${user.username} deleted successfully`);
-      setUsers(users.filter(u => u.id !== user.id));
+      // Refresh users with current search and pagination
+      fetchUsers(pagination.current, pagination.pageSize, search);
     } catch (error) {
       message.error('Failed to delete user');
     }
@@ -229,12 +241,34 @@ const SimpleUserTable = () => {
       current: paginationConfig.current,
       pageSize: paginationConfig.pageSize
     }));
+    fetchUsers(paginationConfig.current, paginationConfig.pageSize, search);
   };
+
+  // Debounce search to call API-side filtering
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setPagination(prev => ({ ...prev, current: 1 }));
+      fetchUsers(1, pagination.pageSize, search);
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [search]);
 
   return (
     <Card  
       className="mt-6 shadow-lg border-0 rounded-xl">
-
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h3 className="text-lg font-bold text-orange-600">User Management Table</h3>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Input
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+            prefix={<SearchOutlined />}
+            style={{ height: 40 }}
+          />
+        </div>
+      </div>
       <Table
         columns={columns}
         dataSource={users}
