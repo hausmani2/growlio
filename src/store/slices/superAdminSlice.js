@@ -119,31 +119,6 @@ const createSuperAdminSlice = (set, get) => {
       }
     },
 
-    // Fetch user analytics
-    fetchUserAnalytics: async () => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet('/superadmin/analytics/users/');
-        
-        set(() => ({ 
-          userAnalytics: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching user analytics:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch user analytics';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
     // Fetch all users for user management
     fetchAllUsers: async (page = 1, limit = 50) => {
       set(() => ({ loading: true, error: null }));
@@ -197,56 +172,6 @@ const createSuperAdminSlice = (set, get) => {
       }
     },
 
-    // Fetch recent restaurants
-    fetchRecentRestaurants: async (limit = 5) => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet(`/restaurants/?limit=${limit}&ordering=-created_date`);
-        
-        set(() => ({ 
-          recentRestaurants: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching recent restaurants:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch recent restaurants';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
-    // Fetch analytics data
-    fetchAnalyticsData: async () => {
-      set(() => ({ loading: true, error: null }));
-      
-      try {
-        const response = await apiGet('/superadmin/analytics/');
-        
-        set(() => ({ 
-          analyticsData: response.data,
-          loading: false,
-          error: null 
-        }));
-        
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching analytics data:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch analytics data';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
-
     // Start impersonation (alias for impersonateUser)
     startImpersonation: async (userId) => {
       // First fetch user data by ID, then impersonate by email
@@ -273,8 +198,6 @@ const createSuperAdminSlice = (set, get) => {
         const userResponse = await apiGet(`/authentication/users/${userId}/`);
         const userEmail = userResponse.data.email;
         
-        console.log('🔄 Switching impersonation to:', userEmail);
-        
         // Call impersonation API with super admin token
         const response = await withSuperAdminTokenForImpersonation(async () => {
           return await apiPost('/admin_access/impersonate/', { email: userEmail });
@@ -296,7 +219,6 @@ const createSuperAdminSlice = (set, get) => {
         // IMPORTANT: Ensure original super admin token is preserved
         const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
         if (!originalSuperadminToken) {
-          console.log('⚠️ Original super admin token missing, attempting to restore...');
           const currentState = get();
           const mainToken = sessionStorage.getItem('token');
           if (currentState.user && mainToken) {
@@ -306,7 +228,6 @@ const createSuperAdminSlice = (set, get) => {
               refresh: currentState.user.refresh || sessionStorage.getItem('refresh_token') || mainToken
             };
             storeOriginalSuperAdminData(userWithToken);
-            console.log('✅ Original super admin token restored during switch');
           }
         }
         
@@ -335,7 +256,6 @@ const createSuperAdminSlice = (set, get) => {
           console.error('Error fetching restaurant data:', error);
         }
         
-        console.log('✅ Impersonation switched successfully');
         return { success: true, data: response.data };
       } catch (error) {
         console.error('Error switching impersonation:', error);
@@ -373,16 +293,8 @@ const createSuperAdminSlice = (set, get) => {
         const currentState = get();
         const mainToken = sessionStorage.getItem('token');
         
-        console.log('🔍 Current State Before Impersonation:', {
-          hasUser: !!currentState.user,
-          userEmail: currentState.user?.email,
-          hasOriginalToken: !!localStorage.getItem('original_superadmin_token'),
-          currentToken: mainToken?.substring(0, 20) + '...'
-        });
-        
         // Always store original super admin data - use main token if user doesn't have one
         if (currentState.user) {
-          console.log('💾 Storing original super admin data...');
           // Ensure user has access token, use main token if not available
           const userWithToken = {
             ...currentState.user,
@@ -390,20 +302,10 @@ const createSuperAdminSlice = (set, get) => {
             refresh: currentState.user.refresh || sessionStorage.getItem('refresh_token') || mainToken
           };
           storeOriginalSuperAdminData(userWithToken);
-        } else {
-          console.log('❌ No user data available to store as original super admin');
         }
         
         // Store impersonation data using the token manager
-        console.log('💾 Storing impersonation data...');
         storeImpersonationData(response.data);
-        
-        console.log('🔍 After storing impersonation data:', {
-          hasOriginalToken: !!localStorage.getItem('original_superadmin_token'),
-          hasImpersonationToken: !!localStorage.getItem('impersonation_access_token'),
-          mainToken: localStorage.getItem('token')?.substring(0, 20) + '...',
-          impersonatedUser: localStorage.getItem('impersonated_user')
-        });
         
         
         // Fetch impersonated user's restaurant information
@@ -462,7 +364,6 @@ const createSuperAdminSlice = (set, get) => {
     // Stop impersonation
     stopImpersonation: async () => {
       try {
-        console.log('🛑 Stopping impersonation...');
         
         // Get original super admin data before clearing anything
         const originalSuperadmin = sessionStorage.getItem('original_superadmin');
@@ -470,29 +371,17 @@ const createSuperAdminSlice = (set, get) => {
         const originalSuperadminRefresh = sessionStorage.getItem('original_superadmin_refresh');
         const originalRestaurantId = sessionStorage.getItem('original_restaurant_id');
         
-        console.log('🔍 Original super admin data check:', {
-          hasOriginalSuperadmin: !!originalSuperadmin,
-          hasOriginalToken: !!originalSuperadminToken,
-          hasOriginalRefresh: !!originalSuperadminRefresh,
-          hasOriginalRestaurantId: !!originalRestaurantId
-        });
-        
         // Clear ONLY impersonation data (keep super admin tokens safe)
         clearImpersonationData();
-        console.log('✅ Cleared impersonation data');
         
         // Restore the main token to super admin token
         if (originalSuperadminToken) {
           sessionStorage.setItem('token', originalSuperadminToken);
-          console.log('✅ Restored main token to super admin token');
-        } else {
-          console.log('⚠️ No original super admin token found');
         }
         
         // Restore the original restaurant_id
         if (originalRestaurantId) {
           localStorage.setItem('restaurant_id', originalRestaurantId);
-          console.log('✅ Restored original restaurant ID');
         }
         
         // Restore original super admin user data
@@ -505,17 +394,12 @@ const createSuperAdminSlice = (set, get) => {
             refresh: originalSuperadminRefresh || originalUser.refresh,
             is_impersonated: false
           });
-          console.log('✅ Restored super admin user data');
-        } else {
-          console.log('⚠️ No original super admin user data to restore');
         }
         
         // Clear the stored original superadmin tokens (they're now restored)
         clearOriginalSuperAdminTokens();
-        console.log('✅ Cleared temporary original super admin tokens');
         
         // Redirect to superadmin dashboard
-        console.log('🔄 Redirecting to super admin dashboard...');
         window.location.href = '/superadmin';
         
         return { success: true };

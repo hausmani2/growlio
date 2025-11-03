@@ -18,4 +18,3 @@ content = content.replace(/error: null/g, 'onboardingError: null');
 // Write back to file
 fs.writeFileSync(filePath, content);
 
-console.log('✅ Fixed all loading state issues in onBoardingSlice.js'); 

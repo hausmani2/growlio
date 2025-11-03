@@ -61,10 +61,8 @@ const FaqAdminModal = ({ open, onClose, faq }) => {
 
   // Handle success messages
   useEffect(() => {
-    console.log('FAQ Modal - Success states changed:', { faqCreateSuccess, faqUpdateSuccess, saving, faq, successMessageShown: successMessageShown.current });
     
     if (faqCreateSuccess && !saving && !faq && !successMessageShown.current) {
-      console.log('Showing create success message');
       successMessageShown.current = true;
       message.success('FAQ created successfully!');
       
@@ -77,7 +75,6 @@ const FaqAdminModal = ({ open, onClose, faq }) => {
     }
     
     if (faqUpdateSuccess && !saving && faq && !successMessageShown.current) {
-      console.log('Showing update success message');
       successMessageShown.current = true;
       message.success('FAQ updated successfully!');
       

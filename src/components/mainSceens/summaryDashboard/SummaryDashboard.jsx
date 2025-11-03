@@ -74,6 +74,10 @@ const SummaryDashboard = () => {
   const [hasManuallyClosedModal, setHasManuallyClosedModal] = useState(false);
   const [isManuallyTriggered, setIsManuallyTriggered] = useState(false);
 
+  // Weekly average data popup states
+  const [isWeeklyAverageDataPopupVisible, setIsWeeklyAverageDataPopupVisible] = useState(false);
+  const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
+
   // Flash message state
   const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
   
@@ -85,7 +89,16 @@ const SummaryDashboard = () => {
     fetchDashboardSummary,
     dashboardSummaryData,
     loading: summaryLoading,
-    error: summaryError
+    error: summaryError,
+    // Weekly average functionality
+    checkWeeklyAverageData,
+    submitWeeklyAverageData,
+    weeklyAverageData,
+    weeklyAverageLoading,
+    weeklyAverageError,
+    getWeeklyAverageLoading,
+    getWeeklyAverageError,
+    getWeeklyAverageData
   } = useStore();
 
   // Restaurant goals functionality
@@ -105,10 +118,12 @@ const SummaryDashboard = () => {
     return isValid;
   }, [dashboardSummaryData]);
 
-  // Use refs to prevent infinite loops
+  // Use refs to prevent infinite loops and duplicate modals
   const [isInitialized, setIsInitialized] = useState(false);
   const lastDateRange = useRef(null);
   const hasHandledFailResponse = useRef(false);
+  const weeklyAverageModalShown = useRef(null);
+  const isProcessingWeek = useRef(false);
 
   // Fetch dashboard summary data for selected date range
   const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
@@ -156,13 +171,97 @@ const SummaryDashboard = () => {
       setIsManuallyTriggered(false);
       hasHandledFailResponse.current = false;
       
+      // Reset weekly average popup state
+      setIsWeeklyAverageDataPopupVisible(false);
+      setWeeklyAveragePopupData(null);
+      
       // Fetch the data directly
       fetchSummaryData(startDate, endDate, groupBy);
     }
   }, [fetchSummaryData, groupBy, handleCalendarDateChange]);
 
+  // Process week selection - Check for data first, then weekly average
+  const processWeekSelection = useCallback(async (start, end) => {
+    const startDate = start.format('YYYY-MM-DD');
+    const endDate = end.format('YYYY-MM-DD');
+    const dateRangeKey = `${startDate}-${endDate}`;
+    
+    // Prevent duplicate processing
+    if (isProcessingWeek.current === dateRangeKey) {
+      return;
+    }
+    
+    // Mark as processing
+    isProcessingWeek.current = dateRangeKey;
+    
+    // Reset modal states for new date range
+    const currentRangeKey = `${startDate}-${endDate}`;
+    if (currentRangeKey !== lastDateRange.current) {
+      lastDateRange.current = currentRangeKey;
+      weeklyAverageModalShown.current = null;
+      hasHandledFailResponse.current = false;
+      
+      // Reset modal states
+      setHasManuallyClosedModal(false);
+      setIsManuallyTriggered(false);
+      setIsWeeklyAverageDataPopupVisible(false);
+      setWeeklyAveragePopupData(null);
+    }
+    
+    try {
+      // Step 1: Fetch dashboard summary and check if selected week has data
+      const summaryResponse = await fetchDashboardSummary(startDate, endDate, groupBy);
+      
+      // Check if selected week has valid data
+      const hasData = summaryResponse && 
+                     summaryResponse.status === 'success' && 
+                     Array.isArray(summaryResponse.data) && 
+                     summaryResponse.data.length > 0;
+      
+      // If week has data, proceed normally (no modals)
+      if (hasData) {
+        isProcessingWeek.current = null;
+        return;
+      }
+      
+      // Step 2: If no data, check for weekly average data
+      // Only check if we haven't shown the modal for this date range
+      if (weeklyAverageModalShown.current !== dateRangeKey) {
+        try {
+          const weeklyData = await checkWeeklyAverageData(null, startDate, endDate);
+          
+          // Check if API response indicates 3 weeks data is available
+          const hasThreeWeeks = weeklyData && 
+                               weeklyData.status === true && 
+                               (weeklyData.message === "Found 3 previous week(s) of data." ||
+                                weeklyData.has_three_weeks_data === true ||
+                                weeklyData.message?.toLowerCase().includes('found 3 previous week'));
+          
+          // Show Weekly Average Data Available modal if 3 weeks data exists (only once)
+          if (hasThreeWeeks && weeklyAverageModalShown.current !== dateRangeKey) {
+            weeklyAverageModalShown.current = dateRangeKey;
+            setWeeklyAveragePopupData(weeklyData);
+            setIsWeeklyAverageDataPopupVisible(true);
+          }
+        } catch (weeklyError) {
+          // Silently fail - don't block user flow if weekly average check fails
+          console.error('Weekly average check failed:', weeklyError);
+        }
+      }
+    } catch (error) {
+      console.error('Error in week selection:', error);
+      // Fallback: fetch summary data normally
+      await fetchSummaryData(startDate, endDate, groupBy);
+    } finally {
+      // Reset processing flag after a delay to allow modal to show
+      setTimeout(() => {
+        isProcessingWeek.current = null;
+      }, 1000);
+    }
+  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy]);
+
   // New: Week Picker change handler (single week selection like Enter Weekly Data)
-  const handleWeekPickerChange = useCallback((date) => {
+  const handleWeekPickerChange = useCallback(async (date) => {
     if (!date) return;
     const start = dayjs(date).startOf('week');
     const end = dayjs(date).endOf('week');
@@ -171,13 +270,9 @@ const SummaryDashboard = () => {
     setWeekPickerValue(date);
     setCalendarDateRange([start, end]);
     
-    // Reset modal states for new week selection
-    setHasManuallyClosedModal(false);
-    setIsManuallyTriggered(false);
-    hasHandledFailResponse.current = false;
-    
-    fetchSummaryData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), groupBy);
-  }, [fetchSummaryData, groupBy]);
+    // Process week selection (checks for data first, then weekly average)
+    await processWeekSelection(start, end);
+  }, [processWeekSelection]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
@@ -295,6 +390,52 @@ const SummaryDashboard = () => {
     navigate('/dashboard');
   };
 
+  // Handle weekly average data popup actions
+  const handleAutoAverage = async () => {
+    try {
+      if (calendarDateRange && calendarDateRange.length === 2) {
+        const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+        const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+        const dateRangeKey = `${startDate}-${endDate}`;
+        
+        
+        // Close modal immediately to prevent duplicate clicks
+        setIsWeeklyAverageDataPopupVisible(false);
+        
+        // Submit the previous 3 weeks data via POST API (same endpoint)
+        await submitWeeklyAverageData(null, startDate, endDate, {
+          use_previous_data: true
+        });
+        
+        // Mark as shown so it doesn't show again
+        weeklyAverageModalShown.current = dateRangeKey;
+        
+        message.success('Previous 3 weeks data applied successfully! 🎉');
+        
+        // Return to dashboard - refresh the dashboard data
+        await fetchSummaryData(startDate, endDate, groupBy);
+      }
+    } catch (error) {
+      console.error('Error using auto average:', error);
+      message.error('Failed to apply previous data. Please try again.');
+      // Re-open modal on error so user can try again
+      setIsWeeklyAverageDataPopupVisible(true);
+    }
+  };
+
+  const handleManualEntry = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    
+    // Directly open sales modal - SalesDataModal will handle week confirmation internally
+    handleShowSalesModal();
+  };
+
+  const handleCloseWeeklyAverageDataPopup = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    // Return to week selection state without making changes
+    setWeeklyAveragePopupData(null);
+  };
+
   // Print handler - directly print report only
   const handlePrint = useCallback(() => {
     printUtils.handleSummaryPrint(dashboardSummaryData);
@@ -358,11 +499,22 @@ const SummaryDashboard = () => {
       
       const hasNoData = !hasValidData();
       
+      // Get current date range key
+      const currentDateRange = calendarDateRange && calendarDateRange.length === 2 
+        ? `${calendarDateRange[0].format('YYYY-MM-DD')}-${calendarDateRange[1].format('YYYY-MM-DD')}`
+        : null;
       
+      // Only show sales modal if:
+      // 1. We have no data
+      // 2. We're not showing any other modals
+      // 3. Weekly average modal hasn't been shown for this date range
+      // 4. We haven't already handled this response
       if (hasNoData && 
           groupBy === 'daily' && 
           !hasManuallyClosedModal && 
           !isSalesModalVisible && 
+          !isWeeklyAverageDataPopupVisible && // Don't show if weekly average popup is visible
+          weeklyAverageModalShown.current !== currentDateRange && // Don't show if weekly average was shown
           !hasHandledFailResponse.current) {
         hasHandledFailResponse.current = true;
         setIsSalesModalVisible(true);
@@ -374,7 +526,7 @@ const SummaryDashboard = () => {
         setIsSalesModalVisible(false);
       }
     }
-  }, [dashboardSummaryData, summaryLoading, hasValidData, groupBy]);
+  }, [dashboardSummaryData, summaryLoading, hasValidData, groupBy, isWeeklyAverageDataPopupVisible, calendarDateRange]);
 
 
 
@@ -424,6 +576,108 @@ const SummaryDashboard = () => {
 
   return (
     <App>
+      {/* Weekly Average Data Popup - Show at top when 3 weeks data available - HIGHEST PRIORITY */}
+      <Modal
+        title="Weekly Average Data Available"
+        open={isWeeklyAverageDataPopupVisible}
+        onCancel={handleCloseWeeklyAverageDataPopup}
+        footer={[
+          <Button
+            key="manual"
+            onClick={handleManualEntry}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Manual
+          </Button>,
+          <Button
+            key="auto"
+            type="primary"
+            icon={<DollarOutlined />}
+            onClick={handleAutoAverage}
+            loading={weeklyAverageLoading}
+            className="bg-gradient-to-r from-blue-500 to-indigo-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            Auto
+          </Button>,
+          <Button
+            key="close"
+            onClick={handleCloseWeeklyAverageDataPopup}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Close
+          </Button>
+        ]}
+        width={600}
+        centered
+        maskClosable={false}
+        destroyOnClose={true}
+        zIndex={10000}
+        getContainer={false}
+        maskStyle={{ zIndex: 9999 }}
+        style={{ zIndex: 10000 }}
+        className="weekly-average-modal-top"
+      >
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-md p-6 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <span className="text-2xl">📊</span>
+                </div>
+                <h3 className="text-xl font-bold text-blue-800">
+                  Previous 3 Weeks Data Found
+                </h3>
+              </div>
+              <p className="text-blue-700 text-lg leading-relaxed mb-4">
+                We found data from the previous 3 weeks for the week of {calendarDateRange?.[0]?.format('MMM D')} - {calendarDateRange?.[1]?.format('MMM D')}. 
+                Choose how you want to proceed:
+              </p>
+              
+              <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+                <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4>
+                <ul className="list-disc list-inside space-y-2 text-gray-700">
+                  <li><span className="font-medium">Manual:</span> Enter data manually (will show warning if future week)</li>
+                  <li><span className="font-medium">Auto:</span> Automatically use previous 3 weeks average data</li>
+                  <li><span className="font-medium">Close:</span> Return to week selection without changes</li>
+                </ul>
+              </div>
+              
+              {weeklyAveragePopupData && (
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <h4 className="font-semibold text-blue-800 mb-2">Available Data:</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {weeklyAveragePopupData.average_sales && (
+                      <div>
+                        <span className="font-medium">Average Sales:</span>
+                        <span className="ml-2 text-green-600">${weeklyAveragePopupData.average_sales}</span>
+                      </div>
+                    )}
+                    {weeklyAveragePopupData.average_labor && (
+                      <div>
+                        <span className="font-medium">Average Labor:</span>
+                        <span className="ml-2 text-orange-600">${weeklyAveragePopupData.average_labor}</span>
+                      </div>
+                    )}
+                    {weeklyAveragePopupData.average_cogs && (
+                      <div>
+                        <span className="font-medium">Average COGS:</span>
+                        <span className="ml-2 text-red-600">${weeklyAveragePopupData.average_cogs}</span>
+                      </div>
+                    )}
+                    {weeklyAveragePopupData.weeks_count && (
+                      <div>
+                        <span className="font-medium">Weeks Available:</span>
+                        <span className="ml-2 text-blue-600">{weeklyAveragePopupData.weeks_count}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       <div className="w-full mx-auto">
         {/* Enhanced Header Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
@@ -510,11 +764,13 @@ const SummaryDashboard = () => {
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {calendarDateRange && calendarDateRange.length === 2 ? (
           <>
-            {summaryLoading ? (
+            {(summaryLoading || weeklyAverageLoading) ? (
               <Card>
                 <div className="text-center py-8">
                   <Spin size="large" />
-                  <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+                  <p className="mt-4 text-gray-600">
+                    {summaryLoading ? 'Loading dashboard data...' : 'Checking weekly average data...'}
+                  </p>
                 </div>
               </Card>
             ) : !hasValidData() ? (
@@ -592,7 +848,6 @@ const SummaryDashboard = () => {
           </Card>
         )}
       </Space>
-
 
       <SalesDataModal
         visible={isSalesModalVisible}

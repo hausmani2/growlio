@@ -177,11 +177,9 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
   // Listen for custom event to open Labor modal from COGS table
   useEffect(() => {
     const handleOpenLaborModal = (event) => {      
-      console.log('Labor table received openLaborModal event:', event.detail);
       
       // Try to open modal immediately if data is available
       if (dashboardData !== null) {
-        console.log('Opening Labor modal immediately - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
         
         // Add a small delay to ensure the component is fully rendered
         setTimeout(() => {
@@ -203,7 +201,6 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           weekStartDate: event.detail.weekStartDate,
           timestamp: Date.now()
         }));
-        console.log('Stored pendingLaborModal in localStorage - data not ready yet');
       }
     };
 
@@ -235,7 +232,6 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
               message.info('Adding Labor data for the selected week...');
             } else {
               // Data exists, open in edit mode
-              console.log('Opening Labor modal in EDIT mode');
               showEditWeeklyModal(weeklyData[0]);
               message.info('Editing existing Labor data for the selected week...');
             }
@@ -738,7 +734,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Actual Avg. Daily Labor Rate:</Text>
                 <Input
@@ -759,6 +755,15 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   className="mt-1"
                   disabled
                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                />
+              </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Average Hourly Rate </Text>
+                <Input
+                  value={`$${getAverageHourlyRate().toFixed(2)}`}
+                  disabled
+                  className="w-full"
+                  style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
                 />
               </div>
               <div className="w-full">

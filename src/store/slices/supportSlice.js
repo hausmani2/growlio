@@ -85,8 +85,6 @@ const createSupportSlice = (set, get) => ({
                 message: formData.message || ''
             };
             
-            console.log('📤 Submitting support ticket with payload:', payload);
-            
             const response = await apiPost('/restaurant/support-messages/', payload);
             
             // Check if the response status is 200 or 201 (success)
@@ -103,7 +101,6 @@ const createSupportSlice = (set, get) => ({
                 throw new Error(errorMessage);
             }
             
-            console.log('✅ Support ticket submitted successfully:', response.data);
             
             set(() => ({ 
                 supportLoading: false, 

@@ -1627,29 +1627,29 @@ const SalesDataModal = ({
           </Button>
         ]}
         width={600}
-        destroyOnClose
+        destroyOnClosenpm
         maskClosable={false}
         zIndex={1002}
       >
         <div className="text-center">
           <WarningOutlined 
             className="text-6xl mb-4" 
-            style={{ fontSize: '64px', color: weekStatus?.isPastWeek ? '#ff4d4f' : '#faad14' }}
+            style={{ fontSize: '64px', color: weekStatus?.isPastWeek ? '#ff4d4f' : '#ff4d4f' }}
           />
           <Title level={4} className="mb-4">
             {weekStatus?.isPastWeek ? 'Adding Data to Past Week' : 'Adding Data to Future Week'}
           </Title>
           
           <div className={`p-4 rounded-lg mb-4 ${
-            weekStatus?.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'
+            weekStatus?.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
           }`}>
             <Text strong className={`mb-2 block ${
-              weekStatus?.isPastWeek ? 'text-red-700' : 'text-yellow-700'
+              weekStatus?.isPastWeek ? 'text-red-700' : 'text-red-700'
             }`}>
               Week Information:
             </Text>
             <div className={`text-sm space-y-1 ${
-              weekStatus?.isPastWeek ? 'text-red-600' : 'text-yellow-600'
+              weekStatus?.isPastWeek ? 'text-red-600' : 'text-red-600'
             }`}>
               <p>• Selected week: <strong>{weekStatus?.weekStart} - {weekStatus?.weekEnd}</strong></p>
               <p>• Current week: <strong>{weekStatus?.currentWeekStart} - {weekStatus?.currentWeekEnd}</strong></p>

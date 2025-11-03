@@ -111,7 +111,6 @@ Super Admin Logs In → Main Token = Super Admin Token
 ### User Management
 - `/authentication/users/` - Uses super admin token
 - `/admin_access/dashboard/` - Uses super admin token
-- `/superadmin/analytics/` - Uses super admin token
 
 ### Impersonation
 - `/admin_access/impersonate/` - Uses super admin token

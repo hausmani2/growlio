@@ -208,6 +208,63 @@ const SuperAdminUserManagement = () => {
       )
     },
     {
+      title: 'Last Login',
+      dataIndex: 'last_login',
+      key: 'last_login',
+      width: 180,
+      render: (last_login) => {
+        // Handle null, undefined, or empty values
+        if (!last_login || last_login === null || last_login === '') {
+          return (
+            <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+              -
+            </span>
+          );
+        }
+
+        try {
+          // Parse the date and format it professionally
+          const date = new Date(last_login);
+          
+          // Check if date is valid
+          if (isNaN(date.getTime())) {
+            return (
+              <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+                -
+              </span>
+            );
+          }
+
+          // Format: "Dec 15, 2023 at 2:30 PM"
+          const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          
+          const formattedTime = date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+
+          return (
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">{formattedDate}</div>
+              {/* <div className="text-gray-500 text-xs">{formattedTime}</div> */}
+            </div>
+          );
+        } catch (error) {
+          // Fallback for any parsing errors
+          return (
+            <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+              (-)
+            </span>
+          );
+        }
+      }
+    },
+    {
       title: 'Status',
       key: 'status',
       render: (_, record) => (

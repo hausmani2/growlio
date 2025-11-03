@@ -489,12 +489,12 @@ export const printUtils = {
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Budget Dashboard Report</title>
+          <title>Your Budget Dashboard Report</title>
           ${HTMLTemplateGenerator.generatePrintCSS()}
         </head>
         <body>
           <div class="print-container">
-            ${HTMLTemplateGenerator.generateHeader('Budget Dashboard Report', 'Financial Performance Analysis')}
+            ${HTMLTemplateGenerator.generateHeader('Your Budget Dashboard Report', 'Financial Performance Analysis')}
             ${HTMLTemplateGenerator.generateTable(data, columns)}
           </div>
         </body>
@@ -502,7 +502,7 @@ export const printUtils = {
       `;
 
       // Open print window
-      ProfessionalPrintHandler.openPrintWindow(htmlContent, 'Budget Dashboard Report');
+      ProfessionalPrintHandler.openPrintWindow(htmlContent, 'Your Budget Dashboard Report');
 
     } catch (error) {
       console.error('Error in handleSummaryPrint:', error);

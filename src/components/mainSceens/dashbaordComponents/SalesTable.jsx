@@ -790,7 +790,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
           // Trigger COGS modal opening by dispatching a custom event
           const weekStartDate = weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null;
-          console.log('Dispatching openCogsModal event with weekStartDate:', weekStartDate);
 
           const event = new CustomEvent('openCogsModal', {
             detail: {

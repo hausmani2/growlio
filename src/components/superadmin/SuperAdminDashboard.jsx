@@ -47,8 +47,7 @@ const { Title, Text } = Typography;
 const SuperAdminDashboard = () => {
   // Get state and actions from Redux store
   const { 
-    dashboardStats, 
-    userAnalytics, 
+    dashboardStats,   
     recentUsers, 
     recentRestaurants, 
     dashboardData,
@@ -56,7 +55,6 @@ const SuperAdminDashboard = () => {
     error,
     user,
     fetchDashboardStats, 
-    fetchUserAnalytics, 
     fetchRecentUsers, 
     fetchRecentRestaurants,
     fetchAnalyticsData 
@@ -71,7 +69,6 @@ const SuperAdminDashboard = () => {
         const hasUser = user;
         
         if (!hasOriginalToken && hasMainToken && hasUser) {
-          console.log('🔧 Auto-fixing missing original super admin token...');
           // Import the force store function
           const { forceStoreOriginalToken } = await import('../../utils/tokenManager');
           const userWithToken = {
@@ -80,16 +77,11 @@ const SuperAdminDashboard = () => {
             refresh: localStorage.getItem('refresh_token') || hasMainToken
           };
           forceStoreOriginalToken(userWithToken);
-          console.log('✅ Original super admin token auto-restored');
         }
         
         // Fetch all dashboard data in parallel
         await Promise.all([
           fetchDashboardStats(),
-          fetchUserAnalytics(),
-          fetchRecentUsers(5),
-          fetchRecentRestaurants(5),
-          fetchAnalyticsData()
         ]);
       } catch (error) {
         message.error('Failed to load dashboard data');
@@ -98,7 +90,7 @@ const SuperAdminDashboard = () => {
     };
 
     loadDashboardData();
-  }, [fetchDashboardStats, fetchUserAnalytics, fetchRecentUsers, fetchRecentRestaurants, fetchAnalyticsData, user]);
+  }, [fetchDashboardStats, fetchRecentUsers, fetchRecentRestaurants, fetchAnalyticsData, user]);
 
   if (loading) {
     return (

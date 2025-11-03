@@ -49,13 +49,9 @@ const LaborInformationWrapperContent = () => {
                     daily_ticket_count: data.daily_ticket_count,
                     forward_previous_week_rate: data.forward_previous_week_rate !== undefined ? data.forward_previous_week_rate : (data.forward_prev_week_rate !== undefined ? data.forward_prev_week_rate : false) // Default to true if not set
                 };
-                console.log('🔍 DEBUG - Setting laborData to:', newData);
-                console.log('🔍 DEBUG - forward_previous_week_rate set to:', newData.forward_previous_week_rate, 'type:', typeof newData.forward_previous_week_rate);
                 return newData;
             });
-        } else {
-            console.log('🔍 DEBUG - No labourInfoData or data found');
-        }
+            } 
     }, [completeOnboardingData]);
 
 

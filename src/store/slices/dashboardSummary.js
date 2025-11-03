@@ -1,4 +1,4 @@
-import { apiGet } from '../../utils/axiosInterceptors';
+import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import dayjs from 'dayjs';
 
 const createDashboardSummarySlice = (set, get) => {
@@ -352,6 +352,160 @@ const createDashboardSummarySlice = (set, get) => {
                 lastFetchedDateRange: null,
                 lastFetchedGroupBy: null,
                 currentViewMode: 'weekly'
+            }));
+        },
+
+        // Weekly Average API functions
+        weeklyAverageData: null,
+        weeklyAverageLoading: false,
+        weeklyAverageError: null,
+
+        // Check if 3 weeks of data exist for the selected date range
+        checkWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null) => {
+            try {
+                set({ weeklyAverageLoading: true, weeklyAverageError: null });
+                
+                // Get restaurant ID if not provided
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.error('Error fetching restaurant ID for weekly average check:', error);
+                        targetRestaurantId = null;
+                    }
+                    
+                    if (!targetRestaurantId) {
+                        set({ weeklyAverageLoading: false, weeklyAverageError: 'No restaurant ID available' });
+                        return null;
+                    }
+                }
+
+                // Use current week if no dates provided
+                let targetStartDate = startDate;
+                let targetEndDate = endDate;
+                
+                if (!targetStartDate || !targetEndDate) {
+                    const currentWeekStart = dayjs().startOf('week');
+                    const currentWeekEnd = dayjs().endOf('week');
+                    targetStartDate = currentWeekStart.format('YYYY-MM-DD');
+                    targetEndDate = currentWeekEnd.format('YYYY-MM-DD');
+                }
+
+                // Build URL with parameters
+                let url = '/restaurant/weekly-average/';
+                let params = { 
+                    restaurant_id: targetRestaurantId,
+                    start_date: targetStartDate,
+                    end_date: targetEndDate
+                };
+                
+                // Convert params to query string
+                const queryString = new URLSearchParams(params).toString();
+                if (queryString) {
+                    url += `?${queryString}`;
+                }
+                
+                const response = await apiGet(url);
+                
+                set({ 
+                    weeklyAverageData: response.data, 
+                    weeklyAverageLoading: false 
+                });
+                
+                return response.data;
+            } catch (error) {
+                console.error('Error checking weekly average data:', error);
+                set({ 
+                    weeklyAverageError: error.message, 
+                    weeklyAverageLoading: false 
+                });
+                throw error;
+            }
+        },
+
+        // Submit manual weekly average data
+        submitWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null, manualData = {}) => {
+            try {
+                set({ weeklyAverageLoading: true, weeklyAverageError: null });
+                
+                // Get restaurant ID if not provided
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId) {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch (error) {
+                        console.error('Error fetching restaurant ID for weekly average submission:', error);
+                        targetRestaurantId = null;
+                    }
+                    
+                    if (!targetRestaurantId) {
+                        set({ weeklyAverageLoading: false, weeklyAverageError: 'No restaurant ID available' });
+                        return null;
+                    }
+                }
+
+                // Use current week if no dates provided
+                let targetStartDate = startDate;
+                let targetEndDate = endDate;
+                
+                if (!targetStartDate || !targetEndDate) {
+                    const currentWeekStart = dayjs().startOf('week');
+                    const currentWeekEnd = dayjs().endOf('week');
+                    targetStartDate = currentWeekStart.format('YYYY-MM-DD');
+                    targetEndDate = currentWeekEnd.format('YYYY-MM-DD');
+                }
+
+                // Prepare payload
+                const payload = {
+                    restaurant_id: targetRestaurantId,
+                    start_date: targetStartDate,
+                    end_date: targetEndDate,
+                    ...manualData
+                };
+
+                const response = await apiPost('/restaurant/weekly-average/', payload);
+                
+                set({ 
+                    weeklyAverageData: response.data, 
+                    weeklyAverageLoading: false 
+                });
+                
+                return response.data;
+            } catch (error) {
+                console.error('Error submitting weekly average data:', error);
+                set({ 
+                    weeklyAverageError: error.message, 
+                    weeklyAverageLoading: false 
+                });
+                throw error;
+            }
+        },
+
+        // Get weekly average loading state
+        getWeeklyAverageLoading: () => {
+            const { weeklyAverageLoading } = get();
+            return weeklyAverageLoading;
+        },
+
+        // Get weekly average error state
+        getWeeklyAverageError: () => {
+            const { weeklyAverageError } = get();
+            return weeklyAverageError;
+        },
+
+        // Get weekly average data
+        getWeeklyAverageData: () => {
+            const { weeklyAverageData } = get();
+            return weeklyAverageData;
+        },
+
+        // Reset weekly average state
+        resetWeeklyAverage: () => {
+            set(() => ({
+                weeklyAverageData: null,
+                weeklyAverageLoading: false,
+                weeklyAverageError: null
             }));
         }
     };

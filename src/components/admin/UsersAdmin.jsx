@@ -32,11 +32,6 @@ const UsersAdmin = () => {
     // Ensure users is always an array
     const usersArray = Array.isArray(users) ? users : [];
     
-    // Debug: Log all unique roles to see what's available
-    const uniqueRoles = [...new Set(usersArray.map(user => user.role))];
-    console.log('Available roles in data:', uniqueRoles);
-    console.log('Sample user roles:', usersArray.slice(0, 3).map(u => ({ id: u.id, role: u.role })));
-    
     const total = usersArray.length;
     const active = usersArray.filter(user => user.is_active).length;
     const inactive = total - active;
@@ -49,8 +44,6 @@ const UsersAdmin = () => {
     const regularUsers = usersArray.filter(user => 
       user.role === 'USER' && !user.is_superuser && !user.is_staff
     ).length;
-    
-    console.log('Stats calculated:', { total, active, inactive, admins, regularUsers });
     
     return { total, active, inactive, admins, regularUsers };
   }, [users]);
@@ -74,12 +67,10 @@ const UsersAdmin = () => {
         : '/authentication/users/';
       
       const res = await apiGet(url);
-      console.log('API Response:', res.data); // Debug log
       
       // The API response has structure: { message, count, data: [...] }
       // Extract the users array from res.data.data
       const usersData = res.data?.data || res.data || [];
-      console.log('Users Data:', usersData); // Debug log
       
       // Display exactly what the API returns - no additional filtering
       setUsers(Array.isArray(usersData) ? usersData : []);
@@ -191,63 +182,63 @@ const UsersAdmin = () => {
         />
       )
     },
-    // {
-    //   title: 'Last Login',
-    //   dataIndex: 'last_login',
-    //   key: 'last_login',
-    //   width: 180,
-    //   render: (last_login) => {
-    //     // Handle null, undefined, or empty values
-    //     if (!last_login || last_login === null || last_login === '') {
-    //       return (
-    //         <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
-    //           -
-    //         </span>
-    //       );
-    //     }
+    {
+      title: 'Last Login',
+      dataIndex: 'last_login',
+      key: 'last_login',
+      width: 180,
+      render: (last_login) => {
+        // Handle null, undefined, or empty values
+        if (!last_login || last_login === null || last_login === '') {
+          return (
+            <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+              -
+            </span>
+          );
+        }
 
-    //     try {
-    //       // Parse the date and format it professionally
-    //       const date = new Date(last_login);
+        try {
+          // Parse the date and format it professionally
+          const date = new Date(last_login);
           
-    //       // Check if date is valid
-    //       if (isNaN(date.getTime())) {
-    //         return (
-    //           <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
-    //             -
-    //           </span>
-    //         );
-    //       }
+          // Check if date is valid
+          if (isNaN(date.getTime())) {
+            return (
+              <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+                -
+              </span>
+            );
+          }
 
-    //       // Format: "Dec 15, 2023 at 2:30 PM"
-    //       const formattedDate = date.toLocaleDateString('en-US', {
-    //         year: 'numeric',
-    //         month: 'short',
-    //         day: 'numeric'
-    //       });
+          // Format: "Dec 15, 2023 at 2:30 PM"
+          const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
           
-    //       const formattedTime = date.toLocaleTimeString('en-US', {
-    //         hour: 'numeric',
-    //         minute: '2-digit',
-    //         hour12: true
-    //       });
+          const formattedTime = date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
 
-    //       return (
-    //         <div className="text-sm">
-    //           <div className="font-medium text-gray-900">{formattedDate}</div>
-    //           <div className="text-gray-500 text-xs">{formattedTime}</div>
-    //         </div>
-    //       );
-    //     } catch (error) {
-    //       // Fallback for any parsing errors
-    //       return (
-    //         <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
-    //           (-)
-    //         </span>
-    //       );
-    //     }
-    //   }
-    // },
+          return (
+            <div className="text-sm">
+              <div className="font-medium text-gray-900">{formattedDate}</div>
+              {/* <div className="text-gray-500 text-xs">{formattedTime}</div> */}
+            </div>
+          );
+        } catch (error) {
+          // Fallback for any parsing errors
+          return (
+            <span className="text-gray-400 text-sm px-2 py-1 rounded bg-gray-50">
+              (-)
+            </span>
+          );
+        }
+      }
+    },
     // {
     //   title: 'Status',
     //   key: 'status',

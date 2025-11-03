@@ -16,14 +16,6 @@ const ProtectedRoutes = () => {
   const sessionToken = sessionStorage.getItem('token');
   const token = storeToken || sessionToken;
   
-  console.log('🔍 ProtectedRoutes - Component render:', {
-    pathname: location.pathname,
-    isAuthenticated,
-    hasToken: !!token,
-    hasUser: !!user,
-    isLoading
-  });
-  
   // Get onboarding status from store and check function from onBoardingSlice
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
   const forceOnboardingCheck = useStore((state) => state.forceOnboardingCheck);
@@ -34,16 +26,13 @@ const ProtectedRoutes = () => {
       const result = await forceOnboardingCheck();
         
       if (result.success) {
-        console.log('🔍 ProtectedRoutes - Onboarding check successful, isComplete:', result.isComplete);
         
         // Update the store state based on the result
         if (result.isComplete) {
-          console.log('🔍 ProtectedRoutes - Setting isOnBoardingCompleted to true');
           // We need to get the setter from the store
           const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
           setIsOnBoardingCompleted(true);
         } else {
-          console.log('🔍 ProtectedRoutes - Setting isOnBoardingCompleted to false');
           const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
           setIsOnBoardingCompleted(false);
         }
@@ -51,10 +40,8 @@ const ProtectedRoutes = () => {
         // Store restaurant ID if available
         if (result.restaurantId) {
           localStorage.setItem('restaurant_id', result.restaurantId.toString());
-          console.log('🔍 ProtectedRoutes - Restaurant ID stored:', result.restaurantId);
         }
       } else {
-        console.log('🔍 ProtectedRoutes - Onboarding check failed');
         // Set to false on failure
         const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
         setIsOnBoardingCompleted(false);
@@ -76,22 +63,11 @@ const ProtectedRoutes = () => {
       const isSuperAdminUser = user?.is_superuser;
       const impersonating = isImpersonating();
       
-      console.log('🔍 ProtectedRoutes - User check:', {
-        isAuthenticated,
-        hasToken: !!token,
-        isSuperAdminUser,
-        impersonating,
-        userEmail: user?.email,
-        userRole: user?.role
-      });
-      
       if (isSuperAdminUser && !impersonating) {
         // SuperAdmin doesn't need onboarding check - set completion to true and go directly to superadmin
-        console.log('🔍 ProtectedRoutes - SuperAdmin detected, bypassing onboarding check');
         const setIsOnBoardingCompleted = useStore.getState().setIsOnBoardingCompleted;
         setIsOnBoardingCompleted(true);
         setIsLoading(false);
-        console.log('🔍 ProtectedRoutes - SuperAdmin onboarding bypassed, will redirect to /superadmin/dashboard');
         return;
       }
       
@@ -145,11 +121,6 @@ const ProtectedRoutes = () => {
   const isOnboardingPath = location.pathname.includes('onboarding');
   const isCompleteStepsPath = location.pathname.includes('/complete');
   
-  console.log('🔍 ProtectedRoutes - Current pathname:', location.pathname);
-  console.log('🔍 ProtectedRoutes - isOnBoardingCompleted:', isOnBoardingCompleted);
-  console.log('🔍 ProtectedRoutes - isOnboardingPath:', isOnboardingPath);
-  console.log('🔍 ProtectedRoutes - isCompleteStepsPath:', isCompleteStepsPath);
-  
   if (isSuperAdminUser && !impersonating && !isSuperAdminPath && !isProfilePath) {
     // SuperAdmin should never see onboarding; force superadmin dashboard
     // EXCEPT for profile page which should be accessible to all users
@@ -158,22 +129,18 @@ const ProtectedRoutes = () => {
     // User has completed onboarding
     if (isOnboardingPath && !isCompleteStepsPath) {
       // User is trying to access onboarding path (but not completion page) - redirect to dashboard
-      console.log('🔍 ProtectedRoutes - Completed user trying to access onboarding, redirecting to dashboard');
       return <Navigate to="/dashboard/budget" replace />;
     } else {
       // User is on non-onboarding path or completion page - allow access
-      console.log('🔍 ProtectedRoutes - Completed user on valid path, allowing access');
       return <Outlet />;
     }
   } else {
     // User has not completed onboarding
     if (isOnboardingPath) {
       // User is on onboarding path - allow access
-      console.log('🔍 ProtectedRoutes - Incomplete user on onboarding path, allowing access');
       return <Outlet />;
     } else {
       // User is not on onboarding path - redirect to onboarding
-      console.log('🔍 ProtectedRoutes - Incomplete user not on onboarding path, redirecting to onboarding');
       return <Navigate to="/onboarding/budget" replace />;
     }
   }

@@ -66,24 +66,19 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   // Listen for custom event to open COGS modal from SalesTable
   useEffect(() => {
-    const handleOpenCogsModal = (event) => {      
-      console.log('COGS table received openCogsModal event:', event.detail);
-      
+    const handleOpenCogsModal = (event) => {            
       // Try to open modal immediately if data is available
       if (dashboardData !== null) {
-        console.log('Opening COGS modal immediately - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
         
         // Add a small delay to ensure the component is fully rendered
         setTimeout(() => {
           // Check if we have data or if we need to add data
           if (dataNotFound || areAllValuesZero(weeklyData)) {
             // No data exists, open in add mode
-            console.log('Opening COGS modal in ADD mode');
             showAddWeeklyModal();
             message.info('Adding COGS data for the selected week...');
           } else {
             // Data exists, open in edit mode
-            console.log('Opening COGS modal in EDIT mode');
             showEditWeeklyModal(weeklyData[0]);
             message.info('Editing existing COGS data for the selected week...');
           }
@@ -95,7 +90,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           weekStartDate: event.detail.weekStartDate,
           timestamp: Date.now()
         }));
-        console.log('Stored pendingCogsModal in localStorage - data not ready yet');
       }
     };
 
@@ -117,19 +111,16 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         const pendingData = JSON.parse(pendingCogsModal);
         
         if (pendingData.shouldOpen) {
-          console.log('Opening COGS modal from localStorage - dataNotFound:', dataNotFound, 'weeklyData length:', weeklyData.length);
           
           // Add a small delay to ensure the component is fully rendered
           setTimeout(() => {
             // Check if we have data or if we need to add data
             if (dataNotFound || areAllValuesZero(weeklyData)) {
               // No data exists, open in add mode
-              console.log('Opening COGS modal in ADD mode');
               showAddWeeklyModal();
               message.info('Adding COGS data for the selected week...');
             } else {
               // Data exists, open in edit mode
-              console.log('Opening COGS modal in EDIT mode');
               showEditWeeklyModal(weeklyData[0]);
               message.info('Editing existing COGS data for the selected week...');
             }
@@ -372,7 +363,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                     
           // Trigger Labor modal opening by dispatching a custom event
           const weekStartDate = weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate.format('YYYY-MM-DD');
-          console.log('Dispatching openLaborModal event with weekStartDate:', weekStartDate);
           
           const event = new CustomEvent('openLaborModal', {
             detail: {

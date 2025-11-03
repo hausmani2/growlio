@@ -75,15 +75,13 @@ api.interceptors.request.use(
     );
     
     if (isAuthEndpoint) {
-      console.log('🔐 Skipping token attachment for auth endpoint:', config.url);
       return config;
     }
     
     // Check if this is a user management API call that needs super admin token
     const isUserManagementCall = config.url && (
       config.url.includes('/authentication/users/') ||
-      config.url.includes('/admin_access/dashboard/') ||
-      config.url.includes('/superadmin/analytics/')
+      config.url.includes('/admin_access/dashboard/')
     );
     
     // Check if we're currently impersonating
@@ -92,15 +90,6 @@ api.interceptors.request.use(
     const mainToken = sessionStorage.getItem('token');
     
     // Debug logging
-    console.log('🔍 API Request Debug:', {
-      url: config.url,
-      isUserManagementCall,
-      isImpersonating,
-      hasOriginalSuperadminToken: !!originalSuperadminToken,
-      hasMainToken: !!mainToken,
-      originalSuperadminTokenPreview: originalSuperadminToken ? originalSuperadminToken.substring(0, 20) + '...' : 'null',
-      mainTokenPreview: mainToken ? mainToken.substring(0, 20) + '...' : 'null'
-    });
     
     let token;
     
@@ -108,21 +97,17 @@ api.interceptors.request.use(
     if (isImpersonating && isUserManagementCall) {
       if (originalSuperadminToken) {
         token = originalSuperadminToken;
-        console.log('✅ Using Super Admin Token for:', config.url);
       } else {
         // If no original super admin token, try to use the main token as fallback
         token = mainToken;
-        console.log('⚠️ No original super admin token, using main token as fallback for:', config.url);
       }
     } else {
       // Otherwise use the main token
       token = mainToken;
-      console.log('✅ Using Main Token for:', config.url);
     }
     
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      console.log('🔑 Token attached:', token.substring(0, 20) + '...');
     } else {
       console.error('❌ No token available for request:', config.url);
     }

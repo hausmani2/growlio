@@ -52,12 +52,7 @@ const createAuthSlice = (set, get) => {
         sessionStorage.setItem('user', JSON.stringify(userData));
         
         // Update store state
-        console.log('🔍 AuthSlice - Login successful, setting user data:', {
-          userEmail: userData?.email,
-          isSuperuser: userData?.is_superuser,
-          role: userData?.role,
-          hasAccess: !!access
-        });
+        
         
         set(() => ({ 
           user: userData, 
@@ -316,12 +311,6 @@ const createAuthSlice = (set, get) => {
           }
         }
         
-        console.log('🔍 AuthSlice - InitializeAuth:', {
-          hasToken: !!token,
-          hasStoredUser: !!userData,
-          userEmail: userData?.email,
-          isSuperuser: userData?.is_superuser
-        });
         
         set(() => ({ 
           user: userData,
