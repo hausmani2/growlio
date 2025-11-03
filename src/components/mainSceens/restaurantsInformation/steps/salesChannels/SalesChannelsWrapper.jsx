@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { message } from "antd";
 import SalesChannel from "./SalesChannel";
+import POSInformation from "./POSInformation";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
@@ -32,6 +33,11 @@ const SalesChannelsWrapperContent = () => {
         from_app: false,
         third_party: false,
         providers: [],
+        posSystem: '',
+        posSystemOther: '',
+        separateOnlineOrdering: false,
+        posForEmployeeHours: false,
+        thirdPartyOrdersToPos: false,
         selectedDays: {
             Sunday: true,
             Monday: true,
@@ -102,6 +108,11 @@ const SalesChannelsWrapperContent = () => {
                     from_app: data.from_app || false,
                     third_party: data.third_party || false,
                     providers: processedProviders,
+                    posSystem: data.pos_system || data.posSystem || '',
+                    posSystemOther: data.pos_system_other || data.posSystemOther || '',
+                    separateOnlineOrdering: data.separate_online_ordering || data.separateOnlineOrdering || false,
+                    posForEmployeeHours: data.pos_for_employee_hours || data.posForEmployeeHours || false,
+                    thirdPartyOrdersToPos: data.third_party_orders_to_pos || data.thirdPartyOrdersToPos || false,
                     selectedDays: selectedDays
                 };
                 return newState;
@@ -153,6 +164,20 @@ const SalesChannelsWrapperContent = () => {
                 from_app: salesChannelsData.from_app,
                 third_party: salesChannelsData.third_party
             };
+
+            // Add POS system information
+            if (salesChannelsData.posSystem) {
+                stepData.pos_system = salesChannelsData.posSystem;
+                // If "Other" is selected, include the custom name
+                if (salesChannelsData.posSystem === 'Other' && salesChannelsData.posSystemOther) {
+                    stepData.pos_system_other = salesChannelsData.posSystemOther;
+                }
+            }
+
+            // Add POS Yes/No questions
+            stepData.separate_online_ordering = salesChannelsData.separateOnlineOrdering || false;
+            stepData.pos_for_employee_hours = salesChannelsData.posForEmployeeHours || false;
+            stepData.third_party_orders_to_pos = salesChannelsData.thirdPartyOrdersToPos || false;
 
             // Add sales days data - send CLOSED days to API
             if (salesChannelsData.selectedDays) {
@@ -249,6 +274,12 @@ const SalesChannelsWrapperContent = () => {
                             loading={loading}
                         />
 
+                        <POSInformation
+                            data={salesChannelsData}
+                            updateData={updateSalesChannelsData}
+                            errors={validationErrors}
+                        />
+
                         {isUpdateMode && (
                             <div className="flex justify-end mt-8 pt-6">
                                 <button
@@ -294,6 +325,13 @@ const SalesChannelsWrapperContent = () => {
                 errors={validationErrors}
                 onSaveAndContinue={handleSaveAndContinue}
                 loading={loading}
+            />
+
+            {/* POS Information Section */}
+            <POSInformation
+                data={salesChannelsData}
+                updateData={updateSalesChannelsData}
+                errors={validationErrors}
             />
 
             {isUpdateMode && (
