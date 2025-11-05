@@ -35,8 +35,6 @@ import SuperAdminUsers from './SuperAdminUsers';
 import SystemSettings from './components/SystemSettings';
 import AuditLogs from './components/AuditLogs';
 import CorporateSupportAccess from './components/CorporateSupportAccess';
-import SuperAdminTooltips from './components/SuperAdminTooltips';
-import SuperAdminUserManagement from './components/SuperAdminUserManagement';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import TokenStateDebugger from '../debug/TokenStateDebugger'; // Uncomment for debugging
@@ -145,34 +143,6 @@ const SuperAdminDashboard = () => {
       children: (
         <div className="p-6">
           <AnalyticsCharts loading={loading} dashboardData={dashboardData} />
-        </div>
-      ),
-    },
-    {
-      key: 'users',
-      label: (
-        <span>
-          <UserOutlined />
-          <span className="">User Management</span>
-        </span>
-      ),
-      children: (
-        <div className="p-6">
-          <SuperAdminUserManagement />
-        </div>
-      ),
-    },
-    {
-      key: 'tooltips',
-      label: (
-        <span>
-          <BellOutlined />
-          <span className="">Tooltips</span>
-        </span>
-      ),
-      children: (
-        <div className="p-6">
-          <SuperAdminTooltips />
         </div>
       ),
     },

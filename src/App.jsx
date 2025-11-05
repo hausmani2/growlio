@@ -29,6 +29,8 @@ import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
 import SuperAdminDashboard from './components/superadmin/SuperAdminDashboard';
 import SuperAdminUsers from './components/superadmin/SuperAdminUsers';
+import SuperAdminTooltips from './components/superadmin/components/SuperAdminTooltips';
+import SuperAdminUserManagement from './components/superadmin/components/SuperAdminUserManagement';
 import SupportPage from './components/mainSceens/support/SupportPage';
 import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
 
@@ -98,6 +100,8 @@ function App() {
           <Route path="/superadmin" element={<Navigate to="/superadmin/dashboard" replace />} />
           <Route path="/superadmin/dashboard" element={<Wrapper showSidebar={true} children={<SuperAdminDashboard />} />} />
           <Route path="/superadmin/users" element={<Wrapper showSidebar={true} children={<SuperAdminUsers />} />} />
+          <Route path="/superadmin/user-management" element={<Wrapper showSidebar={true} children={<SuperAdminUserManagement />} />} />
+          <Route path="/superadmin/tooltips" element={<Wrapper showSidebar={true} children={<SuperAdminTooltips />} />} />
 
         </Route>
 

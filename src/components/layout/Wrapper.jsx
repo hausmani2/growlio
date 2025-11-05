@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -117,12 +117,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/admin/tooltips'),
         },
-          // {
-          //   key: 'faq',
-          //   icon: <FileTextOutlined />,
-          //   label: 'FAQ',
-          //   onClick: () => navigate('/dashboard/faq'),
-          // },
+          {
+            key: 'faq',
+            icon: <FileTextOutlined />,
+            label: 'FAQ',
+            onClick: () => navigate('/dashboard/faq'),
+          },
       ],
     },
   ] : [];
@@ -142,8 +142,20 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'superadmin-users',
           icon: <UserOutlined />,
-          label: 'User Management',
+          label: 'User Support',
           onClick: () => navigate('/superadmin/users'),
+        },
+        {
+          key: 'superadmin-user-management',
+          icon: <UserOutlined />,
+          label: 'User Management',
+          onClick: () => navigate('/superadmin/user-management'),
+        },
+        {
+          key: 'superadmin-tooltips',
+          icon: <BellOutlined />,
+          label: 'Tooltips',
+          onClick: () => navigate('/superadmin/tooltips'),
         },
       ],
     }

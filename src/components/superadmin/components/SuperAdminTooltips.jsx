@@ -229,43 +229,52 @@ const SuperAdminTooltips = () => {
   ];
 
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <Card className="shadow-lg border-0 rounded-xl">
-        <div className=" flex justify-between items-center">
-          <h3 className="text-lg font-bold text-orange-600">Tooltip Management</h3>
-          <div className="flex items-center space-x-4">
-                    {/* Filter Section */}
-        <div className="flex items-center space-x-4 ">
-          <span className="text-sm font-medium">Filter by Page:</span>
-          <Select
-            value={pageFilter}
-            style={{ width: 240 ,height: 40 }}
-            onChange={setPageFilter}
-            placeholder="All pages"
-            allowClear
-            options={[
-              { label: 'All Pages', value: '' },
-              ...pages
-            ]}
-          />
-        </div>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />}
-            onClick={openCreate}
-            size="large"
-          >
-            Add Tooltip
-          </Button>
+    <div className="space-y-6">
+      {/* Header Section - Matching other dashboards */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              Tooltips
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Manage tooltips and help text for all onboarding pages
+            </p>
+          </div>
+          
+          {/* Right Side - Filter and Actions */}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* Filter Section */}
+            <div className="flex items-center space-x-4">
+              <span className="text-sm font-medium">Filter by Page:</span>
+              <Select
+                value={pageFilter}
+                style={{ width: 240, height: 40 }}
+                onChange={setPageFilter}
+                placeholder="All pages"
+                allowClear
+                options={[
+                  { label: 'All Pages', value: '' },
+                  ...pages
+                ]}
+              />
+            </div>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              onClick={openCreate}
+              size="large"
+              className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              Add Tooltip
+            </Button>
           </div>
         </div>
-
-
-      </Card>
+      </div>
 
       {/* Table */}
-      <Card>
+      <Card className="shadow-lg border-0 rounded-xl">
         <Table 
           rowKey="id" 
           loading={loading} 

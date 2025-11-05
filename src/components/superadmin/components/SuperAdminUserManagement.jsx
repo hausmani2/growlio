@@ -348,31 +348,43 @@ const SuperAdminUserManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* User Statistics */}
-      <div className="">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex items-center p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-100">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
-                <CrownOutlined className="text-indigo-600 text-lg" />
-              </div>
-            </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-600">Administrators</p>
-              <p className="text-3xl font-bold text-indigo-900">{userCounts.adminCount}</p>
-            </div>
+      {/* Header Section - Matching other dashboards */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              User Management
+            </h1>
+            <p className="text-gray-600 text-lg">
+              Create, manage, and update user accounts and permissions
+            </p>
           </div>
           
-          <div className="flex items-center p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                <TeamOutlined className="text-emerald-600 text-lg" />
+          {/* Right Side - User Statistics */}
+          <div className="flex flex-row gap-3">
+            <div className="flex items-center p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200 min-w-[140px]">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <CrownOutlined className="text-indigo-600 text-lg" />
+                </div>
+              </div>
+              <div className="ml-2 flex-1">
+                <p className="text-xs font-medium text-gray-600 mb-0.5">Administrators</p>
+                <p className="text-xl font-bold text-indigo-900">{userCounts.adminCount}</p>
               </div>
             </div>
-            <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-600">Regular Users</p>
-              <p className="text-3xl font-bold text-emerald-900">{userCounts.regularUserCount}</p>
+            
+            <div className="flex items-center p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-200 min-w-[140px]">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <TeamOutlined className="text-emerald-600 text-lg" />
+                </div>
+              </div>
+              <div className="ml-2 flex-1">
+                <p className="text-xs font-medium text-gray-600 mb-0.5">Regular Users</p>
+                <p className="text-xl font-bold text-emerald-900">{userCounts.regularUserCount}</p>
+              </div>
             </div>
           </div>
         </div>

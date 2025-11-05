@@ -80,7 +80,7 @@ const SuperAdminUsers = () => {
           {/* Left Side - Title and Description */}
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-orange-600 mb-2">
-              User Management
+              User Support
             </h1>
             <p className="text-gray-600 text-lg">
               Manage all platform users with superadmin privileges including impersonation

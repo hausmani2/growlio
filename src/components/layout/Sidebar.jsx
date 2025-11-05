@@ -32,6 +32,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/admin/tooltips': 'admin-tooltips',
     '/superadmin/dashboard': 'superadmin-dashboard',
     '/superadmin/users': 'superadmin-users',
+    '/superadmin/user-management': 'superadmin-user-management',
+    '/superadmin/tooltips': 'superadmin-tooltips',
   };
   
   // Determine selected key based on current path
