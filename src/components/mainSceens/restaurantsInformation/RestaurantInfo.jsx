@@ -6,6 +6,7 @@ import { TabProvider } from "./TabContext";
 import { useTabHook } from "./useTabHook";
 import useStore from "../../../store/store";
 import LoadingSpinner from "../../layout/LoadingSpinner";
+import GuidanceOverlay from "../../guidance/GuidanceOverlay";
 
 const RestaurantContent = () => {
     const navigate = useNavigate();
@@ -55,6 +56,7 @@ const RestaurantContent = () => {
                     </div>
                 </div>
             </div>
+            <GuidanceOverlay />
         </div>
     );
 };

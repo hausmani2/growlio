@@ -466,7 +466,7 @@ const Dashboard = () => {
             </p>
           </div>
           {/* Right Side - Week Picker */}
-          <div className="w-full lg:w-auto">
+          <div className="w-full lg:w-auto" data-guidance="week_selector_help">
             <div className="min-w-[220px] w-full">
               <label className="block text-sm font-medium text-gray-700 mb-1">Select Week</label>
               <DatePicker

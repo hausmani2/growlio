@@ -43,7 +43,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
-            <div className="mb-6">
+            <div className="mb-6" data-guidance="food_cost_title">
                 <h3 className="text-xl font-bold text-orange-600 mb-1">Food Cost Details</h3>
                 <p className="text-gray-600 text-sm">
                 Add your average food cost and pricing structure so we can help manage your food costs more effectively
@@ -53,13 +53,13 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* COGS Goals Section */}
-                <div>
+                <div data-guidance="cogs_goals_section">
                     <h4 className="text-lg font-semibold text-gray-800 ">
                         Cost of Goods (COGS) Goals
                     </h4>
                     
                     <div className="space-y-3">
-                        <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2" data-guidance="cogs_goal_field">
                             What is your COGS goal as a percentage of sales?
                             <span className="text-red-500">*</span>
                             <TooltipIcon text={tooltips['cogs_goal']} />

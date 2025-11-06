@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { message } from 'antd';
 import useStore from './store/store';
+import { GuidanceProvider } from './contexts/GuidanceContext';
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
@@ -27,6 +28,7 @@ import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profit
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
+import GuidancePopupsAdmin from './components/admin/GuidancePopupsAdmin';
 import SuperAdminDashboard from './components/superadmin/SuperAdminDashboard';
 import SuperAdminUsers from './components/superadmin/SuperAdminUsers';
 import SuperAdminTooltips from './components/superadmin/components/SuperAdminTooltips';
@@ -60,7 +62,8 @@ function App() {
 
   return (
     <Router>
-      <Routes>
+      <GuidanceProvider>
+        <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin/login" element={<SuperAdminLoginPage />} />
@@ -95,6 +98,7 @@ function App() {
           {/* Admin */}
           <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
+          <Route path="/admin/guidance-popups" element={<Wrapper showSidebar={true} children={<GuidancePopupsAdmin />} />} />
           
           {/* SuperAdmin */}
           <Route path="/superadmin" element={<Navigate to="/superadmin/dashboard" replace />} />
@@ -107,7 +111,8 @@ function App() {
 
         {/* Catch-all: redirect unknown routes to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </GuidanceProvider>
     </Router>
   );
 }

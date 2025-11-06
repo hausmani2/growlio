@@ -1,0 +1,105 @@
+import React, { useState } from 'react';
+import { Button, Space } from 'antd';
+import { useGuidance } from '../../contexts/GuidanceContext';
+import { apiGet, apiPost } from '../../utils/axiosInterceptors';
+
+/**
+ * Test button component to manually reset guidance status and trigger guidance
+ * This is for development/testing purposes only
+ */
+const GuidanceTestButton = () => {
+  const { startGuidance, isActive, loading, hasSeenGuidance, popups, currentPage } = useGuidance();
+  const [forceShow, setForceShow] = useState(false);
+
+  const handleResetGuidance = async () => {
+    try {
+      console.log('🔄 Forcing guidance to show...');
+      setForceShow(true);
+      
+      // Force start guidance by bypassing the hasSeenGuidance check
+      // We'll manually set the state and trigger
+      await startGuidance();
+    } catch (error) {
+      console.error('Failed to reset guidance:', error);
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    try {
+      const response = await apiGet('/authentication/user/guidance-status/');
+      console.log('📊 Current guidance status:', response.data);
+      alert(`Guidance Status: ${JSON.stringify(response.data, null, 2)}`);
+    } catch (error) {
+      console.error('Failed to check status:', error);
+      alert('Failed to check status. Check console for details.');
+    }
+  };
+
+  const handleForceShow = async () => {
+    try {
+      console.log('🔄 Force showing guidance...');
+      setForceShow(true);
+      
+      // Force start guidance with forceShow flag
+      await startGuidance(true);
+    } catch (error) {
+      console.error('Failed to force show:', error);
+    }
+  };
+
+  // Always show the test button for debugging
+  return (
+    <div className="fixed bottom-4 right-4 z-[10001] flex flex-col gap-2 bg-white p-3 rounded-lg shadow-lg border-2 border-orange-300">
+      <div className="text-xs font-bold text-orange-600 mb-2">🎯 Guidance Debug</div>
+      <Space direction="vertical" size="small" className="w-full">
+        <Button
+          type="primary"
+          onClick={handleForceShow}
+          disabled={loading}
+          className="bg-orange-500 hover:bg-orange-600 w-full font-semibold"
+          size="small"
+        >
+          {loading ? 'Loading...' : '🚀 Force Show'}
+        </Button>
+        <Button
+          onClick={handleCheckStatus}
+          size="small"
+          className="w-full"
+        >
+          📊 Check Status
+        </Button>
+        <div className="text-xs text-gray-600 space-y-1 pt-2 border-t border-gray-200">
+          <div className="flex justify-between">
+            <span>Active:</span>
+            <span className={isActive ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+              {isActive ? '✅ Yes' : '❌ No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Loading:</span>
+            <span className={loading ? 'text-yellow-600' : 'text-gray-600'}>
+              {loading ? '⏳ Yes' : '✓ No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Seen:</span>
+            <span className={hasSeenGuidance ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+              {hasSeenGuidance ? '✅ Yes' : '❌ No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Page:</span>
+            <span className="text-blue-600 font-mono text-xs">{currentPage || 'N/A'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Popups:</span>
+            <span className="text-blue-600 font-bold">{popups.length}</span>
+          </div>
+        </div>
+      </Space>
+    </div>
+  );
+};
+
+export default GuidanceTestButton;
+

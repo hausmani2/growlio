@@ -44,14 +44,14 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
-            <div className="mb-6">
+            <div className="mb-6" data-guidance="labor_information_title">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Information</h3>
             </div>
             
             {/* Form Fields */}
             <div className="space-y-4">
                 {/* Labor Goals Section */}
-                <div>
+                <div data-guidance="labor_goals_section">
                     <h4 className="text-lg font-semibold text-gray-800 ">
                         Labor Goals
                     </h4>
@@ -60,7 +60,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                     </p>
                     
                     <div className="space-y-3">
-                        <label htmlFor="labour_goal" className="block text-sm font-semibold text-gray-700">
+                        <label htmlFor="labour_goal" className="block text-sm font-semibold text-gray-700" data-guidance="labor_goal_field">
                             Labor Goal as Percentage of Sales <span className="text-red-500">*</span>
                             <TooltipIcon text={tooltips['labour_goal']} />
                         </label>

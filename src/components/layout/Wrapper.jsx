@@ -10,6 +10,7 @@ import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiActualbudget, SiExpensify } from 'react-icons/si';
 import ImpersonationBanner from '../superadmin/components/ImpersonationBanner';
 import { isImpersonating } from '../../utils/tokenManager';
+import GuidanceOverlay from '../guidance/GuidanceOverlay';
 const { Content } = Layout;
 
 /**
@@ -117,6 +118,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/admin/tooltips'),
         },
+        {
+          key: 'admin-guidance-popups',
+          icon: <BellOutlined />,
+          label: 'Guidance Popups',
+          onClick: () => navigate('/admin/guidance-popups'),
+        },
           {
             key: 'faq',
             icon: <FileTextOutlined />,
@@ -214,6 +221,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           <Content className={`px-2 sm:px-4 py-2 sm:py-1 bg-gray-100 w-full ${className}`}>
             <ImpersonationBanner />
             {children}
+            <GuidanceOverlay />
           </Content>
         </div>
       </div>

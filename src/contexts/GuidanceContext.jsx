@@ -1,0 +1,586 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import { apiGet, apiPost } from '../utils/axiosInterceptors';
+
+const GuidanceContext = createContext(null);
+
+export const useGuidance = () => {
+  const context = useContext(GuidanceContext);
+  if (!context) {
+    throw new Error('useGuidance must be used within GuidanceProvider');
+  }
+  return context;
+};
+
+export const GuidanceProvider = ({ children }) => {
+  const location = useLocation();
+  const [hasSeenGuidance, setHasSeenGuidance] = useState(true); // Default to true to prevent showing until checked
+  const [popups, setPopups] = useState([]);
+  const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState('');
+
+  // Map route paths to page names
+  const getPageNameFromRoute = (pathname) => {
+    // Remove leading slash and normalize
+    const path = pathname.replace(/^\//, '').replace(/\/$/, '');
+    
+    // Map common routes to page names
+    const routeMap = {
+      'congratulations': 'congratulations',
+      'onboarding': 'onboarding',
+      'onboarding/basic-information': 'onboarding_basic_information',
+      'onboarding/labor-information': 'onboarding_labor_information',
+      'onboarding/food-cost-details': 'onboarding_food_cost_details',
+      'onboarding/sales-channels': 'onboarding_sales_channels',
+      'onboarding/expense': 'onboarding_expense',
+      'dashboard': 'dashboard',
+      'dashboard/budget': 'budget',
+      'dashboard/profit-loss': 'profit_loss',
+      'dashboard/basic-information': 'basic_information',
+      'dashboard/labor-information': 'labor_information',
+      'dashboard/food-cost-details': 'food_cost_details',
+      'dashboard/sales-channels': 'sales_channels',
+      'dashboard/expense': 'expense',
+      'dashboard/profile': 'profile',
+      'dashboard/support': 'support',
+      'dashboard/faq': 'faq',
+      'admin/users': 'admin_users',
+      'admin/tooltips': 'admin_tooltips',
+    };
+    
+    return routeMap[path] || path.replace(/\//g, '_');
+  };
+
+  // Check if user has seen guidance
+  const checkGuidanceStatus = useCallback(async () => {
+    try {
+      console.log('🔍 Checking guidance status...');
+      const response = await apiGet('/authentication/user/guidance-status/');
+      const hasSeen = response.data?.has_seen_user_guidance ?? true;
+      console.log('📊 Guidance status:', { hasSeen, response: response.data });
+      setHasSeenGuidance(hasSeen);
+      return hasSeen;
+    } catch (error) {
+      console.error('❌ Failed to check guidance status:', error);
+      // On error, assume user has seen guidance to prevent blocking
+      setHasSeenGuidance(true);
+      return true;
+    }
+  }, []);
+
+  // Static/default popups for each page
+  const getStaticPopups = useCallback((pageName) => {
+    const staticPopups = {
+      'onboarding_basic_information': [
+        {
+          id: 1,
+          page: 'onboarding_basic_information',
+          key: 'step_navigation_bar',
+          title: 'Step Navigation Bar',
+          text: 'This is your onboarding progress tracker. You can see all 5 steps here: Basic Information, Sales Channels, Labor Information, Food Cost Details, and Expenses. Complete each step in order to proceed to the next one.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding_basic_information',
+          key: 'step_1_basic_information',
+          title: 'Step 1: Basic Information',
+          text: 'This is the first step of your onboarding. Fill in your restaurant\'s basic details like company name, number of locations, and location information. Once you complete this step, click "Save & Continue" to move to Step 2: Sales Channels.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding_basic_information',
+          key: 'step_2_sales_channels',
+          title: 'Step 2: Sales Channels',
+          text: 'After completing Step 1, you\'ll move to Step 2: Sales Channels. Here you\'ll configure which sales channels your restaurant uses.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'onboarding_basic_information',
+          key: 'step_3_labor_information',
+          title: 'Step 3: Labor Information',
+          text: 'After Step 2, you\'ll move to Step 3: Labor Information. Here you\'ll set your labor goals and preferences.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'onboarding_basic_information',
+          key: 'step_4_food_cost_details',
+          title: 'Step 4: Food Cost Details',
+          text: 'After Step 3, you\'ll move to Step 4: Food Cost Details. Here you\'ll set your food cost goals and delivery preferences.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'onboarding_basic_information',
+          key: 'step_5_expenses',
+          title: 'Step 5: Expenses',
+          text: 'After Step 4, you\'ll move to Step 5: Expenses - the final step! Here you\'ll add your fixed and variable costs.',
+          is_active: true,
+        },
+      ],
+      'congratulations': [
+        {
+          id: 1,
+          page: 'congratulations',
+          key: 'welcome_title',
+          title: 'Welcome to Growlio!',
+          text: 'Welcome! We\'re excited to have you here. Growlio helps you manage your restaurant\'s finances with ease. Let\'s get started on your journey to better profitability.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'congratulations',
+          key: 'welcome_description',
+          title: 'How Growlio Works',
+          text: 'Growlio focuses on percentages, not just dollar amounts. When your sales change, your food and labor budgets automatically adjust. This helps you stay profitable no matter what happens with your sales.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'congratulations',
+          key: 'welcome_get_started_button',
+          title: 'Ready to Begin?',
+          text: 'Click "Let\'s get started!" to begin setting up your restaurant. The process is quick and easy - we\'ll guide you through each step.',
+          is_active: true,
+        },
+      ],
+      'onboarding': [
+        {
+          id: 1,
+          page: 'onboarding',
+          key: 'restaurant_setup_title',
+          title: 'Let\'s Set Up Your Restaurant',
+          text: 'This is where your restaurant setup begins. We\'ll ask you a few simple questions to get your restaurant configured in Growlio. Don\'t worry - it only takes a few minutes!',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding',
+          key: 'restaurant_setup_option',
+          title: 'Register Your Restaurant',
+          text: 'This option is selected by default. It means you\'re creating a new restaurant profile on Growlio. Once you click "Get Started", we\'ll begin collecting your restaurant\'s basic information.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding',
+          key: 'restaurant_setup_get_started_button',
+          title: 'Start the Setup Process',
+          text: 'Click this button to begin the onboarding process. You\'ll start with basic information like your restaurant name and location. We\'ll guide you through each step.',
+          is_active: true,
+        },
+      ],
+      'onboarding_sales_channels': [
+        {
+          id: 1,
+          page: 'onboarding_sales_channels',
+          key: 'step_navigation_bar',
+          title: 'Step Navigation Bar',
+          text: 'You\'re now on Step 2: Sales Channels. Complete this step to unlock Step 3: Labor Information.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding_sales_channels',
+          key: 'step_1_basic_information',
+          title: 'Step 1: Basic Information',
+          text: 'You\'ve completed Step 1: Basic Information. You can click here to go back and review your basic information if needed.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding_sales_channels',
+          key: 'step_2_sales_channels',
+          title: 'Step 2: Sales Channels',
+          text: 'Here you\'ll configure your sales channels. Select which channels your restaurant uses (In-Store, Online, App, Third-Party). Once you complete this step, click "Save & Continue" to move to Step 3: Labor Information.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'onboarding_sales_channels',
+          key: 'step_3_labor_information',
+          title: 'Step 3: Labor Information',
+          text: 'After completing Step 2, you\'ll move to Step 3: Labor Information. Here you\'ll set your labor goals and preferences.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'onboarding_sales_channels',
+          key: 'step_4_food_cost_details',
+          title: 'Step 4: Food Cost Details',
+          text: 'After Step 3, you\'ll move to Step 4: Food Cost Details. Here you\'ll set your food cost goals and delivery preferences.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'onboarding_sales_channels',
+          key: 'step_5_expenses',
+          title: 'Step 5: Expenses',
+          text: 'After Step 4, you\'ll move to Step 5: Expenses - the final step! Here you\'ll add your fixed and variable costs.',
+          is_active: true,
+        },
+      ],
+      'onboarding_labor_information': [
+        {
+          id: 1,
+          page: 'onboarding_labor_information',
+          key: 'step_navigation_bar',
+          title: 'Step Navigation Bar',
+          text: 'You\'re now on Step 3: Labor Information. Complete this step to unlock Step 4: Food Cost Details.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding_labor_information',
+          key: 'step_1_basic_information',
+          title: 'Step 1: Basic Information',
+          text: 'You\'ve completed Step 1: Basic Information. You can click here to go back and review your basic information if needed.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding_labor_information',
+          key: 'step_2_sales_channels',
+          title: 'Step 2: Sales Channels',
+          text: 'You\'ve completed Step 2: Sales Channels. You can click here to go back and review your sales channels if needed.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'onboarding_labor_information',
+          key: 'step_3_labor_information',
+          title: 'Step 3: Labor Information',
+          text: 'Here you\'ll set your labor goals and preferences. Fill in your target labor percentage and other labor details. Once you complete this step, click "Save & Continue" to move to Step 4: Food Cost Details.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'onboarding_labor_information',
+          key: 'step_4_food_cost_details',
+          title: 'Step 4: Food Cost Details',
+          text: 'After completing Step 3, you\'ll move to Step 4: Food Cost Details. Here you\'ll set your food cost goals and delivery preferences.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'onboarding_labor_information',
+          key: 'step_5_expenses',
+          title: 'Step 5: Expenses',
+          text: 'After Step 4, you\'ll move to Step 5: Expenses - the final step! Here you\'ll add your fixed and variable costs.',
+          is_active: true,
+        },
+      ],
+      'onboarding_food_cost_details': [
+        {
+          id: 1,
+          page: 'onboarding_food_cost_details',
+          key: 'step_navigation_bar',
+          title: 'Step Navigation Bar',
+          text: 'You\'re now on Step 4: Food Cost Details. Complete this step to unlock Step 5: Expenses.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding_food_cost_details',
+          key: 'step_1_basic_information',
+          title: 'Step 1: Basic Information',
+          text: 'You\'ve completed Step 1: Basic Information. You can click here to go back and review your basic information if needed.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding_food_cost_details',
+          key: 'step_2_sales_channels',
+          title: 'Step 2: Sales Channels',
+          text: 'You\'ve completed Step 2: Sales Channels. You can click here to go back and review your sales channels if needed.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'onboarding_food_cost_details',
+          key: 'step_3_labor_information',
+          title: 'Step 3: Labor Information',
+          text: 'You\'ve completed Step 3: Labor Information. You can click here to go back and review your labor information if needed.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'onboarding_food_cost_details',
+          key: 'step_4_food_cost_details',
+          title: 'Step 4: Food Cost Details',
+          text: 'Here you\'ll set your food cost goals and delivery preferences. Fill in your target COGS percentage and delivery days. Once you complete this step, click "Save & Continue" to move to Step 5: Expenses.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'onboarding_food_cost_details',
+          key: 'step_5_expenses',
+          title: 'Step 5: Expenses',
+          text: 'After completing Step 4, you\'ll move to Step 5: Expenses - the final step! Here you\'ll add your fixed and variable costs.',
+          is_active: true,
+        },
+      ],
+      'onboarding_expense': [
+        {
+          id: 1,
+          page: 'onboarding_expense',
+          key: 'step_navigation_bar',
+          title: 'Step Navigation Bar',
+          text: 'You\'re now on Step 5: Expenses - the final step! Complete this step to finish your onboarding.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'onboarding_expense',
+          key: 'step_1_basic_information',
+          title: 'Step 1: Basic Information',
+          text: 'You\'ve completed Step 1: Basic Information. You can click here to go back and review your basic information if needed.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'onboarding_expense',
+          key: 'step_2_sales_channels',
+          title: 'Step 2: Sales Channels',
+          text: 'You\'ve completed Step 2: Sales Channels. You can click here to go back and review your sales channels if needed.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'onboarding_expense',
+          key: 'step_3_labor_information',
+          title: 'Step 3: Labor Information',
+          text: 'You\'ve completed Step 3: Labor Information. You can click here to go back and review your labor information if needed.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'onboarding_expense',
+          key: 'step_4_food_cost_details',
+          title: 'Step 4: Food Cost Details',
+          text: 'You\'ve completed Step 4: Food Cost Details. You can click here to go back and review your food cost details if needed.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'onboarding_expense',
+          key: 'step_5_expenses',
+          title: 'Step 5: Expenses',
+          text: 'This is the final step! Here you\'ll add your fixed and variable costs. Fill in all your expenses and review your totals. Once you complete this step, click "Save & Continue" to finish your onboarding and proceed to the API call.',
+          is_active: true,
+        },
+        {
+          id: 7,
+          page: 'onboarding_expense',
+          key: 'expense_continue_button',
+          title: 'Complete Onboarding',
+          text: 'Click "Save & Continue" to complete your onboarding setup. This will save all your information and take you to your dashboard. You\'re all done!',
+          is_active: true,
+        },
+      ],
+    };
+
+    return staticPopups[pageName] || [];
+  }, []);
+
+  // Fetch popups for current page
+  const fetchPopups = useCallback(async (pageName) => {
+    try {
+      console.log('🔍 Fetching popups for page:', pageName);
+      const response = await apiGet('/admin_access/guidance-popups/');
+      const allPopups = response.data || [];
+      console.log('📋 All popups from API:', allPopups);
+      
+      // Filter popups for current page and active status
+      let filteredPopups = allPopups.filter(
+        popup => popup.page === pageName && popup.is_active === true
+      );
+      
+      // If no popups found from API, use static popups as fallback
+      if (filteredPopups.length === 0) {
+        console.log('⚠️ No popups from API, using static popups for page:', pageName);
+        const staticPopups = getStaticPopups(pageName);
+        if (staticPopups.length > 0) {
+          filteredPopups = staticPopups;
+          console.log('✅ Using static popups:', staticPopups);
+        }
+      }
+      
+      console.log('✅ Filtered popups for page:', { pageName, filteredPopups });
+      
+      // Sort by id to maintain order
+      filteredPopups.sort((a, b) => a.id - b.id);
+      
+      setPopups(filteredPopups);
+      return filteredPopups;
+    } catch (error) {
+      console.error('❌ Failed to fetch guidance popups:', error);
+      
+      // On error, try to use static popups as fallback
+      const staticPopups = getStaticPopups(pageName);
+      if (staticPopups.length > 0) {
+        console.log('✅ Using static popups as fallback:', staticPopups);
+        setPopups(staticPopups);
+        return staticPopups;
+      }
+      
+      setPopups([]);
+      return [];
+    }
+  }, [getStaticPopups]);
+
+  // Mark guidance as completed
+  const markGuidanceAsSeen = useCallback(async () => {
+    try {
+      await apiPost('/authentication/user/guidance-status/');
+      setHasSeenGuidance(true);
+      setIsActive(false);
+    } catch (error) {
+      console.error('Failed to mark guidance as seen:', error);
+    }
+  }, []);
+
+  // Start guidance tour
+  const startGuidance = useCallback(async (forceShow = false) => {
+    const pageName = getPageNameFromRoute(location.pathname);
+    console.log('🚀 Starting guidance for page:', { pathname: location.pathname, pageName, forceShow });
+    setCurrentPage(pageName);
+    
+    // Skip guidance on public routes (login, signup, etc.)
+    // Note: We allow guidance on /congratulations and /onboarding as these are onboarding screens
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
+    if (publicRoutes.includes(location.pathname)) {
+      console.log('⏭️ Skipping guidance on public route');
+      setLoading(false);
+      setIsActive(false);
+      return;
+    }
+    
+    // Check if user has seen guidance (unless forcing)
+    if (!forceShow) {
+      const hasSeen = await checkGuidanceStatus();
+      if (hasSeen) {
+        console.log('✅ User has already seen guidance, skipping');
+        setIsActive(false);
+        setLoading(false);
+        return;
+      }
+    } else {
+      console.log('🔓 Force showing guidance (bypassing hasSeenGuidance check)');
+      setHasSeenGuidance(false); // Temporarily set to false for force show
+    }
+
+    const pagePopups = await fetchPopups(pageName);
+    console.log('📋 Popups for page:', { pageName, count: pagePopups.length, popups: pagePopups });
+    
+    if (pagePopups.length > 0) {
+      console.log('🎯 Found popups, activating guidance:', pagePopups.length);
+      setCurrentPopupIndex(0);
+      setIsActive(true);
+      
+      // Wait a bit for DOM to be ready
+      setTimeout(() => {
+        // Check if first popup element exists
+        const firstPopup = pagePopups[0];
+        const elementExists = document.querySelector(`[data-guidance="${firstPopup.key}"]`);
+        console.log('🔍 First popup element check:', { 
+          key: firstPopup.key, 
+          exists: !!elementExists,
+          allElements: Array.from(document.querySelectorAll('[data-guidance]')).map(el => ({
+            key: el.getAttribute('data-guidance'),
+            tag: el.tagName,
+            visible: el.offsetParent !== null
+          }))
+        });
+        
+        if (!elementExists) {
+          console.warn('⚠️ Element not found, but continuing anyway...');
+        }
+      }, 500);
+    } else {
+      console.log('⚠️ No popups found for page:', pageName);
+      setIsActive(false);
+    }
+    
+    setLoading(false);
+  }, [location.pathname, checkGuidanceStatus, fetchPopups]);
+
+  // Go to next popup
+  const nextPopup = useCallback(() => {
+    if (currentPopupIndex < popups.length - 1) {
+      setCurrentPopupIndex(currentPopupIndex + 1);
+    } else {
+      // Last popup of current page - check if this is the last step (expense)
+      // Only mark as seen if we're on the last step (expense page)
+      const isLastStep = currentPage === 'onboarding_expense';
+      if (isLastStep) {
+        // Last popup of last step - mark as seen and close
+        markGuidanceAsSeen();
+      } else {
+        // Last popup of current step - just close (guidance will restart on next step)
+        setIsActive(false);
+      }
+    }
+  }, [currentPopupIndex, popups.length, currentPage, markGuidanceAsSeen]);
+
+  // Skip all popups
+  const skipGuidance = useCallback(() => {
+    markGuidanceAsSeen();
+  }, [markGuidanceAsSeen]);
+
+  // Get current popup
+  const getCurrentPopup = useCallback(() => {
+    if (!isActive || popups.length === 0 || currentPopupIndex >= popups.length) {
+      return null;
+    }
+    return popups[currentPopupIndex];
+  }, [isActive, popups, currentPopupIndex]);
+
+  // Check if element exists for current popup
+  const checkElementExists = useCallback((key) => {
+    const element = document.querySelector(`[data-guidance="${key}"]`);
+    return !!element;
+  }, []);
+
+  // Initialize guidance on route change
+  useEffect(() => {
+    setLoading(true);
+    setIsActive(false);
+    setCurrentPopupIndex(0);
+    
+    // Small delay to ensure page is rendered
+    const timer = setTimeout(() => {
+      startGuidance();
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const value = {
+    hasSeenGuidance,
+    popups,
+    currentPopupIndex,
+    isActive,
+    loading,
+    currentPage,
+    getCurrentPopup,
+    nextPopup,
+    skipGuidance,
+    checkElementExists,
+    startGuidance: (forceShow) => startGuidance(forceShow),
+    markGuidanceAsSeen,
+  };
+
+  return (
+    <GuidanceContext.Provider value={value}>
+      {children}
+    </GuidanceContext.Provider>
+  );
+};
+

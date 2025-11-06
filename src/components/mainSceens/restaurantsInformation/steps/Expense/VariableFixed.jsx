@@ -235,7 +235,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
-            <div className="mb-6">
+            <div className="mb-6" data-guidance="variable_cost_title">
                 <h3 className="text-xl font-bold text-orange-600">Variable Cost</h3>
                 <p className="text-gray-600 text-sm">
                 Can sometimes be paused or reduced if needed.
@@ -245,7 +245,7 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-3" data-guidance="variable_costs_section">
                     Variable Costs <span className="text-red-500">*</span>
                     <TooltipIcon text={tooltips.variable_costs} />
                 </label>
