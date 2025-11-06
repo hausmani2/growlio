@@ -34,7 +34,7 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
                         className={`w-full h-11 rounded-lg text-sm ${
                             errors.posSystem ? 'border-red-500' : ''
                         }`}
-                        value={data?.posSystem || undefined}
+                        value={data?.posSystem && data.posSystem !== '' ? data.posSystem : undefined}
                         onChange={(value) => {
                             updateData('posSystem', value);
                             // Clear other input if switching away from "Other"

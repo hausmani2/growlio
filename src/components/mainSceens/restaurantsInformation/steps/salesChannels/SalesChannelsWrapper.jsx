@@ -103,16 +103,16 @@ const SalesChannelsWrapperContent = () => {
                 
                 const newState = {
                     ...prev,
-                    in_store: data.in_store || true,
-                    online: data.online || false,
-                    from_app: data.from_app || false,
-                    third_party: data.third_party || false,
+                    in_store: data.in_store !== undefined ? data.in_store : true,
+                    online: data.online !== undefined ? data.online : false,
+                    from_app: data.from_app !== undefined ? data.from_app : false,
+                    third_party: data.third_party !== undefined ? data.third_party : false,
                     providers: processedProviders,
-                    posSystem: data.pos_system || data.posSystem || '',
-                    posSystemOther: data.pos_system_other || data.posSystemOther || '',
-                    separateOnlineOrdering: data.separate_online_ordering || data.separateOnlineOrdering || false,
-                    posForEmployeeHours: data.pos_for_employee_hours || data.posForEmployeeHours || false,
-                    thirdPartyOrdersToPos: data.third_party_orders_to_pos || data.thirdPartyOrdersToPos || false,
+                    posSystem: data.pos_system !== undefined && data.pos_system !== null ? data.pos_system : (data.posSystem !== undefined && data.posSystem !== null ? data.posSystem : ''),
+                    posSystemOther: data.pos_system_other !== undefined && data.pos_system_other !== null ? data.pos_system_other : (data.posSystemOther !== undefined && data.posSystemOther !== null ? data.posSystemOther : ''),
+                    separateOnlineOrdering: data.separate_online_ordering !== undefined ? data.separate_online_ordering : (data.separateOnlineOrdering !== undefined ? data.separateOnlineOrdering : false),
+                    posForEmployeeHours: data.pos_for_employee_hours !== undefined ? data.pos_for_employee_hours : (data.posForEmployeeHours !== undefined ? data.posForEmployeeHours : false),
+                    thirdPartyOrdersToPos: data.third_party_orders_to_pos !== undefined ? data.third_party_orders_to_pos : (data.thirdPartyOrdersToPos !== undefined ? data.thirdPartyOrdersToPos : false),
                     selectedDays: selectedDays
                 };
                 return newState;

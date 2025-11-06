@@ -864,11 +864,16 @@ const createOnBoardingSlice = (set, get) => ({
                     // Handle Sales Channels data mapping
                     processedData = {
                         in_store: data.in_store !== undefined ? data.in_store : true,
-                        online: data.online || false,
-                        from_app: data.from_app || false,
-                        third_party: data.third_party || false,
+                        online: data.online !== undefined ? data.online : false,
+                        from_app: data.from_app !== undefined ? data.from_app : false,
+                        third_party: data.third_party !== undefined ? data.third_party : false,
                         providers: data.providers || [],
-                        restaurant_days: data.restaurant_days || []
+                        restaurant_days: data.restaurant_days || [],
+                        pos_system: data.pos_system || '',
+                        pos_system_other: data.pos_system_other || '',
+                        separate_online_ordering: data.separate_online_ordering !== undefined ? data.separate_online_ordering : false,
+                        pos_for_employee_hours: data.pos_for_employee_hours !== undefined ? data.pos_for_employee_hours : false,
+                        third_party_orders_to_pos: data.third_party_orders_to_pos !== undefined ? data.third_party_orders_to_pos : false
                     };
                 } else if (stepName === "Expense" && data) {
                     // Handle Expenses data mapping
