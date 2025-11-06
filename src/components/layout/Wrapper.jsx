@@ -117,12 +117,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/admin/tooltips'),
         },
-          {
-            key: 'faq',
-            icon: <FileTextOutlined />,
-            label: 'FAQ',
-            onClick: () => navigate('/dashboard/faq'),
-          },
+          // {
+          //   key: 'faq',
+          //   icon: <FileTextOutlined />,
+          //   label: 'FAQ',
+          //   onClick: () => navigate('/dashboard/faq'),
+          // },
       ],
     },
   ] : [];
