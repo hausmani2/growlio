@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/axiosInterceptors';
+import useStore from '../store/store';
 
 const GuidanceContext = createContext(null);
 
@@ -14,6 +15,7 @@ export const useGuidance = () => {
 
 export const GuidanceProvider = ({ children }) => {
   const location = useLocation();
+  const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
   const [hasSeenGuidance, setHasSeenGuidance] = useState(true); // Default to true to prevent showing until checked
   const [popups, setPopups] = useState([]);
   const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
@@ -37,6 +39,7 @@ export const GuidanceProvider = ({ children }) => {
       'onboarding/expense': 'onboarding_expense',
       'dashboard': 'dashboard',
       'dashboard/budget': 'budget',
+      'budget': 'budget',
       'dashboard/profit-loss': 'profit_loss',
       'dashboard/basic-information': 'basic_information',
       'dashboard/labor-information': 'labor_information',
@@ -48,6 +51,7 @@ export const GuidanceProvider = ({ children }) => {
       'dashboard/faq': 'faq',
       'admin/users': 'admin_users',
       'admin/tooltips': 'admin_tooltips',
+      'superadmin/guidance-popups': 'superadmin_guidance_popups',
     };
     
     return routeMap[path] || path.replace(/\//g, '_');
@@ -383,6 +387,56 @@ export const GuidanceProvider = ({ children }) => {
           is_active: true,
         },
       ],
+      'budget': [
+        {
+          id: 1,
+          page: 'budget',
+          key: 'labor_rate_confirmation_title',
+          title: 'Labor Rate Confirmation',
+          text: 'This modal appears when you add sales data for a new week. It helps you confirm your labor rate - you can use last week\'s rate or enter a new one. Accurate labor rates ensure better profit/loss analysis.',
+          is_active: true,
+        },
+        {
+          id: 2,
+          page: 'budget',
+          key: 'labor_rate_confirmation_message',
+          title: 'Confirm Your Labor Rate',
+          text: 'Review the labor rate information shown here. You can use last week\'s rate if it hasn\'t changed, or enter a new rate if your labor costs have changed.',
+          is_active: true,
+        },
+        {
+          id: 3,
+          page: 'budget',
+          key: 'labor_rate_use_last_week_button',
+          title: 'Use Last Week\'s Rate',
+          text: 'Click this button to use last week\'s labor rate. This will automatically fill in the labor rate field with the previous week\'s value.',
+          is_active: true,
+        },
+        {
+          id: 4,
+          page: 'budget',
+          key: 'add_sales_data_title',
+          title: 'Add Sales Data for Week',
+          text: 'This is where you enter your weekly sales data. Fill in the budgeted sales, actual sales, and other details for each day of the week.',
+          is_active: true,
+        },
+        {
+          id: 5,
+          page: 'budget',
+          key: 'daily_sales_data_section',
+          title: 'Daily Sales Data',
+          text: 'Enter your daily sales data here. For each day, you can set whether the restaurant is open or closed, enter budgeted sales, actual sales, and other metrics.',
+          is_active: true,
+        },
+        {
+          id: 6,
+          page: 'budget',
+          key: 'budget_dashboard_title',
+          title: 'Weekly Budgeted Dashboard',
+          text: 'This is your main budget dashboard. Here you can see your weekly budget, estimated profit or loss, and all your financial metrics. Use it to plan your week and track your performance.',
+          is_active: true,
+        },
+      ],
     };
 
     return staticPopups[pageName] || [];
@@ -547,6 +601,39 @@ export const GuidanceProvider = ({ children }) => {
     return !!element;
   }, []);
 
+  // Initialize guidance status on app load
+  useEffect(() => {
+    // Check guidance status once on app initialization
+    const initializeGuidanceStatus = async () => {
+      try {
+        const response = await apiGet('/authentication/user/guidance-status/');
+        const hasSeen = response.data?.has_seen_user_guidance ?? false;
+        
+        console.log('📊 Guidance status from API:', { hasSeen, isOnBoardingCompleted });
+        
+        // Simply use the API response - NO automatic marking
+        // The backend should handle marking existing users as having seen guidance
+        // API call to mark as seen ONLY happens when user completes/skips guidance
+        setHasSeenGuidance(hasSeen);
+      } catch (error) {
+        console.error('❌ Failed to initialize guidance status:', error);
+        // On error, default based on onboarding status
+        // Existing users (completed onboarding) should have has_seen_user_guidance = true in backend
+        // New users should have has_seen_user_guidance = false in backend
+        if (isOnBoardingCompleted) {
+          // Existing user - backend should have marked them, but if API fails, assume true
+          setHasSeenGuidance(true);
+        } else {
+          // New user - allow them to see guidance
+          setHasSeenGuidance(false);
+        }
+      }
+    };
+
+    // Check guidance status on app load
+    initializeGuidanceStatus();
+  }, []); // Run only once on mount
+
   // Initialize guidance on route change
   useEffect(() => {
     setLoading(true);
@@ -561,6 +648,19 @@ export const GuidanceProvider = ({ children }) => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // Listen for force show guidance event
+  useEffect(() => {
+    const handleForceShow = () => {
+      console.log('🚀 Force show guidance event received');
+      startGuidance(true);
+    };
+
+    window.addEventListener('forceShowGuidance', handleForceShow);
+    return () => {
+      window.removeEventListener('forceShowGuidance', handleForceShow);
+    };
+  }, [startGuidance]);
 
   const value = {
     hasSeenGuidance,

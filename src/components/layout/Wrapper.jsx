@@ -118,12 +118,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/admin/tooltips'),
         },
-        {
-          key: 'admin-guidance-popups',
-          icon: <BellOutlined />,
-          label: 'Guidance Popups',
-          onClick: () => navigate('/admin/guidance-popups'),
-        },
           {
             key: 'faq',
             icon: <FileTextOutlined />,
@@ -163,6 +157,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           icon: <BellOutlined />,
           label: 'Tooltips',
           onClick: () => navigate('/superadmin/tooltips'),
+        },
+        {
+          key: 'superadmin-guidance-popups',
+          icon: <BellOutlined />,
+          label: 'Guidance Popups',
+          onClick: () => navigate('/superadmin/guidance-popups'),
         },
       ],
     }

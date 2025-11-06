@@ -30,11 +30,11 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/profile': 'profile',
     '/admin/users': 'admin-users',
     '/admin/tooltips': 'admin-tooltips',
-    '/admin/guidance-popups': 'admin-guidance-popups',
     '/superadmin/dashboard': 'superadmin-dashboard',
     '/superadmin/users': 'superadmin-users',
     '/superadmin/user-management': 'superadmin-user-management',
     '/superadmin/tooltips': 'superadmin-tooltips',
+    '/superadmin/guidance-popups': 'superadmin-guidance-popups',
   };
   
   // Determine selected key based on current path

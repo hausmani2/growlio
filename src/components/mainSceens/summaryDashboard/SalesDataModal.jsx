@@ -846,7 +846,7 @@ const SalesDataModal = ({
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-guidance="add_sales_data_title">
           <CalculatorOutlined className="text-blue-500" />
           <span>Add Sales Data for Week {selectedWeekData?.weekNumber || ''}</span>
         </div>
@@ -1028,6 +1028,7 @@ const SalesDataModal = ({
         <Card 
           title="Daily Sales Data"
           size="small"
+          data-guidance="daily_sales_data_section"
           extra={
             <div className="text-xs text-gray-500 flex items-center gap-2">
               <span>💡 Toggle switches control restaurant open/closed status for each day</span>
@@ -1437,7 +1438,7 @@ const SalesDataModal = ({
  
       <Modal
         title={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-guidance="labor_rate_confirmation_title">
             <UserOutlined className="text-blue-500" />
             <span>Labor Rate Confirmation</span>
           </div>
@@ -1450,6 +1451,7 @@ const SalesDataModal = ({
               onClick={() => handleLaborRateConfirmationChoice('previous')}
               icon={<UserOutlined />}
               style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
+              data-guidance="labor_rate_use_last_week_button"
             >
               {previousWeekLaborRate ? 
                 `Use Last Week's Rate ($${previousWeekLaborRate.toFixed(2)})` :
@@ -1488,14 +1490,14 @@ const SalesDataModal = ({
             className="text-6xl text-blue-500 mb-4" 
             style={{ fontSize: '64px' }}
           />
-          <Title level={4} className="mb-4">
+          <Title level={4} className="mb-4" data-guidance="labor_rate_confirmation_message">
             {previousWeekLaborRate ? 
               `Last week's labor rate was $${previousWeekLaborRate.toFixed(2)}. Would you like to use that labor rate this week?` :
               'Would you like to update your average hourly labor rate?'
             }
           </Title>
           
-          <div className="bg-blue-50 p-4 rounded-lg mb-4">
+          <div className="bg-blue-50 p-4 rounded-lg mb-4" data-guidance="labor_rate_information_section">
             <Text strong className="text-blue-700 mb-2 block">
               {previousWeekLaborRate ? 
                 'Labor rate information:' :

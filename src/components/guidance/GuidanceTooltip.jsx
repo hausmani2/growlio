@@ -15,29 +15,46 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
     }
 
     console.log('🔍 GuidanceTooltip: Looking for element with key:', popup.key);
-    const element = document.querySelector(`[data-guidance="${popup.key}"]`);
-    if (!element) {
-      console.warn(`❌ Element with data-guidance="${popup.key}" not found on page`);
-      console.log('💡 Available data-guidance elements:', 
-        Array.from(document.querySelectorAll('[data-guidance]')).map(el => el.getAttribute('data-guidance'))
-      );
-      return;
-    }
-
-    console.log('✅ GuidanceTooltip: Found element:', element);
-
-    // Scroll element into view
-    element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-
-    // Wait for scroll to complete
-    setTimeout(() => {
-      const rect = element.getBoundingClientRect();
-      setElementRect(rect);
+    
+    // Try to find element with retry logic for dynamically rendered modals
+    let retryCount = 0;
+    const maxRetries = 10; // Try for up to 5 seconds (10 * 500ms)
+    
+    const findElement = () => {
+      const element = document.querySelector(`[data-guidance="${popup.key}"]`);
       
-      // Calculate popup position
-      const popupWidth = 380;
-      const popupHeight = 250; // Increased height to accommodate content
-      const spacing = 30;
+      if (element) {
+        console.log('✅ GuidanceTooltip: Found element:', element);
+        setupElement(element);
+        return;
+      }
+      
+      if (retryCount < maxRetries) {
+        retryCount++;
+        console.log(`⏳ GuidanceTooltip: Element not found, retrying... (${retryCount}/${maxRetries})`);
+        setTimeout(findElement, 500);
+      } else {
+        console.warn(`❌ Element with data-guidance="${popup.key}" not found after ${maxRetries} retries`);
+        console.log('💡 Available data-guidance elements:', 
+          Array.from(document.querySelectorAll('[data-guidance]')).map(el => el.getAttribute('data-guidance'))
+        );
+      }
+    };
+    
+    const setupElement = (element) => {
+      // Scroll element into view
+      element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+
+      // Wait for scroll to complete
+      setTimeout(() => {
+        const rect = element.getBoundingClientRect();
+        setElementRect(rect);
+        
+        // Calculate popup position
+        const popupWidth = 380;
+        const popupHeight = 250; // Increased height to accommodate content
+        const spacing = 30;
+        const padding = 20; // Padding from screen edges
       
       // For step navigation bar, center the popup above or below
       const isStepNavigation = popup.key === 'step_navigation_bar';
@@ -51,55 +68,75 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
         arrowSide = 'bottom'; // Arrow at bottom of popup pointing down
         
         // If popup would go off top, position below instead
-        if (top < 20) {
+        if (top < padding) {
           top = rect.bottom + spacing;
           arrowSide = 'top'; // Arrow at top of popup pointing up
         }
         
         // Ensure popup stays within viewport horizontally
-        if (left < 20) {
-          left = 20;
-        }
-        if (left + popupWidth > window.innerWidth - 20) {
-          left = window.innerWidth - popupWidth - 20;
-        }
+        left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
+        
+        // Ensure popup stays within viewport vertically
+        top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
         
         // Calculate arrow position (center horizontally)
         const arrowLeft = rect.left + (rect.width / 2) - left;
         setArrowPosition({ side: arrowSide, top: null, left: arrowLeft });
       } else {
         // For other elements, use side positioning
+        // Try right side first
         top = rect.top + (rect.height / 2) - (popupHeight / 2);
         left = rect.right + spacing;
         arrowSide = 'right';
         
-        // If popup would go off right edge, position on left
-        if (left + popupWidth > window.innerWidth - 20) {
+        // If popup would go off right edge, try left side
+        if (left + popupWidth > window.innerWidth - padding) {
           left = rect.left - popupWidth - spacing;
           arrowSide = 'left';
         }
         
-        // If popup would go off left edge, position on right
-        if (left < 20) {
+        // If popup would go off left edge, try right side again
+        if (left < padding) {
           left = rect.right + spacing;
           arrowSide = 'right';
         }
         
-        // Adjust vertical position if needed
-        if (top < 20) {
-          top = 20;
-        }
-        if (top + popupHeight > window.innerHeight - 20) {
-          top = window.innerHeight - popupHeight - 20;
+        // If still doesn't fit, try positioning above or below
+        if (left + popupWidth > window.innerWidth - padding || left < padding) {
+          // Position above
+          top = rect.top - popupHeight - spacing;
+          left = rect.left + (rect.width / 2) - (popupWidth / 2);
+          arrowSide = 'bottom';
+          
+          // If doesn't fit above, position below
+          if (top < padding) {
+            top = rect.bottom + spacing;
+            arrowSide = 'top';
+          }
         }
         
-        // Calculate arrow position (center of element relative to popup)
-        const arrowTop = rect.top + (rect.height / 2) - top;
-        setArrowPosition({ side: arrowSide, top: arrowTop, left: null });
+        // Ensure popup stays within viewport bounds
+        left = Math.max(padding, Math.min(left, window.innerWidth - popupWidth - padding));
+        top = Math.max(padding, Math.min(top, window.innerHeight - popupHeight - padding));
+        
+        // Calculate arrow position
+        if (arrowSide === 'left' || arrowSide === 'right') {
+          // Horizontal arrow (left or right)
+          const arrowTop = rect.top + (rect.height / 2) - top;
+          setArrowPosition({ side: arrowSide, top: arrowTop, left: null });
+        } else {
+          // Vertical arrow (top or bottom)
+          const arrowLeft = rect.left + (rect.width / 2) - left;
+          setArrowPosition({ side: arrowSide, top: null, left: arrowLeft });
+        }
       }
       
       setPosition({ top, left });
-    }, 300);
+      }, 300);
+    };
+    
+    // Start finding element
+    findElement();
   }, [popup]);
 
   if (!popup || !elementRect) {
