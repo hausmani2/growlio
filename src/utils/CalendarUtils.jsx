@@ -201,6 +201,7 @@ const CalendarUtils = ({
             <Option value="daily">Daily</Option>
             <Option value="week">Week</Option>
             <Option value="month">Month</Option>
+            {/* <Option value="annual">Annual</Option> */}
             <Option value="custom_month">Custom</Option>
           </Select>
         </div>

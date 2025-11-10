@@ -625,7 +625,7 @@ const SummaryDashboard = () => {
                   <span className="text-2xl">📊</span>
                 </div>
                 <h3 className="text-xl font-bold text-blue-800">
-                  Previous 3 Weeks Data Found
+                We Found Your Last 3 Weeks of Data
                 </h3>
               </div>
               <p className="text-blue-700 text-base leading-relaxed mb-4">
@@ -635,7 +635,7 @@ const SummaryDashboard = () => {
               <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically complete your sales budget for the week using your daily averages. You’ll still have full control to review and adjust any numbers afterward if needed.</p>
               
               <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
-                <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4>
+                {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
                
                   <li><span className="font-medium">Auto:</span> When you select Auto, Growlio uses your last 3 weeks of sales data by day of the week, averaging all your Mondays, all your Tuesdays, and so on. This trailing 3-week average gives you a more accurate daily sales trend and helps you plan labor and food costs with confidence.</li>
@@ -645,8 +645,8 @@ const SummaryDashboard = () => {
               </div>
               
               {weeklyAveragePopupData && (
-                <div className="bg-white rounded-lg p-4 border border-blue-200">
-                  <h4 className="font-semibold text-blue-800 mb-2"> It should read:</h4>
+                <div className="">
+                  <h4 className="font-semibold text-blue-800 "> It should read:</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {weeklyAveragePopupData.average_sales && (
                       <div>

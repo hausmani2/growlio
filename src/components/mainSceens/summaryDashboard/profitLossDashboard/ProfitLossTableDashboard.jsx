@@ -528,8 +528,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
 
-    // Group dates by week if monthly view
-    const groupedDates = viewMode === 'monthly' ? 
+    // Group dates by week if monthly or annual view
+    // const groupedDates = (viewMode === 'monthly' || viewMode === 'annual') ? 
+    const groupedDates = (viewMode === 'monthly') ? 
       tableData.reduce((groups, entry, index) => {
         // Use appropriate date field based on data format
         let dateField;
