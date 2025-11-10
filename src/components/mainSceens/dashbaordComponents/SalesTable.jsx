@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin } from 'antd';
-import { PlusOutlined, EditOutlined, DollarOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
+import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
@@ -125,6 +126,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
   const weeklyAverageModalShown = useRef(null);
   const [isAutoAverageLoading, setIsAutoAverageLoading] = useState(false);
+  
+  // Week warning modal states
+  const [showWeekWarningModal, setShowWeekWarningModal] = useState(false);
+  const [weekWarningData, setWeekWarningData] = useState(null);
+  const [pendingModalAction, setPendingModalAction] = useState(null); // Store the action to execute after warning
+  const [pendingActionType, setPendingActionType] = useState(null); // Store whether it's 'add' or 'edit'
 
   // Process dashboard data when it changes
   useEffect(() => {
@@ -623,102 +630,82 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
 
 
-  // Handle weekly data modal - Check for data first, then 3 previous weeks data
+  // Helper function to check week status and show warning if needed
+  const checkWeekStatusAndShowWarning = (weekStartDate, onConfirm, actionType = 'add') => {
+    if (!weekStartDate) {
+      message.warning('Please select a date first.');
+      return;
+    }
+    
+    const weekStatus = CalendarHelpers.getWeekStatus(weekStartDate);
+    
+    // If it's not the current week, show warning modal
+    if (!weekStatus.isCurrentWeek) {
+      setWeekWarningData({
+        isPastWeek: weekStatus.isPastWeek,
+        isFutureWeek: weekStatus.isFutureWeek,
+        weekStart: weekStatus.weekStart,
+        weekEnd: weekStatus.weekEnd,
+        currentWeekStart: weekStatus.currentWeekStart,
+        currentWeekEnd: weekStatus.currentWeekEnd,
+        daysDifference: weekStatus.daysDifference
+      });
+      setPendingModalAction(() => onConfirm);
+      setPendingActionType(actionType);
+      setShowWeekWarningModal(true);
+    } else {
+      // Current week - proceed directly
+      onConfirm();
+    }
+  };
+
+  // Handle weekly data modal - Directly open modal without checking for weekly average data
   const showAddWeeklyModal = async () => {
     if (!selectedDate) {
       message.warning('Please select a date first.');
       return;
     }
     
-    const weekStartDate = dayjs(selectedDate).startOf('week');
-    const startDate = weekStartDate.format('YYYY-MM-DD');
-    const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
-    const dateRangeKey = `${startDate}-${endDate}`;
+    const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
     
-    try {
-      // Step 1: Check if selected week has data
-      const weekHasData = !dataNotFound && !areAllValuesZero(weeklyData);
-      
-      if (weekHasData) {
-        // Week has data, directly open modal for editing (no weekly average modal)
-        setEditingWeek(null);
-        setIsEditMode(false);
-        setIsModalVisible(true);
-        return;
-      }
-      
-      // Step 2: Selected week has no data - check for 3 previous weeks data
-      // Only check if we haven't shown the modal for this date range
-      if (weeklyAverageModalShown.current !== dateRangeKey) {
-        try {
-          const weeklyAverageResponse = await checkWeeklyAverageData(null, startDate, endDate);
-          
-          // Check if API response indicates no previous week data found
-          // API response format: {"status":false,"message":"No previous week data found."}
-          const noPreviousData = weeklyAverageResponse && 
-                                weeklyAverageResponse.status === false && 
-                                weeklyAverageResponse.message === "No previous week data found.";
-          
-          if (noPreviousData) {
-            // Show message when no previous week data is found
-            message.info({
-              content: weeklyAverageResponse.message || 'No previous week data found. You can manually enter your sales data.',
-              duration: 4,
-            });
-            weeklyAverageModalShown.current = dateRangeKey;
-            // Open sales modal for manual entry
-            setEditingWeek(null);
-            setIsEditMode(false);
-            setIsModalVisible(true);
-            return;
-          }
-          
-          // Check if API response indicates 3 weeks data is available
-          // API response format: {"status":true,"message":"Found 3 previous week(s) of data."}
-          const hasThreeWeeks = weeklyAverageResponse && 
-                               weeklyAverageResponse.status === true && 
-                               weeklyAverageResponse.message === "Found 3 previous week(s) of data.";
-          
-          // Only show modal if 3 previous weeks data exists
-          if (hasThreeWeeks) {
-            weeklyAverageModalShown.current = dateRangeKey;
-            setWeeklyAveragePopupData(weeklyAverageResponse);
-            setIsWeeklyAverageDataPopupVisible(true);
-            return; // Don't open sales modal, let user choose Auto/Manual
-          } else {
-            // No 3 previous weeks data - don't show modal, directly open sales modal
-            weeklyAverageModalShown.current = dateRangeKey;
-            setEditingWeek(null);
-            setIsEditMode(false);
-            setIsModalVisible(true);
-          }
-        } catch (weeklyError) {
-          // If weekly average check fails, proceed to open sales modal
-          console.error('Weekly average check failed:', weeklyError);
-          weeklyAverageModalShown.current = dateRangeKey;
-          setEditingWeek(null);
-          setIsEditMode(false);
-          setIsModalVisible(true);
-        }
-      } else {
-        // Already checked for this date range - directly open sales modal
-        setEditingWeek(null);
-        setIsEditMode(false);
-        setIsModalVisible(true);
-      }
-    } catch (error) {
-      console.error('Error checking weekly average data:', error);
-      // On error, directly open sales modal
+    // Check week status and show warning if needed
+    checkWeekStatusAndShowWarning(weekStartDate, () => {
       setEditingWeek(null);
       setIsEditMode(false);
       setIsModalVisible(true);
-    }
+    });
   };
 
   const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsEditMode(true);
-    setIsModalVisible(true);
+    // Get week start date from weekData or selectedDate
+    const weekStartDate = weekData?.startDate || 
+                         (weekDays.length > 0 ? weekDays[0].date : selectedDate);
+    
+    // Check week status and show warning if needed
+    checkWeekStatusAndShowWarning(weekStartDate, () => {
+      setEditingWeek(weekData);
+      setIsEditMode(true);
+      setIsModalVisible(true);
+    }, 'edit');
+  };
+  
+  // Handle week warning modal confirmation
+  const handleWeekWarningConfirm = () => {
+    setShowWeekWarningModal(false);
+    if (pendingModalAction) {
+      pendingModalAction();
+      setPendingModalAction(null);
+    }
+    setPendingActionType(null);
+    setWeekWarningData(null);
+  };
+  
+  // Handle week warning modal cancellation
+  const handleWeekWarningCancel = () => {
+    setShowWeekWarningModal(false);
+    setPendingModalAction(null);
+    setPendingActionType(null);
+    setWeekWarningData(null);
   };
 
   const closeModal = () => {
@@ -2330,6 +2317,104 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* Week Warning Modal - Show when trying to add/edit data for previous or next week */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <CalendarOutlined className="text-blue-500" />
+            <span>Week Selection Confirmation</span>
+          </div>
+        }
+        open={showWeekWarningModal}
+        onCancel={handleWeekWarningCancel}
+        footer={[
+          <Button key="cancel" onClick={handleWeekWarningCancel}>
+            Cancel
+          </Button>,
+          <Button 
+            key="proceed" 
+            type="primary" 
+            onClick={handleWeekWarningConfirm}
+            icon={<CalendarOutlined />}
+            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+          >
+            Yes, Proceed
+          </Button>
+        ]}
+        width={600}
+        destroyOnClose={true}
+        maskClosable={false}
+        zIndex={10001}
+        getContainer={false}
+        maskStyle={{ zIndex: 10000 }}
+        style={{ zIndex: 10001 }}
+      >
+        {weekWarningData && (
+          <div className="text-center">
+            <WarningOutlined 
+              className="text-6xl mb-4" 
+              style={{ fontSize: '64px', color: weekWarningData.isPastWeek ? '#ff4d4f' : '#ff4d4f' }}
+            />
+            <Title level={4} className="mb-4">
+              {weekWarningData.isPastWeek 
+                ? `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Past Week` 
+                : `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Future Week`}
+            </Title>
+            
+            <div className={`p-4 rounded-lg mb-4 ${
+              weekWarningData.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <Text strong className={`mb-2 block ${
+                weekWarningData.isPastWeek ? 'text-red-700' : 'text-red-700'
+              }`}>
+                Week Information:
+              </Text>
+              <div className={`text-sm space-y-1 ${
+                weekWarningData.isPastWeek ? 'text-red-600' : 'text-red-600'
+              }`}>
+                <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
+                {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
+                  <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
+                )}
+                <p>• Week difference: <strong>{Math.abs(weekWarningData.daysDifference || 0)} days {weekWarningData.isPastWeek ? 'ago' : 'ahead'}</strong></p>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <Text strong className="text-blue-700 mb-2 block">
+                {weekWarningData.isPastWeek ? 'Past Week Warning:' : 'Future Week Warning:'}
+              </Text>
+              <div className="text-sm text-blue-600 space-y-1">
+                {weekWarningData.isPastWeek ? (
+                  <>
+                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a week that has already passed</p>
+                    <p>• This may affect historical reporting and analysis</p>
+                    <p>• Make sure you have the correct week selected</p>
+                    <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
+                  </>
+                ) : (
+                  <>
+                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a future week</p>
+                    <p>• This is typically used for planning and forecasting</p>
+                    <p>• Make sure you have the correct week selected</p>
+                    <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              <p className="mb-2">
+                <strong>Proceed:</strong> Continue {pendingActionType === 'edit' ? 'editing' : 'adding'} data to this week
+              </p>
+              <p>
+                <strong>Cancel:</strong> Close this dialog and select a different week
+              </p>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
