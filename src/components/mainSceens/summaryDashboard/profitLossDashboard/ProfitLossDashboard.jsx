@@ -40,16 +40,23 @@ const ProfitLossDashboard = () => {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(null);
   
-  // Print functionality state
+  // Local states - declare groupBy before useEffect that uses it
+  const [loading, setLoading] = useState(false);
+  const [groupBy, setGroupBy] = useState('daily');
 
-  // Initialize with current week
+  // Initialize with current week or current year based on groupBy
   useEffect(() => {
     if (calendarDateRange.length === 0) {
-      const startOfWeek = dayjs().startOf('week');
-      const endOfWeek = dayjs().endOf('week');
-      setCalendarDateRange([startOfWeek, endOfWeek]);
+      if (groupBy === 'annual') {
+        const currentYear = dayjs().year();
+        setCalendarDateRange([dayjs().year(currentYear).startOf('year'), dayjs().year(currentYear).endOf('year')]);
+      } else {
+        const startOfWeek = dayjs().startOf('week');
+        const endOfWeek = dayjs().endOf('week');
+        setCalendarDateRange([startOfWeek, endOfWeek]);
+      }
     }
-  }, [calendarDateRange.length]);
+  }, [calendarDateRange.length, groupBy]);
 
   // Calendar functions
   const handleCalendarDateChange = useCallback((dates) => {
@@ -65,10 +72,6 @@ const ProfitLossDashboard = () => {
     setCalendarError(null);
     return newRange;
   }, []);
-
-  // Local states
-  const [loading, setLoading] = useState(false);
-  const [groupBy, setGroupBy] = useState('daily');
 
   // Use refs to prevent infinite loops
   const isInitialized = useRef(false);
@@ -86,7 +89,15 @@ const ProfitLossDashboard = () => {
 
     setLoading(true);
     try {
-      await fetchDashboardSummary(startDate, endDate, groupBy);
+      // For annual mode, pass dayjs objects directly (they will be converted to years in the store)
+      // For other modes, pass formatted date strings
+      if (groupBy === 'annual') {
+        await fetchDashboardSummary(startDate, endDate, groupBy);
+      } else {
+        const startDateStr = typeof startDate === 'string' ? startDate : startDate.format('YYYY-MM-DD');
+        const endDateStr = typeof endDate === 'string' ? endDate : endDate.format('YYYY-MM-DD');
+        await fetchDashboardSummary(startDateStr, endDateStr, groupBy);
+      }
     } catch (error) {
       console.error('Error in fetchDashboardSummary:', error);
     } finally {
@@ -96,27 +107,56 @@ const ProfitLossDashboard = () => {
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
-    
     // Update the calendar state first
     handleCalendarDateChange(dates);
     
-    if (dates && dates.length === 2) {
-      const startDate = dates[0].format('YYYY-MM-DD');
-      const endDate = dates[1].format('YYYY-MM-DD');
-      fetchSummaryData(startDate, endDate, groupBy);
+    // Only trigger API call if we have valid dates
+    if (dates && dates.length === 2 && dates[0] && dates[1]) {
+      // For annual mode, pass dayjs objects directly
+      // For other modes, format as date strings
+      if (groupBy === 'annual') {
+        // Ensure dates are dayjs objects with proper year boundaries
+        const startYear = dates[0].startOf('year');
+        const endYear = dates[1].endOf('year');
+        fetchSummaryData(startYear, endYear, groupBy);
+      } else {
+        const startDate = dates[0].format('YYYY-MM-DD');
+        const endDate = dates[1].format('YYYY-MM-DD');
+        fetchSummaryData(startDate, endDate, groupBy);
+      }
     }
   }, [handleCalendarDateChange, fetchSummaryData, groupBy]);
 
   // Handle group by selection
   const handleGroupByChange = useCallback((groupByValue) => {
+    const previousGroupBy = groupBy;
     setGroupBy(groupByValue);
-    // Refetch data with new group by if we have a date range
-    if (calendarDateRange && calendarDateRange.length === 2) {
-      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
-      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+    
+    // When switching to annual mode, set date range to current year and trigger API call
+    if (groupByValue === 'annual') {
+      const currentYear = dayjs().year();
+      const newRange = [dayjs().year(currentYear).startOf('year'), dayjs().year(currentYear).endOf('year')];
+      setCalendarDateRange(newRange);
+      // Trigger API call with year values
+      fetchSummaryData(newRange[0], newRange[1], groupByValue);
+    } else if (previousGroupBy === 'annual') {
+      // Switching from annual to another mode
+      const startOfWeek = dayjs().startOf('week');
+      const endOfWeek = dayjs().endOf('week');
+      const newRange = [startOfWeek, endOfWeek];
+      setCalendarDateRange(newRange);
+      const startDate = newRange[0].format('YYYY-MM-DD');
+      const endDate = newRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupByValue);
+    } else {
+      // Same mode type, just refetch with current date range
+      if (calendarDateRange && calendarDateRange.length === 2) {
+        const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+        const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+        fetchSummaryData(startDate, endDate, groupByValue);
+      }
     }
-  }, [calendarDateRange, fetchSummaryData]);
+  }, [calendarDateRange, fetchSummaryData, groupBy]);
 
   // Print handler - directly print report only
   const handlePrint = useCallback(() => {
@@ -131,11 +171,17 @@ const ProfitLossDashboard = () => {
     if (isInitialized.current) return;
     isInitialized.current = true;
     
-    // Fetch initial data for current week
+    // Fetch initial data for current week or year
     if (calendarDateRange && calendarDateRange.length === 2) {
-      const startDate = calendarDateRange[0].format('YYYY-MM-DD');
-      const endDate = calendarDateRange[1].format('YYYY-MM-DD');
-      fetchSummaryData(startDate, endDate, groupBy);
+      // For annual mode, pass dayjs objects directly
+      // For other modes, format as date strings
+      if (groupBy === 'annual') {
+        fetchSummaryData(calendarDateRange[0], calendarDateRange[1], groupBy);
+      } else {
+        const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+        const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+        fetchSummaryData(startDate, endDate, groupBy);
+      }
     }
   }, [calendarDateRange, groupBy, fetchSummaryData]);
 

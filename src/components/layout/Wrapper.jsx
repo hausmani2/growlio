@@ -99,33 +99,33 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   
 
   // Show Admin menu only when user is admin, not superadmin
-  const adminMenu = (isAdmin && !isSuperAdmin) ? [
-    {
-      key: 'admin',
-      icon: <SettingOutlined />,
-      label: 'Admin',
-      children: [
-        {
-          key: 'admin-users',
-          icon: <UserOutlined />,
-          label: 'Users',
-          onClick: () => navigate('/admin/users'),
-        },
-        {
-          key: 'admin-tooltips',
-          icon: <InfoCircleOutlined />,
-          label: 'Tooltips',
-          onClick: () => navigate('/admin/tooltips'),
-        },
-          // {
-          //   key: 'faq',
-          //   icon: <FileTextOutlined />,
-          //   label: 'FAQ',
-          //   onClick: () => navigate('/dashboard/faq'),
-          // },
-      ],
-    },
-  ] : [];
+  // const adminMenu = (isAdmin && !isSuperAdmin) ? [
+  //   {
+  //     key: 'admin',
+  //     icon: <SettingOutlined />,
+  //     label: 'Admin',
+  //     children: [
+  //     //   {
+  //     //     key: 'admin-users',
+  //     //     icon: <UserOutlined />,
+  //     //     label: 'Users',
+  //     //     onClick: () => navigate('/admin/users'),
+  //     //   },
+  //     //   {
+  //     //     key: 'admin-tooltips',
+  //     //     icon: <InfoCircleOutlined />,
+  //     //     label: 'Tooltips',
+  //     //     onClick: () => navigate('/admin/tooltips'),
+  //     //   },
+  //         // {
+  //         //   key: 'faq',
+  //         //   icon: <FileTextOutlined />,
+  //         //   label: 'FAQ',
+  //         //   onClick: () => navigate('/dashboard/faq'),
+  //         // },
+  //     ],
+  //   },
+  // ] : [];
 
   const superAdminMenu = (isSuperAdmin && !impersonating) ? [
     {
@@ -181,7 +181,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const showUserMenus = !isSuperAdmin || impersonating;
   const menuItems = [
     ...(showUserMenus ? userMenus : []),
-    ...adminMenu,
+    // ...adminMenu,
     ...superAdminMenu,
     ...settingsMenu,
   ];

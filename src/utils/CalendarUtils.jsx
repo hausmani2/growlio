@@ -18,6 +18,55 @@ const { Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
+// Year Range Picker component for annual mode
+const YearRangePicker = ({ value, onChange, disabled, loading }) => {
+  const handleYearChange = (dates) => {
+    if (dates && dates.length === 2 && dates[0] && dates[1]) {
+      // Convert to dayjs objects for consistency
+      // dates[0] and dates[1] are dayjs objects from the year picker
+      const startYear = dates[0].startOf('year');
+      const endYear = dates[1].endOf('year');
+      // Always call onChange to trigger API call
+      onChange?.([startYear, endYear]);
+    } else if (dates === null) {
+      // Handle clear case
+      onChange?.(null);
+    }
+  };
+
+  // Convert dayjs values to year format for display
+  // The RangePicker with picker="year" expects dayjs objects
+  const yearValues = value && value.length === 2 && value[0] && value[1]
+    ? [value[0], value[1]]
+    : null;
+
+  return (
+    <RangePicker
+      value={yearValues}
+      onChange={handleYearChange}
+      picker="year"
+      format="YYYY"
+      placeholder={['Start Year', 'End Year']}
+      className="w-full"
+      disabled={disabled || loading}
+      style={{
+        borderRadius: '6px',
+        width: 'auto',
+        minWidth: '280px',
+        height: '40px',
+        cursor: 'pointer'
+      }}
+      allowClear={false}
+      size="middle"
+      separator=" to "
+      inputReadOnly={true}
+      popupStyle={{ zIndex: 1000 }}
+      getPopupContainer={(trigger) => trigger.parentNode}
+      disabledDate={() => false}
+    />
+  );
+};
+
 /**
  * Simple Calendar Component with Date Range Picker
  * 
@@ -53,16 +102,29 @@ const CalendarUtils = ({
   // Use selectedDates directly instead of internal state
   const displayDates = selectedDates && selectedDates.length === 2 ? selectedDates : null;
   
-  
-  // Auto-select current week if no dates are provided
+  // For annual mode, auto-select current year if no dates are provided
+  // Only run this when groupBy changes to ensure proper initialization
   useEffect(() => {
-    if (!selectedDates || selectedDates.length !== 2) {
-      const currentWeekStart = dayjs().startOf('week');
-      const currentWeekEnd = dayjs().endOf('week');
-      const newDates = [currentWeekStart, currentWeekEnd];
-      onDateChange?.(newDates);
+    // Only auto-select if we don't have valid dates
+    const hasValidDates = selectedDates && selectedDates.length === 2 && selectedDates[0] && selectedDates[1];
+    
+    if (groupBy === 'annual') {
+      if (!hasValidDates) {
+        const currentYear = dayjs().year();
+        const newDates = [dayjs().year(currentYear).startOf('year'), dayjs().year(currentYear).endOf('year')];
+        onDateChange?.(newDates);
+      }
+    } else {
+      // Auto-select current week if no dates are provided (for non-annual modes)
+      if (!hasValidDates) {
+        const currentWeekStart = dayjs().startOf('week');
+        const currentWeekEnd = dayjs().endOf('week');
+        const newDates = [currentWeekStart, currentWeekEnd];
+        onDateChange?.(newDates);
+      }
     }
-  }, [selectedDates, onDateChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupBy]); // Only depend on groupBy to avoid infinite loops
 
   // Handle date range change
   const handleDateChange = (dates) => {
@@ -123,7 +185,16 @@ const CalendarUtils = ({
   return (
     <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
       <div className="flex items-center gap-3">
-        {/* Date Range Picker */}
+        {/* Year Range Picker for Annual Mode */}
+        {groupBy === 'annual' ? (
+          <YearRangePicker
+            value={displayDates}
+            onChange={handleDateChange}
+            disabled={disabled}
+            loading={loading}
+          />
+        ) : (
+          /* Date Range Picker for other modes */
           <RangePicker
             value={displayDates}
             onChange={handleDateChange}
@@ -184,6 +255,7 @@ const CalendarUtils = ({
               );
             }}
           />
+        )}
 
         {/* Group By Selector */}
         <div className="w-24">
@@ -201,7 +273,7 @@ const CalendarUtils = ({
             <Option value="daily">Daily</Option>
             <Option value="week">Week</Option>
             <Option value="month">Month</Option>
-            {/* <Option value="annual">Annual</Option> */}
+            <Option value="annual">Annual</Option>
             <Option value="custom_month">Custom</Option>
           </Select>
         </div>
