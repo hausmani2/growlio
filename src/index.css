@@ -408,6 +408,39 @@ body {
   /* Force table to be visible and properly positioned */
   .print-container table {
     display: table !important;
+  }
+}
+
+/* Thin Scrollbar Styles */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+  transition: background 0.2s ease;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox thin scrollbar */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+@media print {
+  .print-container table {
+    display: table !important;
     visibility: visible !important;
     opacity: 1 !important;
   }

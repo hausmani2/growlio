@@ -617,7 +617,7 @@ const SummaryDashboard = () => {
         style={{ zIndex: 10000 }}
         className="weekly-average-modal-top"
       >
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-md p-6 mb-4">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-md p-4 mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
@@ -643,38 +643,6 @@ const SummaryDashboard = () => {
                   <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
                 </ul>
               </div>
-              
-              {weeklyAveragePopupData && (
-                <div className="">
-                  <h4 className="font-semibold text-blue-800 "> It should read:</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {weeklyAveragePopupData.average_sales && (
-                      <div>
-                        <span className="font-medium">Average Sales:</span>
-                        <span className="ml-2 text-green-600">${weeklyAveragePopupData.average_sales}</span>
-                      </div>
-                    )}
-                    {weeklyAveragePopupData.average_labor && (
-                      <div>
-                        <span className="font-medium">Average Labor:</span>
-                        <span className="ml-2 text-orange-600">${weeklyAveragePopupData.average_labor}</span>
-                      </div>
-                    )}
-                    {weeklyAveragePopupData.average_cogs && (
-                      <div>
-                        <span className="font-medium">Average COGS:</span>
-                        <span className="ml-2 text-red-600">${weeklyAveragePopupData.average_cogs}</span>
-                      </div>
-                    )}
-                    {weeklyAveragePopupData.weeks_count && (
-                      <div>
-                        <span className="font-medium">Weeks Available:</span>
-                        <span className="ml-2 text-blue-600">{weeklyAveragePopupData.weeks_count}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

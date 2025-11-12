@@ -88,14 +88,22 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
                                     Do you use a separate online ordering platform from your POS system?
                                 </span>
                             </div>
-                            <ToggleSwitch
-                                isOn={data?.separateOnlineOrdering ?? false}
-                                setIsOn={() => {
-                                    const currentValue = data?.separateOnlineOrdering ?? false;
-                                    updateData('separateOnlineOrdering', !currentValue);
-                                }}
-                                size="large"
-                            />
+                            <div className="flex items-center gap-3">
+                                <span className={`text-sm font-medium ${data?.separateOnlineOrdering ? 'text-gray-400' : 'text-gray-700'}`}>
+                                    No
+                                </span>
+                                <ToggleSwitch
+                                    isOn={data?.separateOnlineOrdering ?? false}
+                                    setIsOn={() => {
+                                        const currentValue = data?.separateOnlineOrdering ?? false;
+                                        updateData('separateOnlineOrdering', !currentValue);
+                                    }}
+                                    size="large"
+                                />
+                                <span className={`text-sm font-medium ${data?.separateOnlineOrdering ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    Yes
+                                </span>
+                            </div>
                         </div>
 
                         {/* Question 2: POS for tracking employee hours */}
@@ -111,14 +119,22 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
                                     Is your POS also used for tracking employee hours for payroll?
                                 </span>
                             </div>
-                            <ToggleSwitch
-                                isOn={data?.posForEmployeeHours ?? false}
-                                setIsOn={() => {
-                                    const currentValue = data?.posForEmployeeHours ?? false;
-                                    updateData('posForEmployeeHours', !currentValue);
-                                }}
-                                size="large"
-                            />
+                            <div className="flex items-center gap-3">
+                                <span className={`text-sm font-medium ${data?.posForEmployeeHours ? 'text-gray-400' : 'text-gray-700'}`}>
+                                    No
+                                </span>
+                                <ToggleSwitch
+                                    isOn={data?.posForEmployeeHours ?? false}
+                                    setIsOn={() => {
+                                        const currentValue = data?.posForEmployeeHours ?? false;
+                                        updateData('posForEmployeeHours', !currentValue);
+                                    }}
+                                    size="large"
+                                />
+                                <span className={`text-sm font-medium ${data?.posForEmployeeHours ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    Yes
+                                </span>
+                            </div>
                         </div>
 
                         {/* Question 3: Third-party delivery orders go directly to POS */}
@@ -134,14 +150,22 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
                                     Do your third-party delivery orders (like Uber Eats or DoorDash) go directly into your POS?
                                 </span>
                             </div>
-                            <ToggleSwitch
-                                isOn={data?.thirdPartyOrdersToPos ?? false}
-                                setIsOn={() => {
-                                    const currentValue = data?.thirdPartyOrdersToPos ?? false;
-                                    updateData('thirdPartyOrdersToPos', !currentValue);
-                                }}
-                                size="large"
-                            />
+                            <div className="flex items-center gap-3">
+                                <span className={`text-sm font-medium ${data?.thirdPartyOrdersToPos ? 'text-gray-400' : 'text-gray-700'}`}>
+                                    No
+                                </span>
+                                <ToggleSwitch
+                                    isOn={data?.thirdPartyOrdersToPos ?? false}
+                                    setIsOn={() => {
+                                        const currentValue = data?.thirdPartyOrdersToPos ?? false;
+                                        updateData('thirdPartyOrdersToPos', !currentValue);
+                                    }}
+                                    size="large"
+                                />
+                                <span className={`text-sm font-medium ${data?.thirdPartyOrdersToPos ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    Yes
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

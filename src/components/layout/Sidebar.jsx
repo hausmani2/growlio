@@ -26,14 +26,16 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/expense': 'expense',
     '/dashboard/support': 'support',
-    '/dashboard/faq': 'faq',
     '/dashboard/profile': 'profile',
+    '/dashboard/faq': 'faq',
+    '/dashboard/chat': 'chat',
     '/admin/users': 'admin-users',
     '/admin/tooltips': 'admin-tooltips',
     '/superadmin/dashboard': 'superadmin-dashboard',
     '/superadmin/users': 'superadmin-users',
     '/superadmin/user-management': 'superadmin-user-management',
     '/superadmin/tooltips': 'superadmin-tooltips',
+    '/superadmin/faq': 'superadmin-faq',
   };
   
   // Determine selected key based on current path
@@ -207,7 +209,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
         } ${collapsed ? 'lg:!w-16' : 'lg:!w-64'} border-r border-gray-200`}
       >
         {/* Header - Improved styling */}
-        <div className="flex items-center justify-between p-3 px-6 border-b border-gray-100 bg-white">
+        <div className="flex items-center justify-between p-3 px-6 border-b border-gray-100 bg-white h-[60px]">
           <span className={`text-lg font-semibold text-gray-800 transition-all duration-300 ${collapsed ? 'lg:hidden' : 'block'}`}>
             GROWLIO
           </span>

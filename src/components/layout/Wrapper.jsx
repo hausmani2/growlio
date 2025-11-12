@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -95,6 +95,25 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
     },
+    {
+      key: 'leo-ai',
+      icon: <FileTextOutlined />,
+      label: 'Leo AI',
+      children: [
+        {
+          key: 'faq',
+          icon: <FileTextOutlined />,
+          label: 'FAQ',
+          onClick: () => navigate('/dashboard/faq'),
+        },
+        {
+          key: 'chat',
+          icon: <MessageOutlined />,
+          label: 'Chat Assistant',
+          onClick: () => navigate('/dashboard/chat'),
+        }
+      ],
+    },
   ];
   
 
@@ -117,12 +136,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   //     //     label: 'Tooltips',
   //     //     onClick: () => navigate('/admin/tooltips'),
   //     //   },
-  //         // {
-  //         //   key: 'faq',
-  //         //   icon: <FileTextOutlined />,
-  //         //   label: 'FAQ',
-  //         //   onClick: () => navigate('/dashboard/faq'),
-  //         // },
+  //       
   //     ],
   //   },
   // ] : [];
@@ -156,7 +170,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           icon: <BellOutlined />,
           label: 'Tooltips',
           onClick: () => navigate('/superadmin/tooltips'),
-        },
+        }
       ],
     }
   ] : [];
