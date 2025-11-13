@@ -171,27 +171,28 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/superadmin/tooltips'),
         },
-        {
-          key: 'leo-ai',
-          icon: <FileTextOutlined />,
-          label: 'Leo AI',
-          children: [
-            {
-              key: 'faq',
-              icon: <FileTextOutlined />,
-              label: 'FAQ',
-              onClick: () => navigate('/superadmin/faq'),
-            },
-            {
-              key: 'superadmin-chat',
-              icon: <MessageOutlined />,
-              label: 'Chat Assistant',
-              onClick: () => navigate('/superadmin/superadmin-chat'),
-            }
-          ],
-        },
+       
       ],
-    }
+    },
+    {
+      key: 'leo-ai',
+      icon: <FileTextOutlined />,
+      label: 'Leo AI',
+      children: [
+        {
+          key: 'superadmin-faq',
+          icon: <FileTextOutlined />,
+          label: 'FAQ',
+          onClick: () => navigate('/superadmin/faq'),
+        },
+          {
+          key: 'superadmin-chat',
+          icon: <MessageOutlined />,
+          label: 'Chat Assistant',
+          onClick: () => navigate('/superadmin/superadmin-chat'),
+        }
+      ],
+    },
   ] : [];
 
   const settingsMenu = [
