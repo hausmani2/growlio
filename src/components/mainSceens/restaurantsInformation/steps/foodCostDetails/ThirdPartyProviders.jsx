@@ -18,7 +18,6 @@
 // //         data.useHiredPartyDelivery !== undefined ? data.useHiredPartyDelivery : 'false'
 // //     );
 
-// //     console.log('🔍 Debug - ThirdPartyProviders - Initial data:', data);
 // //     console.log('🔍 Debug - ThirdPartyProviders - useHiredPartyDelivery state:', useHiredPartyDelivery);
 
 // //     // Create percentage options from 1 to 50
