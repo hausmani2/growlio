@@ -14,7 +14,10 @@ import {
 import { 
   ShoppingOutlined,
   UserOutlined,
-  TrophyOutlined
+  TrophyOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ShopOutlined
 } from '@ant-design/icons';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 
@@ -30,6 +33,7 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
   const restaurantTypes = data.restaurant_types || [];
   const menuTypes = data.menu_types || [];
   const locationsPerUser = data.locations_per_user || [];
+  const posStats = data.pos_stats || {};
   
   // Calculate totals
   const totalLocations = locationsPerUser.reduce((sum, user) => sum + (user.total_locations || 0), 0);
@@ -263,8 +267,190 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
         </Col>
       </Row>
 
-      {/* Geographic Distribution */
-      }
+      {/* POS Statistics Section */}
+      {posStats && Object.keys(posStats).length > 0 && (
+        <Card 
+          title={
+            <div className="flex items-center gap-2">
+              <ShopOutlined className="text-orange-500" />
+              <span>POS System Statistics</span>
+            </div>
+          }
+          className="shadow-md"
+        >
+          <Row gutter={[16, 16]}>
+            {/* Third-party Orders to POS */}
+            {posStats.third_party_orders_to_pos && (
+              <Col xs={24} md={8}>
+                <Card 
+                  className="h-full hover:shadow-lg transition-shadow"
+                  style={{ borderLeft: '4px solid #3b82f6' }}
+                  size="small"
+                >
+                  <div className="mb-3">
+                    <Text strong className="text-base block mb-2">
+                      Third-Party Delivery Integration
+                    </Text>
+                    <Text type="secondary" className="text-sm">
+                      Do your third-party delivery orders (like Uber Eats or DoorDash) go directly into your POS?
+                    </Text>
+                  </div>
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircleOutlined className="text-green-500" />
+                        <Text>Yes</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-green-600">
+                          {posStats.third_party_orders_to_pos.true || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.third_party_orders_to_pos.true || 0,
+                            (posStats.third_party_orders_to_pos.true || 0) + (posStats.third_party_orders_to_pos.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CloseCircleOutlined className="text-red-500" />
+                        <Text>No</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-red-600">
+                          {posStats.third_party_orders_to_pos.false || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.third_party_orders_to_pos.false || 0,
+                            (posStats.third_party_orders_to_pos.true || 0) + (posStats.third_party_orders_to_pos.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            )}
+
+            {/* Separate Online Ordering */}
+            {posStats.separate_online_ordering && (
+              <Col xs={24} md={8}>
+                <Card 
+                  className="h-full hover:shadow-lg transition-shadow"
+                  style={{ borderLeft: '4px solid #a855f7' }}
+                  size="small"
+                >
+                  <div className="mb-3">
+                    <Text strong className="text-base block mb-2">
+                      Online Ordering Platform
+                    </Text>
+                    <Text type="secondary" className="text-sm">
+                      Do you use a separate online ordering platform from your POS system?
+                    </Text>
+                  </div>
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircleOutlined className="text-green-500" />
+                        <Text>Yes</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-green-600">
+                          {posStats.separate_online_ordering.true || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.separate_online_ordering.true || 0,
+                            (posStats.separate_online_ordering.true || 0) + (posStats.separate_online_ordering.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CloseCircleOutlined className="text-red-500" />
+                        <Text>No</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-red-600">
+                          {posStats.separate_online_ordering.false || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.separate_online_ordering.false || 0,
+                            (posStats.separate_online_ordering.true || 0) + (posStats.separate_online_ordering.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            )}
+
+            {/* POS for Employee Hours */}
+            {posStats.pos_for_employee_hours && (
+              <Col xs={24} md={8}>
+                <Card 
+                  className="h-full hover:shadow-lg transition-shadow"
+                  style={{ borderLeft: '4px solid #f97316' }}
+                  size="small"
+                >
+                  <div className="mb-3">
+                    <Text strong className="text-base block mb-2">
+                      Employee Hours Tracking
+                    </Text>
+                    <Text type="secondary" className="text-sm">
+                      Is your POS also used for tracking employee hours for payroll?
+                    </Text>
+                  </div>
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircleOutlined className="text-green-500" />
+                        <Text>Yes</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-green-600">
+                          {posStats.pos_for_employee_hours.true || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.pos_for_employee_hours.true || 0,
+                            (posStats.pos_for_employee_hours.true || 0) + (posStats.pos_for_employee_hours.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CloseCircleOutlined className="text-red-500" />
+                        <Text>No</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text strong className="text-lg text-red-600">
+                          {posStats.pos_for_employee_hours.false || 0}
+                        </Text>
+                        <Text type="secondary" className="ml-2 text-xs">
+                          ({percentFormatter(
+                            posStats.pos_for_employee_hours.false || 0,
+                            (posStats.pos_for_employee_hours.true || 0) + (posStats.pos_for_employee_hours.false || 0)
+                          )})
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Col>
+            )}
+          </Row>
+        </Card>
+      )}
+
+      {/* Geographic Distribution */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Users by Country (Top 8)" size="small">

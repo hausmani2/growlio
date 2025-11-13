@@ -275,7 +275,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       {/* Floating Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-12 z-50 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out text-white ${
+        className={`fixed bottom-6 right-12 z-50 w-10 h-10 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out text-white opacity-50 hover:opacity-100 ${
           isOpen
             ? 'bg-gray-600 hover:bg-gray-700 scale-95'
             : 'bg-[#FF8132] hover:bg-[#EB5B00] hover:scale-110'
