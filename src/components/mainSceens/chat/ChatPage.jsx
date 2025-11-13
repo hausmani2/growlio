@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2 } from 'react-icons/fi';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
 import { message, Modal } from 'antd';
+import useStore from '../../../store/store';
 import MessageBubble from '../../chatbot/MessageBubble';
 
 /**
@@ -9,8 +10,9 @@ import MessageBubble from '../../chatbot/MessageBubble';
  * A full-page ChatGPT-like interface with conversation threads
  */
 const ChatPage = () => {
+  const { selectedConversationId: storeConversationId, setSelectedConversationId } = useStore();
   const [conversations, setConversations] = useState([]);
-  const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [selectedConversationId, setSelectedConversationIdLocal] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -82,6 +84,20 @@ const ChatPage = () => {
     fetchConversations();
   }, []);
 
+  // Load conversation from store if available
+  useEffect(() => {
+    if (storeConversationId) {
+      // Convert to string for comparison to handle number/string mismatches
+      const storeIdStr = String(storeConversationId);
+      const selectedIdStr = selectedConversationId ? String(selectedConversationId) : null;
+      
+      if (storeIdStr !== selectedIdStr) {
+        loadConversationHistory(storeConversationId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeConversationId]);
+
   /**
    * Fetch all conversations for the logged-in user
    */
@@ -104,8 +120,8 @@ const ChatPage = () => {
       
       setConversations(formattedConversations);
       
-      // Auto-select the most recent conversation
-      if (formattedConversations.length > 0 && !selectedConversationId) {
+      // Auto-select the most recent conversation only if no conversation is selected from store
+      if (formattedConversations.length > 0 && !selectedConversationId && !storeConversationId) {
         const mostRecent = formattedConversations[0];
         if (mostRecent.id) {
           loadConversationHistory(mostRecent.id);
@@ -145,7 +161,8 @@ const ChatPage = () => {
 
     try {
       setIsLoadingHistory(true);
-      setSelectedConversationId(threadId);
+      setSelectedConversationIdLocal(threadId);
+      setSelectedConversationId(threadId); // Update store
       const response = await apiGet(`/chatbot/conversation/${threadId}/`);
       
       // Handle different response formats
@@ -199,7 +216,8 @@ const ChatPage = () => {
    * Start a new conversation
    */
   const startNewConversation = () => {
-    setSelectedConversationId(null);
+    setSelectedConversationIdLocal(null);
+    setSelectedConversationId(null); // Update store
     setMessages([
       {
         text: "Hello! I'm here to help you. How can I assist you today?",
@@ -275,9 +293,10 @@ const ChatPage = () => {
           // Remove from local state
           setConversations((prev) => prev.filter((conv) => conv.id !== threadId));
           
-          // If deleted conversation was selected, clear it
-          if (selectedConversationId === threadId) {
-            setSelectedConversationId(null);
+      // If deleted conversation was selected, clear it
+      if (selectedConversationId === threadId) {
+        setSelectedConversationIdLocal(null);
+        setSelectedConversationId(null); // Update store
             setMessages([
               {
                 text: "Hello! I'm here to help you. How can I assist you today?",
@@ -334,7 +353,8 @@ const ChatPage = () => {
                                  response.data?.id;
       
       if (newConversationId && newConversationId !== selectedConversationId) {
-        setSelectedConversationId(newConversationId);
+        setSelectedConversationIdLocal(newConversationId);
+        setSelectedConversationId(newConversationId); // Update store
         // Refresh conversations list to include the new conversation
         setTimeout(() => {
           fetchConversations();

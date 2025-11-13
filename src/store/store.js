@@ -7,6 +7,7 @@ import createDashboardSummarySlice from './slices/dashboardSummary';
 import createSupportSlice from './slices/supportSlice';
 import createSuperAdminSlice from './slices/superAdminSlice';
 import createFaqSlice from './slices/faqSlice';
+import createChatSlice from './slices/chatSlice';
 
 const useStore = create(
   devtools(
@@ -19,6 +20,7 @@ const useStore = create(
         ...createSupportSlice(set, get),
         ...createSuperAdminSlice(set, get),
         ...createFaqSlice(set, get),
+        ...createChatSlice(set, get),
       
         
         // Function to completely clear all persisted state
