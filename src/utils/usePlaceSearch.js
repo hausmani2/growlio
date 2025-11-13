@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import loadGoogleMaps from './loadGoogleMaps';
 
 /**
- * Custom hook for Google Places Autocomplete search
+ * Custom hook for Google Places Autocomplete search using Google Maps JavaScript API
  * 
  * @param {string} apiKey - Google Maps API key
  * @param {number} debounceMs - Debounce delay in milliseconds (default: 300)
@@ -12,8 +13,34 @@ const usePlaceSearch = (apiKey, debounceMs = 300, countryRestriction = null) => 
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
     const debounceTimerRef = useRef(null);
-    const abortControllerRef = useRef(null);
+    const autocompleteServiceRef = useRef(null);
+    const placesServiceRef = useRef(null);
+    const mapRef = useRef(null);
+
+    // Load Google Maps API on mount
+    useEffect(() => {
+        if (!apiKey) {
+            setError('Google Maps API key is required');
+            return;
+        }
+
+        loadGoogleMaps(apiKey)
+            .then(() => {
+                setIsGoogleMapsLoaded(true);
+                // Initialize AutocompleteService
+                autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
+                
+                // Create a dummy map element for PlacesService (required by API)
+                const dummyDiv = document.createElement('div');
+                mapRef.current = new window.google.maps.Map(dummyDiv);
+                placesServiceRef.current = new window.google.maps.places.PlacesService(mapRef.current);
+            })
+            .catch((err) => {
+                setError(`Failed to load Google Maps API: ${err.message}`);
+            });
+    }, [apiKey]);
 
     // Clear suggestions
     const clearSuggestions = useCallback(() => {
@@ -21,16 +48,11 @@ const usePlaceSearch = (apiKey, debounceMs = 300, countryRestriction = null) => 
         setError(null);
     }, []);
 
-    // Search places using Google Places Autocomplete API
+    // Search places using Google Places Autocomplete Service
     const searchPlaces = useCallback(async (input) => {
         // Clear previous timer
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
-        }
-
-        // Cancel previous request if any
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
         }
 
         // Clear suggestions if input is empty
@@ -39,112 +61,106 @@ const usePlaceSearch = (apiKey, debounceMs = 300, countryRestriction = null) => 
             return;
         }
 
+        // Wait for Google Maps to load
+        if (!isGoogleMapsLoaded || !autocompleteServiceRef.current) {
+            return;
+        }
+
         // Debounce the API call
-        debounceTimerRef.current = setTimeout(async () => {
-            // Create new abort controller for this request
-            abortControllerRef.current = new AbortController();
-            
+        debounceTimerRef.current = setTimeout(() => {
             setLoading(true);
             setError(null);
 
             try {
-                // Build the API URL
-                const baseUrl = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
-                const params = new URLSearchParams({
+                const request = {
                     input: input.trim(),
-                    key: apiKey,
-                    types: 'address', // Restrict to addresses only
-                });
+                    types: ['address'], // Restrict to addresses only
+                };
 
                 // Add country restriction if provided
                 if (countryRestriction) {
-                    params.append('components', `country:${countryRestriction}`);
+                    request.componentRestrictions = {
+                        country: countryRestriction.toLowerCase(),
+                    };
                 }
 
-                const url = `${baseUrl}?${params.toString()}`;
-
-                const response = await fetch(url, {
-                    signal: abortControllerRef.current.signal,
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.status === 'OK' || data.status === 'ZERO_RESULTS') {
-                    setSuggestions(data.predictions || []);
-                } else if (data.status === 'REQUEST_DENIED') {
-                    throw new Error('Google Places API request denied. Please check your API key.');
-                } else if (data.status === 'OVER_QUERY_LIMIT') {
-                    throw new Error('Google Places API quota exceeded.');
-                } else {
-                    throw new Error(`API error: ${data.status}`);
-                }
+                autocompleteServiceRef.current.getPlacePredictions(
+                    request,
+                    (predictions, status) => {
+                        setLoading(false);
+                        
+                        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+                            setSuggestions(predictions || []);
+                        } else if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                            setSuggestions([]);
+                        } else if (status === window.google.maps.places.PlacesServiceStatus.REQUEST_DENIED) {
+                            setError('Google Places API request denied. Please check your API key and ensure Places API is enabled.');
+                            setSuggestions([]);
+                        } else if (status === window.google.maps.places.PlacesServiceStatus.OVER_QUERY_LIMIT) {
+                            setError('Google Places API quota exceeded.');
+                            setSuggestions([]);
+                        } else {
+                            setError(`API error: ${status}`);
+                            setSuggestions([]);
+                        }
+                    }
+                );
             } catch (err) {
-                // Don't set error if request was aborted
-                if (err.name !== 'AbortError') {
-                    setError(err.message);
-                    setSuggestions([]);
-                }
-            } finally {
                 setLoading(false);
+                setError(err.message);
+                setSuggestions([]);
             }
         }, debounceMs);
-    }, [apiKey, debounceMs, countryRestriction, clearSuggestions]);
+    }, [apiKey, debounceMs, countryRestriction, clearSuggestions, isGoogleMapsLoaded]);
 
-    // Get place details and coordinates using Geocoding API
+    // Get place details using PlacesService
     const getPlaceDetails = useCallback(async (placeId) => {
+        if (!isGoogleMapsLoaded || !placesServiceRef.current) {
+            throw new Error('Google Maps API not loaded');
+        }
+
         try {
             setLoading(true);
             setError(null);
 
-            const baseUrl = 'https://maps.googleapis.com/maps/api/geocode/json';
-            const params = new URLSearchParams({
-                place_id: placeId,
-                key: apiKey,
-            });
-
-            const url = `${baseUrl}?${params.toString()}`;
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.status === 'OK' && data.results && data.results.length > 0) {
-                const result = data.results[0];
-                const location = result.geometry.location;
-
-                return {
-                    formatted_address: result.formatted_address,
-                    latitude: location.lat,
-                    longitude: location.lng,
-                    place_id: placeId,
-                    address_components: result.address_components,
+            return new Promise((resolve, reject) => {
+                const request = {
+                    placeId: placeId,
+                    fields: ['formatted_address', 'geometry', 'address_components', 'place_id'],
                 };
-            } else {
-                throw new Error(`Geocoding error: ${data.status}`);
-            }
+
+                placesServiceRef.current.getDetails(request, (place, status) => {
+                    setLoading(false);
+                    
+                    if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+                        const location = place.geometry.location;
+                        
+                        resolve({
+                            formatted_address: place.formatted_address,
+                            latitude: location.lat(),
+                            longitude: location.lng(),
+                            place_id: placeId,
+                            address_components: place.address_components,
+                        });
+                    } else {
+                        const errorMsg = `Failed to get place details: ${status}`;
+                        setError(errorMsg);
+                        reject(new Error(errorMsg));
+                    }
+                });
+            });
         } catch (err) {
+            setLoading(false);
             setError(err.message);
             throw err;
-        } finally {
-            setLoading(false);
         }
-    }, [apiKey]);
+    }, [isGoogleMapsLoaded]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
-            }
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
             }
         };
     }, []);
