@@ -113,8 +113,8 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       
-      {/* Chatbot Widget - Available on all pages */}
-      <ChatWidget botName="Growlio Assistant" />
+      {/* Chatbot Widget - Only show when authenticated */}
+      {isAuthenticated && <ChatWidget botName="Growlio Assistant" />}
     </Router>
   );
 }
