@@ -498,26 +498,7 @@ const ChatPage = () => {
         }`}>
           <button
             onClick={startNewConversation}
-            className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-white font-medium transition-all active:scale-95 touch-manipulation text-sm sm:text-base"
-            style={{ backgroundColor: '#FF8132' }}
-            onMouseEnter={(e) => {
-              if (window.innerWidth >= 768) {
-                e.target.style.backgroundColor = '#EB5B00';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (window.innerWidth >= 768) {
-                e.target.style.backgroundColor = '#FF8132';
-              }
-            }}
-            onTouchStart={(e) => {
-              e.currentTarget.style.backgroundColor = '#EB5B00';
-            }}
-            onTouchEnd={(e) => {
-              setTimeout(() => {
-                e.currentTarget.style.backgroundColor = '#FF8132';
-              }, 150);
-            }}
+            className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-white font-medium transition-all active:scale-95 touch-manipulation text-sm sm:text-base bg-[#FF8132] hover:bg-[#EB5B00] active:bg-[#EB5B00]"
           >
             <FiPlus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
             <span className="truncate">New Chat</span>

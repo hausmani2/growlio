@@ -404,7 +404,7 @@ const CalendarUtils = ({
     <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
       <div className="flex items-center gap-3 flex-wrap">
         {/* Quick Select Dropdown */}
-        {quickSelectMenu && (
+        {/* {quickSelectMenu && (
           <Dropdown
             menu={quickSelectMenu}
             trigger={['click']}
@@ -421,7 +421,7 @@ const CalendarUtils = ({
               {quickSelectLabel} <DownOutlined />
             </Button>
           </Dropdown>
-        )}
+        )} */}
 
         {/* Year Range Picker for Annual Mode */}
         {groupBy === 'annual' ? (

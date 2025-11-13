@@ -275,18 +275,11 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       {/* Floating Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out ${
+        className={`fixed bottom-6 right-12 z-50 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out text-white ${
           isOpen
             ? 'bg-gray-600 hover:bg-gray-700 scale-95'
-            : 'hover:scale-110'
-        } text-white`}
-        style={!isOpen ? { backgroundColor: '#FF8132' } : {}}
-        onMouseEnter={(e) => {
-          if (!isOpen) e.target.style.backgroundColor = '#EB5B00';
-        }}
-        onMouseLeave={(e) => {
-          if (!isOpen) e.target.style.backgroundColor = '#FF8132';
-        }}
+            : 'bg-[#FF8132] hover:bg-[#EB5B00] hover:scale-110'
+        }`}
         aria-label={isOpen ? 'Close chat' : 'Open chat'}
       >
         {isOpen ? (
@@ -409,14 +402,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
             <button
               type="submit"
               disabled={!inputMessage.trim() || isLoading}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              style={{ backgroundColor: '#FF8132' }}
-              onMouseEnter={(e) => {
-                if (!e.target.disabled) e.target.style.backgroundColor = '#EB5B00';
-              }}
-              onMouseLeave={(e) => {
-                if (!e.target.disabled) e.target.style.backgroundColor = '#FF8132';
-              }}
+              className="w-10 h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center bg-[#FF8132] hover:bg-[#EB5B00] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-colors"
               aria-label="Send message"
             >
               {isLoading ? (

@@ -176,12 +176,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           icon: <FileTextOutlined />,
           label: 'Leo AI',
           children: [
-            // {
-            //   key: 'faq',
-            //   icon: <FileTextOutlined />,
-            //   label: 'FAQ',
-            //   onClick: () => navigate('/dashboard/faq'),
-            // },
+            {
+              key: 'faq',
+              icon: <FileTextOutlined />,
+              label: 'FAQ',
+              onClick: () => navigate('/superadmin/faq'),
+            },
             {
               key: 'superadmin-chat',
               icon: <MessageOutlined />,
