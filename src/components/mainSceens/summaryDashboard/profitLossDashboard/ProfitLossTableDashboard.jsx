@@ -59,13 +59,27 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return Object.prototype.hasOwnProperty.call(firstEntry, 'month_start') && Object.prototype.hasOwnProperty.call(firstEntry, 'month_end');
   }, []);
 
+  // Helper function to determine if data is annual format
+  const isAnnualData = useCallback((data) => {
+    if (!Array.isArray(data) || data.length === 0) return false;
+    const firstEntry = data[0];
+    return Object.prototype.hasOwnProperty.call(firstEntry, 'year_start') && Object.prototype.hasOwnProperty.call(firstEntry, 'year_end');
+  }, []);
+
   // Helper function to format date for display
-  const formatDateForDisplay = useCallback((dateString, isWeekly = false, isMonthly = false) => {
+  const formatDateForDisplay = useCallback((dateString, isWeekly = false, isMonthly = false, isAnnual = false) => {
     if (!dateString) return 'N/A';
     
     try {
       const date = dayjs(dateString);
-      if (isMonthly) {
+      if (isAnnual) {
+        return {
+          day: `Year ${date.format('YYYY')}`,
+          date: `${date.format('YYYY')}`,
+          shortDate: date.format('YYYY'),
+          fullDate: `${date.format('YYYY')}`
+        };
+      } else if (isMonthly) {
         return {
           day: `Month ${date.format('MMM')}`,
           date: `${date.format('MMM YYYY')}`,
@@ -148,7 +162,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Determine data format
     const isWeekly = isWeeklyData(entries);
     const isMonthly = isMonthlyData(entries);
-    const dataFormat = isMonthly ? 'monthly' : (isWeekly ? 'weekly' : 'daily');
+    const isAnnual = isAnnualData(entries);
+    const dataFormat = isAnnual ? 'annual' : (isMonthly ? 'monthly' : (isWeekly ? 'weekly' : 'daily'));
 
     // Process the data - Updated to handle both daily and weekly structures
     const processed = {
@@ -179,7 +194,10 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     entries.forEach((entry, index) => {
       // Create appropriate date key based on data format
       let dateKey;
-      if (isMonthly) {
+      if (isAnnual) {
+        // For annual data, use year_start as the key
+        dateKey = entry.year_start || `year-${index}`;
+      } else if (isMonthly) {
         // For monthly data, use month_start as the key
         dateKey = entry.month_start || `month-${index}`;
       } else if (isWeekly) {
@@ -244,7 +262,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     setProcessedData(processed);
     setTableData(entries);
     
-  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData, isMonthlyData, printFormat]);
+  }, [dashboardData, dashboardSummaryData, parseNumericValue, isWeeklyData, isMonthlyData, isAnnualData, printFormat]);
 
   // Categories for the summary table with expandable details
   const categories = useMemo(() => [
@@ -527,13 +545,17 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Determine data format
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
+    const isAnnual = isAnnualData(tableData);
 
-    // Group dates by week if monthly view
-    const groupedDates = viewMode === 'monthly' ? 
+    // Group dates by week if monthly or annual view
+    const groupedDates = (viewMode === 'monthly' || viewMode === 'annual') ? 
+    // const groupedDates = (viewMode === 'monthly') ? 
       tableData.reduce((groups, entry, index) => {
         // Use appropriate date field based on data format
         let dateField;
-        if (isMonthly) {
+        if (isAnnual) {
+          dateField = entry.year_start;
+        } else if (isMonthly) {
           dateField = entry.month_start;
         } else if (isWeekly) {
           dateField = entry.week_start;
@@ -541,13 +563,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           dateField = entry.date || entry.day;
         }
         
-        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
-        const weekKey = dayjs(dateField).format('YYYY-[W]WW');
+        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
+        const weekKey = isAnnual ? dayjs(dateField).format('YYYY') : dayjs(dateField).format('YYYY-[W]WW');
         
         if (!groups[weekKey]) {
           groups[weekKey] = {
             weekKey,
-            weekLabel: isMonthly ? `Month ${dayjs(dateField).format('MMM')}` : `Week ${dayjs(dateField).format('WW')}`,
+            weekLabel: isAnnual ? `Year ${dayjs(dateField).format('YYYY')}` : (isMonthly ? `Month ${dayjs(dateField).format('MMM')}` : `Week ${dayjs(dateField).format('WW')}`),
             dates: []
           };
         }
@@ -563,7 +585,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       tableData.map((entry, index) => {
         // Use appropriate date field based on data format
         let dateField;
-        if (isMonthly) {
+        if (isAnnual) {
+          dateField = entry.year_start;
+        } else if (isMonthly) {
           dateField = entry.month_start;
         } else if (isWeekly) {
           dateField = entry.week_start;
@@ -571,7 +595,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           dateField = entry.date || entry.day;
         }
         
-        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+        const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
         return {
           weekKey: `day-${index}`,
           weekLabel: dateInfo.day,
@@ -679,8 +703,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Determine data format and use appropriate date key
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
+    const isAnnual = isAnnualData(tableData);
     let dateKey;
-    if (isMonthly) {
+    if (isAnnual) {
+      dateKey = entry.year_start || 'N/A';
+    } else if (isMonthly) {
       dateKey = entry.month_start || 'N/A';
     } else if (isWeekly) {
       dateKey = entry.week_start || 'N/A';
@@ -972,13 +999,14 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     
     return <span className={`text-sm ${isClosed ? 'text-gray-400 opacity-50' : 'text-gray-700'}`}>{rawValue}</span>;
-  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData, getDynamicVariableName, printFormat, parseNumericValue, formatValue, forceRender, isDayClosed]);
+  }, [processedData, handleValue, formatCurrency, formatNumber, getProfitLossColor, formatProfitLoss, formatPercentage, getPercentageColor, tableData, isWeeklyData, isMonthlyData, isAnnualData, getDynamicVariableName, printFormat, parseNumericValue, formatValue, forceRender, isDayClosed]);
 
   // Generate expandable row data
   const generateExpandableData = useMemo(() => {
     // Determine data format
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
+    const isAnnual = isAnnualData(tableData);
     
     return categories.map(category => {
       const baseRow = {
@@ -987,7 +1015,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         ...tableData.reduce((acc, entry, index) => {
           // Use appropriate date field based on data format
           let dateField;
-          if (isMonthly) {
+          if (isAnnual) {
+            dateField = entry.year_start;
+          } else if (isMonthly) {
             dateField = entry.month_start;
           } else if (isWeekly) {
             dateField = entry.week_start;
@@ -995,11 +1025,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             dateField = entry.date || entry.day;
           }
           
-          const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+          const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
           const uniqueKey = `${dateInfo.fullDate}-${index}`;
           
           let dateKey;
-          if (isMonthly) {
+          if (isAnnual) {
+            dateKey = entry.year_start || 'N/A';
+          } else if (isMonthly) {
             dateKey = entry.month_start || 'N/A';
           } else if (isWeekly) {
             dateKey = entry.week_start || 'N/A';
@@ -1021,7 +1053,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               ...tableData.reduce((acc, entry, index) => {
                 // Use appropriate date field based on data format
                 let dateField;
-                if (isMonthly) {
+                if (isAnnual) {
+                  dateField = entry.year_start;
+                } else if (isMonthly) {
                   dateField = entry.month_start;
                 } else if (isWeekly) {
                   dateField = entry.week_start;
@@ -1029,11 +1063,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   dateField = entry.date || entry.day;
                 }
                 
-                const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+                const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
                 const uniqueKey = `${dateInfo.fullDate}-${index}`;
                 
                 let dateKey;
-                if (isMonthly) {
+                if (isAnnual) {
+                  dateKey = entry.year_start || 'N/A';
+                } else if (isMonthly) {
                   dateKey = entry.month_start || 'N/A';
                 } else if (isWeekly) {
                   dateKey = entry.week_start || 'N/A';
@@ -1056,7 +1092,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
 
       return baseRow;
     });
-  }, [categories, tableData, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, forceRender]);
+  }, [categories, tableData, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, isAnnualData, forceRender]);
 
   // CSV generation
   const generateCSV = useCallback(() => {
@@ -1065,11 +1101,14 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     // Determine data format
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
+    const isAnnual = isAnnualData(tableData);
     
     const dates = tableData.map(entry => {
       // Use appropriate date field based on data format
       let dateField;
-      if (isMonthly) {
+      if (isAnnual) {
+        dateField = entry.year_start;
+      } else if (isMonthly) {
         dateField = entry.month_start;
       } else if (isWeekly) {
         dateField = entry.week_start;
@@ -1077,7 +1116,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         dateField = entry.date || entry.day;
       }
       
-      const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+      const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
       // Use the same format as displayed in table columns
       return `${dateInfo.day} ${dateInfo.date}`;
     });
@@ -1087,7 +1126,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       dates.forEach((_, index) => {
         const entry = tableData[index];
         let dateKey;
-        if (isMonthly) {
+        if (isAnnual) {
+          dateKey = entry.year_start || 'N/A';
+        } else if (isMonthly) {
           dateKey = entry.month_start || 'N/A';
         } else if (isWeekly) {
           dateKey = entry.week_start || 'N/A';
@@ -1135,7 +1176,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, printFormat, getDynamicVariableName, parseNumericValue, formatValue]);
+  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, isAnnualData, printFormat, getDynamicVariableName, parseNumericValue, formatValue]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -1927,7 +1968,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const weeklyTotals = calculateWeeklyTotals;
     const isWeekly = isWeeklyData(tableData);
     const isMonthly = isMonthlyData(tableData);
-    const periodType = isMonthly ? 'Monthly' : (isWeekly ? 'Weekly' : 'Daily');
+    const isAnnual = isAnnualData(tableData);
+    const periodType = isAnnual ? 'Annual' : (isMonthly ? 'Monthly' : (isWeekly ? 'Weekly' : 'Daily'));
 
     return (
       <div className="space-y-3">
@@ -1942,7 +1984,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           {tableData.map((entry, index) => {
             // Determine data format
             let dateField;
-            if (isMonthly) {
+            if (isAnnual) {
+              dateField = entry.year_start;
+            } else if (isMonthly) {
               dateField = entry.month_start;
             } else if (isWeekly) {
               dateField = entry.week_start;
@@ -1950,11 +1994,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               dateField = entry.date || entry.day;
             }
             
-            const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly);
+            const dateInfo = formatDateForDisplay(dateField, isWeekly, isMonthly, isAnnual);
             const detailKey = `${categoryKey}_${dateField || index}`;
             
             let periodLabel;
-            if (isMonthly) {
+            if (isAnnual) {
+              periodLabel = `Year ${index + 1}`;
+            } else if (isMonthly) {
               periodLabel = `Month ${index + 1}`;
             } else if (isWeekly) {
               periodLabel = `Week ${index + 1}`;
@@ -1981,7 +2027,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
       </div>
     );
-  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary, isWeeklyData, isMonthlyData, isDayClosed]);
+  }, [tableData, formatDateForDisplay, renderDetailedContent, calculateWeeklyTotals, renderWeeklySummary, isWeeklyData, isMonthlyData, isAnnualData, isDayClosed]);
 
   // Check if we have data
   const hasData = tableData.length > 0;

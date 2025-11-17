@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -96,37 +96,51 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
     },
+    {
+      key: 'leo-ai',
+      icon: <FileTextOutlined />,
+      label: 'Leo AI',
+      children: [
+        // {
+        //   key: 'faq',
+        //   icon: <FileTextOutlined />,
+        //   label: 'FAQ',
+        //   onClick: () => navigate('/dashboard/faq'),
+        // },
+        {
+          key: 'chat',
+          icon: <MessageOutlined />,
+          label: 'Chat Assistant',
+          onClick: () => navigate('/dashboard/chat'),
+        }
+      ],
+    },
   ];
   
 
   // Show Admin menu only when user is admin, not superadmin
-  const adminMenu = (isAdmin && !isSuperAdmin) ? [
-    {
-      key: 'admin',
-      icon: <SettingOutlined />,
-      label: 'Admin',
-      children: [
-        {
-          key: 'admin-users',
-          icon: <UserOutlined />,
-          label: 'Users',
-          onClick: () => navigate('/admin/users'),
-        },
-        {
-          key: 'admin-tooltips',
-          icon: <InfoCircleOutlined />,
-          label: 'Tooltips',
-          onClick: () => navigate('/admin/tooltips'),
-        },
-          {
-            key: 'faq',
-            icon: <FileTextOutlined />,
-            label: 'FAQ',
-            onClick: () => navigate('/dashboard/faq'),
-          },
-      ],
-    },
-  ] : [];
+  // const adminMenu = (isAdmin && !isSuperAdmin) ? [
+  //   {
+  //     key: 'admin',
+  //     icon: <SettingOutlined />,
+  //     label: 'Admin',
+  //     children: [
+  //     //   {
+  //     //     key: 'admin-users',
+  //     //     icon: <UserOutlined />,
+  //     //     label: 'Users',
+  //     //     onClick: () => navigate('/admin/users'),
+  //     //   },
+  //     //   {
+  //     //     key: 'admin-tooltips',
+  //     //     icon: <InfoCircleOutlined />,
+  //     //     label: 'Tooltips',
+  //     //     onClick: () => navigate('/admin/tooltips'),
+  //     //   },
+  //       
+  //     ],
+  //   },
+  // ] : [];
 
   const superAdminMenu = (isSuperAdmin && !impersonating) ? [
     {
@@ -158,6 +172,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/superadmin/tooltips'),
         },
+       
         {
           key: 'superadmin-guidance-popups',
           icon: <BellOutlined />,
@@ -165,7 +180,26 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/superadmin/guidance-popups'),
         },
       ],
-    }
+    },
+    {
+      key: 'leo-ai',
+      icon: <FileTextOutlined />,
+      label: 'Leo AI',
+      children: [
+        {
+          key: 'superadmin-faq',
+          icon: <FileTextOutlined />,
+          label: 'FAQ',
+          onClick: () => navigate('/superadmin/faq'),
+        },
+          {
+          key: 'superadmin-chat',
+          icon: <MessageOutlined />,
+          label: 'Chat Assistant',
+          onClick: () => navigate('/superadmin/superadmin-chat'),
+        }
+      ],
+    },
   ] : [];
 
   const settingsMenu = [
@@ -188,7 +222,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const showUserMenus = !isSuperAdmin || impersonating;
   const menuItems = [
     ...(showUserMenus ? userMenus : []),
-    ...adminMenu,
+    // ...adminMenu,
     ...superAdminMenu,
     ...settingsMenu,
   ];

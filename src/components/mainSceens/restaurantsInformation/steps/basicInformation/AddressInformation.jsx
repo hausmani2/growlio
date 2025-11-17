@@ -1,10 +1,61 @@
 import { Input, Select } from 'antd';
 import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
+import PlaceSearchInput from '../../../../common/PlaceSearchInput';
 import { US_STATES, CANADA_PROVINCES, COUNTRY_OPTIONS } from './constants';
+import { parseAddressComponents, mapCountryCodeToFormValue, mapFormValueToCountryCode } from '../../../../../utils/parseAddressComponents';
 
 const AddressInformation = ({ data, updateData, errors = {} }) => {
     const tooltips = useTooltips('onboarding-basic');
+    
+    // Get Google Maps API key from environment variables
+    const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+    // Handle address selection from Google Places
+    const handleAddressSelect = (formattedAddress, latitude, longitude, details) => {
+        // Update address1 with formatted address
+        updateData('address1', formattedAddress);
+        
+        // Update latitude and longitude if available
+        if (latitude !== null && longitude !== null) {
+            updateData('latitude', latitude);
+            updateData('longitude', longitude);
+        }
+        
+        // Parse and auto-fill address components if available
+        if (details && details.address_components) {
+            const parsed = parseAddressComponents(details.address_components);
+            
+            // Update city
+            if (parsed.city) {
+                updateData('city', parsed.city);
+            }
+            
+            // Update state/province
+            if (parsed.state) {
+                updateData('state', parsed.state);
+            }
+            
+            // Update zip code
+            if (parsed.zipCode) {
+                updateData('zipCode', parsed.zipCode);
+            }
+            
+            // Update country if it matches our options
+            if (parsed.country) {
+                const countryFormValue = mapCountryCodeToFormValue(parsed.country);
+                if (countryFormValue) {
+                    updateData('country', countryFormValue);
+                }
+            }
+        }
+    };
+    
+    // Get country restriction for Google Places API
+    const getCountryRestriction = () => {
+        if (!data.country) return null;
+        return mapFormValueToCountryCode(data.country);
+    };
 
     // Helper function to get country display value
     const getCountryDisplayValue = () => {
@@ -121,18 +172,35 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
                         Address 1 <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['address_1']} />
                     </label>
-                    <Input.TextArea 
-                        id="address1" 
-                        placeholder="Enter Address" 
-                        className={`w-full h-16 rounded-lg text-sm ${
-                            errors.address1 ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                        value={data.address1}
-                        onChange={(e) => updateData('address1', e.target.value)}
-                        status={errors.address1 ? 'error' : ''}
-                    />
+                    {GOOGLE_MAPS_API_KEY ? (
+                        <PlaceSearchInput
+                            apiKey={GOOGLE_MAPS_API_KEY}
+                            placeholder="Search for an address or type manually..."
+                            value={data.address1}
+                            onChange={(value) => updateData('address1', value)}
+                            onSelect={handleAddressSelect}
+                            countryRestriction={getCountryRestriction()}
+                            hasError={!!errors.address1}
+                        />
+                    ) : (
+                        <Input.TextArea 
+                            id="address1" 
+                            placeholder="Enter Address" 
+                            className={`w-full h-16 rounded-lg text-sm ${
+                                errors.address1 ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            value={data.address1}
+                            onChange={(e) => updateData('address1', e.target.value)}
+                            status={errors.address1 ? 'error' : ''}
+                        />
+                    )}
                     {errors.address1 && (
                         <span className="text-red-500 text-xs mt-1">{errors.address1}</span>
+                    )}
+                    {!GOOGLE_MAPS_API_KEY && (
+                        <span className="text-gray-500 text-xs mt-1">
+                            Note: Add VITE_GOOGLE_MAPS_API_KEY to your .env file to enable address autocomplete
+                        </span>
                     )}
                 </div>
                

@@ -484,7 +484,7 @@ const GuidancePopupsAdmin = () => {
                 ...pageOptions,
               ]}
             />
-            <Button 
+            {/* <Button 
               type="primary" 
               icon={<PlusOutlined />}
               onClick={openCreate}
@@ -492,7 +492,7 @@ const GuidancePopupsAdmin = () => {
               className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
               Add Guidance Popup
-            </Button>
+            </Button> */}
           </div>
         </div>
         <Table

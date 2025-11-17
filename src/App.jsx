@@ -35,6 +35,8 @@ import SuperAdminTooltips from './components/superadmin/components/SuperAdminToo
 import SuperAdminUserManagement from './components/superadmin/components/SuperAdminUserManagement';
 import SupportPage from './components/mainSceens/support/SupportPage';
 import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
+import ChatWidget from './components/chatbot/ChatWidget';
+import ChatPage from './components/mainSceens/chat/ChatPage';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -95,6 +97,7 @@ function App() {
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
+          <Route path="/dashboard/chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />
           {/* Admin */}
           <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
@@ -105,13 +108,17 @@ function App() {
           <Route path="/superadmin/users" element={<Wrapper showSidebar={true} children={<SuperAdminUsers />} />} />
           <Route path="/superadmin/user-management" element={<Wrapper showSidebar={true} children={<SuperAdminUserManagement />} />} />
           <Route path="/superadmin/tooltips" element={<Wrapper showSidebar={true} children={<SuperAdminTooltips />} />} />
-          <Route path="/superadmin/guidance-popups" element={<Wrapper showSidebar={true} children={<GuidancePopupsAdmin />} />} />
+          <Route path="/superadmin/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
+          <Route path="/superadmin/superadmin-chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />          <Route path="/superadmin/guidance-popups" element={<Wrapper showSidebar={true} children={<GuidancePopupsAdmin />} />} />
 
         </Route>
 
         {/* Catch-all: redirect unknown routes to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+      
+      {/* Chatbot Widget - Only show when authenticated */}
+      {isAuthenticated && <ChatWidget botName="Growlio Assistant" />}
       </GuidanceProvider>
     </Router>
   );

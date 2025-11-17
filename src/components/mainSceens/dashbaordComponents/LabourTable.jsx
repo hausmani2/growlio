@@ -734,7 +734,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Actual Avg. Daily Labor Rate:</Text>
                 <Input

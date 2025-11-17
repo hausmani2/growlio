@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin } from 'antd';
+import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
+import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 const { Title, Text } = Typography;
 
-const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
   // Store integration
   const {
     saveDashboardData,
@@ -17,7 +18,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     error: storeError,
     completeOnboardingData,
     restaurantGoals,
-    getRestaurentGoal
+    getRestaurentGoal,
+    checkWeeklyAverageData,
+    submitWeeklyAverageData,
+    weeklyAverageLoading
   } = useStore();
 
   // Get providers from onboarding data
@@ -116,6 +120,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   const [dataNotFound, setDataNotFound] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Weekly average modal states
+  const [isWeeklyAverageDataPopupVisible, setIsWeeklyAverageDataPopupVisible] = useState(false);
+  const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
+  const weeklyAverageModalShown = useRef(null);
+  const [isAutoAverageLoading, setIsAutoAverageLoading] = useState(false);
+  
+  // Week warning modal states
+  const [showWeekWarningModal, setShowWeekWarningModal] = useState(false);
+  const [weekWarningData, setWeekWarningData] = useState(null);
+  const [pendingModalAction, setPendingModalAction] = useState(null); // Store the action to execute after warning
+  const [pendingActionType, setPendingActionType] = useState(null); // Store whether it's 'add' or 'edit'
 
   // Process dashboard data when it changes
   useEffect(() => {
@@ -614,23 +630,185 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
 
 
-  // Handle weekly data modal
-  const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsEditMode(false);
-    setIsModalVisible(true);
+  // Helper function to check week status and show warning if needed
+  const checkWeekStatusAndShowWarning = (weekStartDate, onConfirm, actionType = 'add') => {
+    if (!weekStartDate) {
+      message.warning('Please select a date first.');
+      return;
+    }
+    
+    const weekStatus = CalendarHelpers.getWeekStatus(weekStartDate);
+    
+    // If it's not the current week, show warning modal
+    if (!weekStatus.isCurrentWeek) {
+      setWeekWarningData({
+        isPastWeek: weekStatus.isPastWeek,
+        isFutureWeek: weekStatus.isFutureWeek,
+        weekStart: weekStatus.weekStart,
+        weekEnd: weekStatus.weekEnd,
+        currentWeekStart: weekStatus.currentWeekStart,
+        currentWeekEnd: weekStatus.currentWeekEnd,
+        daysDifference: weekStatus.daysDifference
+      });
+      setPendingModalAction(() => onConfirm);
+      setPendingActionType(actionType);
+      setShowWeekWarningModal(true);
+    } else {
+      // Current week - proceed directly
+      onConfirm();
+    }
+  };
+
+  // Handle weekly data modal - Directly open modal without checking for weekly average data
+  const showAddWeeklyModal = async () => {
+    if (!selectedDate) {
+      message.warning('Please select a date first.');
+      return;
+    }
+    
+    const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+    
+    // Check week status and show warning if needed
+    checkWeekStatusAndShowWarning(weekStartDate, () => {
+      setEditingWeek(null);
+      setIsEditMode(false);
+      setIsModalVisible(true);
+    });
   };
 
   const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsEditMode(true);
-    setIsModalVisible(true);
+    // Get week start date from weekData or selectedDate
+    const weekStartDate = weekData?.startDate || 
+                         (weekDays.length > 0 ? weekDays[0].date : selectedDate);
+    
+    // Check week status and show warning if needed
+    checkWeekStatusAndShowWarning(weekStartDate, () => {
+      setEditingWeek(weekData);
+      setIsEditMode(true);
+      setIsModalVisible(true);
+    }, 'edit');
+  };
+  
+  // Handle week warning modal confirmation
+  const handleWeekWarningConfirm = () => {
+    setShowWeekWarningModal(false);
+    if (pendingModalAction) {
+      pendingModalAction();
+      setPendingModalAction(null);
+    }
+    setPendingActionType(null);
+    setWeekWarningData(null);
+  };
+  
+  // Handle week warning modal cancellation
+  const handleWeekWarningCancel = () => {
+    setShowWeekWarningModal(false);
+    setPendingModalAction(null);
+    setPendingActionType(null);
+    setWeekWarningData(null);
   };
 
   const closeModal = () => {
     setIsModalVisible(false);
     setEditingWeek(null);
     setIsEditMode(false);
+  };
+
+  // Handle weekly average data popup actions
+  const handleAutoAverage = async () => {
+    try {
+      if (selectedDate) {
+        const weekStartDate = dayjs(selectedDate).startOf('week');
+        const startDate = weekStartDate.format('YYYY-MM-DD');
+        const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
+        const dateRangeKey = `${startDate}-${endDate}`;
+        
+        // Set loading state
+        setIsAutoAverageLoading(true);
+        
+        // Close modal immediately to prevent duplicate clicks
+        setIsWeeklyAverageDataPopupVisible(false);
+        
+        // Submit the previous 3 weeks data via POST API (same endpoint)
+        const response = await submitWeeklyAverageData(null, startDate, endDate, {
+          use_previous_data: true
+        });
+        
+        // Check if API response indicates success
+        // API response format: {"message": "Processed 1 weekly entries.", "entries": [...]}
+        const isSuccess = response && 
+                         (response.message?.includes('Processed') || 
+                          response.entries?.length > 0);
+        
+        if (isSuccess && response.entries && response.entries.length > 0) {
+          // Extract week_start from the response
+          const createdEntry = response.entries[0];
+          const responseWeekStart = createdEntry.week_start;
+          
+          // Mark as shown so it doesn't show again
+          weeklyAverageModalShown.current = dateRangeKey;
+          
+          message.success('Previous 3 weeks data applied successfully! 🎉');
+          
+          // Wait a moment for the backend to process, then fetch the dashboard data for the created week
+          setTimeout(async () => {
+            // If we have the week_start from response, refresh with that specific week
+            if (responseWeekStart && refreshDashboardData) {
+              // Give backend a moment to fully process the data
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Refresh dashboard data multiple times to ensure data is loaded
+              await refreshDashboardData();
+              
+              // Wait a bit more and refresh again
+              await new Promise(resolve => setTimeout(resolve, 300));
+              await refreshDashboardData();
+              
+              // One more refresh to be sure
+              await new Promise(resolve => setTimeout(resolve, 200));
+              await refreshDashboardData();
+            } else if (refreshDashboardData) {
+              // Fallback: refresh with current selected date
+              await refreshDashboardData();
+            }
+            
+            // Open the sales modal to show the auto-filled data
+            setEditingWeek(null);
+            setIsEditMode(false);
+            setIsModalVisible(true);
+            
+            // Clear loading state after data is populated
+            setIsAutoAverageLoading(false);
+          }, 800);
+        } else {
+          throw new Error('Unexpected response format');
+        }
+      }
+    } catch (error) {
+      console.error('Error using auto average:', error);
+      message.error('Failed to apply previous data. Please try again.');
+      // Clear loading state on error
+      setIsAutoAverageLoading(false);
+      // Re-open modal on error so user can try again
+      setIsWeeklyAverageDataPopupVisible(true);
+    }
+  };
+
+  const handleManualEntry = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    
+    // Directly open sales modal for manual entry
+    setEditingWeek(null);
+    setIsEditMode(false);
+    setIsModalVisible(true);
+  };
+
+  const handleCloseWeeklyAverageDataPopup = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    // Return to week selection state without making changes
+    setWeeklyAveragePopupData(null);
+    // Clear loading state if modal is closed
+    setIsAutoAverageLoading(false);
   };
 
   const handleWeeklySubmit = async (weekData) => {
@@ -1560,7 +1738,32 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full" style={{ position: 'relative' }}>
+      {/* Loading overlay when auto average is processing or dashboard data is loading */}
+      {(isAutoAverageLoading || dashboardLoading || storeLoading) && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          borderRadius: '8px'
+        }}>
+          <Spin size="large" tip={
+            isAutoAverageLoading 
+              ? "Applying previous 3 weeks data and loading..." 
+              : dashboardLoading || storeLoading
+              ? "Loading dashboard data..."
+              : "Loading..."
+          } />
+        </div>
+      )}
+      
       <div className="pb-3 border-b border-gray-200">
         <h3 className="text-xl font-bold text-orange-600">
           Sales Performance
@@ -2012,6 +2215,175 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       </Row>
 
       <WeeklyModal />
+
+      {/* Weekly Average Data Popup - Show when 3 weeks data available */}
+      <Modal
+        title="Weekly Average Data Available"
+        open={isWeeklyAverageDataPopupVisible}
+        onCancel={handleCloseWeeklyAverageDataPopup}
+        footer={[
+          <Button
+            key="manual"
+            onClick={handleManualEntry}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Manual
+          </Button>,
+          <Button
+            key="auto"
+            type="primary"
+            icon={<DollarOutlined />}
+            onClick={handleAutoAverage}
+            loading={weeklyAverageLoading || isAutoAverageLoading}
+            disabled={weeklyAverageLoading || isAutoAverageLoading}
+            className="bg-gradient-to-r from-blue-500 to-indigo-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            Auto
+          </Button>,
+          <Button
+            key="close"
+            onClick={handleCloseWeeklyAverageDataPopup}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Close
+          </Button>
+        ]}
+        width={600}
+        centered
+        maskClosable={false}
+        destroyOnClose={true}
+        zIndex={10000}
+        getContainer={false}
+        maskStyle={{ zIndex: 9999 }}
+        style={{ zIndex: 10000 }}
+        className="weekly-average-modal-top"
+      >
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-md p-4 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <span className="text-2xl">📊</span>
+                </div>
+                <h3 className="text-xl font-bold text-blue-800">
+                We Found Your Last 3 Weeks of Data
+                </h3>
+              </div>
+              <p className="text-blue-700 text-base leading-relaxed mb-4">
+                Good news! Because you've entered your actual sales data for the past 3 weeks, the Auto feature is now active.
+              </p>
+              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically complete your sales budget for the week using your daily averages. You'll still have full control to review and adjust any numbers afterward if needed.</p>
+              
+              <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+                {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
+                <ul className="list-disc list-inside space-y-2 text-gray-700">
+                  <li><span className="font-medium">Auto:</span> When you select Auto, Growlio uses your last 3 weeks of sales data by day of the week, averaging all your Mondays, all your Tuesdays, and so on. This trailing 3-week average gives you a more accurate daily sales trend and helps you plan labor and food costs with confidence.</li>
+                  <li><span className="font-medium">Manual:</span> Enter all data yourself. A quick warning will appear if it's a future week.</li>
+                  <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Week Warning Modal - Show when trying to add/edit data for previous or next week */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <CalendarOutlined className="text-blue-500" />
+            <span>Week Selection Confirmation</span>
+          </div>
+        }
+        open={showWeekWarningModal}
+        onCancel={handleWeekWarningCancel}
+        footer={[
+          <Button key="cancel" onClick={handleWeekWarningCancel}>
+            Cancel
+          </Button>,
+          <Button 
+            key="proceed" 
+            type="primary" 
+            onClick={handleWeekWarningConfirm}
+            icon={<CalendarOutlined />}
+            style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+          >
+            Yes, Proceed
+          </Button>
+        ]}
+        width={600}
+        destroyOnClose={true}
+        maskClosable={false}
+        zIndex={10001}
+        getContainer={false}
+        maskStyle={{ zIndex: 10000 }}
+        style={{ zIndex: 10001 }}
+      >
+        {weekWarningData && (
+          <div className="text-center">
+            <WarningOutlined 
+              className="text-6xl mb-4" 
+              style={{ fontSize: '64px', color: weekWarningData.isPastWeek ? '#ff4d4f' : '#ff4d4f' }}
+            />
+            <Title level={4} className="mb-4">
+              {weekWarningData.isPastWeek 
+                ? `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Past Week` 
+                : `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Future Week`}
+            </Title>
+            
+            <div className={`p-4 rounded-lg mb-4 ${
+              weekWarningData.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
+            }`}>
+              <Text strong className={`mb-2 block ${
+                weekWarningData.isPastWeek ? 'text-red-700' : 'text-red-700'
+              }`}>
+                Week Information:
+              </Text>
+              <div className={`text-sm space-y-1 ${
+                weekWarningData.isPastWeek ? 'text-red-600' : 'text-red-600'
+              }`}>
+                <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
+                {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
+                  <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
+                )}
+                <p>• Week difference: <strong>{Math.abs(weekWarningData.daysDifference || 0)} days {weekWarningData.isPastWeek ? 'ago' : 'ahead'}</strong></p>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <Text strong className="text-blue-700 mb-2 block">
+                {weekWarningData.isPastWeek ? 'Past Week Warning:' : 'Future Week Warning:'}
+              </Text>
+              <div className="text-sm text-blue-600 space-y-1">
+                {weekWarningData.isPastWeek ? (
+                  <>
+                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a week that has already passed</p>
+                    <p>• This may affect historical reporting and analysis</p>
+                    <p>• Make sure you have the correct week selected</p>
+                    <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
+                  </>
+                ) : (
+                  <>
+                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a future week</p>
+                    <p>• This is typically used for planning and forecasting</p>
+                    <p>• Make sure you have the correct week selected</p>
+                    <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              <p className="mb-2">
+                <strong>Proceed:</strong> Continue {pendingActionType === 'edit' ? 'editing' : 'adding'} data to this week
+              </p>
+              <p>
+                <strong>Cancel:</strong> Close this dialog and select a different week
+              </p>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

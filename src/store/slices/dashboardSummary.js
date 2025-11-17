@@ -46,12 +46,32 @@ const createDashboardSummarySlice = (set, get) => {
                     group_by: groupBy
                 };
                 
-                if (startDate) {
-                    params.start_date = startDate;
-                }
-                
-                if (endDate) {
-                    params.end_date = endDate;
+                // For annual mode, use start_year and end_year instead of start_date and end_date
+                if (groupBy === 'annual') {
+                    if (startDate) {
+                        // Extract year from startDate (format: YYYY-MM-DD or dayjs object)
+                        const startYear = typeof startDate === 'string' 
+                            ? startDate.split('-')[0] 
+                            : dayjs(startDate).year();
+                        params.start_year = startYear;
+                    }
+                    
+                    if (endDate) {
+                        // Extract year from endDate (format: YYYY-MM-DD or dayjs object)
+                        const endYear = typeof endDate === 'string' 
+                            ? endDate.split('-')[0] 
+                            : dayjs(endDate).year();
+                        params.end_year = endYear;
+                    }
+                } else {
+                    // For other modes, use start_date and end_date
+                    if (startDate) {
+                        params.start_date = startDate;
+                    }
+                    
+                    if (endDate) {
+                        params.end_date = endDate;
+                    }
                 }
                 
                 // Convert params to query string

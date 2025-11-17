@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty } from 'antd';
-import { CalendarOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, Modal, Button, message } from 'antd';
+import { CalendarOutlined, DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
@@ -22,6 +22,7 @@ const Dashboard = () => {
   // Store integration for date selection persistence
   const { 
     fetchDashboardDataIfNeeded,
+    fetchDashboardData: fetchDashboardDataFromStore,
     ensureRestaurantId,
     // Date selection from store
     selectedYear,
@@ -47,6 +48,21 @@ const Dashboard = () => {
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
+
+  // Weekly average data functionality
+  const {
+    checkWeeklyAverageData,
+    submitWeeklyAverageData,
+    weeklyAverageLoading,
+    weeklyAverageError
+  } = useStore();
+
+  // Weekly average modal states
+  const [isWeeklyAverageDataPopupVisible, setIsWeeklyAverageDataPopupVisible] = useState(false);
+  const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
+  const weeklyAverageModalShown = useRef(null);
+  const isProcessingWeek = useRef(false);
+  const [isAutoAverageLoading, setIsAutoAverageLoading] = useState(false);
 
   // Note: Redirection logic is handled by ProtectedRoutes.jsx
   // No need to duplicate the redirect check here
@@ -114,10 +130,18 @@ const Dashboard = () => {
       }
       
       // Check if the response indicates no data found
-      if (data && data.status === "success" && data.message === "No weekly dashboard found for the given criteria." && data.data === null) {
+      // API response format: {"status":"success","message":"No weekly dashboard found","data":null}
+      const isNoDataResponse = data && 
+                               data.status === "success" && 
+                               (data.message === "No weekly dashboard found" || 
+                                data.message === "No weekly dashboard found for the given criteria.") &&
+                               data.data === null;
+      
+      if (isNoDataResponse) {
         setDashboardData(null);
         setDashboardMessage(data.message);
       } else {
+        // Data exists - populate it
         setDashboardData(data);
         setDashboardMessage(null);
       }
@@ -130,12 +154,248 @@ const Dashboard = () => {
     }
   };
 
+  // Process week selection - Check for data first, then weekly average
+  const processWeekSelection = useCallback(async (weekStartDate) => {
+    if (!weekStartDate) return;
+    
+    const startDate = weekStartDate.format('YYYY-MM-DD');
+    const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
+    const dateRangeKey = `${startDate}-${endDate}`;
+    
+    // Prevent duplicate processing
+    if (isProcessingWeek.current === dateRangeKey) {
+      return;
+    }
+    
+    // Mark as processing
+    isProcessingWeek.current = dateRangeKey;
+    
+    // Reset modal states for new date range
+    setIsWeeklyAverageDataPopupVisible(false);
+    setWeeklyAveragePopupData(null);
+    
+    try {
+      // Step 1: Fetch dashboard data and check if selected week has data
+      const data = await fetchDashboardDataIfNeeded(startDate);
+      
+      // Check if response indicates no data found
+      // API response format: {"status":"success","message":"No weekly dashboard found","data":null}
+      const isNoDataResponse = data && 
+                               data.status === "success" && 
+                               (data.message === "No weekly dashboard found" || 
+                                data.message === "No weekly dashboard found for the given criteria.") &&
+                               data.data === null;
+      
+      // Check if selected week has valid data (data exists and is not null)
+      const hasData = data && 
+                     data.status === "success" && 
+                     data.data !== null &&
+                     !isNoDataResponse;
+      
+      // Update dashboard data state
+      if (hasData) {
+        setDashboardData(data);
+        setDashboardMessage(null);
+        // Week has data, proceed normally (no modals)
+        isProcessingWeek.current = null;
+        return;
+      }
+      
+      // Step 2: Selected week has no data - check for 3 previous weeks data
+      // Only proceed if we confirmed there's no data for this week
+      if (isNoDataResponse) {
+        setDashboardData(null);
+        setDashboardMessage(data.message || "No weekly dashboard found");
+        
+        // Only check if we haven't shown the modal for this date range
+        if (weeklyAverageModalShown.current !== dateRangeKey) {
+          try {
+            const weeklyAverageResponse = await checkWeeklyAverageData(null, startDate, endDate);
+            
+            // Check if API response indicates no previous week data found
+            // API response format: {"status":false,"message":"No previous week data found."}
+            const noPreviousData = weeklyAverageResponse && 
+                                  weeklyAverageResponse.status === false && 
+                                  weeklyAverageResponse.message === "No previous week data found.";
+            
+            if (noPreviousData) {
+              // Show message when no previous week data is found
+              message.info({
+                content: weeklyAverageResponse.message || 'No previous week data found. You can manually enter your sales data.',
+                duration: 4,
+              });
+              weeklyAverageModalShown.current = dateRangeKey;
+              return;
+            }
+            
+            // Check if API response indicates 3 weeks data is available
+            // API response format: {"status":true,"message":"Found 3 previous week(s) of data."}
+            const hasThreeWeeks = weeklyAverageResponse && 
+                                 weeklyAverageResponse.status === true && 
+                                 weeklyAverageResponse.message === "Found 3 previous week(s) of data.";
+            
+            // Only show modal if 3 previous weeks data exists
+            if (hasThreeWeeks) {
+              weeklyAverageModalShown.current = dateRangeKey;
+              setWeeklyAveragePopupData(weeklyAverageResponse);
+              setIsWeeklyAverageDataPopupVisible(true);
+            } else {
+              // No 3 previous weeks data - don't show modal, just proceed normally
+              weeklyAverageModalShown.current = dateRangeKey;
+            }
+          } catch (weeklyError) {
+            // Silently fail - don't block user flow if weekly average check fails
+            console.error('Weekly average check failed:', weeklyError);
+            weeklyAverageModalShown.current = dateRangeKey;
+          }
+        }
+      } else {
+        // If response format is unexpected, set data anyway and proceed
+        setDashboardData(data);
+        setDashboardMessage(data?.message || null);
+        weeklyAverageModalShown.current = dateRangeKey;
+      }
+    } catch (error) {
+      console.error('Error in week selection:', error);
+      // Fallback: fetch dashboard data normally
+      await fetchDashboardData(weekStartDate);
+    } finally {
+      // Reset processing flag after a delay to allow modal to show
+      setTimeout(() => {
+        isProcessingWeek.current = null;
+      }, 1000);
+    }
+  }, [checkWeeklyAverageData, fetchDashboardDataIfNeeded]);
+
   // Callback function to refresh dashboard data after any component saves data
   const refreshDashboardData = async () => {
     const { weekStartDate } = getDateSelection();
     if (weekStartDate) {
       await fetchDashboardData(weekStartDate);
     }
+  };
+
+  // Handle weekly average data popup actions
+  const handleAutoAverage = async () => {
+    try {
+      const { weekStartDate } = getDateSelection();
+      if (weekStartDate) {
+        const startDate = weekStartDate.format('YYYY-MM-DD');
+        const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
+        const dateRangeKey = `${startDate}-${endDate}`;
+        
+        // Set loading state
+        setIsAutoAverageLoading(true);
+        
+        // Close modal immediately to prevent duplicate clicks
+        setIsWeeklyAverageDataPopupVisible(false);
+        
+        // Submit the previous 3 weeks data via POST API (same endpoint)
+        const response = await submitWeeklyAverageData(null, startDate, endDate, {
+          use_previous_data: true
+        });
+        
+        // Check if API response indicates success
+        // API response format: {"message": "Processed 1 weekly entries.", "entries": [...]}
+        const isSuccess = response && 
+                         (response.message?.includes('Processed') || 
+                          response.entries?.length > 0);
+        
+        if (isSuccess && response.entries && response.entries.length > 0) {
+          // Extract week_start from the response
+          const createdEntry = response.entries[0];
+          const responseWeekStart = createdEntry.week_start;
+          
+          // Mark as shown so it doesn't show again
+          weeklyAverageModalShown.current = dateRangeKey;
+          
+          message.success('Previous 3 weeks data applied successfully! 🎉');
+          
+          // Wait a moment for the backend to process, then fetch the dashboard data for the created week
+          setTimeout(async () => {
+            if (responseWeekStart) {
+              // Parse the week_start from response and fetch dashboard data for that week
+              const createdWeekStartDate = dayjs(responseWeekStart);
+              const createdWeekEndDate = createdWeekStartDate.endOf('week');
+              const createdWeekKey = `${createdWeekStartDate.format('YYYY-MM-DD')}_${createdWeekEndDate.format('YYYY-MM-DD')}`;
+              
+              // Update selected date and week in store
+              setSelectedDate(createdWeekStartDate);
+              setSelectedYear(createdWeekStartDate.year());
+              setSelectedMonth(createdWeekStartDate.month() + 1);
+              setSelectedWeek(createdWeekKey);
+              
+              // Update week picker value
+              setWeekPickerValue(createdWeekStartDate);
+              
+              // Update available weeks
+              setAvailableWeeks([{
+                key: createdWeekKey,
+                weekNumber: createdWeekStartDate.week(),
+                startDate: createdWeekStartDate.format('YYYY-MM-DD'),
+                endDate: createdWeekEndDate.format('YYYY-MM-DD'),
+                data: null
+              }]);
+              
+              // Wait a bit more for backend to fully process
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              // Force fresh fetch from store (bypasses cache) - this updates the store
+              let freshData = await fetchDashboardDataFromStore(responseWeekStart);
+              
+              // Check if we got valid data
+              const hasValidData = freshData && 
+                                 freshData.status === "success" && 
+                                 freshData.data !== null &&
+                                 !(freshData.message === "No weekly dashboard found" || 
+                                   freshData.message === "No weekly dashboard found for the given criteria.");
+              
+              if (!hasValidData) {
+                // If still no data, wait longer and try again
+                await new Promise(resolve => setTimeout(resolve, 500));
+                freshData = await fetchDashboardDataFromStore(responseWeekStart);
+              }
+              
+              // Also use local fetchDashboardData to ensure local state is updated
+              await fetchDashboardData(createdWeekStartDate);
+              
+              // Final refresh to ensure all components are updated
+              await refreshDashboardData();
+            } else {
+              // Fallback: use the original weekStartDate
+              await refreshDashboardData();
+              await fetchDashboardData(weekStartDate);
+            }
+            
+            // Clear loading state after data is populated
+            setIsAutoAverageLoading(false);
+          }, 800);
+        } else {
+          throw new Error('Unexpected response format');
+        }
+      }
+    } catch (error) {
+      console.error('Error using auto average:', error);
+      message.error('Failed to apply previous data. Please try again.');
+      // Clear loading state on error
+      setIsAutoAverageLoading(false);
+      // Re-open modal on error so user can try again
+      setIsWeeklyAverageDataPopupVisible(true);
+    }
+  };
+
+  const handleManualEntry = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    // The user will manually add data via the SalesTable "Add Actual Weekly Sales" button
+    // We can trigger it programmatically if needed, but for now just close the modal
+  };
+
+  const handleCloseWeeklyAverageDataPopup = () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+    // Return to week selection state without making changes
+    setWeeklyAveragePopupData(null);
+    // Clear loading state if modal is closed
+    setIsAutoAverageLoading(false);
   };
 
   // Handle year selection
@@ -157,7 +417,7 @@ const Dashboard = () => {
   };
 
   // Handle week selection
-  const handleWeekChange = (weekKey) => {
+  const handleWeekChange = async (weekKey) => {
     setSelectedWeek(weekKey);
 
     // Find the selected week data and set the date to the start of the week
@@ -167,16 +427,14 @@ const Dashboard = () => {
       if (selectedWeekData) {
         const weekStartDate = dayjs(selectedWeekData.startDate);
         setSelectedDate(weekStartDate);
-        // Fetch dashboard data for the selected week
-        fetchDashboardData(weekStartDate);
-      } else {
+        // Process week selection (checks for data first, then weekly average)
+        await processWeekSelection(weekStartDate);
       }
-    } else {
     }
   };
 
   // New: Single Week Picker handler (replaces Year/Month/Week dropdowns)
-  const handleWeekPickerChange = (date) => {
+  const handleWeekPickerChange = async (date) => {
     if (!date) {
       setSelectedWeek(null);
       setAvailableWeeks([]);
@@ -206,10 +464,10 @@ const Dashboard = () => {
       }
     ]);
 
-    // Select week and fetch
+    // Select week and process (checks for data first, then weekly average)
     setSelectedWeek(weekKey);
     setSelectedDate(weekStart);
-    fetchDashboardData(weekStart);
+    await processWeekSelection(weekStart);
   };
 
   // Generate week days based on selected week
@@ -423,15 +681,11 @@ const Dashboard = () => {
         const weekStartDate = dayjs(selectedWeekData.startDate);
         
         setSelectedDate(weekStartDate);
-        // Fetch dashboard data for the selected week
-        fetchDashboardData(weekStartDate);
-      } else {
-
+        // Process week selection (checks for data first, then weekly average)
+        processWeekSelection(weekStartDate);
       }
-    } else {
-      
     }
-  }, [selectedWeek, availableWeeks]);
+  }, [selectedWeek, availableWeeks, processWeekSelection]);
 
 
 
@@ -453,6 +707,77 @@ const Dashboard = () => {
 
   return (
     <div className="w-full mx-auto">
+      {/* Weekly Average Data Popup - Show at top when 3 weeks data available - HIGHEST PRIORITY */}
+      <Modal
+        title="Weekly Average Data Available"
+        open={isWeeklyAverageDataPopupVisible}
+        onCancel={handleCloseWeeklyAverageDataPopup}
+        footer={[
+          <Button
+            key="manual"
+            onClick={handleManualEntry}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Manual
+          </Button>,
+          <Button
+            key="auto"
+            type="primary"
+            icon={<DollarOutlined />}
+            onClick={handleAutoAverage}
+            loading={weeklyAverageLoading || isAutoAverageLoading}
+            disabled={weeklyAverageLoading || isAutoAverageLoading}
+            className="bg-gradient-to-r from-blue-500 to-indigo-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            Auto
+          </Button>,
+          <Button
+            key="close"
+            onClick={handleCloseWeeklyAverageDataPopup}
+            className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            Close
+          </Button>
+        ]}
+        width={600}
+        centered
+        maskClosable={false}
+        destroyOnClose={true}
+        zIndex={10000}
+        getContainer={false}
+        maskStyle={{ zIndex: 9999 }}
+        style={{ zIndex: 10000 }}
+        className="weekly-average-modal-top"
+      >
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-md p-4 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <span className="text-2xl">📊</span>
+                </div>
+                <h3 className="text-xl font-bold text-blue-800">
+                We Found Your Last 3 Weeks of Data
+                </h3>
+              </div>
+              <p className="text-blue-700 text-base leading-relaxed mb-4">
+                Good news! Because you've entered your actual sales data for the past 3 weeks, the Auto feature is now active.
+              </p>
+              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically complete your sales budget for the week using your daily averages. You'll still have full control to review and adjust any numbers afterward if needed.</p>
+              
+              <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+                {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
+                <ul className="list-disc list-inside space-y-2 text-gray-700">
+                  <li><span className="font-medium">Auto:</span> When you select Auto, Growlio uses your last 3 weeks of sales data by day of the week, averaging all your Mondays, all your Tuesdays, and so on. This trailing 3-week average gives you a more accurate daily sales trend and helps you plan labor and food costs with confidence.</li>
+                  <li><span className="font-medium">Manual:</span> Enter all data yourself. A quick warning will appear if it's a future week.</li>
+                  <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {/* Header Section with same styling as other dashboard pages */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
@@ -509,6 +834,7 @@ const Dashboard = () => {
                   weekDays={getWeekDays()}
                   dashboardData={dashboardData}
                   refreshDashboardData={refreshDashboardData}
+                  dashboardLoading={dashboardLoading}
                 />
                 <CogsTable 
                   selectedDate={getDateSelection().weekStartDate} 
@@ -558,6 +884,7 @@ const Dashboard = () => {
                   weekDays={getWeekDays()}
                   dashboardData={dashboardData}
                   refreshDashboardData={refreshDashboardData}
+                  dashboardLoading={dashboardLoading}
                 />
               </Card>
             )}
