@@ -166,9 +166,12 @@ const SalesDataModal = ({
       initializeModal();
       
       // Show labor rate confirmation modal with 1.5 second delay
-      // Only show if forward_previous_week_rate is false
+      // Only show if forward_previous_week_rate is false AND there's no existing data (new entry only)
       // If forward_previous_week_rate is true, the system will automatically forward the previous week's rate
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false) {
+      // Check if there's existing data - if dailyData exists and has entries, it's an edit, not a new entry
+      const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
+      
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
         setShowPopupDelay(true); // Show delay indicator
         
         const popupTimer = setTimeout(() => {
@@ -185,6 +188,10 @@ const SalesDataModal = ({
         // If forward_previous_week_rate is true, skip the confirmation modal
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
+      } else if (hasExistingData) {
+        // If editing existing data, skip the confirmation modal
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
       }
     }
   }, [visible, selectedWeekData]);
@@ -198,8 +205,11 @@ const SalesDataModal = ({
       }
       
       // Handle labor rate confirmation modal based on forward_previous_week_rate
-      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed) {
-        // Show the confirmation modal if forward_previous_week_rate is false
+      // Only show if there's no existing data (new entry only, not editing)
+      const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
+      
+      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed && !hasExistingData) {
+        // Show the confirmation modal if forward_previous_week_rate is false and it's a new entry
         setShowPopupDelay(true);
         
         const popupTimer = setTimeout(() => {
@@ -213,6 +223,12 @@ const SalesDataModal = ({
         };
       } else if (restaurantGoals.forward_previous_week_rate === true) {
         // Skip the confirmation modal if forward_previous_week_rate is true
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+        setShowLaborRateConfirmationModal(false);
+        setShowPopupDelay(false);
+      } else if (hasExistingData) {
+        // If editing existing data, skip the confirmation modal
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
         setShowLaborRateConfirmationModal(false);
@@ -767,7 +783,10 @@ const SalesDataModal = ({
       await initializeModal();
       
       // Show labor rate confirmation modal if needed
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false) {
+      // Only show if there's no existing data (new entry only, not editing)
+      const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
+      
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
         setShowPopupDelay(true);
         
         const popupTimer = setTimeout(() => {
@@ -780,6 +799,10 @@ const SalesDataModal = ({
           clearTimeout(popupTimer);
         };
       } else if (restaurantGoals && restaurantGoals.forward_previous_week_rate === true) {
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+      } else if (hasExistingData) {
+        // If editing existing data, skip the confirmation modal
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
       }

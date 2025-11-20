@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { DatePicker, Select, Typography } from 'antd';
-import { CalendarOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { DatePicker, Select, Typography, Button, Dropdown, Space } from 'antd';
+import { CalendarOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import updateLocale from 'dayjs/plugin/updateLocale';
@@ -74,12 +74,13 @@ const YearRangePicker = ({ value, onChange, disabled, loading }) => {
  * - Clean, compact Ant Design RangePicker
  * - Auto-selects current week on page load
  * - Simple group by selector
+ * - Quick select options for each period type
  * - Minimal, focused design
  * 
  * @component
  * @param {Object} props - Component props
  * @param {Array} props.selectedDates - Selected date range [startDate, endDate]
- * @param {string} props.groupBy - Current group by value ('daily', 'week', 'month')
+ * @param {string} props.groupBy - Current group by value ('daily', 'week', 'month', 'annual')
  * @param {Function} props.onDateChange - Callback when date range changes
  * @param {Function} props.onGroupByChange - Callback when group by changes
  * @param {boolean} props.disabled - Whether the component is disabled
@@ -99,6 +100,7 @@ const CalendarUtils = ({
   className = '',
   style = {}
 }) => {
+  const [quickSelectLabel, setQuickSelectLabel] = useState('Quick Select');
   // Use selectedDates directly instead of internal state
   const displayDates = selectedDates && selectedDates.length === 2 ? selectedDates : null;
   
@@ -133,10 +135,53 @@ const CalendarUtils = ({
       const startDate = dates[0];
       const endDate = dates[1];
       
-      // Log the selected dates for debugging
-      
       // Check if it's a valid week range (7 days)
       const daysDiff = endDate.diff(startDate, 'day');
+      
+      // Update label to "Custom" if dates don't match any quick select option
+      // This will be set when user manually selects dates
+      if (quickSelectLabel !== 'Custom' && quickSelectLabel !== 'Quick Select') {
+        // Check if the dates match any quick select option
+        let matchesQuickSelect = false;
+        
+        if (groupBy === 'daily') {
+          const today = dayjs();
+          const yesterday = dayjs().subtract(1, 'day');
+          if ((startDate.isSame(today, 'day') && endDate.isSame(today, 'day')) ||
+              (startDate.isSame(yesterday, 'day') && endDate.isSame(yesterday, 'day'))) {
+            matchesQuickSelect = true;
+          }
+        } else if (groupBy === 'week') {
+          const currentWeekStart = dayjs().startOf('week');
+          const currentWeekEnd = dayjs().endOf('week');
+          const lastWeekStart = dayjs().subtract(1, 'week').startOf('week');
+          const lastWeekEnd = dayjs().subtract(1, 'week').endOf('week');
+          if ((startDate.isSame(currentWeekStart, 'day') && endDate.isSame(currentWeekEnd, 'day')) ||
+              (startDate.isSame(lastWeekStart, 'day') && endDate.isSame(lastWeekEnd, 'day'))) {
+            matchesQuickSelect = true;
+          }
+        } else if (groupBy === 'month') {
+          const currentMonthStart = dayjs().startOf('month');
+          const currentMonthEnd = dayjs().endOf('month');
+          const lastMonthStart = dayjs().subtract(1, 'month').startOf('month');
+          const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month');
+          if ((startDate.isSame(currentMonthStart, 'day') && endDate.isSame(currentMonthEnd, 'day')) ||
+              (startDate.isSame(lastMonthStart, 'day') && endDate.isSame(lastMonthEnd, 'day'))) {
+            matchesQuickSelect = true;
+          }
+        } else if (groupBy === 'annual') {
+          const currentYear = dayjs().year();
+          const previousYear = dayjs().year() - 1;
+          if ((startDate.year() === currentYear && endDate.year() === currentYear) ||
+              (startDate.year() === previousYear && endDate.year() === previousYear)) {
+            matchesQuickSelect = true;
+          }
+        }
+        
+        if (!matchesQuickSelect) {
+          setQuickSelectLabel('Custom');
+        }
+      }
       
       // Always pass the dates to parent component, let parent handle validation
       onDateChange?.(dates);
@@ -179,12 +224,205 @@ const CalendarUtils = ({
 
   // Handle group by change
   const handleGroupByChange = (value) => {
+    setQuickSelectLabel('Quick Select');
     onGroupByChange?.(value);
   };
 
+  // Quick select handlers for Daily
+  const handleDailyQuickSelect = (option) => {
+    let newDates = null;
+    switch (option) {
+      case 'today':
+        const today = dayjs();
+        newDates = [today, today];
+        setQuickSelectLabel('Today');
+        break;
+      case 'yesterday':
+        const yesterday = dayjs().subtract(1, 'day');
+        newDates = [yesterday, yesterday];
+        setQuickSelectLabel('Yesterday');
+        break;
+      case 'custom':
+        setQuickSelectLabel('Custom');
+        return; // Let user select custom range
+      default:
+        return;
+    }
+    if (newDates) {
+      onDateChange?.(newDates);
+    }
+  };
+
+  // Quick select handlers for Week
+  const handleWeekQuickSelect = (option) => {
+    let newDates = null;
+    switch (option) {
+      case 'current_week':
+        newDates = [dayjs().startOf('week'), dayjs().endOf('week')];
+        setQuickSelectLabel('Current Week');
+        break;
+      case 'last_week':
+        const lastWeekStart = dayjs().subtract(1, 'week').startOf('week');
+        const lastWeekEnd = dayjs().subtract(1, 'week').endOf('week');
+        newDates = [lastWeekStart, lastWeekEnd];
+        setQuickSelectLabel('Last Week');
+        break;
+      case 'last_2_weeks':
+        const twoWeeksAgo = dayjs().subtract(2, 'week').startOf('week');
+        const thisWeekEnd = dayjs().endOf('week');
+        newDates = [twoWeeksAgo, thisWeekEnd];
+        setQuickSelectLabel('Last 2 Weeks');
+        break;
+      case 'last_3_weeks':
+        const threeWeeksAgo = dayjs().subtract(3, 'week').startOf('week');
+        const thisWeekEnd3 = dayjs().endOf('week');
+        newDates = [threeWeeksAgo, thisWeekEnd3];
+        setQuickSelectLabel('Last 3 Weeks');
+        break;
+      case 'custom':
+        setQuickSelectLabel('Custom');
+        return; // Let user select custom range
+      default:
+        return;
+    }
+    if (newDates) {
+      onDateChange?.(newDates);
+    }
+  };
+
+  // Quick select handlers for Month
+  const handleMonthQuickSelect = (option) => {
+    let newDates = null;
+    switch (option) {
+      case 'current_month':
+        newDates = [dayjs().startOf('month'), dayjs().endOf('month')];
+        setQuickSelectLabel('Current Month');
+        break;
+      case 'last_month':
+        const lastMonthStart = dayjs().subtract(1, 'month').startOf('month');
+        const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month');
+        newDates = [lastMonthStart, lastMonthEnd];
+        setQuickSelectLabel('Last Month');
+        break;
+      case 'last_2_months':
+        const twoMonthsAgo = dayjs().subtract(2, 'month').startOf('month');
+        const thisMonthEnd = dayjs().endOf('month');
+        newDates = [twoMonthsAgo, thisMonthEnd];
+        setQuickSelectLabel('Last 2 Months');
+        break;
+      case 'last_3_months':
+        const threeMonthsAgo = dayjs().subtract(3, 'month').startOf('month');
+        const thisMonthEnd3 = dayjs().endOf('month');
+        newDates = [threeMonthsAgo, thisMonthEnd3];
+        setQuickSelectLabel('Last 3 Months');
+        break;
+      case 'custom':
+        setQuickSelectLabel('Custom');
+        return; // Let user select custom range
+      default:
+        return;
+    }
+    if (newDates) {
+      onDateChange?.(newDates);
+    }
+  };
+
+  // Quick select handlers for Annual
+  const handleAnnualQuickSelect = (option) => {
+    let newDates = null;
+    switch (option) {
+      case 'current_year':
+        const currentYear = dayjs().year();
+        newDates = [dayjs().year(currentYear).startOf('year'), dayjs().year(currentYear).endOf('year')];
+        setQuickSelectLabel('Current Year');
+        break;
+      case 'previous_year':
+        const previousYear = dayjs().year() - 1;
+        newDates = [dayjs().year(previousYear).startOf('year'), dayjs().year(previousYear).endOf('year')];
+        setQuickSelectLabel('Previous Year');
+        break;
+      case 'custom':
+        setQuickSelectLabel('Custom');
+        return; // Let user select custom range
+      default:
+        return;
+    }
+    if (newDates) {
+      onDateChange?.(newDates);
+    }
+  };
+
+  // Get quick select menu based on groupBy
+  const getQuickSelectMenu = () => {
+    if (groupBy === 'daily') {
+      return {
+        items: [
+          { key: 'today', label: 'Today' },
+          { key: 'yesterday', label: 'Yesterday' },
+          { key: 'custom', label: 'Custom' },
+        ],
+        onClick: ({ key }) => handleDailyQuickSelect(key),
+      };
+    } else if (groupBy === 'week') {
+      return {
+        items: [
+          { key: 'current_week', label: 'Current Week' },
+          { key: 'last_week', label: 'Last Week' },
+          { key: 'last_2_weeks', label: 'Last 2 Weeks' },
+          { key: 'last_3_weeks', label: 'Last 3 Weeks' },
+          { key: 'custom', label: 'Custom' },
+        ],
+        onClick: ({ key }) => handleWeekQuickSelect(key),
+      };
+    } else if (groupBy === 'month') {
+      return {
+        items: [
+          { key: 'current_month', label: 'Current Month' },
+          { key: 'last_month', label: 'Last Month' },
+          { key: 'last_2_months', label: 'Last 2 Months' },
+          { key: 'last_3_months', label: 'Last 3 Months' },
+          { key: 'custom', label: 'Custom' },
+        ],
+        onClick: ({ key }) => handleMonthQuickSelect(key),
+      };
+    } else if (groupBy === 'annual') {
+      return {
+        items: [
+          { key: 'current_year', label: 'Current Year' },
+          { key: 'previous_year', label: 'Previous Year' },
+          { key: 'custom', label: 'Custom' },
+        ],
+        onClick: ({ key }) => handleAnnualQuickSelect(key),
+      };
+    }
+    return null;
+  };
+
+  const quickSelectMenu = getQuickSelectMenu();
+
   return (
     <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Quick Select Dropdown */}
+        {/* {quickSelectMenu && (
+          <Dropdown
+            menu={quickSelectMenu}
+            trigger={['click']}
+            disabled={disabled || loading}
+          >
+            <Button
+              style={{
+                borderRadius: '6px',
+                height: '40px',
+                minWidth: '120px'
+              }}
+              disabled={disabled || loading}
+            >
+              {quickSelectLabel} <DownOutlined />
+            </Button>
+          </Dropdown>
+        )} */}
+
         {/* Year Range Picker for Annual Mode */}
         {groupBy === 'annual' ? (
           <YearRangePicker
@@ -274,7 +512,6 @@ const CalendarUtils = ({
             <Option value="week">Week</Option>
             <Option value="month">Month</Option>
             <Option value="annual">Annual</Option>
-            <Option value="custom_month">Custom</Option>
           </Select>
         </div>
       </div>

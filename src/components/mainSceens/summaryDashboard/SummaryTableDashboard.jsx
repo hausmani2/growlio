@@ -671,7 +671,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     <Card key={`dashboard-${dataTimestamp}`} className="shadow-lg border-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-orange-600 mb-0">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-0 drop-shadow-sm">
               {isMonthlyView && monthDisplayName 
                 ? `Your Budget For The Month of ${monthDisplayName}` 
                 : weekStartDay 

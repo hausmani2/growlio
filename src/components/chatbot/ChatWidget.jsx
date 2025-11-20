@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock } from 'react-icons/fi';
+import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2 } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import useStore from '../../store/store';
 import MessageBubble from './MessageBubble';
 import { apiPost, apiGet } from '../../utils/axiosInterceptors';
 
@@ -8,6 +10,8 @@ import { apiPost, apiGet } from '../../utils/axiosInterceptors';
  * A professional floating chatbot widget with smooth animations
  */
 const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
+  const navigate = useNavigate();
+  const { selectedConversationId: storeConversationId, setSelectedConversationId } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -51,6 +55,21 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  // Sync with selected conversation from ChatPage
+  useEffect(() => {
+    if (storeConversationId && isOpen) {
+      // Convert to string for comparison to handle number/string mismatches
+      const storeIdStr = String(storeConversationId);
+      const currentIdStr = conversationId ? String(conversationId) : '';
+      
+      if (storeIdStr !== currentIdStr) {
+        // Load the conversation that was selected in ChatPage
+        loadConversationHistory(storeConversationId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeConversationId, isOpen]);
+
   /**
    * Fetch all conversations for the logged-in user
    */
@@ -64,7 +83,8 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       setConversations(Array.isArray(conversationsList) ? conversationsList : []);
       
       // Auto-load the most recent conversation if available and no conversation is currently loaded
-      if (conversationsList && conversationsList.length > 0 && !conversationId && messages.length <= 1) {
+      // But only if there's no conversation selected from the store
+      if (conversationsList && conversationsList.length > 0 && !conversationId && !storeConversationId && messages.length <= 1) {
         const mostRecent = conversationsList[0];
         const threadId = mostRecent.id || mostRecent.conversation_id || mostRecent.thread_id;
         if (threadId) {
@@ -115,6 +135,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
 
         setMessages(formattedMessages);
         setConversationId(threadId);
+        setSelectedConversationId(threadId); // Update store
       } else {
         // If no history, start with welcome message
         setMessages([
@@ -125,6 +146,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
           },
         ]);
         setConversationId(threadId);
+        setSelectedConversationId(threadId); // Update store
       }
     } catch (error) {
       console.error('Error loading conversation history:', error);
@@ -137,6 +159,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
         },
       ]);
       setConversationId(threadId);
+      setSelectedConversationId(threadId); // Update store
     } finally {
       setIsLoadingHistory(false);
     }
@@ -190,6 +213,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
                                  response.data?.id;
       if (newConversationId) {
         setConversationId(newConversationId);
+        setSelectedConversationId(newConversationId); // Update store
         // Refresh conversations list to include the new conversation
         fetchConversations();
       }
@@ -251,18 +275,11 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       {/* Floating Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out ${
+        className={`fixed bottom-6 right-12 z-50 w-10 h-10 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out text-white opacity-50 hover:opacity-100 ${
           isOpen
             ? 'bg-gray-600 hover:bg-gray-700 scale-95'
-            : 'hover:scale-110'
-        } text-white`}
-        style={!isOpen ? { backgroundColor: '#FF8132' } : {}}
-        onMouseEnter={(e) => {
-          if (!isOpen) e.target.style.backgroundColor = '#EB5B00';
-        }}
-        onMouseLeave={(e) => {
-          if (!isOpen) e.target.style.backgroundColor = '#FF8132';
-        }}
+            : 'bg-[#FF8132] hover:bg-[#EB5B00] hover:scale-110'
+        }`}
         aria-label={isOpen ? 'Close chat' : 'Open chat'}
       >
         {isOpen ? (
@@ -296,13 +313,26 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
               <p className="text-xs opacity-90">Online</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
-            aria-label="Close chat"
-          >
-            <FiX className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                navigate('/dashboard/chat');
+                setIsOpen(false);
+              }}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Open full screen chat"
+              title="Open full screen chat"
+            >
+              <FiMaximize2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Close chat"
+            >
+              <FiX className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Messages Area */}
@@ -372,14 +402,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
             <button
               type="submit"
               disabled={!inputMessage.trim() || isLoading}
-              className="w-10 h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              style={{ backgroundColor: '#FF8132' }}
-              onMouseEnter={(e) => {
-                if (!e.target.disabled) e.target.style.backgroundColor = '#EB5B00';
-              }}
-              onMouseLeave={(e) => {
-                if (!e.target.disabled) e.target.style.backgroundColor = '#FF8132';
-              }}
+              className="w-10 h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center bg-[#FF8132] hover:bg-[#EB5B00] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-colors"
               aria-label="Send message"
             >
               {isLoading ? (
