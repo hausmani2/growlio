@@ -22,7 +22,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState('');
+  const [conversationId, setConversationId] = useState(null); // Start with null, not empty string
   const [conversations, setConversations] = useState([]);
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -47,25 +47,71 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
     }
   }, [isOpen]);
 
-  // Fetch conversations when chat opens
+  // Initialize: Clear conversation ID on mount to ensure new conversations start fresh
+  useEffect(() => {
+    // Always start with no conversation ID for new conversations
+    // Clear any existing conversation ID from sessionStorage to prevent auto-loading invalid IDs
+    const isImpersonating = sessionStorage.getItem('impersonated_user');
+    
+    // Always clear conversation ID on mount for new users
+    // Only keep it if user explicitly selects a conversation later
+    setConversationId(null);
+    sessionStorage.removeItem('chat_conversation_id');
+    
+    // Also clear from store if impersonating or if we want fresh start
+    if (isImpersonating || !storeConversationId) {
+      setSelectedConversationId(null);
+    }
+  }, []); // Only run on mount
+
+  // Fetch conversations when chat opens and clear conversation ID if impersonating
   useEffect(() => {
     if (isOpen) {
+      // If impersonating, always start with fresh conversation (no ID)
+      const isImpersonating = sessionStorage.getItem('impersonated_user');
+      if (isImpersonating && conversationId) {
+        setConversationId(null);
+        sessionStorage.removeItem('chat_conversation_id');
+        setSelectedConversationId(null);
+        setMessages([
+          {
+            text: "Hello! I'm here to help you. How can I assist you today?",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      }
       fetchConversations();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // Sync with selected conversation from ChatPage
+  // Sync with selected conversation from ChatPage (only within same tab)
+  // Note: This sync only works within the same tab since we use sessionStorage
+  // IMPORTANT: Only load if conversation ID is explicitly set and widget is open
+  // Don't auto-load from sessionStorage on mount - let user explicitly select
   useEffect(() => {
-    if (storeConversationId && isOpen) {
-      // Convert to string for comparison to handle number/string mismatches
+    // Only sync if widget is open and we have a valid store conversation ID
+    // Don't auto-load on initial mount - wait for explicit user selection
+    if (storeConversationId && isOpen && conversationId === null) {
+      // Only load if we don't already have a conversation ID loaded
+      // This prevents auto-loading stale conversation IDs from sessionStorage
       const storeIdStr = String(storeConversationId);
-      const currentIdStr = conversationId ? String(conversationId) : '';
       
-      if (storeIdStr !== currentIdStr) {
-        // Load the conversation that was selected in ChatPage
-        loadConversationHistory(storeConversationId);
-      }
+      // Only load if this is a fresh open (conversationId is null)
+      // This means user explicitly selected a conversation, not just opened widget
+      loadConversationHistory(storeConversationId);
+    } else if (!storeConversationId && conversationId && isOpen) {
+      // If store is cleared (new conversation started), clear local state too
+      setConversationId(null);
+      sessionStorage.removeItem('chat_conversation_id');
+      setMessages([
+        {
+          text: "Hello! I'm here to help you. How can I assist you today?",
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeConversationId, isOpen]);
@@ -82,15 +128,8 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       const conversationsList = response.data?.results || response.data?.conversations || response.data || [];
       setConversations(Array.isArray(conversationsList) ? conversationsList : []);
       
-      // Auto-load the most recent conversation if available and no conversation is currently loaded
-      // But only if there's no conversation selected from the store
-      if (conversationsList && conversationsList.length > 0 && !conversationId && !storeConversationId && messages.length <= 1) {
-        const mostRecent = conversationsList[0];
-        const threadId = mostRecent.id || mostRecent.conversation_id || mostRecent.thread_id;
-        if (threadId) {
-          loadConversationHistory(threadId);
-        }
-      }
+      // Don't auto-load conversations - let user explicitly choose
+      // This ensures new conversations start with no ID
     } catch (error) {
       console.error('Error fetching conversations:', error);
       // Don't show error to user, just log it
@@ -150,16 +189,32 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       }
     } catch (error) {
       console.error('Error loading conversation history:', error);
-      // On error, reset to welcome message but keep the conversation ID
-      setMessages([
-        {
-          text: "Hello! I'm here to help you. How can I assist you today?",
-          isUser: false,
-          timestamp: new Date(),
-        },
-      ]);
-      setConversationId(threadId);
-      setSelectedConversationId(threadId); // Update store
+      
+      // If conversation not found (404), clear the invalid conversation ID
+      if (error.response?.status === 404) {
+        console.log('Conversation not found (404), clearing invalid conversation ID');
+        setConversationId(null);
+        sessionStorage.removeItem('chat_conversation_id');
+        setSelectedConversationId(null);
+        setMessages([
+          {
+            text: "Hello! I'm here to help you. How can I assist you today?",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // For other errors, reset to welcome message but keep the conversation ID
+        setMessages([
+          {
+            text: "Hello! I'm here to help you. How can I assist you today?",
+            isUser: false,
+            timestamp: new Date(),
+          },
+        ]);
+        setConversationId(threadId);
+        setSelectedConversationId(threadId); // Update store
+      }
     } finally {
       setIsLoadingHistory(false);
     }
@@ -196,9 +251,18 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
 
     try {
       // Prepare request payload
+      // For new conversations, conversation_id should be empty string
+      // Only use conversationId if it's explicitly set (not null, not empty string)
+      const conversationIdToUse = (conversationId && conversationId !== '') ? String(conversationId) : '';
+      
+      // Debug log to verify conversation ID is empty for new chats
+      if (!conversationIdToUse) {
+        console.log('ChatWidget: Starting new conversation - no conversation_id');
+      }
+      
       const payload = {
         question: messageText,
-        conversation_id: conversationId || '',
+        conversation_id: conversationIdToUse,
       };
 
       // Call the API
@@ -207,15 +271,20 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       // Extract response data
       const botResponse = response.data?.answer || response.data?.response || 'I apologize, but I could not process your request at this time.';
       
-      // Update conversation ID if provided in response
+      // Update conversation ID if provided in response (only for new conversations)
       const newConversationId = response.data?.conversation_id || 
                                  response.data?.thread_id || 
                                  response.data?.id;
-      if (newConversationId) {
+      if (newConversationId && (!conversationId || conversationId === '')) {
+        // Only set conversation ID if we didn't have one before (new conversation)
         setConversationId(newConversationId);
         setSelectedConversationId(newConversationId); // Update store
         // Refresh conversations list to include the new conversation
         fetchConversations();
+      } else if (newConversationId && conversationId && newConversationId !== conversationId) {
+        // If conversation ID changed, update it
+        setConversationId(newConversationId);
+        setSelectedConversationId(newConversationId);
       }
 
       // Add bot response after a short delay for better UX

@@ -9,12 +9,13 @@ const ProtectedRoutes = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   
-  // Check authentication from store and fallback to localStorage
+  // Check authentication from store and fallback to localStorage (for cross-tab sync)
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const storeToken = useStore((state) => state.token);
   const user = useStore((state) => state.user);
-  const sessionToken = sessionStorage.getItem('token');
-  const token = storeToken || sessionToken;
+  // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
+  const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+  const token = storeToken || storedToken;
   
   // Get onboarding status from store and check function from onBoardingSlice
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
