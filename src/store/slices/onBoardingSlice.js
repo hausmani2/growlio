@@ -176,23 +176,32 @@ const createOnBoardingSlice = (set, get) => ({
         switch (stepName) {
             case "Basic Information": {
                 const { restaurantData, addressData, addressTypeData } = tempData;
+                // Build location object with conditional latitude/longitude
+                const locationObj = {
+                    name: restaurantData.locationName, // API expects 'name' not 'location_name'
+                    address_1: addressData.address1,
+                    address_2: addressData.address2,
+                    country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
+                    state: addressData.state === "1" ? "CA" : addressData.state === "2" ? "NY" : "TX",
+                    zip_code: addressData.zipCode,
+                    sqft: parseInt(addressTypeData.sqft) || 0,
+                    is_franchise: addressTypeData.isFranchise === "2"
+                };
+                
+                // Only include latitude and longitude if they have valid values
+                if (addressData.latitude !== null && addressData.latitude !== undefined && !isNaN(parseFloat(addressData.latitude))) {
+                    locationObj.latitude = parseFloat(addressData.latitude);
+                }
+                if (addressData.longitude !== null && addressData.longitude !== undefined && !isNaN(parseFloat(addressData.longitude))) {
+                    locationObj.longitude = parseFloat(addressData.longitude);
+                }
+                
                 apiData = {
                     restaurant_name: restaurantData.restaurantName,
                     number_of_locations: parseInt(restaurantData.numberOfLocations) || 1,
                     restaurant_type: addressTypeData.restaurantType,
                     menu_type: addressTypeData.menuType,
-                    locations: [
-                        {
-                            name: restaurantData.locationName, // API expects 'name' not 'location_name'
-                            address_1: addressData.address1,
-                            address_2: addressData.address2,
-                            country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "UK",
-                            state: addressData.state === "1" ? "CA" : addressData.state === "2" ? "NY" : "TX",
-                            zip_code: addressData.zipCode,
-                            sqft: parseInt(addressTypeData.sqft) || 0,
-                            is_franchise: addressTypeData.isFranchise === "2"
-                        }
-                    ]
+                    locations: [locationObj]
                 };
                 break;
             }

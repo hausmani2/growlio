@@ -55,7 +55,9 @@ const RestaurantWrapperContent = () => {
             country: "",
             city: "",
             state: "",
-            zipCode: ""
+            zipCode: "",
+            latitude: null,
+            longitude: null
         }
     );
 
@@ -109,7 +111,9 @@ const RestaurantWrapperContent = () => {
                     country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "",
                     city: location.city || "",
                     state: location.state || "", // Keep the actual state code (TX, CA, NY, etc.)
-                    zipCode: location.zip_code || ""
+                    zipCode: location.zip_code || "",
+                    latitude: location.latitude || location.lat || null,
+                    longitude: location.longitude || location.lng || null
                 }));
                 
                 setAddressTypeData(prev => ({
@@ -209,24 +213,45 @@ const RestaurantWrapperContent = () => {
             // Get existing restaurant_id if available (for updates)
             const existingRestaurantId = useStore.getState().getRestaurantId();
             
+            // Build location object with conditional latitude/longitude
+            const locationObj = {
+                location_name: restaurantData.locationName, // API expects 'location_name'
+                address_1: addressData.address1,
+                address_2: addressData.address2,
+                city: addressData.city,
+                country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "",
+                state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
+                zip_code: addressData.zipCode,
+                sqft: parseInt(addressTypeData.sqft),
+                is_franchise: addressTypeData.isFranchise === "2"
+            };
+            
+            // Only include latitude and longitude if they have valid values
+            console.log('Address data before submission:', {
+                latitude: addressData.latitude,
+                longitude: addressData.longitude,
+                address1: addressData.address1
+            });
+            
+            if (addressData.latitude !== null && addressData.latitude !== undefined && !isNaN(parseFloat(addressData.latitude))) {
+                locationObj.latitude = parseFloat(addressData.latitude);
+                console.log('Including latitude in payload:', locationObj.latitude);
+            } else {
+                console.log('Latitude not included - value is:', addressData.latitude);
+            }
+            if (addressData.longitude !== null && addressData.longitude !== undefined && !isNaN(parseFloat(addressData.longitude))) {
+                locationObj.longitude = parseFloat(addressData.longitude);
+                console.log('Including longitude in payload:', locationObj.longitude);
+            } else {
+                console.log('Longitude not included - value is:', addressData.longitude);
+            }
+            
             const stepData = {
                 restaurant_name: restaurantData.restaurantName,
                 number_of_locations: parseInt(restaurantData.numberOfLocations),
                 restaurant_type: addressTypeData.restaurantType,
                 menu_type: addressTypeData.menuType,
-                locations: [
-                    {
-                        location_name: restaurantData.locationName, // API expects 'location_name'
-                        address_1: addressData.address1,
-                        address_2: addressData.address2,
-                        city: addressData.city,
-                        country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "",
-                        state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
-                        zip_code: addressData.zipCode,
-                        sqft: parseInt(addressTypeData.sqft),
-                        is_franchise: addressTypeData.isFranchise === "2"
-                    }
-                ]
+                locations: [locationObj]
             };
             
             // Add restaurant_id to payload if it exists (for updates)
