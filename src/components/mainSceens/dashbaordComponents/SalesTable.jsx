@@ -1239,15 +1239,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
     return (
       <Modal
-        title={isEditMode ? "Edit Actual Weekly Sales " : "Add Actual Weekly Sales"}
+        title={isEditMode ? "Edit Your Actual Daily Sales " : "Enter Your Actual Daily Sales"}
         open={isModalVisible}
         onCancel={closeModal}
+        data-guidance="sales_table"
         footer={[
           <Button key="cancel" onClick={closeModal}>
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Week
+            {isEditMode ? 'Update' : 'Add'} Your Daily Sales
           </Button>
         ]}
         width="90vw"

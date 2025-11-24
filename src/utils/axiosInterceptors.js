@@ -48,11 +48,20 @@ export const clearStoreAndRedirectToLogin = () => {
   // Check if user was on admin route and redirect accordingly
   const currentPath = window.location.pathname;
   const isAdminPath = currentPath.startsWith('/admin');
+  const isAdminLoginPath = currentPath === '/admin/login';
   
   // Redirect to appropriate login page
-  if (isAdminPath && currentPath !== '/superadmin-login') {
-    window.location.href = '/superadmin-login';
-  } else if (currentPath !== '/login') {
+  // Don't redirect if already on a login page
+  if (isAdminLoginPath || currentPath === '/login') {
+    // Already on a login page, don't redirect
+    return;
+  }
+  
+  if (isAdminPath) {
+    // User was on an admin route, redirect to admin login
+    window.location.href = '/admin/login';
+  } else {
+    // User was on a regular route, redirect to regular login
     window.location.href = '/login';
   }
 };

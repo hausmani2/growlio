@@ -13,7 +13,6 @@ import SalesDataModal from './SalesDataModal';
 import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
-import GuidanceOverlay from '../../guidance/GuidanceOverlay';
 
 
 
@@ -577,22 +576,6 @@ const SummaryDashboard = () => {
 
   return (
     <App>
-      <GuidanceOverlay />
-      {/* Guidance Debug Button - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 z-[10001]">
-          <button
-            onClick={() => {
-              // Force show guidance for testing
-              const event = new CustomEvent('forceShowGuidance');
-              window.dispatchEvent(event);
-            }}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-orange-600"
-          >
-            🚀 Force Show Guidance
-          </button>
-        </div>
-      )}
       {/* Weekly Average Data Popup - Show at top when 3 weeks data available - HIGHEST PRIORITY */}
       <Modal
         title="Weekly Average Data Available"
@@ -670,7 +653,7 @@ const SummaryDashboard = () => {
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
             {/* Left Side - Title and Description */}
-            <div className="flex-1" data-guidance="budget_dashboard_title">
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-orange-600 mb-2">
                 Weekly Budgeted Dashboard
               </h1>
@@ -687,6 +670,7 @@ const SummaryDashboard = () => {
                 onChange={handleWeekPickerChange}
                 style={{ width: 220 }}
                 allowClear={false}
+                data-guidance="week_selector"
                 format={(value) => {
                   if (!value) return 'Select week';
                   const start = dayjs(value).startOf('week');

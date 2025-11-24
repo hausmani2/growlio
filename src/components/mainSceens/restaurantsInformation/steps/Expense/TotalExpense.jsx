@@ -91,7 +91,7 @@ const TotalExpense = ({ data,  onSave }) => {
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
-            <div className="mb-6" data-guidance="total_expense_title">
+            <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600">Total Expenses</h3>
                 <p className="text-gray-600 text-sm">
                    Your total expenses are calculated by adding your variable and fixed costs.
@@ -99,7 +99,7 @@ const TotalExpense = ({ data,  onSave }) => {
             </div>
             
             {/* Total Display */}
-            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4" data-guidance="total_expense_display">
+            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <label className="text-base font-semibold text-gray-700">
@@ -137,7 +137,6 @@ const TotalExpense = ({ data,  onSave }) => {
                         title="Save & Continue" 
                         className="btn-brand h-11"
                         onClick={onSave}
-                        data-guidance="expense_continue_button"
                     />
                 </div>
             )}

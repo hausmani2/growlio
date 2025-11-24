@@ -469,7 +469,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     return (
       <Modal
         className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
-        title={isEditMode ? "Edit Actual Weekly COGS Data" : "Add Actual Weekly COGS Data"}
+        title={isEditMode ? "Edit Your Actual COGS" : "Enter Your Actual COGS"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -485,7 +485,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Actual Weekly COGS
+            {isEditMode ? 'Update' : 'Add'} Your Daily COGS
           </Button>
         ]}
         width="90vw"

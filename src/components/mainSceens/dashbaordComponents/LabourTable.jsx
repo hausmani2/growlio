@@ -658,7 +658,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
     return (
       <Modal
-        title={isEditMode ? "Edit Actual Weekly Labor Data" : "Add Actual Weekly Labor Data"}
+        title={isEditMode ? "Edit Your Actual Daily Labor" : "Enter Your Actual Daily Labor"}
         open={isModalVisible}
         onCancel={() => {
           setIsModalVisible(false);
@@ -674,7 +674,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleSubmit} loading={isSubmitting || storeLoading}>
-            {isEditMode ? 'Update' : 'Add'} Actual Weekly Labor
+            {isEditMode ? 'Update' : 'Add'} Your Daily Labor
           </Button>
         ]}
         width="90vw"

@@ -66,14 +66,14 @@ const Congratulations = () => {
                 <div className="w-full max-w-lg mx-auto">
                     <div className="flex flex-col gap-2">
                         {/* Header */}
-                        <div className="flex flex-col gap-3" data-guidance="welcome_title">
+                        <div className="flex flex-col gap-3" >
                             <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600 leading-tight">
                                 Welcome to Growlio
                             </h1>
                         </div>
 
                         {/* Description */}
-                        <div className="space-y-4 text-gray-700 leading-relaxed" data-guidance="welcome_description">
+                        <div className="space-y-4 text-gray-700 leading-relaxed" >
                             <p className="text-sm sm:text-base">
                                 Running a restaurant is tough—but managing your numbers doesn't have to be. That's why we built Growlio: a simple budgeting tool designed to help you stay profitable and in control.
                             </p>
@@ -99,7 +99,7 @@ const Congratulations = () => {
                             </p>
                         </div>
                         {/* Button */}
-                        <div className="space-y-4" data-guidance="welcome_get_started_button">
+                        <div className="space-y-4">
                             <PrimaryBtn
                                 title="Let's get started!"
                                 className="btn-brand w-full text-lg py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"

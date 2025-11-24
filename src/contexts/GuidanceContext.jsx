@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/axiosInterceptors';
 import useStore from '../store/store';
 
-const GuidanceContext = createContext(null);
+export const GuidanceContext = createContext(null);
 
 export const useGuidance = () => {
   const context = useContext(GuidanceContext);
@@ -16,12 +16,13 @@ export const useGuidance = () => {
 export const GuidanceProvider = ({ children }) => {
   const location = useLocation();
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
-  const [hasSeenGuidance, setHasSeenGuidance] = useState(true); // Default to true to prevent showing until checked
+  const [hasSeenGuidance, setHasSeenGuidance] = useState(null); // null = not checked yet, true = seen, false = not seen
   const [popups, setPopups] = useState([]);
   const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('');
+  const hasInitializedRef = useRef(false); // Track if we've initialized guidance status
 
   // Map route paths to page names
   const getPageNameFromRoute = (pathname) => {
@@ -60,17 +61,16 @@ export const GuidanceProvider = ({ children }) => {
   // Check if user has seen guidance
   const checkGuidanceStatus = useCallback(async () => {
     try {
-      console.log('🔍 Checking guidance status...');
       const response = await apiGet('/authentication/user/guidance-status/');
-      const hasSeen = response.data?.has_seen_user_guidance ?? true;
-      console.log('📊 Guidance status:', { hasSeen, response: response.data });
+      // Use false as default instead of true, so guidance shows by default
+      const hasSeen = response.data?.has_seen_user_guidance ?? false; 
       setHasSeenGuidance(hasSeen);
       return hasSeen;
     } catch (error) {
       console.error('❌ Failed to check guidance status:', error);
-      // On error, assume user has seen guidance to prevent blocking
-      setHasSeenGuidance(true);
-      return true;
+      // On error, default to false to allow guidance to show
+      setHasSeenGuidance(false);
+      return false;
     }
   }, []);
 
@@ -442,30 +442,32 @@ export const GuidanceProvider = ({ children }) => {
     return staticPopups[pageName] || [];
   }, []);
 
-  // Fetch popups for current page
+  // Fetch popups for current page - ONLY from API, no static fallbacks
   const fetchPopups = useCallback(async (pageName) => {
     try {
-      console.log('🔍 Fetching popups for page:', pageName);
       const response = await apiGet('/admin_access/guidance-popups/');
       const allPopups = response.data || [];
-      console.log('📋 All popups from API:', allPopups);
       
-      // Filter popups for current page and active status
+      // Allowed sidebar keys - only these 4 will be shown
+      // Accept both 'sidebar_profit_loss' (underscore) and 'sidebar_profit-loss' (hyphen) for profit-loss
+      const allowedSidebarKeys = ['sidebar_budget', 'sidebar_dashboard', 'sidebar_profit-loss', 'sidebar_profit_loss', 'sidebar_onboarding' , 'week_selector'];
+      
+      // Filter popups for current page, active status, and only allowed sidebar keys
       let filteredPopups = allPopups.filter(
-        popup => popup.page === pageName && popup.is_active === true
-      );
-      
-      // If no popups found from API, use static popups as fallback
-      if (filteredPopups.length === 0) {
-        console.log('⚠️ No popups from API, using static popups for page:', pageName);
-        const staticPopups = getStaticPopups(pageName);
-        if (staticPopups.length > 0) {
-          filteredPopups = staticPopups;
-          console.log('✅ Using static popups:', staticPopups);
+        popup => {
+          const isCorrectPage = popup.page === pageName;
+          const isActive = popup.is_active === true;
+          const isAllowedSidebarKey = allowedSidebarKeys.includes(popup.key);
+          
+          return isCorrectPage && isActive && isAllowedSidebarKey;
         }
-      }
-      
-      console.log('✅ Filtered popups for page:', { pageName, filteredPopups });
+      ).map(popup => {
+        // Normalize profit-loss key: convert 'sidebar_profit_loss' to 'sidebar_profit-loss' to match DOM
+        if (popup.key === 'sidebar_profit_loss') {
+          return { ...popup, key: 'sidebar_profit-loss' };
+        }
+        return popup;
+      });
       
       // Sort by id to maintain order
       filteredPopups.sort((a, b) => a.id - b.id);
@@ -474,42 +476,36 @@ export const GuidanceProvider = ({ children }) => {
       return filteredPopups;
     } catch (error) {
       console.error('❌ Failed to fetch guidance popups:', error);
-      
-      // On error, try to use static popups as fallback
-      const staticPopups = getStaticPopups(pageName);
-      if (staticPopups.length > 0) {
-        console.log('✅ Using static popups as fallback:', staticPopups);
-        setPopups(staticPopups);
-        return staticPopups;
-      }
-      
       setPopups([]);
       return [];
     }
-  }, [getStaticPopups]);
+  }, []);
 
   // Mark guidance as completed
   const markGuidanceAsSeen = useCallback(async () => {
     try {
-      await apiPost('/authentication/user/guidance-status/');
+      const response = await apiPost('/authentication/user/guidance-status/');
       setHasSeenGuidance(true);
       setIsActive(false);
+      setCurrentPopupIndex(0);
+      setPopups([]);
     } catch (error) {
-      console.error('Failed to mark guidance as seen:', error);
+      console.error('❌ Failed to mark guidance as seen:', error);
+      // Still close the guidance even if API call fails
+      setIsActive(false);
+      setHasSeenGuidance(true);
     }
   }, []);
 
   // Start guidance tour
   const startGuidance = useCallback(async (forceShow = false) => {
     const pageName = getPageNameFromRoute(location.pathname);
-    console.log('🚀 Starting guidance for page:', { pathname: location.pathname, pageName, forceShow });
     setCurrentPage(pageName);
     
     // Skip guidance on public routes (login, signup, etc.)
     // Note: We allow guidance on /congratulations and /onboarding as these are onboarding screens
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     if (publicRoutes.includes(location.pathname)) {
-      console.log('⏭️ Skipping guidance on public route');
       setLoading(false);
       setIsActive(false);
       return;
@@ -517,48 +513,52 @@ export const GuidanceProvider = ({ children }) => {
     
     // Check if user has seen guidance (unless forcing)
     if (!forceShow) {
+      // Always check fresh from API to avoid race conditions
       const hasSeen = await checkGuidanceStatus();
-      if (hasSeen) {
-        console.log('✅ User has already seen guidance, skipping');
+      if (hasSeen === true) {
         setIsActive(false);
         setLoading(false);
         return;
       }
+      // If hasSeen is false or null, continue to show guidance
     } else {
-      console.log('🔓 Force showing guidance (bypassing hasSeenGuidance check)');
       setHasSeenGuidance(false); // Temporarily set to false for force show
     }
 
     const pagePopups = await fetchPopups(pageName);
-    console.log('📋 Popups for page:', { pageName, count: pagePopups.length, popups: pagePopups });
     
     if (pagePopups.length > 0) {
-      console.log('🎯 Found popups, activating guidance:', pagePopups.length);
-      setCurrentPopupIndex(0);
-      setIsActive(true);
-      
-      // Wait a bit for DOM to be ready
+      // Wait for DOM to be ready, then verify elements exist
       setTimeout(() => {
-        // Check if first popup element exists
-        const firstPopup = pagePopups[0];
-        const elementExists = document.querySelector(`[data-guidance="${firstPopup.key}"]`);
-        console.log('🔍 First popup element check:', { 
-          key: firstPopup.key, 
-          exists: !!elementExists,
-          allElements: Array.from(document.querySelectorAll('[data-guidance]')).map(el => ({
-            key: el.getAttribute('data-guidance'),
-            tag: el.tagName,
-            visible: el.offsetParent !== null
-          }))
+        // Get all available data-guidance elements
+        const allElements = Array.from(document.querySelectorAll('[data-guidance]')).map(el => 
+          el.getAttribute('data-guidance')
+        );
+        
+        // Filter popups to only those that have matching elements
+        const validPopups = pagePopups.filter(popup => {
+          const elementExists = allElements.includes(popup.key);
+          if (!elementExists) {
+            console.warn(`⚠️ Skipping popup "${popup.key}" - element not found in DOM`);
+            console.warn(`   Expected: ${popup.key}, Available:`, allElements.filter(k => k.startsWith('sidebar_')));
+          } else {
+          }
+          return elementExists;
         });
         
-        if (!elementExists) {
-          console.warn('⚠️ Element not found, but continuing anyway...');
+        if (validPopups.length > 0) {
+          // Update popups to only include valid ones
+          setPopups(validPopups);
+          setCurrentPopupIndex(0);
+          setIsActive(true);
+        } else {
+          setIsActive(false);
         }
-      }, 500);
+        setLoading(false);
+      }, 1000); // Increased delay to ensure sidebar is rendered
     } else {
-      console.log('⚠️ No popups found for page:', pageName);
       setIsActive(false);
+      setLoading(false);
     }
     
     setLoading(false);
@@ -567,20 +567,13 @@ export const GuidanceProvider = ({ children }) => {
   // Go to next popup
   const nextPopup = useCallback(() => {
     if (currentPopupIndex < popups.length - 1) {
+      // Move to next popup
       setCurrentPopupIndex(currentPopupIndex + 1);
     } else {
-      // Last popup of current page - check if this is the last step (expense)
-      // Only mark as seen if we're on the last step (expense page)
-      const isLastStep = currentPage === 'onboarding_expense';
-      if (isLastStep) {
-        // Last popup of last step - mark as seen and close
-        markGuidanceAsSeen();
-      } else {
-        // Last popup of current step - just close (guidance will restart on next step)
-        setIsActive(false);
-      }
+      // Last popup - always mark as seen and close
+      markGuidanceAsSeen();
     }
-  }, [currentPopupIndex, popups.length, currentPage, markGuidanceAsSeen]);
+  }, [currentPopupIndex, popups.length, markGuidanceAsSeen]);
 
   // Skip all popups
   const skipGuidance = useCallback(() => {
@@ -603,14 +596,26 @@ export const GuidanceProvider = ({ children }) => {
 
   // Initialize guidance status on app load
   useEffect(() => {
+    // Skip guidance status check on public routes or when not authenticated
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
+    const isPublicRoute = publicRoutes.includes(location.pathname);
+    
+    // Check if user is authenticated (has token)
+    const token = useStore.getState().token;
+    const isAuthenticated = !!token;
+    
+    // Only check guidance status if user is authenticated and not on a public route
+    if (isPublicRoute || !isAuthenticated) {
+      setHasSeenGuidance(true); // Default to true to prevent showing guidance on public routes
+      return;
+    }
+    
     // Check guidance status once on app initialization
     const initializeGuidanceStatus = async () => {
       try {
         const response = await apiGet('/authentication/user/guidance-status/');
         const hasSeen = response.data?.has_seen_user_guidance ?? false;
-        
-        console.log('📊 Guidance status from API:', { hasSeen, isOnBoardingCompleted });
-        
+                
         // Simply use the API response - NO automatic marking
         // The backend should handle marking existing users as having seen guidance
         // API call to mark as seen ONLY happens when user completes/skips guidance
@@ -630,9 +635,13 @@ export const GuidanceProvider = ({ children }) => {
       }
     };
 
-    // Check guidance status on app load
-    initializeGuidanceStatus();
-  }, []); // Run only once on mount
+    // Check guidance status on app load (only if not already initialized)
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      initializeGuidanceStatus();
+    } else {
+    }
+  }, [location.pathname, isOnBoardingCompleted]); // Run when pathname or onboarding status changes
 
   // Initialize guidance on route change
   useEffect(() => {
@@ -640,10 +649,10 @@ export const GuidanceProvider = ({ children }) => {
     setIsActive(false);
     setCurrentPopupIndex(0);
     
-    // Small delay to ensure page is rendered
+    // Small delay to ensure page is rendered and sidebar is mounted
     const timer = setTimeout(() => {
       startGuidance();
-    }, 500);
+    }, 1000); // Increased delay to ensure sidebar is fully rendered
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -652,7 +661,6 @@ export const GuidanceProvider = ({ children }) => {
   // Listen for force show guidance event
   useEffect(() => {
     const handleForceShow = () => {
-      console.log('🚀 Force show guidance event received');
       startGuidance(true);
     };
 

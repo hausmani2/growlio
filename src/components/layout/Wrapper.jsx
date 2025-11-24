@@ -42,13 +42,13 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'dashboard',
           icon: <HomeOutlined />,
-          label: 'Enter Weekly Data',
+          label: 'Close Out Your Day(s)',
           onClick: () => navigate('/dashboard'),
         },
         {
           key: 'profit-loss',
           icon: <ArrowUpOutlined />,
-          label: 'Budget vs Actual Sales',
+          label: 'Your Budget Vs. Actual',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
       ],
@@ -99,7 +99,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     {
       key: 'leo-ai',
       icon: <FileTextOutlined />,
-      label: 'Leo AI',
+      label: 'LIO AI',
       children: [
         // {
         //   key: 'faq',

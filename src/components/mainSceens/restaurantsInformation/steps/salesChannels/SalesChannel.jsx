@@ -155,7 +155,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
-            <div className="mb-6" data-guidance="sales_channels_title">
+            <div className="mb-6" >
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Sales Channels</h3>
                 {/* <p className="text-gray-600 text-sm">
                     Define your active sales channels to accurately track your restaurant's financial performance.
@@ -164,7 +164,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
             
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2" data-guidance="sales_channels_section">
+                <label className="block text-sm font-semibold text-gray-700 mb-2" >
                     Sales Channels <span className="text-red-500">*</span>
                     <TooltipIcon text={tooltips['sales_channels']} />
                 </label>
@@ -173,7 +173,6 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                     {salesChannels.map((channel, index) => (
                         <div
                             key={index}
-                            data-guidance={`sales_channel_${channel.key}`}
                             onClick={() => handleToggle(channel.key)}
                             className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 gap-3 sm:gap-0 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 ${
                                 errors.sales_channels ? 'border-red-500' : ''

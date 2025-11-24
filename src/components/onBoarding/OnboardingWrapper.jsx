@@ -250,7 +250,7 @@ const OnboardingWrapper = () => {
                             </div>
                             
                             {/* Header */}
-                            <div className="flex flex-col gap-3" data-guidance="restaurant_setup_title">
+                            <div className="flex flex-col gap-3">
                                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-gray-900">
                                 Let's Get Your Restaurant Setup!
                                 </h1>
@@ -273,7 +273,7 @@ const OnboardingWrapper = () => {
                                     </p>
                                 </div> */}
                                 
-                                <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer" data-guidance="restaurant_setup_option">
+                                <div className="border-2 border-orange-200 rounded-xl p-4 sm:p-6 bg-orange-50 hover:bg-orange-100 transition-colors duration-200 cursor-pointer" >
                                     <div className="flex items-center gap-3">
                                         <Checkbox defaultChecked />
                                         <span className="text-base sm:text-xl font-semibold text-orange-800">
@@ -284,7 +284,7 @@ const OnboardingWrapper = () => {
                                 </div>
                             </div>
 
-                        <div className="" data-guidance="restaurant_setup_get_started_button">
+                        <div className="">
                             <button
                                 onClick={handleSubmit}
                                 disabled={isChecking}

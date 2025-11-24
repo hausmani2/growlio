@@ -1,8 +1,17 @@
-import React from 'react';
-import { useGuidance } from '../../contexts/GuidanceContext';
+import React, { useContext } from 'react';
+import { GuidanceContext } from '../../contexts/GuidanceContext';
 import GuidanceTooltip from './GuidanceTooltip';
 
 const GuidanceOverlay = () => {
+  // Check context directly to avoid throwing error if provider is not available
+  const context = useContext(GuidanceContext);
+  
+  // If context is not available, return null (component is outside provider)
+  if (!context) {
+    console.warn('GuidanceOverlay: GuidanceProvider is not available. Make sure GuidanceOverlay is rendered within GuidanceProvider.');
+    return null;
+  }
+
   const {
     isActive,
     loading,
@@ -11,7 +20,7 @@ const GuidanceOverlay = () => {
     skipGuidance,
     currentPopupIndex,
     popups,
-  } = useGuidance();
+  } = context;
 
   // Debug logging
   React.useEffect(() => {

@@ -668,7 +668,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   }
 
   return (
-    <Card key={`dashboard-${dataTimestamp}`} className="shadow-lg border-0">
+    <Card key={`dashboard-${dataTimestamp}`} className="shadow-lg border-0" data-guidance="summary_table">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
         <div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-0 drop-shadow-sm">
@@ -692,7 +692,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             disabled={!hasData}
             className="h-9 px-4 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
           >
-            <span className="hidden sm:inline">Edit Sales Data</span>
+            <span className="hidden sm:inline">Edit Budget</span>
           </Button>
           <Button 
             icon={<PrinterOutlined />} 
@@ -723,6 +723,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           className="summary-table"
           rowKey="key"
           size="small"
+         
         />
       </div>
 

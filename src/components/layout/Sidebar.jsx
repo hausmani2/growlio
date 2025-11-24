@@ -133,6 +133,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
       <div key={item.key} className="relative">
         <button
           onClick={() => handleMenuItemClick(item)}
+          data-guidance={`sidebar_${item.key}`}
           className={`w-full flex items-center px-4 py-3 text-left transition-all duration-200 group ${
             isSelected
               ? 'bg-orange-50 border-r-2 border-orange-500 text-orange-700'
@@ -171,6 +172,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
                   <div key={child.key} className="relative">
                     <button
                       onClick={() => child.onClick && child.onClick()}
+                      data-guidance={`sidebar_${child.key}`}
                       className={`w-full flex items-center justify-center px-2 py-2 text-left transition-all duration-200 group rounded ${
                         selectedKey === child.key
                           ? 'bg-orange-50 text-orange-700'
