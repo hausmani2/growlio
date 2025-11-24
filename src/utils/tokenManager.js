@@ -81,8 +81,15 @@ export const storeImpersonationData = (impersonationData) => {
   storage.setItem(TOKEN_KEYS.IMPERSONATION_REFRESH, refresh);
   storage.setItem(TOKEN_KEYS.IMPERSONATION_MESSAGE, message);
   
-  // Update main token to impersonation token
+  // Update main token to impersonation token in both sessionStorage and localStorage
+  // localStorage for cross-tab sync, sessionStorage for backward compatibility
   storage.setItem(TOKEN_KEYS.MAIN_TOKEN, access);
+  try {
+    localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, access);
+    localStorage.setItem('user', JSON.stringify(impersonated_user));
+  } catch (error) {
+    console.warn('Failed to store token in localStorage:', error);
+  }
   
 };
 
@@ -150,8 +157,15 @@ export const restoreSuperAdminToken = (setUser) => {
       return { success: false, error: 'No original super admin data found' };
     }
     
-    // Restore the main token to super admin token
+    // Restore the main token to super admin token in both sessionStorage and localStorage
     storage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+    try {
+      localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+      const originalUser = JSON.parse(originalSuperadmin);
+      localStorage.setItem('user', JSON.stringify(originalUser));
+    } catch (error) {
+      console.warn('Failed to restore token in localStorage:', error);
+    }
     
     // Restore the original restaurant_id
     if (originalRestaurantId) {
@@ -182,12 +196,17 @@ export const restoreSuperAdminToken = (setUser) => {
  * @returns {Promise} The API call result
  */
 export const withSuperAdminToken = async (apiCall) => {
-  const currentToken = storage.getItem(TOKEN_KEYS.MAIN_TOKEN);
+  const currentToken = storage.getItem(TOKEN_KEYS.MAIN_TOKEN) || localStorage.getItem(TOKEN_KEYS.MAIN_TOKEN);
   const originalSuperadminToken = storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN);
   
   // If we're impersonating, use the original super admin token for this request
   if (originalSuperadminToken && isImpersonating()) {
     storage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+    try {
+      localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+    } catch (error) {
+      console.warn('Failed to update token in localStorage:', error);
+    }
   }
   
   try {
@@ -195,8 +214,13 @@ export const withSuperAdminToken = async (apiCall) => {
     return result;
   } finally {
     // Always restore the current token after the request
-    if (currentToken !== originalSuperadminToken) {
+    if (currentToken && currentToken !== originalSuperadminToken) {
       storage.setItem(TOKEN_KEYS.MAIN_TOKEN, currentToken);
+      try {
+        localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, currentToken);
+      } catch (error) {
+        console.warn('Failed to restore token in localStorage:', error);
+      }
     }
   }
 };
@@ -231,12 +255,17 @@ export const forceStoreOriginalToken = (superAdminData) => {
  * @returns {Promise} The API call result
  */
 export const withSuperAdminTokenForImpersonation = async (apiCall) => {
-  const currentToken = storage.getItem(TOKEN_KEYS.MAIN_TOKEN);
+  const currentToken = storage.getItem(TOKEN_KEYS.MAIN_TOKEN) || localStorage.getItem(TOKEN_KEYS.MAIN_TOKEN);
   const originalSuperadminToken = storage.getItem(TOKEN_KEYS.ORIGINAL_SUPERADMIN_TOKEN);
   
   // If we have an original super admin token and we're not already using it
   if (originalSuperadminToken && currentToken !== originalSuperadminToken) {
     storage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+    try {
+      localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, originalSuperadminToken);
+    } catch (error) {
+      console.warn('Failed to update token in localStorage:', error);
+    }
   }
   
   try {
@@ -244,8 +273,13 @@ export const withSuperAdminTokenForImpersonation = async (apiCall) => {
     return result;
   } finally {
     // Always restore the current token after the request
-    if (currentToken !== originalSuperadminToken) {
+    if (currentToken && currentToken !== originalSuperadminToken) {
       storage.setItem(TOKEN_KEYS.MAIN_TOKEN, currentToken);
+      try {
+        localStorage.setItem(TOKEN_KEYS.MAIN_TOKEN, currentToken);
+      } catch (error) {
+        console.warn('Failed to restore token in localStorage:', error);
+      }
     }
   }
 };

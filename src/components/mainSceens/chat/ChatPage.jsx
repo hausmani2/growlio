@@ -79,24 +79,27 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Fetch conversations on mount
+  // Initialize: Clear any existing conversation ID on mount to start fresh
   useEffect(() => {
+    // Clear conversation ID on mount to ensure new conversations start fresh
+    // User must explicitly select a conversation from the sidebar
+    setSelectedConversationIdLocal(null);
+    setSelectedConversationId(null);
+    sessionStorage.removeItem('chat_conversation_id');
+    
+    // Initialize with welcome message
+    setMessages([
+      {
+        text: "Hello! I'm here to help you. How can I assist you today?",
+        isUser: false,
+        timestamp: new Date(),
+      },
+    ]);
+    
+    // Fetch conversations list (but don't auto-load any)
     fetchConversations();
-  }, []);
-
-  // Load conversation from store if available
-  useEffect(() => {
-    if (storeConversationId) {
-      // Convert to string for comparison to handle number/string mismatches
-      const storeIdStr = String(storeConversationId);
-      const selectedIdStr = selectedConversationId ? String(selectedConversationId) : null;
-      
-      if (storeIdStr !== selectedIdStr) {
-        loadConversationHistory(storeConversationId);
-      }
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeConversationId]);
+  }, []);
 
   /**
    * Fetch all conversations for the logged-in user
@@ -120,13 +123,8 @@ const ChatPage = () => {
       
       setConversations(formattedConversations);
       
-      // Auto-select the most recent conversation only if no conversation is selected from store
-      if (formattedConversations.length > 0 && !selectedConversationId && !storeConversationId) {
-        const mostRecent = formattedConversations[0];
-        if (mostRecent.id) {
-          loadConversationHistory(mostRecent.id);
-        }
-      }
+      // Don't auto-select conversations - let user explicitly choose
+      // This ensures new conversations start with no ID
     } catch (error) {
       console.error('Error fetching conversations:', error);
       setConversations([]);
@@ -216,8 +214,11 @@ const ChatPage = () => {
    * Start a new conversation
    */
   const startNewConversation = () => {
+    // Clear conversation ID from both local state and store (tab-specific)
     setSelectedConversationIdLocal(null);
-    setSelectedConversationId(null); // Update store
+    setSelectedConversationId(null); // This will also clear sessionStorage
+    // Also explicitly clear sessionStorage to ensure it's cleared
+    sessionStorage.removeItem('chat_conversation_id');
     setMessages([
       {
         text: "Hello! I'm here to help you. How can I assist you today?",
@@ -336,10 +337,18 @@ const ChatPage = () => {
 
     try {
       // Prepare request payload
+      // For new conversations, conversation_id should be empty string (not null or undefined)
+      // Only use conversation ID if it's explicitly set (user selected an existing conversation)
+      const conversationIdToUse = selectedConversationId ? String(selectedConversationId) : '';
       const payload = {
         question: messageText,
-        conversation_id: selectedConversationId || '',
+        conversation_id: conversationIdToUse,
       };
+      
+      // Debug log to verify conversation ID is empty for new chats
+      if (!conversationIdToUse) {
+        console.log('Starting new conversation - no conversation_id');
+      }
 
       // Call the API
       const response = await apiPost('/chatbot/send_message/', payload);

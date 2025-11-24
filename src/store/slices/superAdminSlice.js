@@ -95,10 +95,15 @@ const createSuperAdminSlice = (set, get) => {
           throw new Error('No authentication token received');
         }
 
-        // Persist token and user in session storage
+        // Persist token and user in localStorage for cross-tab sync and sessionStorage for backward compatibility
         try {
+          localStorage.setItem('token', access);
+          localStorage.setItem('user', JSON.stringify(userData));
           sessionStorage.setItem('token', access);
           sessionStorage.setItem('user', JSON.stringify(userData));
+          
+          // Dispatch custom event to notify other tabs/windows in same origin
+          window.dispatchEvent(new Event('auth-storage-change'));
         } catch {}
 
         // Update global auth state from here to avoid waiting for other actions
@@ -213,13 +218,25 @@ const createSuperAdminSlice = (set, get) => {
         // Update impersonation data with new user
         storeImpersonationData(response.data);
         
-        // Update the main token to new impersonation token (session)
+        // Clear chat conversation ID when switching impersonation (each user should have their own conversations)
+        const currentState = get();
+        if (currentState.clearSelectedConversation) {
+          currentState.clearSelectedConversation();
+        }
+        sessionStorage.removeItem('chat_conversation_id');
+        
+        // Update the main token to new impersonation token in both sessionStorage and localStorage
         sessionStorage.setItem('token', response.data.access);
+        try {
+          localStorage.setItem('token', response.data.access);
+          localStorage.setItem('user', JSON.stringify(response.data.impersonated_user));
+        } catch (error) {
+          console.warn('Failed to store token in localStorage:', error);
+        }
         
         // IMPORTANT: Ensure original super admin token is preserved
         const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
         if (!originalSuperadminToken) {
-          const currentState = get();
           const mainToken = sessionStorage.getItem('token');
           if (currentState.user && mainToken) {
             const userWithToken = {
@@ -232,7 +249,6 @@ const createSuperAdminSlice = (set, get) => {
         }
         
         // Update the auth state with new impersonated user data
-        const currentState = get();
         if (currentState.setUser) {
           currentState.setUser({
             ...response.data.impersonated_user,
@@ -307,6 +323,11 @@ const createSuperAdminSlice = (set, get) => {
         // Store impersonation data using the token manager
         storeImpersonationData(response.data);
         
+        // Clear chat conversation ID when impersonating (each user should have their own conversations)
+        if (currentState.clearSelectedConversation) {
+          currentState.clearSelectedConversation();
+        }
+        sessionStorage.removeItem('chat_conversation_id');
         
         // Fetch impersonated user's restaurant information
         try {
@@ -374,9 +395,14 @@ const createSuperAdminSlice = (set, get) => {
         // Clear ONLY impersonation data (keep super admin tokens safe)
         clearImpersonationData();
         
-        // Restore the main token to super admin token
+        // Restore the main token to super admin token in both sessionStorage and localStorage
         if (originalSuperadminToken) {
           sessionStorage.setItem('token', originalSuperadminToken);
+          try {
+            localStorage.setItem('token', originalSuperadminToken);
+          } catch (error) {
+            console.warn('Failed to restore token in localStorage:', error);
+          }
         }
         
         // Restore the original restaurant_id
@@ -384,23 +410,58 @@ const createSuperAdminSlice = (set, get) => {
           localStorage.setItem('restaurant_id', originalRestaurantId);
         }
         
-        // Restore original super admin user data
+        // Clear chat conversation ID when stopping impersonation (super admin should have their own conversations)
         const currentState = get();
-        if (originalSuperadmin && currentState.setUser) {
-          const originalUser = JSON.parse(originalSuperadmin);
-          currentState.setUser({
-            ...originalUser,
-            access: originalSuperadminToken || originalUser.access,
-            refresh: originalSuperadminRefresh || originalUser.refresh,
-            is_impersonated: false
-          });
+        if (currentState.clearSelectedConversation) {
+          currentState.clearSelectedConversation();
+        }
+        sessionStorage.removeItem('chat_conversation_id');
+        
+        // Restore original super admin user data
+        if (originalSuperadmin && originalSuperadminToken) {
+          try {
+            const originalUser = JSON.parse(originalSuperadmin);
+            
+            // Store user data in localStorage for cross-tab sync
+            try {
+              localStorage.setItem('user', JSON.stringify(originalUser));
+            } catch (error) {
+              console.warn('Failed to store user in localStorage:', error);
+            }
+            
+            // Update auth state in store directly
+            set(() => ({
+              user: originalUser,
+              token: originalSuperadminToken,
+              activeToken: originalSuperadminToken,
+              isAuthenticated: true,
+              isImpersonatingSession: false,
+              impersonatorId: null,
+              originalToken: null,
+            }));
+          } catch (parseError) {
+            console.error('Error parsing original superadmin data:', parseError);
+          }
+        } else {
+          // If we don't have original superadmin data, at least ensure token is set
+          if (originalSuperadminToken) {
+            set(() => ({
+              token: originalSuperadminToken,
+              activeToken: originalSuperadminToken,
+              isAuthenticated: true,
+              isImpersonatingSession: false,
+            }));
+          }
         }
         
         // Clear the stored original superadmin tokens (they're now restored)
         clearOriginalSuperAdminTokens();
         
+        // Dispatch custom event to notify other tabs about auth change
+        window.dispatchEvent(new Event('auth-storage-change'));
+        
         // Redirect to superadmin dashboard
-        window.location.href = '/superadmin';
+        window.location.href = '/superadmin/dashboard';
         
         return { success: true };
       } catch (error) {

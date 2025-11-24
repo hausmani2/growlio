@@ -5,15 +5,36 @@ const hasToken = (token) => {
   return token && typeof token === 'string' && token.length > 0;
 };
 
+// Helper function to get token from localStorage (for cross-tab sync)
+const getStoredToken = () => {
+  // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+};
+
+// Helper function to get user from storage
+const getStoredUser = () => {
+  const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch (error) {
+      console.warn('Failed to parse stored user data:', error);
+      return null;
+    }
+  }
+  return null;
+};
+
 // Auth slice
 const createAuthSlice = (set, get) => {
-  const storedToken = sessionStorage.getItem('token');
+  const storedToken = getStoredToken();
   const hasStoredToken = hasToken(storedToken);
+  const storedUser = getStoredUser();
   
   
   return {
     name: 'auth',
-    user: null,
+    user: storedUser,
     token: hasStoredToken ? storedToken : null,
     isAuthenticated: hasStoredToken,
     // Impersonation session state (avoid name collision with function isImpersonating())
@@ -47,9 +68,18 @@ const createAuthSlice = (set, get) => {
           currentState.clearPersistedState();
         }
         
-        // Store access token and user data in sessionStorage
+        // Store access token and user data in localStorage for cross-tab synchronization
+        // Also store in sessionStorage for backward compatibility
+        localStorage.setItem('token', access);
+        localStorage.setItem('user', JSON.stringify(userData));
         sessionStorage.setItem('token', access);
         sessionStorage.setItem('user', JSON.stringify(userData));
+        
+        // Clear any old chat conversation ID on new login
+        sessionStorage.removeItem('chat_conversation_id');
+        
+        // Dispatch custom event to notify other tabs/windows in same origin
+        window.dispatchEvent(new Event('auth-storage-change'));
         
         // Update store state
         
@@ -142,6 +172,7 @@ const createAuthSlice = (set, get) => {
       // Clear all localStorage items related to the app
       const keysToRemove = [
         'token',
+        'user', // Also remove user from localStorage
         'restaurant_id',
         'growlio-store' // This is the Zustand persist key
       ];
@@ -151,10 +182,16 @@ const createAuthSlice = (set, get) => {
       });
       
       // Clear sessionStorage as well
-      sessionStorage.clear(); 
+      sessionStorage.clear();
       
       // Clear onboarding-specific session storage
       sessionStorage.removeItem('onboarding_completion_check_time');
+      
+      // Clear chat conversation ID on logout
+      sessionStorage.removeItem('chat_conversation_id');
+      
+      // Dispatch custom event to notify other tabs/windows about logout
+      window.dispatchEvent(new Event('auth-storage-change'));
       
       // Clear all auth state
       set(() => ({ 
@@ -183,8 +220,14 @@ const createAuthSlice = (set, get) => {
         
         if (hasToken(access)) {
           // Registration successful with token - user is automatically authenticated
+          // Store in localStorage for cross-tab sync and sessionStorage for backward compatibility
+          localStorage.setItem('token', access);
+          localStorage.setItem('user', JSON.stringify(userData));
           sessionStorage.setItem('token', access);
           sessionStorage.setItem('user', JSON.stringify(userData));
+          
+          // Dispatch custom event to notify other tabs/windows in same origin
+          window.dispatchEvent(new Event('auth-storage-change'));
           
           set(() => ({ 
             user: userData, 
@@ -294,24 +337,12 @@ const createAuthSlice = (set, get) => {
       
     },
     
-    // Initialize authentication state from sessionStorage
+    // Initialize authentication state from localStorage (for cross-tab sync) or sessionStorage
     initializeAuth: () => {
-      const token = sessionStorage.getItem('token');
+      const token = getStoredToken();
+      const userData = getStoredUser();
       
       if (hasToken(token)) {
-        // Try to get user data from sessionStorage (stored during login)
-        const storedUser = sessionStorage.getItem('user');
-        let userData = null;
-        
-        if (storedUser) {
-          try {
-            userData = JSON.parse(storedUser);
-          } catch (error) {
-            console.warn('Failed to parse stored user data:', error);
-          }
-        }
-        
-        
         set(() => ({ 
           user: userData,
           token,
@@ -328,10 +359,40 @@ const createAuthSlice = (set, get) => {
           set(() => ({ restaurantId }));
         }
       } else {
-        // Clear invalid token
+        // Clear invalid tokens from both storages
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         set(() => ({ 
+          user: null,
           token: null, 
+          isAuthenticated: false 
+        }));
+      }
+    },
+    
+    // Sync authentication state from storage events (for cross-tab synchronization)
+    syncAuthFromStorage: () => {
+      const token = getStoredToken();
+      const userData = getStoredUser();
+      
+      if (hasToken(token)) {
+        set(() => ({ 
+          user: userData,
+          token,
+          activeToken: token,
+          isImpersonatingSession: !!sessionStorage.getItem('impersonated_user'),
+          impersonatorId: sessionStorage.getItem('original_superadmin') ? (JSON.parse(sessionStorage.getItem('original_superadmin'))?.id || null) : null,
+          originalToken: sessionStorage.getItem('original_superadmin_token') || null,
+          isAuthenticated: true 
+        }));
+      } else {
+        // Token was removed in another tab - logout this tab
+        set(() => ({ 
+          user: null,
+          token: null,
+          activeToken: null,
           isAuthenticated: false 
         }));
       }

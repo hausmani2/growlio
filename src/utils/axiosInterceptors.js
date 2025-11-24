@@ -29,6 +29,7 @@ export const clearStoreAndRedirectToLogin = () => {
   
   // Also clear any remaining localStorage items
   localStorage.removeItem('token');
+  localStorage.removeItem('user'); // Also remove user from localStorage
   localStorage.removeItem('restaurant_id');
   localStorage.removeItem('growlio-store');
   
@@ -40,6 +41,9 @@ export const clearStoreAndRedirectToLogin = () => {
   
   // Clear sessionStorage
   sessionStorage.clear();
+  
+  // Dispatch custom event to notify other tabs/windows about logout
+  window.dispatchEvent(new Event('auth-storage-change'));
   
   // Check if user was on admin route and redirect accordingly
   const currentPath = window.location.pathname;
@@ -87,7 +91,8 @@ api.interceptors.request.use(
     // Check if we're currently impersonating
     const isImpersonating = sessionStorage.getItem('impersonated_user');
     const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
-    const mainToken = sessionStorage.getItem('token');
+    // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
+    const mainToken = localStorage.getItem('token') || sessionStorage.getItem('token');
     
     // Debug logging
     

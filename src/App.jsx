@@ -40,6 +40,7 @@ import ChatPage from './components/mainSceens/chat/ChatPage';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
+  const syncAuthFromStorage = useStore((state) => state.syncAuthFromStorage);
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const token = useStore((state) => state.token);
   
@@ -53,6 +54,7 @@ function App() {
     });
   }, []);
   
+  // Initialize auth on mount
   useEffect(() => {
     try {
       initializeAuth();
@@ -60,6 +62,39 @@ function App() {
       console.error('❌ App - Auth initialization failed:', error);
     }
   }, [initializeAuth]);
+  
+  // Listen for storage events to sync auth state across tabs
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      // Only sync when token or user changes in localStorage
+      if (e.key === 'token' || e.key === 'user') {
+        try {
+          syncAuthFromStorage();
+        } catch (error) {
+          console.error('❌ App - Auth sync failed:', error);
+        }
+      }
+    };
+    
+    // Listen to storage events (fires when localStorage changes in other tabs)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen to custom events for same-tab updates (localStorage events don't fire in same tab)
+    const handleCustomStorageChange = () => {
+      try {
+        syncAuthFromStorage();
+      } catch (error) {
+        console.error('❌ App - Auth sync failed:', error);
+      }
+    };
+    
+    window.addEventListener('auth-storage-change', handleCustomStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-storage-change', handleCustomStorageChange);
+    };
+  }, [syncAuthFromStorage]);
 
 
   return (
@@ -99,8 +134,8 @@ function App() {
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/dashboard/chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />
           {/* Admin */}
-          <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
-          <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} />
+          {/* <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
+          <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} /> */}
           
           {/* SuperAdmin */}
           <Route path="/superadmin" element={<Navigate to="/superadmin/dashboard" replace />} />
