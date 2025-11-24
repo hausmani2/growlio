@@ -1,8 +1,18 @@
 import React from 'react';
 import { Input, Select } from 'antd';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
+import { useTabHook } from '../../useTabHook';
+import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
+import PrimaryButton from '../../../../buttons/Buttons';
+import { useLocation } from 'react-router-dom';
 
-const POSInformation = ({ data, updateData, errors = {} }) => {
+const POSInformation = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false }) => {
+    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    const location = useLocation();
+
+    // Check if this is update mode (accessed from sidebar) or onboarding mode
+    const isUpdateMode = !location.pathname.includes('/onboarding');
+
     // POS system options
     const posSystemOptions = [
         { value: 'Square', label: 'Square' },
@@ -14,6 +24,20 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
         { value: 'Micros', label: 'Micros' },
         { value: 'Other', label: 'Other' }
     ];
+    
+    const handleGoBack = () => {
+        navigateToPreviousStep();
+    };
+
+    const handleSaveAndContinueClick = async () => {
+        if (onSaveAndContinue) {
+            const result = await onSaveAndContinue();
+            if (result?.success) {
+                // Navigate to next step after successful save
+                navigateToNextStep(true); // Skip completion check since we just saved successfully
+            }
+        }
+    };
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mt-6">
@@ -167,6 +191,23 @@ const POSInformation = ({ data, updateData, errors = {} }) => {
                                 </span>
                             </div>
                         </div>
+                        {!isUpdateMode && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6">
+                     <PrimaryButton 
+                        icon={LeftArrow} 
+                        title="Go Back" 
+                        className="bg-gray-200 text-black h-11 w-full sm:w-auto text-sm" 
+                        onClick={handleGoBack} 
+                        disabled={loading} 
+                    />
+                    <PrimaryButton 
+                        title={loading ? "Saving..." : "Save & Continue"} 
+                        className="btn-brand w-full sm:w-auto"
+                        onClick={handleSaveAndContinueClick}
+                        disabled={loading}
+                    />
+                </div>
+            )}
                     </div>
                 </div>
             </div>
