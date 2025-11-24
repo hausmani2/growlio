@@ -10,7 +10,6 @@ import { Input, Select } from 'antd';
 
 const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false }) => {
     const location = useLocation();
-    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -92,19 +91,6 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
         }
     };
 
-    const handleGoBack = () => {
-        navigateToPreviousStep();
-    };
-
-    const handleSaveAndContinueClick = async () => {
-        if (onSaveAndContinue) {
-            const result = await onSaveAndContinue();
-            if (result?.success) {
-                // Navigate to next step after successful save
-                navigateToNextStep(true); // Skip completion check since we just saved successfully
-            }
-        }
-    };
 
     // Add a new provider
     const addProvider = () => {
@@ -290,23 +276,7 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
             </div>
             
             {/* Navigation Buttons */}
-            {!isUpdateMode && (
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-6">
-                     <PrimaryButton 
-                        icon={LeftArrow} 
-                        title="Go Back" 
-                        className="bg-gray-200 text-black h-11 w-full sm:w-auto text-sm" 
-                        onClick={handleGoBack} 
-                        disabled={loading} 
-                    />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand w-full sm:w-auto"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
-                </div>
-            )}
+ 
         </div>
     );
 };

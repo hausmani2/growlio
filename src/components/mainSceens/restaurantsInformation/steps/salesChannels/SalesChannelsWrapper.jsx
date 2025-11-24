@@ -278,6 +278,8 @@ const SalesChannelsWrapperContent = () => {
                             data={salesChannelsData}
                             updateData={updateSalesChannelsData}
                             errors={validationErrors}
+                            onSaveAndContinue={handleSaveAndContinue}
+                            loading={loading}
                         />
 
                         {isUpdateMode && (
@@ -332,6 +334,8 @@ const SalesChannelsWrapperContent = () => {
                 data={salesChannelsData}
                 updateData={updateSalesChannelsData}
                 errors={validationErrors}
+                onSaveAndContinue={handleSaveAndContinue}
+                loading={loading}
             />
 
             {isUpdateMode && (
