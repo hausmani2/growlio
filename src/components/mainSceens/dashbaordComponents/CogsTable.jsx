@@ -652,6 +652,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card 
             title={`Actual Weekly COGS Performance: ${getCogsGoal() ? ` ${getCogsGoal()}%` : ''} `}
+            data-guidance="actual-weekly-cogs-performance"
             extra={
               <Space>
                 <Button 
@@ -848,7 +849,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         </Col>
                  {/* Weekly Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-           <Card title="Actual Weekly COGS Totals" className="h-fit">
+           <Card title="Actual Weekly COGS Totals" className="h-fit" data-guidance="actual-weekly-cogs-totals">
              {dataNotFound ? (
                <Empty
                  image={Empty.PRESENTED_IMAGE_SIMPLE}

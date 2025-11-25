@@ -1242,7 +1242,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         title={isEditMode ? "Edit Your Actual Daily Sales " : "Enter Your Actual Daily Sales"}
         open={isModalVisible}
         onCancel={closeModal}
-        data-guidance="sales_table"
         footer={[
           <Button key="cancel" onClick={closeModal}>
             Cancel
@@ -1810,6 +1809,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />}
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
                   disabled={!selectedDate}
+                  data-guidance="add-actual-weekly-sales"
                   style={{
                     backgroundColor: "#85d7a2",
                     borderColor: "#5bc783",
@@ -2089,7 +2089,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         </Col>
         {/* Weekly Sales Totals Section */}
         <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title="Actual Weekly Sales Totals" className="h-fit">
+          <Card title="Actual Weekly Sales Totals" className="h-fit" data-guidance="actual-weekly-sales-totals">
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}

@@ -1042,6 +1042,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 ? `Labor @ Loading.../Hour` 
                 : `Labor @ $${getAverageHourlyRate().toFixed(2)}/Hour`
             }
+            data-guidance="actual-weekly-labor-performance"
             extra={
               <Space>
                 <Button 
@@ -1351,7 +1352,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         </Col>
          {/* Weekly Totals Section */}
          <Col xs={24} sm={24} md={24} lg={6} xl={6}>
-          <Card title=" Actual Weekly Labor Totals" className="h-fit">
+          <Card title=" Actual Weekly Labor Totals" className="h-fit" data-guidance="actual-weekly-labor-totals">
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}

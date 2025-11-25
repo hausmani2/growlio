@@ -2100,7 +2100,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               loading={isFormatChanging}
             >
               {!isFormatChanging && <span className="text-sm">{getFormatIcon(printFormat)}</span>}
-              <span className="hidden sm:inline">{getFormatDisplayText(printFormat)}</span>
+              <span className="hidden sm:inline" data-guidance="change-display-format">{getFormatDisplayText(printFormat)}</span>
               {!isFormatChanging && <DownOutlined className="ml-1" />}
             </Button>
           </Dropdown>
@@ -2156,6 +2156,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 <button
                   onClick={(e) => onExpand(record, e)}
                   className="text-gray-500 hover:text-blue-600 transition-colors"
+                  data-guidance="expand-category-details"
                 >
                   {expanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
                 </button>
@@ -2191,7 +2192,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 >
                   <span>{row.category}</span>
                   {category?.hasDetails && (
-                    <button className="text-gray-500 hover:text-blue-600 transition-colors">
+                    <button className="text-gray-500 hover:text-blue-600 transition-colors ">
                       {isExpanded ? <CaretDownOutlined /> : <CaretRightOutlined />}
                     </button>
                   )}
