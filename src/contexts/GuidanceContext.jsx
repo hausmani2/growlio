@@ -581,12 +581,13 @@ export const GuidanceProvider = ({ children }) => {
       return;
     }
     
-    // Always check local state first - if user has seen data guidance, don't show it
-    if (!forceShow && hasSeenDataGuidance === true) {
-      return;
-    }
-    
+    // If skipStatusCheck is true, we're explicitly bypassing status checks (e.g., for navigation-based guidance)
+    // This allows guidance to show even if status says user has seen it
     if (!forceShow && !skipStatusCheck) {
+      // Normal flow - check status
+      if (hasSeenDataGuidance === true) {
+        return;
+      }
       if (hasSeenGuidance !== true || hasSeenDataGuidance === true) {
         return;
       }
@@ -601,6 +602,7 @@ export const GuidanceProvider = ({ children }) => {
     } else if (forceShow) {
       setHasSeenDataGuidance(false);
     }
+    // If skipStatusCheck is true, continue without checking status
 
     const pagePopups = await fetchPopups(pageName, true);
     
@@ -847,11 +849,59 @@ export const GuidanceProvider = ({ children }) => {
     setCurrentPopupIndex(0);
     setCurrentDataGuidanceIndex(0);
     
-    // Refresh guidance status from backend on route change to ensure it's in sync
+    // Check for navigation flags FIRST before refreshing status
+    // This ensures programmatic navigation works correctly
+    const showDataGuidance = sessionStorage.getItem('show_data_guidance_after_user_guidance');
+    const wasNavigatingToDashboard = sessionStorage.getItem('guidance_navigate_to_dashboard');
+    const wasNavigatingToProfitLoss = sessionStorage.getItem('guidance_navigate_to_profit_loss');
+    
+    // If we have navigation flags, handle them immediately without blocking on status refresh
+    if (showDataGuidance === 'true' || wasNavigatingToDashboard === 'true' || wasNavigatingToProfitLoss === 'true') {
+      const timer = setTimeout(() => {
+        if (showDataGuidance === 'true') {
+          sessionStorage.removeItem('show_data_guidance_after_user_guidance');
+          startDataGuidance(false, true);
+          return;
+        }
+        
+        if (wasNavigatingToDashboard === 'true' && location.pathname === '/dashboard') {
+          sessionStorage.removeItem('guidance_navigate_to_dashboard');
+          startGuidance();
+          return;
+        }
+        
+        if (wasNavigatingToProfitLoss === 'true' && location.pathname === '/dashboard/profit-loss') {
+          sessionStorage.removeItem('guidance_navigate_to_profit_loss');
+          // Show data guidance on profit_loss page - use skipStatusCheck to bypass status check
+          // Use longer delay to ensure page is fully loaded and elements are rendered
+          setTimeout(() => {
+            startDataGuidance(false, true);
+          }, 2000);
+          return;
+        }
+      }, 1000);
+      
+      // Still refresh status in background, but don't let it block navigation-based guidance
+      const refreshStatus = async () => {
+        try {
+          const { hasSeen, hasSeenData } = await checkGuidanceStatus();
+          if (hasSeen !== null && hasSeenData !== null) {
+            setHasSeenGuidance(hasSeen);
+            setHasSeenDataGuidance(hasSeenData);
+          }
+        } catch (error) {
+          console.error('Failed to refresh guidance status on route change:', error);
+        }
+      };
+      refreshStatus();
+      
+      return () => clearTimeout(timer);
+    }
+    
+    // No navigation flags - normal route change, refresh status first
     const refreshStatus = async () => {
       try {
         const { hasSeen, hasSeenData } = await checkGuidanceStatus();
-        // Only update if we got valid responses
         if (hasSeen !== null && hasSeenData !== null) {
           setHasSeenGuidance(hasSeen);
           setHasSeenDataGuidance(hasSeenData);
@@ -864,29 +914,7 @@ export const GuidanceProvider = ({ children }) => {
     refreshStatus();
     
     const timer = setTimeout(() => {
-      const showDataGuidance = sessionStorage.getItem('show_data_guidance_after_user_guidance');
-      if (showDataGuidance === 'true') {
-        sessionStorage.removeItem('show_data_guidance_after_user_guidance');
-        startDataGuidance(false, true);
-        return;
-      }
-      
-      const wasNavigatingToDashboard = sessionStorage.getItem('guidance_navigate_to_dashboard');
-      if (wasNavigatingToDashboard === 'true' && location.pathname === '/dashboard') {
-        sessionStorage.removeItem('guidance_navigate_to_dashboard');
-        startGuidance();
-      } else {
-        const wasNavigatingToProfitLoss = sessionStorage.getItem('guidance_navigate_to_profit_loss');
-        if (wasNavigatingToProfitLoss === 'true' && location.pathname === '/dashboard/profit-loss') {
-          sessionStorage.removeItem('guidance_navigate_to_profit_loss');
-          // Show data guidance on profit_loss page
-          setTimeout(() => {
-            startDataGuidance(false, true);
-          }, 1500);
-        } else {
-          startGuidance();
-        }
-      }
+      startGuidance();
     }, 1000);
 
     return () => clearTimeout(timer);
