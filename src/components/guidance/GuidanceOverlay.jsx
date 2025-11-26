@@ -1,11 +1,12 @@
 import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { GuidanceContext } from '../../contexts/GuidanceContext';
 import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import GuidanceTooltip from './GuidanceTooltip';
 
 const GuidanceOverlay = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Check context directly to avoid throwing error if provider is not available
   const context = useContext(GuidanceContext);
@@ -46,6 +47,12 @@ const GuidanceOverlay = () => {
       
       const handleDataGuidanceNext = async () => {
         const isLast = currentDataGuidanceIndex === dataGuidancePopups.length - 1;
+        const currentPage = location.pathname.includes('/dashboard/profit-loss') ? 'profit_loss' : 
+                           location.pathname.includes('/dashboard') ? 'dashboard' : 'budget';
+        
+        // Check if this is the last dashboard popup (actual-weekly-labor-totals)
+        const isLastDashboardPopup = currentDataPopup.key === 'actual-weekly-labor-totals' && 
+                                     currentPage === 'dashboard';
         
         if (isWeekSelector) {
           try {
@@ -68,8 +75,23 @@ const GuidanceOverlay = () => {
               navigate('/dashboard');
             }, 100);
           }
+        } else if (isLastDashboardPopup) {
+          // Last dashboard popup - navigate to profit_loss page
+          try {
+            setIsDataGuidanceActive(false);
+            setTimeout(() => {
+              sessionStorage.setItem('guidance_navigate_to_profit_loss', 'true');
+              navigate('/dashboard/profit-loss');
+            }, 100);
+          } catch (error) {
+            console.error('Failed to navigate to profit loss:', error);
+            setTimeout(() => {
+              sessionStorage.setItem('guidance_navigate_to_profit_loss', 'true');
+              navigate('/dashboard/profit-loss');
+            }, 100);
+          }
         } else if (isLast) {
-          // Last data guidance popup - mark as seen
+          // Last data guidance popup (on profit_loss page) - mark as seen
           try {
             const currentStatus = await apiGet('/authentication/user/guidance-status/');
             await apiPost('/authentication/user/guidance-status/', {

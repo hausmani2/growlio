@@ -457,6 +457,12 @@ export const GuidanceProvider = ({ children }) => {
       const allPopups = response.data || [];
       
       if (isDataGuidance) {
+        // Data guidance keys for all pages
+        // Dashboard page: close-your-days, add-actual-weekly-sales, actual-weekly-sales-table, 
+        //   actual-weekly-sales-totals, actual-weekly-cogs-performance, actual-weekly-cogs-totals,
+        //   actual-weekly-labor-performance, actual-weekly-labor-totals
+        // Profit Loss page: change-display-format, expand-category-details
+        // Budget page: summary_table, week_selector
         const dataGuidanceKeys = [
           'close-your-days',
           'add-actual-weekly-sales',
@@ -466,12 +472,13 @@ export const GuidanceProvider = ({ children }) => {
           'actual-weekly-cogs-totals',
           'actual-weekly-labor-performance',
           'actual-weekly-labor-totals',
-          'change-display-format',
-          'expand-category-details',
+          'change-display-format',        // Profit Loss page
+          'expand-category-details',      // Profit Loss page
           'summary_table',
           'week_selector'
         ];
         
+        // Filter popups by current page and ensure key is in allowed list
         const filteredPopups = allPopups
           .filter(popup => 
             popup.page === pageName && 
@@ -599,14 +606,25 @@ export const GuidanceProvider = ({ children }) => {
     
     if (pagePopups.length > 0) {
       let retryCount = 0;
-      const maxRetries = 15;
+      const maxRetries = 20; // Increased retries for modal elements
       
       const checkForElements = () => {
+        // Check both regular DOM and modal content (modals might be in portals)
         const allElements = Array.from(document.querySelectorAll('[data-guidance]')).map(el => 
           el.getAttribute('data-guidance')
         );
         
-        const validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
+        // Also check for elements in modal containers
+        const modalContainers = document.querySelectorAll('.ant-modal-body, [role="dialog"]');
+        modalContainers.forEach(container => {
+          const modalElements = Array.from(container.querySelectorAll('[data-guidance]')).map(el => 
+            el.getAttribute('data-guidance')
+          );
+          allElements.push(...modalElements);
+        });
+        
+        const uniqueElements = [...new Set(allElements)]; // Remove duplicates
+        const validPopups = pagePopups.filter(popup => uniqueElements.includes(popup.key));
         
         if (validPopups.length > 0) {
           setDataGuidancePopups(validPopups);
@@ -621,7 +639,11 @@ export const GuidanceProvider = ({ children }) => {
         }
       };
       
-      setTimeout(checkForElements, 1000);
+      // For dashboard page, check if we're looking for modal elements (close-your-days)
+      // If so, wait a bit longer for modal to render
+      const hasModalElements = pagePopups.some(popup => popup.key === 'close-your-days');
+      const initialDelay = hasModalElements ? 2000 : 1500;
+      setTimeout(checkForElements, initialDelay);
     } else {
       setIsDataGuidanceActive(false);
     }
@@ -854,7 +876,16 @@ export const GuidanceProvider = ({ children }) => {
         sessionStorage.removeItem('guidance_navigate_to_dashboard');
         startGuidance();
       } else {
-        startGuidance();
+        const wasNavigatingToProfitLoss = sessionStorage.getItem('guidance_navigate_to_profit_loss');
+        if (wasNavigatingToProfitLoss === 'true' && location.pathname === '/dashboard/profit-loss') {
+          sessionStorage.removeItem('guidance_navigate_to_profit_loss');
+          // Show data guidance on profit_loss page
+          setTimeout(() => {
+            startDataGuidance(false, true);
+          }, 1500);
+        } else {
+          startGuidance();
+        }
       }
     }, 1000);
 

@@ -218,8 +218,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           if (!isDataGuidanceActive) {
             modalDataGuidanceTriggeredRef.current = false;
           }
-        }, 5000);
-      }, 2000);
+        }, 8000); // Increased timeout to allow more time for modal elements to render
+      }, 2500); // Increased delay to ensure modal content is fully rendered
       return () => clearTimeout(timer);
     } else if (!isModalVisible) {
       modalDataGuidanceTriggeredRef.current = false;
