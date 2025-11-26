@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/axiosInterceptors';
 import useStore from '../store/store';
 
@@ -15,11 +15,16 @@ export const useGuidance = () => {
 
 export const GuidanceProvider = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
   const [hasSeenGuidance, setHasSeenGuidance] = useState(null); // null = not checked yet, true = seen, false = not seen
+  const [hasSeenDataGuidance, setHasSeenDataGuidance] = useState(null); // null = not checked yet, true = seen, false = not seen
   const [popups, setPopups] = useState([]);
+  const [dataGuidancePopups, setDataGuidancePopups] = useState([]);
   const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
+  const [currentDataGuidanceIndex, setCurrentDataGuidanceIndex] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const [isDataGuidanceActive, setIsDataGuidanceActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('');
   const hasInitializedRef = useRef(false); // Track if we've initialized guidance status
@@ -63,14 +68,17 @@ export const GuidanceProvider = ({ children }) => {
     try {
       const response = await apiGet('/authentication/user/guidance-status/');
       // Use false as default instead of true, so guidance shows by default
-      const hasSeen = response.data?.has_seen_user_guidance ?? false; 
+      const hasSeen = response.data?.has_seen_user_guidance ?? false;
+      const hasSeenData = response.data?.has_seen_user_guidance_data ?? false;
       setHasSeenGuidance(hasSeen);
-      return hasSeen;
+      setHasSeenDataGuidance(hasSeenData);
+      return { hasSeen, hasSeenData };
     } catch (error) {
       console.error('❌ Failed to check guidance status:', error);
       // On error, default to false to allow guidance to show
       setHasSeenGuidance(false);
-      return false;
+      setHasSeenDataGuidance(false);
+      return { hasSeen: false, hasSeenData: false };
     }
   }, []);
 
@@ -443,40 +451,67 @@ export const GuidanceProvider = ({ children }) => {
   }, []);
 
   // Fetch popups for current page - ONLY from API, no static fallbacks
-  const fetchPopups = useCallback(async (pageName) => {
+  const fetchPopups = useCallback(async (pageName, isDataGuidance = false) => {
     try {
       const response = await apiGet('/admin_access/guidance-popups/');
       const allPopups = response.data || [];
       
-      // Allowed sidebar keys - only these 4 will be shown
-      // Accept both 'sidebar_profit_loss' (underscore) and 'sidebar_profit-loss' (hyphen) for profit-loss
-      const allowedSidebarKeys = ['sidebar_budget', 'sidebar_dashboard', 'sidebar_profit-loss', 'sidebar_profit_loss', 'sidebar_onboarding' , 'week_selector'];
-      
-      // Filter popups for current page, active status, and only allowed sidebar keys
-      let filteredPopups = allPopups.filter(
-        popup => {
-          const isCorrectPage = popup.page === pageName;
-          const isActive = popup.is_active === true;
-          const isAllowedSidebarKey = allowedSidebarKeys.includes(popup.key);
-          
-          return isCorrectPage && isActive && isAllowedSidebarKey;
-        }
-      ).map(popup => {
-        // Normalize profit-loss key: convert 'sidebar_profit_loss' to 'sidebar_profit-loss' to match DOM
-        if (popup.key === 'sidebar_profit_loss') {
-          return { ...popup, key: 'sidebar_profit-loss' };
-        }
-        return popup;
-      });
-      
-      // Sort by id to maintain order
-      filteredPopups.sort((a, b) => a.id - b.id);
-      
-      setPopups(filteredPopups);
-      return filteredPopups;
+      if (isDataGuidance) {
+        const dataGuidanceKeys = [
+          'close-your-days',
+          'add-actual-weekly-sales',
+          'actual-weekly-sales-table',
+          'actual-weekly-sales-totals',
+          'actual-weekly-cogs-performance',
+          'actual-weekly-cogs-totals',
+          'actual-weekly-labor-performance',
+          'actual-weekly-labor-totals',
+          'change-display-format',
+          'expand-category-details',
+          'summary_table',
+          'week_selector'
+        ];
+        
+        const filteredPopups = allPopups
+          .filter(popup => 
+            popup.page === pageName && 
+            popup.is_active === true && 
+            dataGuidanceKeys.includes(popup.key)
+          )
+          .sort((a, b) => a.id - b.id);
+        
+        setDataGuidancePopups(filteredPopups);
+        return filteredPopups;
+      } else {
+        // Regular guidance: sidebar popups + week_selector (only on budget page)
+        const allowedSidebarKeys = ['sidebar_budget', 'sidebar_dashboard', 'sidebar_profit-loss', 'sidebar_profit_loss', 'sidebar_onboarding', 'week_selector', 'summary_table'];
+        
+        const filteredPopups = allPopups
+          .filter(popup => 
+            popup.page === pageName && 
+            popup.is_active === true && 
+            allowedSidebarKeys.includes(popup.key)
+          )
+          .map(popup => popup.key === 'sidebar_profit_loss' ? { ...popup, key: 'sidebar_profit-loss' } : popup)
+          .sort((a, b) => {
+            // summary_table first, then sidebar items, then week_selector last
+            if (a.key === 'summary_table' && b.key !== 'summary_table') return -1;
+            if (b.key === 'summary_table' && a.key !== 'summary_table') return 1;
+            if (a.key === 'week_selector' && b.key !== 'week_selector') return 1;
+            if (b.key === 'week_selector' && a.key !== 'week_selector') return -1;
+            return a.id - b.id;
+          });
+        
+        setPopups(filteredPopups);
+        return filteredPopups;
+      }
     } catch (error) {
       console.error('❌ Failed to fetch guidance popups:', error);
-      setPopups([]);
+      if (isDataGuidance) {
+        setDataGuidancePopups([]);
+      } else {
+        setPopups([]);
+      }
       return [];
     }
   }, []);
@@ -484,11 +519,24 @@ export const GuidanceProvider = ({ children }) => {
   // Mark guidance as completed
   const markGuidanceAsSeen = useCallback(async () => {
     try {
-      const response = await apiPost('/authentication/user/guidance-status/');
+      // Get current status to preserve has_seen_user_guidance_data
+      const currentStatus = await apiGet('/authentication/user/guidance-status/');
+      const currentDataGuidanceStatus = currentStatus.data?.has_seen_user_guidance_data ?? false;
+      
+      // Send both flags in payload
+      const response = await apiPost('/authentication/user/guidance-status/', {
+        has_seen_user_guidance: true,
+        has_seen_user_guidance_data: currentDataGuidanceStatus
+      });
+      
       setHasSeenGuidance(true);
       setIsActive(false);
       setCurrentPopupIndex(0);
       setPopups([]);
+      
+      if (!currentDataGuidanceStatus) {
+        sessionStorage.setItem('show_data_guidance_after_user_guidance', 'true');
+      }
     } catch (error) {
       console.error('❌ Failed to mark guidance as seen:', error);
       // Still close the guidance even if API call fails
@@ -497,13 +545,93 @@ export const GuidanceProvider = ({ children }) => {
     }
   }, []);
 
+  // Mark data guidance as completed
+  const markDataGuidanceAsSeen = useCallback(async () => {
+    try {
+      // Check current status first to preserve has_seen_user_guidance
+      const currentStatus = await apiGet('/authentication/user/guidance-status/');
+      const response = await apiPost('/authentication/user/guidance-status/', {
+        has_seen_user_guidance: currentStatus.data?.has_seen_user_guidance ?? true,
+        has_seen_user_guidance_data: true
+      });
+      setHasSeenDataGuidance(true);
+      setIsDataGuidanceActive(false);
+      setDataGuidancePopups([]);
+    } catch (error) {
+      console.error('❌ Failed to mark data guidance as seen:', error);
+      // Still close the guidance even if API call fails
+      setIsDataGuidanceActive(false);
+      setHasSeenDataGuidance(true);
+    }
+  }, []);
+
+  // Start data guidance tour
+  const startDataGuidance = useCallback(async (forceShow = false, skipStatusCheck = false) => {
+    const pageName = getPageNameFromRoute(location.pathname);
+    
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
+    if (publicRoutes.includes(location.pathname)) {
+      return;
+    }
+    
+    // Always check local state first - if user has seen data guidance, don't show it
+    if (!forceShow && hasSeenDataGuidance === true) {
+      return;
+    }
+    
+    if (!forceShow && !skipStatusCheck) {
+      if (hasSeenGuidance !== true || hasSeenDataGuidance === true) {
+        return;
+      }
+      if (hasSeenGuidance === null || hasSeenDataGuidance === null) {
+        const { hasSeen, hasSeenData } = await checkGuidanceStatus();
+        if (hasSeen !== true || hasSeenData === true) {
+          return;
+        }
+      } else {
+        return;
+      }
+    } else if (forceShow) {
+      setHasSeenDataGuidance(false);
+    }
+
+    const pagePopups = await fetchPopups(pageName, true);
+    
+    if (pagePopups.length > 0) {
+      let retryCount = 0;
+      const maxRetries = 15;
+      
+      const checkForElements = () => {
+        const allElements = Array.from(document.querySelectorAll('[data-guidance]')).map(el => 
+          el.getAttribute('data-guidance')
+        );
+        
+        const validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
+        
+        if (validPopups.length > 0) {
+          setDataGuidancePopups(validPopups);
+          setCurrentDataGuidanceIndex(0); // Reset to first popup
+          setIsDataGuidanceActive(true);
+          return;
+        } else if (retryCount < maxRetries) {
+          retryCount++;
+          setTimeout(checkForElements, 500);
+        } else {
+          setIsDataGuidanceActive(false);
+        }
+      };
+      
+      setTimeout(checkForElements, 1000);
+    } else {
+      setIsDataGuidanceActive(false);
+    }
+  }, [location.pathname, hasSeenGuidance, hasSeenDataGuidance, checkGuidanceStatus, fetchPopups]);
+
   // Start guidance tour
   const startGuidance = useCallback(async (forceShow = false) => {
     const pageName = getPageNameFromRoute(location.pathname);
     setCurrentPage(pageName);
     
-    // Skip guidance on public routes (login, signup, etc.)
-    // Note: We allow guidance on /congratulations and /onboarding as these are onboarding screens
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     if (publicRoutes.includes(location.pathname)) {
       setLoading(false);
@@ -511,43 +639,74 @@ export const GuidanceProvider = ({ children }) => {
       return;
     }
     
-    // Check if user has seen guidance (unless forcing)
     if (!forceShow) {
-      // Always check fresh from API to avoid race conditions
-      const hasSeen = await checkGuidanceStatus();
-      if (hasSeen === true) {
+      if (hasSeenGuidance === null) {
+        const { hasSeen, hasSeenData } = await checkGuidanceStatus();
+        if (hasSeen === true) {
+          setIsActive(false);
+          setLoading(false);
+          // Only show data guidance if user hasn't seen it yet
+          if (hasSeenData !== true) {
+            startDataGuidance(false, true);
+          }
+          return;
+        }
+      } else if (hasSeenGuidance === true) {
         setIsActive(false);
         setLoading(false);
-        return;
+        // Check if user has seen data guidance - if both are true, don't show anything
+        if (hasSeenDataGuidance === null) {
+          const { hasSeenData } = await checkGuidanceStatus();
+          if (hasSeenData !== true) {
+            startDataGuidance(false, true);
+          }
+          // If hasSeenData is true, don't show anything - just return
+          return;
+        } else if (hasSeenDataGuidance === true) {
+          // Both flags are true - don't show anything
+          return;
+        } else {
+          // hasSeenDataGuidance is false - show data guidance
+          startDataGuidance(false, true);
+          return;
+        }
       }
-      // If hasSeen is false or null, continue to show guidance
     } else {
-      setHasSeenGuidance(false); // Temporarily set to false for force show
+      setHasSeenGuidance(false);
+    }
+
+    // Dashboard page doesn't have regular guidance popups, only data guidance
+    // Skip regular guidance on dashboard and go straight to data guidance if needed
+    if (pageName === 'dashboard') {
+      setIsActive(false);
+      setLoading(false);
+      if (!forceShow) {
+        // Only show data guidance if user has seen regular guidance but not data guidance
+        if (hasSeenGuidance === true && hasSeenDataGuidance !== true) {
+          if (hasSeenDataGuidance === null) {
+            const { hasSeenData } = await checkGuidanceStatus();
+            if (hasSeenData !== true) {
+              startDataGuidance(false, true);
+            }
+          } else {
+            startDataGuidance(false, true);
+          }
+        }
+      }
+      return;
     }
 
     const pagePopups = await fetchPopups(pageName);
     
     if (pagePopups.length > 0) {
-      // Wait for DOM to be ready, then verify elements exist
       setTimeout(() => {
-        // Get all available data-guidance elements
         const allElements = Array.from(document.querySelectorAll('[data-guidance]')).map(el => 
           el.getAttribute('data-guidance')
         );
         
-        // Filter popups to only those that have matching elements
-        const validPopups = pagePopups.filter(popup => {
-          const elementExists = allElements.includes(popup.key);
-          if (!elementExists) {
-            console.warn(`⚠️ Skipping popup "${popup.key}" - element not found in DOM`);
-            console.warn(`   Expected: ${popup.key}, Available:`, allElements.filter(k => k.startsWith('sidebar_')));
-          } else {
-          }
-          return elementExists;
-        });
+        const validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
         
         if (validPopups.length > 0) {
-          // Update popups to only include valid ones
           setPopups(validPopups);
           setCurrentPopupIndex(0);
           setIsActive(true);
@@ -555,25 +714,36 @@ export const GuidanceProvider = ({ children }) => {
           setIsActive(false);
         }
         setLoading(false);
-      }, 1000); // Increased delay to ensure sidebar is rendered
+      }, 1000);
     } else {
       setIsActive(false);
       setLoading(false);
     }
-    
-    setLoading(false);
-  }, [location.pathname, checkGuidanceStatus, fetchPopups]);
+  }, [location.pathname, hasSeenGuidance, checkGuidanceStatus, fetchPopups, startDataGuidance]);
 
   // Go to next popup
   const nextPopup = useCallback(() => {
-    if (currentPopupIndex < popups.length - 1) {
-      // Move to next popup
-      setCurrentPopupIndex(currentPopupIndex + 1);
-    } else {
-      // Last popup - always mark as seen and close
+    const currentPopup = popups[currentPopupIndex];
+    const isLastPopup = currentPopupIndex === popups.length - 1;
+    const isWeekSelector = currentPopup?.key === 'week_selector';
+    
+    if (isWeekSelector) {
+      if (location.pathname !== '/dashboard') {
+        sessionStorage.setItem('guidance_navigate_to_dashboard', 'true');
+        navigate('/dashboard');
+      } else {
+        if (isLastPopup) {
+          markGuidanceAsSeen();
+        } else {
+          setCurrentPopupIndex(currentPopupIndex + 1);
+        }
+      }
+    } else if (isLastPopup) {
       markGuidanceAsSeen();
+    } else {
+      setCurrentPopupIndex(currentPopupIndex + 1);
     }
-  }, [currentPopupIndex, popups.length, markGuidanceAsSeen]);
+  }, [currentPopupIndex, popups, location.pathname, navigate, markGuidanceAsSeen]);
 
   // Skip all popups
   const skipGuidance = useCallback(() => {
@@ -607,52 +777,86 @@ export const GuidanceProvider = ({ children }) => {
     // Only check guidance status if user is authenticated and not on a public route
     if (isPublicRoute || !isAuthenticated) {
       setHasSeenGuidance(true); // Default to true to prevent showing guidance on public routes
+      setHasSeenDataGuidance(true);
       return;
     }
     
-    // Check guidance status once on app initialization
-    const initializeGuidanceStatus = async () => {
-      try {
-        const response = await apiGet('/authentication/user/guidance-status/');
-        const hasSeen = response.data?.has_seen_user_guidance ?? false;
-                
-        // Simply use the API response - NO automatic marking
-        // The backend should handle marking existing users as having seen guidance
-        // API call to mark as seen ONLY happens when user completes/skips guidance
-        setHasSeenGuidance(hasSeen);
-      } catch (error) {
-        console.error('❌ Failed to initialize guidance status:', error);
-        // On error, default based on onboarding status
-        // Existing users (completed onboarding) should have has_seen_user_guidance = true in backend
-        // New users should have has_seen_user_guidance = false in backend
-        if (isOnBoardingCompleted) {
-          // Existing user - backend should have marked them, but if API fails, assume true
-          setHasSeenGuidance(true);
-        } else {
-          // New user - allow them to see guidance
-          setHasSeenGuidance(false);
-        }
-      }
-    };
-
-    // Check guidance status on app load (only if not already initialized)
+    // Check guidance status once on app initialization (only once, not on every route change)
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
+      const initializeGuidanceStatus = async () => {
+        try {
+          const response = await apiGet('/authentication/user/guidance-status/');
+          const hasSeen = response.data?.has_seen_user_guidance ?? false;
+          const hasSeenData = response.data?.has_seen_user_guidance_data ?? false;
+                  
+          // Simply use the API response - NO automatic marking
+          // The backend should handle marking existing users as having seen guidance
+          // API call to mark as seen ONLY happens when user completes/skips guidance
+          setHasSeenGuidance(hasSeen);
+          setHasSeenDataGuidance(hasSeenData);
+        } catch (error) {
+          console.error('❌ Failed to initialize guidance status:', error);
+          // On error, default based on onboarding status
+          // Existing users (completed onboarding) should have has_seen_user_guidance = true in backend
+          // New users should have has_seen_user_guidance = false in backend
+          const currentOnBoardingStatus = useStore.getState().isOnBoardingCompleted;
+          if (currentOnBoardingStatus) {
+            // Existing user - backend should have marked them, but if API fails, assume true
+            setHasSeenGuidance(true);
+            setHasSeenDataGuidance(true);
+          } else {
+            // New user - allow them to see guidance
+            setHasSeenGuidance(false);
+            setHasSeenDataGuidance(false);
+          }
+        }
+      };
       initializeGuidanceStatus();
-    } else {
     }
-  }, [location.pathname, isOnBoardingCompleted]); // Run when pathname or onboarding status changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount, not on route changes
 
   // Initialize guidance on route change
   useEffect(() => {
     setLoading(true);
     setIsActive(false);
+    setIsDataGuidanceActive(false);
     setCurrentPopupIndex(0);
+    setCurrentDataGuidanceIndex(0);
     
-    // Small delay to ensure page is rendered and sidebar is mounted
+    // Refresh guidance status from backend on route change to ensure it's in sync
+    const refreshStatus = async () => {
+      try {
+        const { hasSeen, hasSeenData } = await checkGuidanceStatus();
+        // Only update if we got valid responses
+        if (hasSeen !== null && hasSeenData !== null) {
+          setHasSeenGuidance(hasSeen);
+          setHasSeenDataGuidance(hasSeenData);
+        }
+      } catch (error) {
+        console.error('Failed to refresh guidance status on route change:', error);
+      }
+    };
+    
+    refreshStatus();
+    
     const timer = setTimeout(() => {
-      startGuidance();
-    }, 1000); // Increased delay to ensure sidebar is fully rendered
+      const showDataGuidance = sessionStorage.getItem('show_data_guidance_after_user_guidance');
+      if (showDataGuidance === 'true') {
+        sessionStorage.removeItem('show_data_guidance_after_user_guidance');
+        startDataGuidance(false, true);
+        return;
+      }
+      
+      const wasNavigatingToDashboard = sessionStorage.getItem('guidance_navigate_to_dashboard');
+      if (wasNavigatingToDashboard === 'true' && location.pathname === '/dashboard') {
+        sessionStorage.removeItem('guidance_navigate_to_dashboard');
+        startGuidance();
+      } else {
+        startGuidance();
+      }
+    }, 1000);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -670,19 +874,48 @@ export const GuidanceProvider = ({ children }) => {
     };
   }, [startGuidance]);
 
+  // Get current data guidance popup
+  const getCurrentDataGuidancePopup = useCallback(() => {
+    if (!isDataGuidanceActive || dataGuidancePopups.length === 0) {
+      return null;
+    }
+    if (currentDataGuidanceIndex >= dataGuidancePopups.length) {
+      return null;
+    }
+    return dataGuidancePopups[currentDataGuidanceIndex];
+  }, [isDataGuidanceActive, dataGuidancePopups, currentDataGuidanceIndex]);
+
+  // Go to next data guidance popup
+  const nextDataGuidancePopup = useCallback(() => {
+    if (currentDataGuidanceIndex < dataGuidancePopups.length - 1) {
+      setCurrentDataGuidanceIndex(currentDataGuidanceIndex + 1);
+    }
+  }, [currentDataGuidanceIndex, dataGuidancePopups.length]);
+
   const value = {
     hasSeenGuidance,
+    hasSeenDataGuidance,
     popups,
+    dataGuidancePopups,
     currentPopupIndex,
+    currentDataGuidanceIndex,
     isActive,
+    isDataGuidanceActive,
+    setIsDataGuidanceActive,
     loading,
     currentPage,
     getCurrentPopup,
+    getCurrentDataGuidancePopup,
     nextPopup,
+    nextDataGuidancePopup,
     skipGuidance,
     checkElementExists,
     startGuidance: (forceShow) => startGuidance(forceShow),
+    startDataGuidance: (forceShow) => startDataGuidance(forceShow),
     markGuidanceAsSeen,
+    markDataGuidanceAsSeen,
+    setHasSeenGuidance, // Expose setter for external use
+    setHasSeenDataGuidance, // Expose setter for external use
   };
 
   return (

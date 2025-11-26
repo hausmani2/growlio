@@ -6,10 +6,14 @@ import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
+import { useGuidance } from '../../../contexts/GuidanceContext';
 
 const { Title, Text } = Typography;
 
 const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+  // Guidance hook for data guidance
+  const { startDataGuidance, hasSeenDataGuidance } = useGuidance();
+  
   const [weeklyData, setWeeklyData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
@@ -173,6 +177,42 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       setDataNotFound(true);
     }
   }, [dashboardData, weekDays]);
+
+  // Ref to track if data guidance has been triggered for current data
+  const dataGuidanceTriggeredRef = useRef(false);
+  const lastWeeklyDataRef = useRef(null);
+
+  // Trigger data guidance when data is present and user hasn't seen it
+  useEffect(() => {
+    // Only trigger if:
+    // 1. Data exists (weeklyData has entries and not all zeros)
+    // 2. User hasn't seen data guidance yet
+    // 3. Modal is not open (to avoid showing guidance while user is entering data)
+    // 4. We haven't already triggered for this data
+    const hasData = weeklyData.length > 0 && !areAllValuesZero(weeklyData);
+    const weeklyDataKey = JSON.stringify(weeklyData);
+    const dataChanged = lastWeeklyDataRef.current !== weeklyDataKey;
+    
+    if (
+      hasData && 
+      (hasSeenDataGuidance === false || hasSeenDataGuidance === null) &&
+      !isModalVisible &&
+      (!dataGuidanceTriggeredRef.current || dataChanged)
+    ) {
+      // Mark as triggered and update refs
+      dataGuidanceTriggeredRef.current = true;
+      lastWeeklyDataRef.current = weeklyDataKey;
+      
+      const timer = setTimeout(() => {
+        startDataGuidance(false, true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else if (!hasData || hasSeenDataGuidance === true) {
+      // Reset trigger flag if data is cleared or user has seen guidance
+      dataGuidanceTriggeredRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyData, hasSeenDataGuidance, isModalVisible]);
 
   // Listen for custom event to open Labor modal from COGS table
   useEffect(() => {
@@ -488,6 +528,16 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       } else {
         // Fallback: reload data after saving to update totals and table
         processLaborData(); 
+      }
+
+      if (hasSeenDataGuidance === false || hasSeenDataGuidance === null) {
+        // Reset trigger refs to allow guidance to show again after data is added
+        dataGuidanceTriggeredRef.current = false;
+        lastWeeklyDataRef.current = null;
+        
+        setTimeout(() => {
+          startDataGuidance(false, true);
+        }, 2000); // Increased delay to ensure DOM is ready
       }
       
       setIsModalVisible(false);

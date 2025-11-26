@@ -8,9 +8,13 @@ import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
+import { useGuidance } from '../../../contexts/GuidanceContext';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
+  // Guidance hook for data guidance
+  const { startDataGuidance, hasSeenDataGuidance, isDataGuidanceActive } = useGuidance();
+  
   // Store integration
   const {
     saveDashboardData,
@@ -167,6 +171,91 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       setDataNotFound(true);
     }
   }, [dashboardData, weekDays]);
+
+  // Ref to track if data guidance has been triggered for current data
+  const dataGuidanceTriggeredRef = useRef(false);
+  const lastWeeklyDataRef = useRef(null);
+
+  // Ref to track if data guidance has been triggered when modal opens
+  const modalDataGuidanceTriggeredRef = useRef(false);
+  
+  // Reset trigger ref if data guidance should be shown but isn't active
+  useEffect(() => {
+    const hasData = weeklyData.length > 0 && !areAllValuesZero(weeklyData);
+    const shouldShowGuidance = hasData && 
+      (hasSeenDataGuidance === false || hasSeenDataGuidance === null) &&
+      !isModalVisible;
+    
+    if (shouldShowGuidance && !isDataGuidanceActive && dataGuidanceTriggeredRef.current) {
+      const checkTimer = setTimeout(() => {
+        if (!isDataGuidanceActive) {
+          dataGuidanceTriggeredRef.current = false;
+        }
+      }, 8000);
+      return () => clearTimeout(checkTimer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDataGuidanceActive, weeklyData, hasSeenDataGuidance, isModalVisible]);
+
+  // Trigger data guidance when modal opens and data exists
+  useEffect(() => {
+    if (isModalVisible) {
+      dataGuidanceTriggeredRef.current = false;
+    }
+    
+    if (
+      isModalVisible &&
+      weeklyData.length > 0 && 
+      !areAllValuesZero(weeklyData) &&
+      (hasSeenDataGuidance === false || hasSeenDataGuidance === null) &&
+      !modalDataGuidanceTriggeredRef.current
+    ) {
+      modalDataGuidanceTriggeredRef.current = true;
+      
+      const timer = setTimeout(async () => {
+        await startDataGuidance(false, true);
+        setTimeout(() => {
+          if (!isDataGuidanceActive) {
+            modalDataGuidanceTriggeredRef.current = false;
+          }
+        }, 5000);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else if (!isModalVisible) {
+      modalDataGuidanceTriggeredRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isModalVisible, weeklyData, hasSeenDataGuidance, isDataGuidanceActive]);
+
+  // Trigger data guidance when data is present and user hasn't seen it (for non-modal elements)
+  useEffect(() => {
+    const hasData = weeklyData.length > 0 && !areAllValuesZero(weeklyData);
+    const weeklyDataKey = JSON.stringify(weeklyData);
+    const dataChanged = lastWeeklyDataRef.current !== weeklyDataKey && lastWeeklyDataRef.current !== null;
+    
+    if (
+      hasData && 
+      (hasSeenDataGuidance === false || hasSeenDataGuidance === null) &&
+      !isModalVisible &&
+      (!dataGuidanceTriggeredRef.current || dataChanged)
+    ) {
+      dataGuidanceTriggeredRef.current = true;
+      lastWeeklyDataRef.current = weeklyDataKey;
+      
+      const timer = setTimeout(async () => {
+        await startDataGuidance(false, true);
+        setTimeout(() => {
+          if (!isDataGuidanceActive) {
+            dataGuidanceTriggeredRef.current = false;
+          }
+        }, 5000);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else if (!hasData || hasSeenDataGuidance === true) {
+      dataGuidanceTriggeredRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyData, hasSeenDataGuidance, isModalVisible, isDataGuidanceActive]);
 
   // Handle navigation context from Summary Dashboard - Auto-open sales modal
   useEffect(() => {
@@ -991,6 +1080,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         // Fallback: reload data after saving
         await processDashboardData();
       }
+
+      // Trigger data guidance after data is saved (if user hasn't seen it yet)
+      if (hasSeenDataGuidance === false || hasSeenDataGuidance === null) {
+        // Reset trigger refs to allow guidance to show again after data is added
+        dataGuidanceTriggeredRef.current = false;
+        modalDataGuidanceTriggeredRef.current = false;
+        lastWeeklyDataRef.current = null;
+        
+        setTimeout(() => {
+          startDataGuidance(false, true);
+        }, 2000); // Increased delay to ensure DOM is ready
+      }
     } catch (error) {
       console.error('Error in handleWeeklySubmit:', error);
       message.error(`Failed to ${isEditMode ? 'update' : 'save'} sales data: ${error.message}`);
@@ -1526,7 +1627,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   key: 'restaurant_open',
                   width: 100,
                   render: (value, record, index) => (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" data-guidance="close-your-days">
                       <ToggleSwitch
                         isOn={value === 1}
                         setIsOn={(isOn) => {
@@ -1802,6 +1903,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         <Col xs={24} sm={24} md={24} lg={18} xl={18}>
           <Card
             title="Actual Weekly Sales"
+            data-guidance="actual-weekly-sales-table"
             extra={
               <Space>
                 <Button
