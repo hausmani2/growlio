@@ -226,24 +226,11 @@ const RestaurantWrapperContent = () => {
                 is_franchise: addressTypeData.isFranchise === "2"
             };
             
-            // Only include latitude and longitude if they have valid values
-            console.log('Address data before submission:', {
-                latitude: addressData.latitude,
-                longitude: addressData.longitude,
-                address1: addressData.address1
-            });
-            
             if (addressData.latitude !== null && addressData.latitude !== undefined && !isNaN(parseFloat(addressData.latitude))) {
                 locationObj.latitude = parseFloat(addressData.latitude);
-                console.log('Including latitude in payload:', locationObj.latitude);
-            } else {
-                console.log('Latitude not included - value is:', addressData.latitude);
             }
             if (addressData.longitude !== null && addressData.longitude !== undefined && !isNaN(parseFloat(addressData.longitude))) {
                 locationObj.longitude = parseFloat(addressData.longitude);
-                console.log('Including longitude in payload:', locationObj.longitude);
-            } else {
-                console.log('Longitude not included - value is:', addressData.longitude);
             }
             
             const stepData = {
@@ -281,9 +268,6 @@ const RestaurantWrapperContent = () => {
                     
                     // Add a small delay to ensure state is updated before navigation
                     setTimeout(() => {
-                        
-                        // Debug: Check current state
-                        const currentState = useStore.getState();
                         
                         navigateToNextStep(true); // Skip completion check since we just saved successfully
                     }, 200); // Increased delay to ensure state update

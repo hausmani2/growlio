@@ -192,7 +192,6 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       
       // If conversation not found (404), clear the invalid conversation ID
       if (error.response?.status === 404) {
-        console.log('Conversation not found (404), clearing invalid conversation ID');
         setConversationId(null);
         sessionStorage.removeItem('chat_conversation_id');
         setSelectedConversationId(null);
@@ -254,12 +253,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       // For new conversations, conversation_id should be empty string
       // Only use conversationId if it's explicitly set (not null, not empty string)
       const conversationIdToUse = (conversationId && conversationId !== '') ? String(conversationId) : '';
-      
-      // Debug log to verify conversation ID is empty for new chats
-      if (!conversationIdToUse) {
-        console.log('ChatWidget: Starting new conversation - no conversation_id');
-      }
-      
+    
       const payload = {
         question: messageText,
         conversation_id: conversationIdToUse,

@@ -18,11 +18,9 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
         
         // Update latitude and longitude if available
         if (latitude !== null && longitude !== null) {
-            console.log('Address selected - Latitude:', latitude, 'Longitude:', longitude);
             updateData('latitude', latitude);
             updateData('longitude', longitude);
         } else {
-            console.log('Address selected but latitude/longitude are null');
         }
         
         // Parse and auto-fill address components if available

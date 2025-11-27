@@ -17,9 +17,6 @@ const ExampleUsage = () => {
 
     // Handle address selection
     const handleAddressSelect = (formattedAddress, latitude, longitude, details) => {
-        console.log('Selected Address:', formattedAddress);
-        console.log('Coordinates:', { latitude, longitude });
-        console.log('Full Details:', details);
         
         setAddress(formattedAddress);
         setCoordinates({ latitude, longitude });

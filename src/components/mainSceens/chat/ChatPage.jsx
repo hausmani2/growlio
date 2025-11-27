@@ -345,10 +345,6 @@ const ChatPage = () => {
         conversation_id: conversationIdToUse,
       };
       
-      // Debug log to verify conversation ID is empty for new chats
-      if (!conversationIdToUse) {
-        console.log('Starting new conversation - no conversation_id');
-      }
 
       // Call the API
       const response = await apiPost('/chatbot/send_message/', payload);
