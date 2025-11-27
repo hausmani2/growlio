@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, message, Space, Card, Tag, Avatar, Switch } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, message, Space, Card, Tag, Avatar, Switch, notification } from 'antd';
 import { 
   UserOutlined, 
   PlusOutlined, 
@@ -8,7 +8,8 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  SearchOutlined
+  SearchOutlined,
+  LockOutlined
 } from '@ant-design/icons';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
@@ -55,13 +56,21 @@ const SuperAdminUserManagement = () => {
     fetchAllUsers,
     allUsers,
     usersTotal,
-    loading: storeLoading
+    loading: storeLoading,
+    resetUserPasswordByAdmin,
+    passwordResetLoading,
+    passwordResetError,
+    passwordResetSuccess,
+    clearPasswordResetState
   } = useStore();
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm] = Form.useForm();
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetPasswordForm] = Form.useForm();
+  const [selectedUser, setSelectedUser] = useState(null);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -146,6 +155,51 @@ const SuperAdminUserManagement = () => {
       fetchUsers(pagination.current, pagination.pageSize);
     } catch (err) {
       message.error('Failed to update user status');
+    }
+  };
+
+  const openResetPassword = (user) => {
+    setSelectedUser(user);
+    setIsResetPasswordOpen(true);
+    resetPasswordForm.resetFields();
+  };
+
+  const closeResetPassword = () => {
+    setIsResetPasswordOpen(false);
+    setSelectedUser(null);
+    resetPasswordForm.resetFields();
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      const values = await resetPasswordForm.validateFields();
+      const result = await resetUserPasswordByAdmin(selectedUser.id, values.password);
+      
+      if (result.success) {
+        // Display response data for 3 seconds
+        notification.success({
+          message: 'Password Reset Successful',
+          description: (
+            <div className="space-y-1">
+              <p className="font-medium text-green-700">{result.message || 'Password reset successfully'}</p>
+              <div className="text-xs text-gray-600 space-y-0.5 mt-2">
+                <p><span className="font-medium">Password:</span> {values.password}</p>
+                <p><span className="font-medium">Email Sent:</span> {result.email_sent ? 'Yes ✓' : 'No ✗'}</p>
+              </div>
+            </div>
+          ),
+          duration: 3,
+          placement: 'topRight',
+          className: 'password-reset-notification'
+        });
+        
+        closeResetPassword();
+        clearPasswordResetState();
+      } else {
+        message.error(result.error || 'Failed to reset password');
+      }
+    } catch (err) {
+      message.error('Failed to reset password');
     }
   };
 
@@ -278,6 +332,15 @@ const SuperAdminUserManagement = () => {
       key: 'actions',
       render: (_, record) => (
         <Space size="small">
+          <Button 
+            type="default"
+            size="small"
+            icon={<LockOutlined />}
+            onClick={() => openResetPassword(record)}
+            className="border-blue-500 text-blue-600 hover:bg-blue-50"
+          >
+            Reset Password
+          </Button>
           <Popconfirm 
             title="Delete user?" 
             description="Are you sure you want to delete this user? This action cannot be undone."
@@ -483,6 +546,74 @@ const SuperAdminUserManagement = () => {
             initialValue="USER"
           >
             <Select options={roleOptions} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <LockOutlined className="text-blue-600" />
+            <span>Reset Password</span>
+          </div>
+        }
+        open={isResetPasswordOpen}
+        onOk={handleResetPassword}
+        onCancel={closeResetPassword}
+        okText="Reset Password"
+        cancelText="Cancel"
+        width={500}
+        className="modern-modal"
+        confirmLoading={passwordResetLoading}
+        okButtonProps={{
+          className: "bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl"
+        }}
+      >
+        {selectedUser && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">User:</span> {selectedUser.first_name} {selectedUser.last_name}
+            </p>
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Email:</span> {selectedUser.email}
+            </p>
+          </div>
+        )}
+        <Form form={resetPasswordForm} layout="vertical">
+          <Form.Item 
+            name="password" 
+            label="New Password" 
+            rules={[
+              { required: true, message: 'Please enter a new password' },
+              { min: 6, message: 'Password must be at least 6 characters' }
+            ]}
+          > 
+            <Input.Password 
+              placeholder="Enter new password" 
+              size="large"
+            />
+          </Form.Item>
+          <Form.Item 
+            name="confirmPassword" 
+            label="Confirm Password" 
+            dependencies={['password']}
+            rules={[
+              { required: true, message: 'Please confirm the password' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('The two passwords do not match!'));
+                },
+              }),
+            ]}
+          > 
+            <Input.Password 
+              placeholder="Confirm new password" 
+              size="large"
+            />
           </Form.Item>
         </Form>
       </Modal>

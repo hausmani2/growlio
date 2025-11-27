@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../../utils/axiosInterceptors';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/axiosInterceptors';
 import { 
   isImpersonating, 
   getImpersonatedUser, 
@@ -46,6 +46,11 @@ const createSuperAdminSlice = (set, get) => {
     dashboardData: null,
     loading: false,
     error: null,
+    
+    // Password reset state
+    passwordResetLoading: false,
+    passwordResetError: null,
+    passwordResetSuccess: false,
 
     // Fetch dashboard statistics
     fetchDashboardStats: async () => {
@@ -175,6 +180,57 @@ const createSuperAdminSlice = (set, get) => {
         }));
         return { success: false, error: errorMessage };
       }
+    },
+
+    // Reset user password by admin
+    resetUserPasswordByAdmin: async (userId, password) => {
+      set(() => ({ 
+        passwordResetLoading: true, 
+        passwordResetError: null,
+        passwordResetSuccess: false 
+      }));
+      
+      try {
+        const response = await apiPost('/authentication/user-password-reset-by-admin/', {
+          user_id: userId,
+          password: password
+        });
+        
+        set(() => ({ 
+          passwordResetLoading: false,
+          passwordResetError: null,
+          passwordResetSuccess: true 
+        }));
+        
+        return { 
+          success: true, 
+          data: response.data || response,
+          message: response.data?.message || 'Password reset successfully',
+          user_id: response.data?.user_id || userId,
+          email_sent: response.data?.email_sent || false
+        };
+      } catch (error) {
+        console.error('Error resetting user password:', error);
+        const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           error.response?.data?.detail ||
+                           'Failed to reset password';
+        set(() => ({ 
+          passwordResetLoading: false, 
+          passwordResetError: errorMessage,
+          passwordResetSuccess: false 
+        }));
+        return { success: false, error: errorMessage };
+      }
+    },
+
+    // Clear password reset state
+    clearPasswordResetState: () => {
+      set(() => ({ 
+        passwordResetLoading: false,
+        passwordResetError: null,
+        passwordResetSuccess: false 
+      }));
     },
 
     // Start impersonation (alias for impersonateUser)
