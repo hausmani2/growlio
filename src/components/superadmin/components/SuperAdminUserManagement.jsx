@@ -409,6 +409,7 @@ const SuperAdminUserManagement = () => {
     return () => clearTimeout(handle);
   }, [search]);
 
+
   return (
     <div className="space-y-6">
       {/* Header Section - Matching other dashboards */}
@@ -573,7 +574,7 @@ const SuperAdminUserManagement = () => {
         {selectedUser && (
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-gray-600 mb-1">
-              <span className="font-medium">User:</span> {selectedUser.first_name} {selectedUser.last_name}
+              <span className="font-medium">User:</span> {selectedUser.full_name}
             </p>
             <p className="text-sm text-gray-600">
               <span className="font-medium">Email:</span> {selectedUser.email}

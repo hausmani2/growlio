@@ -63,6 +63,8 @@ const SalesDataModal = ({
   const [showPopupDelay, setShowPopupDelay] = useState(false);
   const [showLaborRateInput, setShowLaborRateInput] = useState(false);
   const [previousWeekLaborRate, setPreviousWeekLaborRate] = useState(null);
+  const [showEditWeeklyRateWarningModal, setShowEditWeeklyRateWarningModal] = useState(false);
+  const [selectedLaborRateChoice, setSelectedLaborRateChoice] = useState(null); // 'current' or 'previous'
 
   // Add state for the week confirmation modal
   const [showWeekConfirmationModal, setShowWeekConfirmationModal] = useState(false);
@@ -249,11 +251,13 @@ const SalesDataModal = ({
     };
   }, []);
 
-  // Reset refs when modal closes
+  // Reset refs and states when modal closes
   useEffect(() => {
     if (!visible) {
       avgHourlyRateFetchingRef.current = false;
       avgHourlyRateFetchedRef.current = false;
+      setShowEditWeeklyRateWarningModal(false);
+      setSelectedLaborRateChoice(null);
     }
   }, [visible]);
 
@@ -731,6 +735,7 @@ const SalesDataModal = ({
     
     if (choice === 'previous') {
       // User wants to use previous week's rate
+      setSelectedLaborRateChoice('previous'); // Track the choice
       if (previousWeekLaborRate) {
         setFormData(prev => ({
           ...prev,
@@ -750,16 +755,19 @@ const SalesDataModal = ({
       }
     } else if (choice === 'current') {
       // User wants to use current rate (explicitly)
+      setSelectedLaborRateChoice('current'); // Track the choice
       message.success(`Using current labor rate of $${formData.weeklyTotals.average_hourly_rate || 0}`);
       setShowLaborRateInput(false);
       setLaborRateConfirmed(true);
     } else if (choice === 'continue') {
       // User wants to continue with current labor rate
+      setSelectedLaborRateChoice('current'); // Track as current
       message.success('Continuing with current labor rate settings');
       setShowLaborRateInput(false);
       setLaborRateConfirmed(true);
     } else {
       // Default fallback
+      setSelectedLaborRateChoice(null);
       setShowLaborRateInput(true);
       setLaborRateConfirmed(true);
       message.info('Please enter your new average hourly rate below');
@@ -1044,6 +1052,32 @@ const SalesDataModal = ({
                 </div>
               </Col>
             </Row>
+          </Card>
+        )}
+
+        {/* Edit Weekly Rate Button - Show only when "Use Current Rate" was selected */}
+        {laborRateConfirmed && selectedLaborRateChoice === 'current' && !showLaborRateInput && (
+          <Card 
+            size="small"
+            style={{ borderColor: '#faad14', borderWidth: '2px', backgroundColor: '#fffbe6' }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <Text strong className="text-sm block mb-1">
+                  Current Labor Rate: ${formData.weeklyTotals.average_hourly_rate || 0}
+                </Text>
+                <Text type="secondary" className="text-xs">
+                  Using current labor rate. Click below to edit if needed.
+                </Text>
+              </div>
+              <Button 
+                onClick={() => setShowEditWeeklyRateWarningModal(true)}
+                icon={<EditOutlined />}
+                style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
+              >
+                Edit Weekly Rate
+              </Button>
+            </div>
           </Card>
         )}
 
@@ -1553,6 +1587,79 @@ const SalesDataModal = ({
             </p>
             <p>
               <strong>Update Labor Rate:</strong> Enter a new average hourly rate
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Weekly Rate Warning Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <WarningOutlined className="text-orange-500" />
+            <span>Warning: Edit Weekly Rate</span>
+          </div>
+        }
+        open={showEditWeeklyRateWarningModal}
+        onCancel={() => {
+          setShowEditWeeklyRateWarningModal(false);
+        }}
+        footer={[
+          <Button 
+            key="cancel" 
+            onClick={() => {
+              setShowEditWeeklyRateWarningModal(false);
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button 
+            key="proceed" 
+            type="primary" 
+            onClick={() => {
+              setShowEditWeeklyRateWarningModal(false);
+              setShowLaborRateInput(true);
+              message.info('You can now edit the weekly labor rate in the input field below.');
+            }}
+            icon={<EditOutlined />}
+            style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
+          >
+            Proceed to Edit
+          </Button>
+        ]}
+        width={500}
+        destroyOnClose
+        closable={true}
+        maskClosable={false}
+        zIndex={1001}
+      >
+        <div className="text-center">
+          <WarningOutlined 
+            className="text-6xl text-orange-500 mb-4" 
+            style={{ fontSize: '64px' }}
+          />
+          <Title level={4} className="mb-4">
+            Warning: Editing Weekly Labor Rate
+          </Title>
+          
+          <div className="bg-orange-50 p-4 rounded-lg mb-4">
+            <Text strong className="text-orange-700 mb-2 block">
+              Important Information:
+            </Text>
+            <div className="text-sm text-orange-600 space-y-1">
+              <p>• Last week's rate: <strong>${previousWeekLaborRate?.toFixed(2) || 'N/A'}</strong></p>
+              <p>• Current rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
+              <p>• Changing the labor rate will affect profit/loss calculations</p>
+              <p>• Make sure the new rate is accurate for this week</p>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600">
+            <p className="mb-2">
+              <strong>Proceed to Edit:</strong> Open the labor rate input field to edit the rate
+            </p>
+            <p>
+              <strong>Cancel:</strong> Return to the sales data form without editing the rate
             </p>
           </div>
         </div>
