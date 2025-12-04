@@ -78,6 +78,9 @@ const SalesDataModal = ({
   // Add ref to track if average hourly rate is being fetched
   const avgHourlyRateFetchingRef = useRef(false);
   const avgHourlyRateFetchedRef = useRef(false);
+  
+  // Add ref to track if week has been initially confirmed (to prevent showing modal again during save)
+  const weekInitiallyConfirmedRef = useRef(false);
 
   // Function to check if a day should be closed based on restaurant goals
   const shouldDayBeClosed = (dayName) => {
@@ -152,20 +155,31 @@ const SalesDataModal = ({
       const status = CalendarHelpers.getWeekStatus(weekStartDate);
       setWeekStatus(status);
       
-      // If it's not the current week, show confirmation modal
-      if (!status.isCurrentWeek) {
+      // If it's not the current week and week hasn't been initially confirmed, show confirmation modal
+      // Don't show if week was already confirmed (prevents showing during save operations)
+      if (!status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
         setShowWeekConfirmationModal(true);
         setWeekConfirmed(false);
         return; // Don't proceed with initialization until confirmed
       }
       
-      // Fetch average hourly rate first, then initialize form data
-      const initializeModal = async () => {
-        await fetchAverageHourlyRate();
-        initializeFormData();
-      };
+      // If it's current week, mark as confirmed
+      if (status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
+        weekInitiallyConfirmedRef.current = true;
+        setWeekConfirmed(true);
+      }
       
-      initializeModal();
+      // Proceed with initialization if week is confirmed or it's current week
+      // (This prevents re-initialization during save operations)
+      if (weekInitiallyConfirmedRef.current || status.isCurrentWeek) {
+        // Fetch average hourly rate first, then initialize form data
+        const initializeModal = async () => {
+          await fetchAverageHourlyRate();
+          initializeFormData();
+        };
+        
+        initializeModal();
+      }
       
       // Show labor rate confirmation modal with 1.5 second delay
       // Only show if forward_previous_week_rate is false AND there's no existing data (new entry only)
@@ -258,6 +272,7 @@ const SalesDataModal = ({
       avgHourlyRateFetchedRef.current = false;
       setShowEditWeeklyRateWarningModal(false);
       setSelectedLaborRateChoice(null);
+      weekInitiallyConfirmedRef.current = false; // Reset week confirmation so it can show again for new week
     }
   }, [visible]);
 
@@ -781,6 +796,7 @@ const SalesDataModal = ({
     if (proceed) {
       // User confirmed they want to proceed with this week
       setWeekConfirmed(true);
+      weekInitiallyConfirmedRef.current = true; // Mark week as initially confirmed
       
       // Now proceed with the normal initialization
       const initializeModal = async () => {
