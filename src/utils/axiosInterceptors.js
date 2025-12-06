@@ -1,6 +1,12 @@
 import axios from 'axios';
+import { message } from 'antd';
 import useStore from '../store/store';
 import { clearImpersonationData } from './tokenManager';
+
+// API Timeout Configuration
+// You can set this via environment variable VITE_API_TIMEOUT (in milliseconds)
+// Default is 30 seconds (30000ms)
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
 /**
  * Utility function to clear all store data and redirect to login
@@ -69,7 +75,7 @@ export const clearStoreAndRedirectToLogin = () => {
 // Create an Axios instance
 const api = axios.create({
   baseURL: import.meta.env.VITE_ROOT_URL  , // Updated to match your API
-  timeout: 10000, // 10 seconds
+  timeout: API_TIMEOUT, // Configurable timeout (default: 30 seconds)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -135,6 +141,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle timeout errors
+    if (error.code === 'ECONNABORTED' || error.message === 'timeout of ' + API_TIMEOUT + 'ms exceeded' || error.message.includes('timeout')) {
+      const timeoutSeconds = Math.round(API_TIMEOUT / 1000);
+      message.error({
+        content: `Request timed out after ${timeoutSeconds} seconds. Please check your connection and try again.`,
+        duration: 5,
+      });
+      console.error(`⏱️ API Timeout: Request exceeded ${timeoutSeconds}s limit`, error.config?.url);
+      return Promise.reject(error);
+    }
+
     if (error.response) {
       // Handle specific status codes
       switch (error.response.status) {
@@ -157,26 +174,45 @@ api.interceptors.response.use(
           break;
         case 403:
           // Forbidden
+          message.error('Access forbidden. You do not have permission to perform this action.');
           console.error('Access forbidden');
           break;
         case 404:
           // Not found
+          message.error('Resource not found. Please check the URL and try again.');
           console.error('Resource not found');
+          break;
+        case 408:
+          // Request Timeout
+          message.error('Request timeout. The server took too long to respond. Please try again.');
+          console.error('Request timeout');
           break;
         case 500:
           // Server error
+          message.error('Server error occurred. Please try again later.');
           console.error('Server error occurred');
+          break;
+        case 502:
+        case 503:
+        case 504:
+          // Server unavailable errors
+          message.error('Server is temporarily unavailable. Please try again later.');
+          console.error('Server unavailable:', error.response.status);
           break;
         default:
           // Other errors
           console.error('API Error:', error.response.status, error.response.data);
       }
     } else if (error.request) {
-      // Network error
-      console.error('Network error - no response received');
+      // Network error - request was made but no response received
+      message.error('Network error. Please check your internet connection and try again.');
+      console.error('Network error - no response received', error.request);
     } else {
-      // Other error
+      // Other error (configuration error, etc.)
       console.error('Error:', error.message);
+      if (error.message) {
+        message.error(`An error occurred: ${error.message}`);
+      }
     }
     
     return Promise.reject(error);
@@ -188,6 +224,27 @@ export const apiGet = (url, config = {}) => api.get(url, config);
 export const apiPost = (url, data, config = {}) => api.post(url, data, config);
 export const apiPut = (url, data, config = {}) => api.put(url, data, config);
 export const apiDelete = (url, config = {}) => api.delete(url, config);
+
+// Helper functions for custom timeout requests
+// Use these when you need a different timeout for specific requests
+export const apiGetWithTimeout = (url, timeout = API_TIMEOUT, config = {}) => {
+  return api.get(url, { ...config, timeout });
+};
+
+export const apiPostWithTimeout = (url, data, timeout = API_TIMEOUT, config = {}) => {
+  return api.post(url, data, { ...config, timeout });
+};
+
+export const apiPutWithTimeout = (url, data, timeout = API_TIMEOUT, config = {}) => {
+  return api.put(url, data, { ...config, timeout });
+};
+
+export const apiDeleteWithTimeout = (url, timeout = API_TIMEOUT, config = {}) => {
+  return api.delete(url, { ...config, timeout });
+};
+
+// Export the timeout constant for reference in other parts of the app
+export { API_TIMEOUT };
 
 // Optionally, export the raw instance for custom use
 export default api;
