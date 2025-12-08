@@ -69,6 +69,14 @@ const GuidanceOverlay = () => {
               navigate('/dashboard');
             }, 100);
           } catch (error) {
+            // Handle 401 errors gracefully - user may have logged out
+            if (error.response?.status === 401) {
+              setIsDataGuidanceActive(false);
+              if (context.setHasSeenGuidance) {
+                context.setHasSeenGuidance(true);
+              }
+              return;
+            }
             console.error('Failed to update guidance status:', error);
             setTimeout(() => {
               sessionStorage.setItem('guidance_navigate_to_dashboard', 'true');
@@ -100,6 +108,11 @@ const GuidanceOverlay = () => {
             });
             markDataGuidanceAsSeen();
           } catch (error) {
+            // Handle 401 errors gracefully - user may have logged out
+            if (error.response?.status === 401) {
+              markDataGuidanceAsSeen();
+              return;
+            }
             console.error('Failed to update data guidance status:', error);
             markDataGuidanceAsSeen();
           }
@@ -170,6 +183,11 @@ const GuidanceOverlay = () => {
           sessionStorage.setItem('show_data_guidance_after_user_guidance', 'true');
         }
       } catch (error) {
+        // Handle 401 errors gracefully - user may have logged out
+        if (error.response?.status === 401) {
+          markGuidanceAsSeen();
+          return;
+        }
         console.error('Failed to update guidance status:', error);
         markGuidanceAsSeen();
       }

@@ -65,6 +65,17 @@ export const GuidanceProvider = ({ children }) => {
 
   // Check if user has seen guidance
   const checkGuidanceStatus = useCallback(async () => {
+    // Check if user is authenticated before making API call
+    const token = useStore.getState().token;
+    const isAuthenticated = !!token;
+    
+    // If not authenticated, skip API call and return default values
+    if (!isAuthenticated) {
+      setHasSeenGuidance(false);
+      setHasSeenDataGuidance(false);
+      return { hasSeen: false, hasSeenData: false };
+    }
+    
     try {
       const response = await apiGet('/authentication/user/guidance-status/');
       // Use false as default instead of true, so guidance shows by default
@@ -74,6 +85,16 @@ export const GuidanceProvider = ({ children }) => {
       setHasSeenDataGuidance(hasSeenData);
       return { hasSeen, hasSeenData };
     } catch (error) {
+      // Handle 401 errors gracefully - user is not authenticated
+      // Don't log or show errors for 401 as this is expected on public routes
+      if (error.response?.status === 401) {
+        // Silently handle 401 - user is not authenticated, which is expected
+        setHasSeenGuidance(false);
+        setHasSeenDataGuidance(false);
+        return { hasSeen: false, hasSeenData: false };
+      }
+      
+      // For other errors, log but don't break the flow
       console.error('❌ Failed to check guidance status:', error);
       // On error, default to false to allow guidance to show
       setHasSeenGuidance(false);
@@ -525,6 +546,17 @@ export const GuidanceProvider = ({ children }) => {
 
   // Mark guidance as completed
   const markGuidanceAsSeen = useCallback(async () => {
+    // Check if user is authenticated before making API call
+    const token = useStore.getState().token;
+    const isAuthenticated = !!token;
+    
+    if (!isAuthenticated) {
+      // If not authenticated, just close guidance locally
+      setIsActive(false);
+      setHasSeenGuidance(true);
+      return;
+    }
+    
     try {
       // Get current status to preserve has_seen_user_guidance_data
       const currentStatus = await apiGet('/authentication/user/guidance-status/');
@@ -545,6 +577,14 @@ export const GuidanceProvider = ({ children }) => {
         sessionStorage.setItem('show_data_guidance_after_user_guidance', 'true');
       }
     } catch (error) {
+      // Handle 401 errors gracefully
+      if (error.response?.status === 401) {
+        // User is not authenticated, just close guidance locally
+        setIsActive(false);
+        setHasSeenGuidance(true);
+        return;
+      }
+      
       console.error('❌ Failed to mark guidance as seen:', error);
       // Still close the guidance even if API call fails
       setIsActive(false);
@@ -554,6 +594,17 @@ export const GuidanceProvider = ({ children }) => {
 
   // Mark data guidance as completed
   const markDataGuidanceAsSeen = useCallback(async () => {
+    // Check if user is authenticated before making API call
+    const token = useStore.getState().token;
+    const isAuthenticated = !!token;
+    
+    if (!isAuthenticated) {
+      // If not authenticated, just close guidance locally
+      setIsDataGuidanceActive(false);
+      setHasSeenDataGuidance(true);
+      return;
+    }
+    
     try {
       // Check current status first to preserve has_seen_user_guidance
       const currentStatus = await apiGet('/authentication/user/guidance-status/');
@@ -565,6 +616,14 @@ export const GuidanceProvider = ({ children }) => {
       setIsDataGuidanceActive(false);
       setDataGuidancePopups([]);
     } catch (error) {
+      // Handle 401 errors gracefully
+      if (error.response?.status === 401) {
+        // User is not authenticated, just close guidance locally
+        setIsDataGuidanceActive(false);
+        setHasSeenDataGuidance(true);
+        return;
+      }
+      
       console.error('❌ Failed to mark data guidance as seen:', error);
       // Still close the guidance even if API call fails
       setIsDataGuidanceActive(false);
@@ -849,6 +908,22 @@ export const GuidanceProvider = ({ children }) => {
     setCurrentPopupIndex(0);
     setCurrentDataGuidanceIndex(0);
     
+    // Check if user is authenticated and not on a public route
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
+    const isPublicRoute = publicRoutes.includes(location.pathname);
+    const token = useStore.getState().token;
+    const isAuthenticated = !!token;
+    
+    // Skip guidance checks on public routes or when not authenticated
+    if (isPublicRoute || !isAuthenticated) {
+      setLoading(false);
+      setIsActive(false);
+      setIsDataGuidanceActive(false);
+      setHasSeenGuidance(true); // Prevent showing guidance on public routes
+      setHasSeenDataGuidance(true);
+      return;
+    }
+    
     // Check for navigation flags FIRST before refreshing status
     // This ensures programmatic navigation works correctly
     const showDataGuidance = sessionStorage.getItem('show_data_guidance_after_user_guidance');
@@ -890,7 +965,7 @@ export const GuidanceProvider = ({ children }) => {
             setHasSeenDataGuidance(hasSeenData);
           }
         } catch (error) {
-          console.error('Failed to refresh guidance status on route change:', error);
+          // Silently handle errors - already handled in checkGuidanceStatus
         }
       };
       refreshStatus();
@@ -907,7 +982,7 @@ export const GuidanceProvider = ({ children }) => {
           setHasSeenDataGuidance(hasSeenData);
         }
       } catch (error) {
-        console.error('Failed to refresh guidance status on route change:', error);
+        // Silently handle errors - already handled in checkGuidanceStatus
       }
     };
     

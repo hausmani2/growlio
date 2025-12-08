@@ -41,6 +41,12 @@ const GuidanceTestButton = () => {
       console.log('📊 Current guidance status:', response.data);
       alert(`Guidance Status: ${JSON.stringify(response.data, null, 2)}`);
     } catch (error) {
+      // Handle 401 errors gracefully
+      if (error.response?.status === 401) {
+        alert('Not authenticated. Please log in first.');
+        console.warn('User is not authenticated');
+        return;
+      }
       console.error('Failed to check status:', error);
       alert('Failed to check status. Check console for details.');
     }
