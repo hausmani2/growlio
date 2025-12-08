@@ -6,12 +6,10 @@ import {
   ClockCircleOutlined,
   QuestionCircleOutlined,
   SendOutlined,
-  CheckCircleOutlined,
   UserOutlined,
   EnvironmentOutlined
 } from '@ant-design/icons';
 import { Input, Button, Form, message, Card, Collapse, Row, Col } from 'antd';
-import GrowlioLogo from '../../common/GrowlioLogo';
 import useStore from '../../../store/store';
 
 const { TextArea } = Input;
@@ -161,30 +159,32 @@ const SupportPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-orange-50 via-white to-orange-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center">
-            <div className="flex justify-center mb-2">
-              <GrowlioLogo width={120} height={40} />
-            </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">
-              How can we <span className="text-orange-500">help you?</span>
+    <div className="w-full mx-auto">
+      {/* Header Section - Matching application design pattern */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
+          {/* Left Side - Title and Description */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">
+              Support
             </h1>
-            <p className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto mb-2">
-              We're here to support your restaurant's success. Get in touch with our team for any questions, 
-              technical support, or guidance on maximizing your Growlio experience.
+            <p className="text-gray-600 text-lg">
+              Get in touch with our team for any questions, technical support, or guidance on maximizing your Growlio experience
             </p>
-            <div className="flex items-center justify-center gap-2 text-gray-500 ">
-              <ClockCircleOutlined />
-              <span className="text-sm md:text-base">Average response time: 2 hours</span>
+          </div>
+          {/* Right Side - Response Time Badge */}
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-orange-100 to-orange-200 px-4 py-2 rounded-lg border border-orange-300">
+              <div className="flex items-center gap-2">
+                <ClockCircleOutlined className="text-orange-600 text-lg" />
+                <span className="text-orange-800 font-semibold">Avg. Response: 2 hours</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full">
         {/* Contact Methods
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
@@ -220,13 +220,13 @@ const SupportPage = () => {
         <Row gutter={[32, 32]}>
           {/* Contact Form */}
           <Col xs={24} lg={12}>
-            <Card className="h-full shadow-lg">
+            <Card className="h-full shadow-lg border border-gray-100">
               <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <SendOutlined className="text-2xl text-orange-500" />
                   <h2 className="text-2xl font-bold text-gray-900">Send us a message</h2>
                 </div>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-6">
                   Fill out the form below and we'll get back to you as soon as possible.
                 </p>
                 
@@ -357,9 +357,9 @@ const SupportPage = () => {
 
           {/* FAQ Section */}
           <Col xs={24} lg={12}>
-            <Card className="h-full shadow-lg">
+            <Card className="h-full shadow-lg border border-gray-100">
               <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-4">
                   <QuestionCircleOutlined className="text-2xl text-orange-500" />
                   <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
                 </div>

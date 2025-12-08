@@ -56,7 +56,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     {
       key: 'onboarding',
       icon: <UserOutlined />,
-      label: 'Onboarding to Your Setup',
+      label: 'Your Setup',
       children: [
         {
           key: 'basic-information',
