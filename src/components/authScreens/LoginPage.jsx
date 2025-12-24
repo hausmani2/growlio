@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
-import AuthWrapper from './auth/AuthWrapper';
 import Login from './auth/Login';
 
 const LoginPage = () => {
@@ -16,10 +15,8 @@ const LoginPage = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div>
-      <AuthWrapper>
+    <div className='w-full h-screen flex justify-center items-center'>
         <Login />
-      </AuthWrapper>
     </div>
   );
 };

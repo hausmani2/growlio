@@ -67,8 +67,20 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'sales-channels',
           icon: <FaStore  />,
-          label: 'Sales Channels',
+          label: 'Operating Information',
           onClick: () => navigate('/dashboard/sales-channels'),
+        },
+        {
+          key: 'third-party-delivery',
+          icon: <FaStore />,
+          label: 'Third-Party Delivery',
+          onClick: () => navigate('/dashboard/third-party-delivery'),
+        },
+        {
+          key: 'sales-data',
+          icon: <FaStore />,
+          label: 'Sales Data',
+          onClick: () => navigate('/dashboard/sales-data'),
         },
         {
           key: 'labor-information',

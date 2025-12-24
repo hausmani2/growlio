@@ -2,8 +2,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { message, Modal, Select } from "antd";
 import { useLocation } from "react-router-dom";
-import FixedCost from "./FixedCost";
-import VariableFixed from "./VariableFixed";
+import OperatingExpenses from "./OperatingExpenses";
 import TotalExpense from "./TotalExpense";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
@@ -17,9 +16,6 @@ const ExpenseWrapperContent = () => {
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
-
-    // Ref for VariableFixed component to access percentage field filtering
-    const variableFixedRef = useRef();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -157,27 +153,13 @@ const ExpenseWrapperContent = () => {
             }));
 
         // Dynamic variable costs - include all fields in API
-        let dynamicVariableCosts = [];
-        if (variableFixedRef.current) {
-            // Use the ref to get all fields (including percentage fields)
-            const allFields = variableFixedRef.current.getFieldsForAPI();
-            dynamicVariableCosts = allFields
-                .filter(field => parseFloat(field.value) > 0)
-                .map(field => ({
-                    name: field.label,
-                    amount: parseFloat(field.value),
-                    variable_expense_type: field.variable_expense_type || "monthly"
-                }));
-        } else {
-            // Fallback: include all fields
-            dynamicVariableCosts = expenseData.dynamicVariableFields
-                .filter(field => parseFloat(field.value) > 0)
-                .map(field => ({
-                    name: field.label,
-                    amount: parseFloat(field.value),
-                    variable_expense_type: field.variable_expense_type || "monthly"
-                }));
-        }
+        const dynamicVariableCosts = expenseData.dynamicVariableFields
+            .filter(field => parseFloat(field.value) > 0)
+            .map(field => ({
+                name: field.label,
+                amount: parseFloat(field.value),
+                variable_expense_type: field.variable_expense_type || "monthly"
+            }));
 
         const newApiData = {
             fixed_costs: dynamicFixedCosts,
@@ -405,13 +387,7 @@ const ExpenseWrapperContent = () => {
 
                         {/* Content Section */}
                         <div className="space-y-6">
-                            <FixedCost
-                                data={expenseData}
-                                updateData={updateExpenseData}
-                                errors={validationErrors}
-                            />
-                            <VariableFixed
-                                ref={variableFixedRef}
+                            <OperatingExpenses
                                 data={expenseData}
                                 updateData={updateExpenseData}
                                 errors={validationErrors}
@@ -448,21 +424,14 @@ const ExpenseWrapperContent = () => {
                 <OnboardingBreadcrumb
                     currentStep="Expenses"
                     description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
-                    heading="Fixed Costs =" description2=" Non-negotiable. Always plan for them."
-                    heading2="Variable Fixed Costs = " description3=" Can sometimes be paused or reduced if needed."
+                    heading="Expenses =" description2=" Non-negotiable. Always plan for them."
                 />
 
             </div>
 
             {/* Content Section */}
             <div className="space-y-6">
-                <FixedCost
-                    data={expenseData}
-                    updateData={updateExpenseData}
-                    errors={validationErrors}
-                />
-                <VariableFixed
-                    ref={variableFixedRef}
+                <OperatingExpenses
                     data={expenseData}
                     updateData={updateExpenseData}
                     errors={validationErrors}

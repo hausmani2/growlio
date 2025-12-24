@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
-import GrowlioLogo from '../../common/GrowlioLogo';
+import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import { Link } from 'react-router-dom';
@@ -133,7 +133,7 @@ const SuperAdminLogin = () => {
       <Card className="w-full max-w-md shadow-lg border border-gray-100 rounded-xl">
         <div className="text-center mb-6">
           <div className="flex items-center justify-center">
-            <GrowlioLogo />
+            <img src={growlioLogo} alt="Growlio Logo" className="w-48 mx-auto" />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900 mt-3">SuperAdmin Sign In</h1>
           <p className="text-gray-500 mt-1">Manage users and platform settings</p>

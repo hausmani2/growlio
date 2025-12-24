@@ -4,6 +4,7 @@ import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Dropdown, Menu } from 'antd';
+import growlioLogo from "../../assets/svgs/growlio-logo.png"
 
 const getInitials = (name = '') => {
   const parts = name.trim().split(' ');
@@ -69,11 +70,7 @@ const Header = ({ onMenuClick }) => {
                 
                 {/* Logo */}
                 <div className="flex items-center">
-                    <GrowlioLogo 
-                        width={96} 
-                        height={32} 
-                        className="h-8 sm:h-10 w-auto"
-                    />
+                    <img src={growlioLogo} alt="Growlio Logo" className="w-32 mx-auto" />
                 </div>
             </div>
 

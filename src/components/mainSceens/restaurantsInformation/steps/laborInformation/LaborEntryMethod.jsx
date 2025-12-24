@@ -24,13 +24,20 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
     });
 
-    // Update local state when props change
+    // Update local state when props change and set default value
     useEffect(() => {
         if (data) {
+            const defaultMethod = data.labor_record_method || 'daily-hours-costs';
+            
+            // Set default value if not already set
+            if (!data.labor_record_method) {
+                updateData('labor_record_method', 'daily-hours-costs');
+            }
+            
             setFormData(prev => ({
                 ...prev,
-                entryMethod: data.labor_record_method || 'daily-hours-costs',
-                isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
+                entryMethod: defaultMethod,
+                isDailyHoursCostsEnabled: defaultMethod === 'daily-hours-costs'
             }));
         }
     }, [data]);

@@ -2,8 +2,16 @@ import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 import { Select, Tooltip } from 'antd';
 import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
+import { useEffect } from 'react';
 
 const FoodCostDetails = ({ data, updateData, errors = {} }) => {
+    // Set default value on component mount
+    useEffect(() => {
+        if (!data.cogs_goal) {
+            updateData('cogs_goal', '30');
+        }
+    }, []);
+
     const handleCogsChange = (value) => {
         updateData('cogs_goal', value);
     };
@@ -60,7 +68,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                     
                     <div className="space-y-3">
                         <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                            What is your COGS goal as a percentage of sales?
+                        What is your weekly COGS goal as a percentage of sales?.  (I added the word weekly)
                             <span className="text-red-500">*</span>
                             <TooltipIcon text={tooltips['cogs_goal']} />
                         </label>
@@ -68,7 +76,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                         <Select
                             id="cogs"
                             placeholder="Select Percentage"
-                            value={data?.cogs_goal || undefined}
+                            value={data?.cogs_goal || "30"}
                             onChange={handleCogsChange}
                             options={generatePercentageOptions()}
                             className={`w-full h-11 rounded-lg text-sm ${

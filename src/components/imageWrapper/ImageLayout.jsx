@@ -10,11 +10,6 @@ function ImageLayout({ children }) {
         alt="Plane Orange" 
         className="w-full object-cover h-screen z-0"
       />
-      <img 
-        src={Mask} 
-        alt="Mask Group" 
-        className="absolute top-0 left-0 w-full h-screen object-center z-10"
-      />
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6 md:p-8  z-20">
         <div className="">
           {children}

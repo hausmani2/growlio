@@ -309,8 +309,8 @@ const SalesChannelsWrapperContent = () => {
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
-                    currentStep="Sales Channels"
-                    description="Configure your restaurant's sales channels including in-store, online, app, and third-party delivery options."
+                    currentStep="Operating Information"
+                    description="Configure your restaurant's operating information including sales channels and POS details."
                 />
             </div>
 

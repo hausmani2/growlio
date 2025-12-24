@@ -22,7 +22,9 @@ import RestaurantWrapper from './components/mainSceens/restaurantsInformation/st
 import LaborInformationWrapper from './components/mainSceens/restaurantsInformation/steps/laborInformation/LaborInformationWrapper';
 import FoodCostDetailsWrapper from './components/mainSceens/restaurantsInformation/steps/foodCostDetails/FoodCostWrapper';
 import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation/steps/salesChannels/SalesChannelsWrapper';
+import ThirdPartyDeliveryWrapper from './components/mainSceens/restaurantsInformation/steps/thirdPartyDelivery/ThirdPartyDeliveryWrapper';
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
+import SalesDataWrapper from './components/mainSceens/restaurantsInformation/steps/salesData/SalesDataWrapper';
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
@@ -37,6 +39,8 @@ import SupportPage from './components/mainSceens/support/SupportPage';
 import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
 import ChatWidget from './components/chatbot/ChatWidget';
 import ChatPage from './components/mainSceens/chat/ChatPage';
+import { ProfitabilityScore, ProfitabilityWizard } from './components/profitability';
+import ReportCardTestPage from './components/reportCard/ReportCardTestPage';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -109,6 +113,14 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/congratulations" element={<Congratulations />} />
 
+        {/* Profitability Score Routes - Can be accessed before full onboarding */}
+        <Route path="/profitability" element={<ProfitabilityScore />} />
+        <Route path="/profitability/form" element={<ProfitabilityWizard />} />
+        <Route path="/profitability/results" element={<Navigate to="/profitability/form" replace />} />
+
+        {/* Report Card Test Route */}
+        <Route path="/report-card-test" element={<ReportCardTestPage />} />
+
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Navigate to="/congratulations" replace />} />
@@ -128,6 +140,8 @@ function App() {
           <Route path="/dashboard/labor-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
           <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
+          <Route path="/dashboard/third-party-delivery" element={<Wrapper showSidebar={true} children={<ThirdPartyDeliveryWrapper />} />} />
+          <Route path="/dashboard/sales-data" element={<Wrapper showSidebar={true} children={<SalesDataWrapper />} />} />
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />

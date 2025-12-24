@@ -1,8 +1,16 @@
 import { Select } from 'antd';
+import { useEffect } from 'react';
 import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
 
 const LaborInformation = ({ data, updateData, errors = {} }) => {
+    // Set default value on component mount
+    useEffect(() => {
+        if (!data.labour_goal) {
+            updateData('labour_goal', '28');
+        }
+    }, []);
+
     const handleLaborGoalChange = (value) => {
         // Convert the value to just the number if it contains percentage symbol
         const numericValue = value.toString().replace('%', '');
@@ -67,7 +75,7 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
                         <Select
                             id="labour_goal"
                             placeholder="Select Percentage"
-                            value={data.labour_goal || undefined}
+                            value={data.labour_goal || "28"}
                             onChange={handleLaborGoalChange}
                             options={generateLaborPercentageOptions()}
                             className={`w-full h-11 rounded-lg text-sm ${
