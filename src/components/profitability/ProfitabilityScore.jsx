@@ -98,31 +98,49 @@ const ProfitabilityScore = () => {
             </div>
 
 
-            {/* Info Modal (optional - you can style this as needed) */}
+            {/* Info Modal */}
             {showInfoModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">
-                            Don't Have This Info?
-                        </h3>
-                        <p className="text-gray-700 mb-4">
-                            No worries! You can still get started with Growlio. We'll help you set up your restaurant and guide you through collecting this information as you go.
-                        </p>
-                        <div className="flex gap-3">
+                    <div className="bg-white rounded-lg border border-gray-300 p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+                        {/* Title */}
+                        <h2 className="text-3xl sm:text-4xl font-bold text-orange-500 mb-6 text-left">
+                            Need help tracking your numbers?
+                        </h2>
+                        
+                        {/* Content */}
+                        <div className="space-y-4 text-gray-900 text-base leading-relaxed">
+                            <p>
+                                If you don't know your <strong>sales, food cost, labor, or rent</strong>, that's probably a big part of why things feel out of control. These four numbers alone can represent 70-80% of your total expenses, even when you are running profitably.
+                            </p>
+                            
+                            <p>
+                                They're the clearest indicators of whether your restaurant is healthy or slowly bleeding out. If you're not tracking them, you're basically operating blind and no marketing boost, new menu item, or lucky weekend is going to fix that.
+                            </p>
+                            
+                            <p>
+                                Growlio is here to help you take back control, but it starts with entering those numbers. If you don't have them handy yet, you can use hypothetical numbers just to see how the Report Card works. It's not ideal, but it'll show you exactly how the pieces connect.
+                            </p>
+                            
+                            <p>
+                                And if gathering your real numbers feels overwhelming, we can help. Reach out to us. We offer consulting support that can walk you through pulling your data, setting up simple tracking, and finally getting a clear picture of your profitability.
+                            </p>
+                            
+                            <p>
+                                Because until you measure these core costs, you're guessing, and guessing is the fastest way to fail.
+                            </p>
+                            
+                            <p>
+                                Growlio is here to make sure you stop guessing and start making smarter, more profitable decisions.
+                            </p>
+                        </div>
+                        
+                        {/* Close Button */}
+                        <div className="mt-8 flex justify-end">
                             <button
                                 onClick={() => setShowInfoModal(false)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                                className="px-6 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
                             >
-                                Go Back
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowInfoModal(false);
-                                    navigate('/onboarding/basic-information');
-                                }}
-                                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
-                            >
-                                Continue Setup
+                                Close
                             </button>
                         </div>
                     </div>

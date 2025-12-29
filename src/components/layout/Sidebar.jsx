@@ -16,6 +16,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
+    '/dashboard/report-card-test': 'report-card-test',
     '/dashboard/budget': 'budget',
     '/dashboard/profit-loss': 'profit-loss',
     '/dashboard': 'dashboard',
@@ -24,6 +25,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/third-party-delivery': 'third-party-delivery',
     '/dashboard/sales-data': 'sales-data',
+    '/dashboard/labor-data': 'labor-data',
     '/dashboard/labor-information': 'labor-information',
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/expense': 'expense',

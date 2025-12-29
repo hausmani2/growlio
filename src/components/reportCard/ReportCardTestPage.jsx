@@ -5,8 +5,8 @@ const ReportCardTestPage = () => {
   const [showSetupProgress, setShowSetupProgress] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="py-4 w-full">
+      <div className="w-full flex flex-col gap-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Report Card Test</h1>
           <p className="text-sm text-gray-600">

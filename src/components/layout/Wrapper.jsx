@@ -12,6 +12,7 @@ import ImpersonationBanner from '../superadmin/components/ImpersonationBanner';
 import { isImpersonating } from '../../utils/tokenManager';
 import GuidanceOverlay from '../guidance/GuidanceOverlay';
 const { Content } = Layout;
+import lioIcon from "../../assets/lio.png";
 
 /**
  * Wrapper component
@@ -28,6 +29,16 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const impersonating = isImpersonating();
 
   const userMenus = [
+    {
+      key:'report-card-test',
+      icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="2" y="18" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#9ca3af">A</text>
+      <text x="14" y="13" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="600" fill="#9ca3af">+</text>
+    </svg>
+    ,
+      label: 'Report Card',
+      onClick: () => navigate('/dashboard/report-card-test'),
+    },
     {
       key: 'dashboard-summary',
       icon: <FaChartLine />,
@@ -83,6 +94,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/sales-data'),
         },
         {
+          key: 'labor-data',
+          icon: <FaStore />,
+          label: 'Labor Data',
+          onClick: () => navigate('/dashboard/labor-data'),
+        },
+        {
           key: 'labor-information',
           icon: <FaPeopleCarry/>,
           label: 'Labor Information',
@@ -110,7 +127,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     },
     {
       key: 'leo-ai',
-      icon: <FileTextOutlined />,
+      icon: <img src={lioIcon} alt="LIO AI" className="w-6 h-6" />,
       label: 'LIO AI',
       children: [
         // {

@@ -68,7 +68,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                     
                     <div className="space-y-3">
                         <label htmlFor="cogs" className="block text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        What is your weekly COGS goal as a percentage of sales?.  (I added the word weekly)
+                        What is your weekly COGS goal as a percentage of sales?
                             <span className="text-red-500">*</span>
                             <TooltipIcon text={tooltips['cogs_goal']} />
                         </label>
