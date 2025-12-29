@@ -31,6 +31,49 @@ const ThirdPartyDeliveryWrapperContent = () => {
     providers: [],
   });
 
+  // Get selectedDays from Sales Channels data
+  const getSelectedDays = () => {
+    const salesChannelsInfoData = completeOnboardingData["Sales Channels"];
+    if (salesChannelsInfoData && salesChannelsInfoData.data) {
+      const data = salesChannelsInfoData.data;
+      
+      // Default: all days are open
+      let selectedDays = {
+        Sunday: true,
+        Monday: true,
+        Tuesday: true,
+        Wednesday: true,
+        Thursday: true,
+        Friday: true,
+        Saturday: true
+      };
+
+      // If restaurant_days is returned from API, those are the CLOSED days
+      if (data.restaurant_days && Array.isArray(data.restaurant_days)) {
+        // Mark returned days as CLOSED (false)
+        data.restaurant_days.forEach(day => {
+          const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+          if (selectedDays.hasOwnProperty(dayName)) {
+            selectedDays[dayName] = false; // Closed
+          }
+        });
+      }
+      
+      return selectedDays;
+    }
+    
+    // Default: all days open if no data exists
+    return {
+      Sunday: true,
+      Monday: true,
+      Tuesday: true,
+      Wednesday: true,
+      Thursday: true,
+      Friday: true,
+      Saturday: true
+    };
+  };
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -76,13 +119,14 @@ const ThirdPartyDeliveryWrapperContent = () => {
   };
 
   const handleSave = async () => {
+    const selectedDays = getSelectedDays();
     const isValid = validateStep("Sales Channels", {
       third_party: thirdPartyData.third_party,
       providers: thirdPartyData.providers,
       in_store: true,
       online: false,
       from_app: false,
-      selectedDays: {},
+      selectedDays: selectedDays,
     });
 
     if (!isValid) {

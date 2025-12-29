@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
-import { FaChartLine, FaPeopleCarry, FaStore } from 'react-icons/fa';
+import { FaChartLine, FaPeopleCarry, FaStore, FaDollarSign, FaUsers } from 'react-icons/fa';
 import { MdOutlineFoodBank } from 'react-icons/md';
 import { SiActualbudget, SiExpensify } from 'react-icons/si';
 import ImpersonationBanner from '../superadmin/components/ImpersonationBanner';
@@ -77,25 +77,25 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
         {
           key: 'sales-channels',
-          icon: <FaStore  />,
+          icon: <ShopOutlined />,
           label: 'Operating Information',
           onClick: () => navigate('/dashboard/sales-channels'),
         },
         {
           key: 'third-party-delivery',
-          icon: <FaStore />,
+          icon: <TruckOutlined />,
           label: 'Third-Party Delivery',
           onClick: () => navigate('/dashboard/third-party-delivery'),
         },
         {
           key: 'sales-data',
-          icon: <FaStore />,
+          icon: <DollarOutlined />,
           label: 'Sales Data',
           onClick: () => navigate('/dashboard/sales-data'),
         },
         {
           key: 'labor-data',
-          icon: <FaStore />,
+          icon: <FaUsers />,
           label: 'Labor Data',
           onClick: () => navigate('/dashboard/labor-data'),
         },
