@@ -31,14 +31,32 @@ const ProtectedRoutes = () => {
   const salesInformationError = useStore((state) => state.salesInformationError);
   const getSalesInformation = useStore((state) => state.getSalesInformation);
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
+  const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
+  const restaurantOnboardingDataTimestamp = useStore((state) => state.restaurantOnboardingDataTimestamp);
   
   // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
   const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
   const token = storeToken || storedToken;
   
+  // Initialize restaurantData from cached store data if available
+  // This prevents state being null on navigation when cached data exists
+  const getInitialRestaurantData = () => {
+    if (restaurantOnboardingData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5000; // 5 seconds
+      const cacheAge = restaurantOnboardingDataTimestamp ? now - restaurantOnboardingDataTimestamp : Infinity;
+      // Only use cache if it's fresh (less than 5 seconds old)
+      if (cacheAge < CACHE_DURATION) {
+        return restaurantOnboardingData;
+      }
+    }
+    return null;
+  };
+  
   // State to track restaurant and onboarding status
-  const [restaurantData, setRestaurantData] = useState(null);
-  const [restaurantCheckLoading, setRestaurantCheckLoading] = useState(true);
+  // Initialize from cached store data to prevent null state on navigation
+  const [restaurantData, setRestaurantData] = useState(getInitialRestaurantData);
+  const [restaurantCheckLoading, setRestaurantCheckLoading] = useState(!getInitialRestaurantData());
   
   // Derived state from restaurant data
   const restaurantExists = hasRestaurant(restaurantData);
@@ -80,6 +98,20 @@ const ProtectedRoutes = () => {
     }
   };
 
+  // Update restaurantData when cached store data changes
+  useEffect(() => {
+    if (restaurantOnboardingData && restaurantOnboardingData !== restaurantData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5000; // 5 seconds
+      const cacheAge = restaurantOnboardingDataTimestamp ? now - restaurantOnboardingDataTimestamp : Infinity;
+      // Only update if cache is fresh (less than 5 seconds old)
+      if (cacheAge < CACHE_DURATION) {
+        setRestaurantData(restaurantOnboardingData);
+        setRestaurantCheckLoading(false);
+      }
+    }
+  }, [restaurantOnboardingData, restaurantOnboardingDataTimestamp, restaurantData]);
+
   // Check if restaurant exists - only once per session
   useEffect(() => {
     // Clear session storage if user is not authenticated (logout scenario)
@@ -89,6 +121,14 @@ const ProtectedRoutes = () => {
       hasCheckedRestaurantRef.current = false;
       setRestaurantCheckLoading(false);
       setRestaurantData(null);
+      return;
+    }
+    
+    // CRITICAL: If One Month Sales Info is complete and we're navigating between dashboard routes,
+    // skip re-checking restaurant data to prevent unnecessary API calls and state resets
+    // This prevents the redirect issue when clicking on setup items
+    if (oneMonthSalesInfoComplete && location.pathname.startsWith('/dashboard') && restaurantData) {
+      setRestaurantCheckLoading(false);
       return;
     }
     
@@ -217,6 +257,16 @@ const ProtectedRoutes = () => {
 
   // Handle onboarding redirects based on restaurant and sales info status
   useEffect(() => {
+    // CRITICAL: If One Month Sales Info is complete, allow ALL dashboard routes
+    // This check must happen FIRST, even before loading checks, to prevent redirects
+    // when navigating between dashboard pages
+    if (oneMonthSalesInfoComplete && location.pathname.startsWith('/dashboard')) {
+      hasRedirectedRef.current = false; // Reset redirect flag
+      sessionStorage.setItem('lastProcessedPath', location.pathname);
+      sessionStorage.removeItem('lastRedirectRoute'); // Clear any pending redirects
+      return; // Allow access to all dashboard routes - exit early to prevent any redirects
+    }
+
     // Skip if still loading restaurant data
     if (
       restaurantCheckLoading ||
@@ -253,15 +303,6 @@ const ProtectedRoutes = () => {
       if (!hasChecked) {
         return; // Wait for restaurant check to complete
       }
-    }
-
-    // CRITICAL: If One Month Sales Info is complete, allow ALL dashboard routes
-    // Don't redirect when user is navigating between dashboard pages
-    if (oneMonthSalesInfoComplete && location.pathname.startsWith('/dashboard')) {
-      hasRedirectedRef.current = false; // Reset redirect flag
-      sessionStorage.setItem('lastProcessedPath', location.pathname);
-      sessionStorage.removeItem('lastRedirectRoute'); // Clear any pending redirects
-      return; // Allow access to all dashboard routes
     }
 
     // Don't redirect if user is already on an allowed onboarding path
@@ -302,6 +343,7 @@ const ProtectedRoutes = () => {
     }
     
     // If One Month Sales Info is FALSE, block dashboard and /onboarding
+    // BUT: Skip this check if oneMonthSalesInfoComplete is true (already handled above)
     if (restaurantExists && !oneMonthSalesInfoComplete) {
       // If user is trying to access /onboarding page, redirect to score
       if (location.pathname === ONBOARDING_ROUTES.ONBOARDING) {
@@ -317,7 +359,8 @@ const ProtectedRoutes = () => {
       }
       
       // If user is trying to access ANY dashboard route, redirect to score
-      if (location.pathname.startsWith('/dashboard')) {
+      // BUT: Only if oneMonthSalesInfoComplete is actually false (double-check to prevent race conditions)
+      if (location.pathname.startsWith('/dashboard') && !oneMonthSalesInfoComplete) {
         if (!hasRedirectedRef.current) {
           hasRedirectedRef.current = true;
           sessionStorage.setItem('lastProcessedPath', location.pathname);

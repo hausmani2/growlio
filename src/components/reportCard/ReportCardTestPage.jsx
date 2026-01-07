@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ReportCard, SetupProgressCard, YourGradeCard, DailyPerformanceCard } from "./index";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
@@ -7,18 +7,40 @@ import { getOnboardingProgress } from "../../utils/onboardingUtils";
 
 const ReportCardTestPage = () => {
   const [showSetupProgress, setShowSetupProgress] = useState(false);
-  const [onboardingProgress, setOnboardingProgress] = useState(null);
   const { 
     getSalesInformationSummary, 
     salesInformationSummary, 
     salesInformationSummaryLoading,
-    getRestaurantOnboarding 
+    getRestaurantOnboarding,
+    restaurantOnboardingData,
+    restaurantOnboardingDataTimestamp
   } = useStore();
   const hasFetchedRef = useRef(false); // Prevent multiple API calls
   const hasFetchedOnboardingRef = useRef(false); // Prevent multiple onboarding API calls
   
   // Use summary data from store if available
   const summaryData = salesInformationSummary;
+
+  // Calculate onboarding progress from cached store data
+  // This prevents showing null state on re-renders by always using the latest cached data
+  const cachedOnboardingProgress = useMemo(() => {
+    if (restaurantOnboardingData) {
+      try {
+        const progress = getOnboardingProgress(restaurantOnboardingData);
+        return progress;
+      } catch (error) {
+        console.error("❌ [ReportCardTestPage] Error calculating progress from cache:", error);
+        return null;
+      }
+    }
+    return null;
+  }, [restaurantOnboardingData]);
+
+  // State to hold progress from API calls (will be merged with cached progress)
+  const [fetchedOnboardingProgress, setFetchedOnboardingProgress] = useState(null);
+
+  // Use cached progress if available, otherwise use fetched progress
+  const onboardingProgress = cachedOnboardingProgress || fetchedOnboardingProgress;
 
   // Fetch sales information summary and onboarding data on mount
   useEffect(() => {
@@ -39,12 +61,18 @@ const ReportCardTestPage = () => {
         }
       }
 
-      // Fetch onboarding progress data - only once
-      if (!hasFetchedOnboardingRef.current) {
+      // Fetch onboarding progress data - only if we don't have cached data or need refresh
+      // Check if cached data is still fresh (less than 5 seconds old)
+      const now = Date.now();
+      const cacheAge = restaurantOnboardingDataTimestamp ? now - restaurantOnboardingDataTimestamp : Infinity;
+      const CACHE_DURATION = 5000; // 5 seconds
+      const hasFreshCache = restaurantOnboardingData && cacheAge < CACHE_DURATION;
+
+      if (!hasFetchedOnboardingRef.current && !hasFreshCache) {
         hasFetchedOnboardingRef.current = true;
         try {
-          // Try to get cached data first, or fetch if not available
-          const result = await getRestaurantOnboarding(false);
+          // Force refresh to get latest data
+          const result = await getRestaurantOnboarding(true);
           console.log("🔍 [ReportCardTestPage] getRestaurantOnboarding result:", result);
           
           if (result.success && result.data) {
@@ -53,26 +81,30 @@ const ReportCardTestPage = () => {
             
             const progress = getOnboardingProgress(result.data);
             console.log("🔍 [ReportCardTestPage] Calculated progress:", progress);
-            setOnboardingProgress(progress);
+            setFetchedOnboardingProgress(progress);
           } else {
             console.warn("⚠️ [ReportCardTestPage] API call failed or no data:", result);
-            // Set default progress if API fails
-            setOnboardingProgress({
+            // Only set default if we don't have cached data
+            if (!cachedOnboardingProgress) {
+              setFetchedOnboardingProgress({
+                completionPercentage: 0,
+                completedItems: [],
+                currentStep: 1,
+                items: [],
+              });
+            }
+          }
+        } catch (error) {
+          console.error("❌ [ReportCardTestPage] Error fetching onboarding progress:", error);
+          // Only set default if we don't have cached data
+          if (!cachedOnboardingProgress) {
+            setFetchedOnboardingProgress({
               completionPercentage: 0,
               completedItems: [],
               currentStep: 1,
               items: [],
             });
           }
-        } catch (error) {
-          console.error("❌ [ReportCardTestPage] Error fetching onboarding progress:", error);
-          // Set default progress on error
-          setOnboardingProgress({
-            completionPercentage: 0,
-            completedItems: [],
-            currentStep: 1,
-            items: [],
-          });
         }
       }
     };
