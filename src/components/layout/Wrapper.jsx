@@ -30,14 +30,14 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const userMenus = [
     {
-      key:'report-card-test',
+      key:'report-card',
       icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <text x="2" y="18" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#9ca3af">A</text>
       <text x="14" y="13" font-family="Inter, Arial, sans-serif" font-size="10" font-weight="600" fill="#9ca3af">+</text>
     </svg>
     ,
       label: 'Report Card',
-      onClick: () => navigate('/dashboard/report-card-test'),
+      onClick: () => navigate('/dashboard/report-card'),
     },
     {
       key: 'dashboard-summary',
@@ -70,53 +70,63 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Your Setup',
       children: [
         {
+          key: 'expense',
+          // icon: <SiExpensify  />,
+          label: 'Operating Expenses',
+          onClick: () => navigate('/dashboard/expense'),
+        },
+        {
+          key: 'sales-data',
+          // icon: <DollarOutlined />,
+          label: 'Sales Data',
+          onClick: () => navigate('/dashboard/sales-data'),
+        },
+       
+        {
           key: 'basic-information',
-          icon: <InfoCircleOutlined />,
-          label: 'Basic Information',
+          // icon: <InfoCircleOutlined />,
+          label: 'Restaurant Details',
           onClick: () => navigate('/dashboard/basic-information'),
         },
         {
           key: 'sales-channels',
-          icon: <ShopOutlined />,
+          // icon: <ShopOutlined />,
           label: 'Operating Information',
           onClick: () => navigate('/dashboard/sales-channels'),
         },
         {
-          key: 'third-party-delivery',
-          icon: <TruckOutlined />,
-          label: 'Third-Party Delivery',
-          onClick: () => navigate('/dashboard/third-party-delivery'),
-        },
-        {
-          key: 'sales-data',
-          icon: <DollarOutlined />,
-          label: 'Sales Data',
-          onClick: () => navigate('/dashboard/sales-data'),
-        },
-        {
-          key: 'labor-data',
-          icon: <FaUsers />,
-          label: 'Labor Data',
-          onClick: () => navigate('/dashboard/labor-data'),
-        },
-        {
           key: 'labor-information',
-          icon: <FaPeopleCarry/>,
+          // icon: <FaPeopleCarry/>,
           label: 'Labor Information',
           onClick: () => navigate('/dashboard/labor-information'),
         },
         {
+          key: 'labor-data',
+          // icon: <FaUsers />,
+          label: 'Labor Data',
+          onClick: () => navigate('/dashboard/labor-data'),
+        },
+        {
           key: 'food-cost-details',
-          icon: <MdOutlineFoodBank  />,
-          label: 'Food Cost Details',
+          // icon: <MdOutlineFoodBank  />,
+          label: 'COGs',
           onClick: () => navigate('/dashboard/food-cost-details'),
         },
         {
-          key: 'expense',
-          icon: <SiExpensify  />,
-          label: 'Expenses',
-          onClick: () => navigate('/dashboard/expense'),
+          key: 'third-party-delivery',
+          // icon: <TruckOutlined />,
+          label: 'Third-Party Delivery Info',
+          onClick: () => navigate('/dashboard/third-party-delivery'),
         },
+        {
+          key: 'go to your budget',
+          label: 'Go to your budget',
+          onClick: () => navigate('/dashboard/budget'),
+        }
+     
+       
+       
+     
       ],
     },
     {

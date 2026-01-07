@@ -26,7 +26,7 @@ const LaborInformationWrapperContent = () => {
 
     // State for labor data
     const [laborData, setLaborData] = useState({
-        labour_goal: '',
+        labour_goal: '28', // Default to 28%
         avg_hourly_rate: '',
         labor_record_method: 'daily_hours_costs',
         daily_ticket_count: false,
@@ -43,7 +43,7 @@ const LaborInformationWrapperContent = () => {
             setLaborData(prev => {
                 const newData = {
                     ...prev,
-                    labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : '',
+                    labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : prev.labour_goal || '28',
                     avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                     labor_record_method: data.labor_record_method || 'daily_hours_costs',
                     daily_ticket_count: data.daily_ticket_count,

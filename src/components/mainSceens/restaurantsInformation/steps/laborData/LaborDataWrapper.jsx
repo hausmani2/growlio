@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { Input, Select } from "antd";
+import React, { useMemo, useState, useEffect } from "react";
+import { Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import useStore from "../../../../../store/store";
 
 const MONTHS = [
   "January",
@@ -29,12 +30,58 @@ const formatMoney = (n) => {
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
+// Convert month name to number (1-12)
+const monthToNumber = (monthName) => {
+  const index = MONTHS.findIndex(m => m === monthName);
+  return index >= 0 ? index + 1 : 1;
+};
+
+// Convert month number to name
+const numberToMonth = (monthNum) => {
+  return MONTHS[monthNum - 1] || "January";
+};
+
 const LaborDataWrapper = () => {
   const navigate = useNavigate();
-  const [rows, setRows] = useState([
-    { id: 1, month: "January", year: "2024", laborHours: "1200", laborCost: "18000" },
-    { id: 2, month: "February", year: "2024", laborHours: "1150", laborCost: "17250" },
-  ]);
+  const { submitStepData, loadExistingOnboardingData, completeOnboardingData, onboardingLoading } = useStore();
+  const [rows, setRows] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load existing labor data on mount
+  useEffect(() => {
+    const loadLaborData = async () => {
+      try {
+        // Load onboarding data which includes Labor Data
+        await loadExistingOnboardingData();
+        
+        // Get updated state from store after loading
+        const currentState = useStore.getState();
+        const laborData = currentState.completeOnboardingData?.["Labor Data"];
+        
+        if (laborData && laborData.data && Array.isArray(laborData.data) && laborData.data.length > 0) {
+          // Transform API data to component format
+          const transformedRows = laborData.data
+            .filter(item => item.year && item.month) // Only include items with year and month
+            .map((item, idx) => ({
+              id: item.id || Date.now() + idx,
+              month: numberToMonth(item.month),
+              year: String(item.year),
+              laborHours: item.labor_hours ? String(item.labor_hours) : "",
+              laborCost: item.labor_cost ? String(item.labor_cost) : "",
+            }));
+          
+          if (transformedRows.length > 0) {
+            setRows(transformedRows);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading labor data:', error);
+      }
+    };
+    
+    loadLaborData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const withAverageRate = useMemo(() => {
     return rows.map((r) => {
@@ -57,6 +104,54 @@ const LaborDataWrapper = () => {
       ...prev,
       { id: Date.now(), month: "January", year: String(new Date().getFullYear()), laborHours: "", laborCost: "" },
     ]);
+  };
+
+  const handleSave = async () => {
+    // Validate rows
+    const validRows = rows.filter(row => {
+      const laborHours = toNumber(row.laborHours);
+      const laborCost = toNumber(row.laborCost);
+      const year = Number(row.year);
+      return laborHours > 0 && laborCost > 0 && year > 0 && row.month;
+    });
+
+    if (validRows.length === 0) {
+      message.warning('Please add at least one valid labor entry with labor hours, labor cost, month, and year.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Transform rows to API format matching the expected structure
+      const laborDataArray = validRows.map(row => {
+        const hours = toNumber(row.laborHours);
+        const cost = toNumber(row.laborCost);
+        const avgRate = hours > 0 ? cost / hours : 0;
+        
+        return {
+          year: Number(row.year),
+          month: monthToNumber(row.month),
+          labor_hours: hours,
+          labor_cost: cost,
+          avg_hourly_rate: avgRate,
+        };
+      });
+
+      // Use submitStepData from onboarding slice
+      const result = await submitStepData("Labor Data", laborDataArray, (responseData) => {
+        message.success('Labor data saved successfully!');
+        navigate("/dashboard/budget");
+      });
+
+      if (!result.success) {
+        message.error('Failed to save labor data. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving labor data:', error);
+      message.error(error.message || 'Failed to save labor data. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -131,14 +226,16 @@ const LaborDataWrapper = () => {
         <button
           className="px-10 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
           onClick={() => navigate("/dashboard/budget")}
+          disabled={isSaving || onboardingLoading}
         >
           Skip
         </button>
         <button
-          className="px-10 py-2.5 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600"
-          onClick={() => navigate("/dashboard/budget")}
+          className="px-10 py-2.5 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleSave}
+          disabled={isSaving || onboardingLoading}
         >
-          Next
+          {isSaving || onboardingLoading ? "Saving..." : "Save"}
         </button>
       </div>
     </div>

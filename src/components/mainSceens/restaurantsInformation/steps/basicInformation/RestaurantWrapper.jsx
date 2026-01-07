@@ -11,6 +11,7 @@ import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import StepDataManager from "../../StepDataManager";
+import PrimaryButton from "../../../../../components/buttons/Buttons";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -75,6 +76,8 @@ const RestaurantWrapperContent = () => {
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
+        if (!completeOnboardingData) return;
+        
         const basicInfoData = completeOnboardingData["Basic Information"];
         
         if (basicInfoData && basicInfoData.data) {
@@ -338,6 +341,11 @@ const RestaurantWrapperContent = () => {
                                 {isUpdateMode && (
                                     <>
                                         <div className="ml-auto">
+                                            <PrimaryButton
+                                                title={"Skip"}
+                                                onClick={() => (console.log("skipped"))}
+                                                disabled={loading}
+                                            />
                                             <button
                                                 onClick={handleSaveAndContinue}
                                                 disabled={loading}
@@ -348,6 +356,7 @@ const RestaurantWrapperContent = () => {
                                                 {loading && (
                                                     <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
                                                 )}
+
                                                 {isUpdateMode ? "Save Changes" : "Save & Continue"}
                                             </button>
                                         </div>

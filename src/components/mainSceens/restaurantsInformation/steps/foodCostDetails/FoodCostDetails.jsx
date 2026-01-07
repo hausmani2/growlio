@@ -5,12 +5,12 @@ import TooltipIcon from '../../../../common/TooltipIcon';
 import { useEffect } from 'react';
 
 const FoodCostDetails = ({ data, updateData, errors = {} }) => {
-    // Set default value on component mount
+    // Set default value on component mount if not already set
     useEffect(() => {
-        if (!data.cogs_goal) {
-            updateData('cogs_goal', '30');
+        if (!data.cogs_goal || data.cogs_goal === '' || data.cogs_goal === '0%') {
+            updateData('cogs_goal', '30%');
         }
-    }, []);
+    }, [data.cogs_goal, updateData]);
 
     const handleCogsChange = (value) => {
         updateData('cogs_goal', value);
@@ -76,13 +76,14 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                         <Select
                             id="cogs"
                             placeholder="Select Percentage"
-                            value={data?.cogs_goal || "30"}
+                            value={data?.cogs_goal ? data.cogs_goal.toString() : "30%"}
                             onChange={handleCogsChange}
                             options={generatePercentageOptions()}
                             className={`w-full h-11 rounded-lg text-sm ${
                                 errors.cogs_goal ? 'border-red-500' : ''
                             }`}
                             status={errors.cogs_goal ? 'error' : ''}
+                            showSearch={false}
                         />
                         
                         {errors.cogs_goal && (

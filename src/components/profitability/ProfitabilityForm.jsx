@@ -106,7 +106,7 @@ const ProfitabilityForm = () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Navigate to results page with score data
-            navigate('/profitability/results', { 
+            navigate('/dashboard/profitability/results', { 
                 state: { 
                     formData,
                     scoreData 
@@ -122,7 +122,7 @@ const ProfitabilityForm = () => {
     };
 
     const handleGoBack = () => {
-        navigate('/profitability');
+        navigate('/dashboard/profitability');
     };
 
     return (

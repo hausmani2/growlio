@@ -16,7 +16,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
-    '/dashboard/report-card-test': 'report-card-test',
+    '/dashboard/report-card': 'report-card',
     '/dashboard/budget': 'budget',
     '/dashboard/profit-loss': 'profit-loss',
     '/dashboard': 'dashboard',

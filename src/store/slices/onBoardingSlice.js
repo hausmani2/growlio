@@ -67,6 +67,14 @@ const createOnBoardingSlice = (set, get) => ({
                 fixed_costs: [],
                 variable_costs: []
             }
+        },
+        "Sales Information": {
+            status: false,
+            data: []
+        },
+        "Labor Data": {
+            status: false,
+            data: []
         }
     },
 
@@ -446,7 +454,7 @@ const createOnBoardingSlice = (set, get) => ({
         
         try {
             const currentData = get().completeOnboardingData;
-            const response = await apiPost('/restaurant/onboarding/', currentData);
+            const response = await apiPost('/restaurant_v2/onboarding/', currentData);
             
             
             // Check if the response status is 200 (success)
@@ -515,7 +523,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             // Add other steps with status: false if they're not the active step
-            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
+            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense", "Sales Information", "Labor Data"];
             otherSteps.forEach(step => {
                 if (step !== stepName) {
                     payload[step] = {
@@ -534,7 +542,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             // Always use POST endpoint, restaurant_id in payload determines create vs update
-            const response = await apiPost('/restaurant/onboarding/', payload);
+            const response = await apiPost('/restaurant_v2/onboarding/', payload);
             
             // Check if the response status is 200 (success)
             if (response.status !== 200) {
@@ -643,7 +651,7 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
-            const response = await apiPost('/restaurant/onboarding/', onboardingData);
+            const response = await apiPost('/restaurant_v2/onboarding/', onboardingData);
             
             set(() => ({ 
                 isOnBoardingCompleted: true,
@@ -673,7 +681,7 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
-            const response = await apiGet('/restaurant/onboarding/');
+            const response = await apiGet('/restaurant_v2/onboarding/');
             
             set(() => ({ 
                 isOnBoardingCompleted: response.data.isCompleted,
@@ -728,7 +736,7 @@ const createOnBoardingSlice = (set, get) => ({
                 setTimeout(() => reject(new Error('Request timeout')), 15000)
             );
             
-            const apiPromise = apiGet('/restaurant/onboarding/');
+            const apiPromise = apiGet('/restaurant_v2/onboarding/');
             const response = await Promise.race([apiPromise, timeoutPromise]);
             const apiData = response.data;
             
@@ -796,6 +804,14 @@ const createOnBoardingSlice = (set, get) => ({
                         fixed_costs: [],
                         variable_costs: []
                     }
+                },
+                "Sales Information": {
+                    status: false,
+                    data: []
+                },
+                "Labor Data": {
+                    status: false,
+                    data: []
                 }
             };
             
@@ -1368,7 +1384,7 @@ const createOnBoardingSlice = (set, get) => ({
         }, 30000); // 30 second timeout
         
         try {
-            const response = await apiGet('/restaurant/restaurants-onboarding/');
+            const response = await apiGet('/restaurant_v2/restaurants-onboarding/');
             const onboardingData = response.data;
 
             

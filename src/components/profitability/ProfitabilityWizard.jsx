@@ -1,7 +1,9 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import growlioLogo from "../../assets/svgs/growlio-logo.png";
 import Header from "../layout/Header";
+import useStore from "../../store/store";
+import { message } from "antd";
 
 const formatMoney = (value) => {
   const n = Number(value);
@@ -17,30 +19,106 @@ const parseMoney = (raw) => {
 };
 
 const steps = [
-  { key: "lastMonthSales", title: "Last Month’s Sales", min: 0, max: 200000, step: 500 },
-  { key: "lastMonthCOGS", title: "Last Month’s Cost of Goods (COGS)", min: 0, max: 150000, step: 500 },
-  { key: "lastMonthLabor", title: "Last Month’s Labor Expense", min: 0, max: 150000, step: 500 },
-  { key: "monthlyRent", title: "Your Monthly Rent", min: 0, max: 50000, step: 100 },
+  { key: "lastMonthSales", title: "Last Month's Sales", min: 0, max: 200000, step: 500, apiField: "sales" },
+  { key: "lastMonthCOGS", title: "Last Month's Cost of Goods (COGS)", min: 0, max: 150000, step: 500, apiField: "cogs" },
+  { key: "lastMonthLabor", title: "Last Month's Labor Expense", min: 0, max: 150000, step: 500, apiField: "labour" },
+  { key: "monthlyRent", title: "Your Monthly Rent", min: 0, max: 50000, step: 100, apiField: "expenses" },
 ];
 
 const ProfitabilityWizard = () => {
   const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const measureRef = useRef(null);
   const [numberWidth, setNumberWidth] = useState(0);
   const [values, setValues] = useState({
-    lastMonthSales: "40000",
+    lastMonthSales: "",
     lastMonthCOGS: "",
     lastMonthLabor: "",
     monthlyRent: "",
   });
+  const { createSalesInformation, getSalesInformation, salesInformationData } = useStore();
+
+  // Helper function to extract data from API response
+  const extractData = (data) => {
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0];
+    }
+    if (data?.results) {
+      return typeof data.results === 'object' ? data.results : (Array.isArray(data.results) ? data.results[0] : null);
+    }
+    if (data?.data) {
+      return Array.isArray(data.data) ? data.data[0] : data.data;
+    }
+    if (data && typeof data === 'object' && ('sales' in data || 'cogs' in data)) {
+      return data;
+    }
+    return null;
+  };
+
+  // Helper function to check if sales information exists
+  const hasSalesInformation = () => {
+    if (!salesInformationData) return false;
+    const data = extractData(salesInformationData);
+    if (!data) return false;
+    return (
+      data.sales != null &&
+      data.expenses != null &&
+      data.labour != null &&
+      data.cogs != null
+    );
+  };
+
+  // Fetch existing sales information on mount
+  useEffect(() => {
+    const currentData = useStore.getState().salesInformationData;
+    if (!currentData) {
+      getSalesInformation().catch(console.error);
+    }
+  }, []);
+
+  // Load existing values from API on initial load only
+  useEffect(() => {
+    if (!salesInformationData) return;
+    
+    const data = extractData(salesInformationData);
+    if (!data) return;
+
+    setValues((prev) => {
+      const newValues = {
+        lastMonthSales: data.sales != null ? String(data.sales) : prev.lastMonthSales,
+        lastMonthCOGS: data.cogs != null ? String(data.cogs) : prev.lastMonthCOGS,
+        lastMonthLabor: data.labour != null ? String(data.labour) : prev.lastMonthLabor,
+        monthlyRent: data.expenses != null ? String(data.expenses) : prev.monthlyRent,
+      };
+
+      // Only update if values actually changed
+      if (
+        newValues.lastMonthSales === prev.lastMonthSales &&
+        newValues.lastMonthCOGS === prev.lastMonthCOGS &&
+        newValues.lastMonthLabor === prev.lastMonthLabor &&
+        newValues.monthlyRent === prev.monthlyRent
+      ) {
+        return prev;
+      }
+
+      return newValues;
+    });
+  }, [salesInformationData]);
 
   const step = steps[stepIdx];
-  const currentRawValue = values[step.key];
+  if (!step) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  const currentRawValue = values[step.key] || "";
   const displayValue = useMemo(() => {
-    if (isEditing) return String(currentRawValue || "");
-    return formatMoney(currentRawValue) || "";
+    return isEditing ? String(currentRawValue || "") : formatMoney(currentRawValue) || "";
   }, [currentRawValue, isEditing]);
 
   const numericValue = useMemo(() => {
@@ -61,14 +139,12 @@ const ProfitabilityWizard = () => {
     setValues((prev) => ({ ...prev, [step.key]: String(n) }));
   };
 
-  // Measure the rendered number width so the $ can "stick" to the top-left of the number
+  // Measure number width for $ positioning
   useLayoutEffect(() => {
     const el = measureRef.current;
     if (!el) return;
-
     const measure = () => setNumberWidth(el.getBoundingClientRect().width || 0);
     measure();
-
     const ro = new ResizeObserver(() => measure());
     ro.observe(el);
     return () => ro.disconnect();
@@ -76,39 +152,73 @@ const ProfitabilityWizard = () => {
 
   const goBack = () => {
     if (stepIdx === 0) {
-      navigate("/profitability");
+      navigate(hasSalesInformation() ? "/dashboard/budget" : "/onboarding");
       return;
     }
-    setStepIdx((s) => Math.max(0, s - 1));
+    setStepIdx(stepIdx - 1);
   };
 
-  const goNext = () => {
-    if (stepIdx < steps.length - 1) {
-      setStepIdx((s) => Math.min(steps.length - 1, s + 1));
+  const goNext = async () => {
+    if (isProcessing || !step) return;
+
+    const currentValue = values[step.key];
+    const numericValue = Number(currentValue);
+
+    if (!currentValue || isNaN(numericValue) || numericValue <= 0) {
+      message.warning(`Please enter a valid ${step.title.toLowerCase()}`);
       return;
     }
-    // Done: go to report preview
-    navigate("/report-card-test");
+
+    // If not on last step, just move to next step
+    if (stepIdx < steps.length - 1) {
+      setStepIdx(stepIdx + 1);
+      return;
+    }
+
+    // On last step, save all data with one API call
+    setIsProcessing(true);
+
+    try {
+      const payload = {
+        restaurant_id: useStore.getState().restaurantId || Number(localStorage.getItem('restaurant_id')),
+        data: {
+          sales: Number(values.lastMonthSales) || 0,
+          cogs: Number(values.lastMonthCOGS) || 0,
+          labour: Number(values.lastMonthLabor) || 0,
+          expenses: Number(values.monthlyRent) || 0,
+        }
+      };
+
+      const result = await createSalesInformation(payload);
+
+      if (!result.success) {
+        message.error(result.error || 'Failed to save data. Please try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      message.success('Sales information saved successfully!');
+      navigate("/dashboard/report-card");
+    } catch (error) {
+      console.error('Error saving sales information:', error);
+      message.error('Failed to save data. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50">
-      {/* Shared app header */}
       <Header />
 
-      {/* Page body */}
       <div className="w-full flex items-center justify-center px-4 sm:px-4 lg:px-6 py-10">
         <div className="w-full max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-gray-100 px-6 py-10 sm:px-10 sm:py-12">
-            {/* Growlio Logo */}
             <div className="flex justify-center mb-8">
               <img src={growlioLogo} alt="Growlio Logo" className="w-40 mx-auto" />
             </div>
 
-            {/* Amount */}
             <div className="text-center">
               <div className="relative flex justify-center">
-                {/* Invisible measurement span */}
                 <span
                   ref={measureRef}
                   className="pointer-events-none absolute opacity-0 select-none whitespace-pre tabular-nums font-extrabold tracking-tight text-6xl sm:text-7xl leading-none"
@@ -116,7 +226,6 @@ const ProfitabilityWizard = () => {
                   {displayValue || "0"}
                 </span>
 
-                {/* $ pinned to the top-left of the number (auto-adjusts as number grows) */}
                 <span
                   className="text-orange-500 font-bold text-4xl sm:text-5xl leading-none absolute"
                   style={{
@@ -139,12 +248,9 @@ const ProfitabilityWizard = () => {
                 />
               </div>
 
-              {/* slider (moves left->right to increase) */}
               <div className="mt-8 flex flex-col items-center">
                 <div className="relative w-72 sm:w-80">
-                  {/* track */}
                   <div className="h-2 bg-gray-200 rounded-full" />
-                  {/* marker positioned by value */}
                   <div
                     className="absolute -bottom-2 w-1.5 h-6 bg-orange-500 rounded-full"
                     style={{
@@ -152,7 +258,6 @@ const ProfitabilityWizard = () => {
                       transform: "translateX(-50%)",
                     }}
                   />
-                  {/* real slider (invisible but draggable) */}
                   <input
                     type="range"
                     min={step.min}
@@ -170,7 +275,6 @@ const ProfitabilityWizard = () => {
               </div>
             </div>
 
-            {/* Buttons */}
             <div className="mt-10 flex items-center justify-center gap-3">
               <button
                 onClick={goBack}
@@ -181,31 +285,27 @@ const ProfitabilityWizard = () => {
               </button>
               <button
                 onClick={goNext}
-                className="px-7 py-2.5 rounded-md text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm"
+                disabled={isProcessing}
+                className="px-7 py-2.5 rounded-md text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {stepIdx === steps.length - 1 ? "Finish >" : "Next >"}
+                {isProcessing ? "Saving..." : (stepIdx === steps.length - 1 ? "Finish >" : "Next >")}
               </button>
             </div>
-
-
           </div>
-            {/* Step dots + label */}
-            <div className="mt-8 flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2">
-                {steps.map((_, i) => (
-                  <span
-                    key={i}
-                    className={[
-                      "h-2 w-2 rounded-full",
-                      i <= stepIdx ? "bg-orange-500" : "bg-gray-300",
-                    ].join(" ")}
-                  />
-                ))}
-              </div>
-              <div className="text-sm text-gray-700">
-                Step {stepIdx + 1} of {steps.length}
-              </div>
+
+          <div className="mt-8 flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              {steps.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-2 w-2 rounded-full ${i <= stepIdx ? "bg-orange-500" : "bg-gray-300"}`}
+                />
+              ))}
             </div>
+            <div className="text-sm text-gray-700">
+              Step {stepIdx + 1} of {steps.length}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -213,5 +313,3 @@ const ProfitabilityWizard = () => {
 };
 
 export default ProfitabilityWizard;
-
-

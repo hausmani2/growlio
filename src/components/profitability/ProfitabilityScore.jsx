@@ -12,7 +12,7 @@ const ProfitabilityScore = () => {
 
     const handleGetScore = () => {
         // Navigate to the profitability form or next step
-        navigate('/profitability/form');
+        navigate('/onboarding/profitability');
     };
 
     const handleNoInfo = () => {

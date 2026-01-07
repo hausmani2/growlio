@@ -100,7 +100,7 @@ const Profile = () => {
       if (response.data.status === 'success') {
         message.success('Account deleted successfully');
         logout();
-        navigate('/login');
+        // logout() function now handles redirect internally
       } else {
         message.error(response.data.message || 'Failed to delete account');
       }

@@ -25,7 +25,7 @@ const CompleteSteps = () => {
         if (!isNewUserCompleting && !isOnboardingPath) {
             // This is not a new user and not on onboarding path, redirect to dashboard
             message.info("Redirecting to dashboard...");
-            navigate('/dashboard/budget', { replace: true });
+            navigate('/dashboard/report-card', { replace: true });
             return;
         }
         
@@ -50,7 +50,7 @@ const CompleteSteps = () => {
                 setIsOnBoardingCompleted(true);
                 
                 message.success("Welcome to your dashboard!");
-                navigate('/dashboard/budget');
+                navigate('/dashboard/report-card');
             } else {
                 message.warning("Please wait while we finalize your setup...");
                 // Stay on the completion page for now
@@ -60,7 +60,7 @@ const CompleteSteps = () => {
             console.error("❌ CompleteSteps - Error checking final onboarding status:", error);
             message.error("Something went wrong. Please try again.");
             // Fallback to dashboard
-            navigate('/dashboard/budget');
+            navigate('/dashboard/report-card');
         } finally {
             setIsChecking(false);
         }

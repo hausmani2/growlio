@@ -29,7 +29,7 @@ const Header = ({ onMenuClick }) => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        // logout() function now handles redirect internally
     };
 
     const menuItems = [

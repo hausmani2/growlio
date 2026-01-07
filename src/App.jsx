@@ -120,7 +120,9 @@ function App() {
         <Route element={<ProtectedRoutes />}>
           <Route path="/" element={<Navigate to="/congratulations" replace />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
-          <Route path="/onboarding/budget" element={<OnboardingWrapper />} />
+          <Route path="/onboarding/setup" element={<OnboardingWrapper />} />
+          <Route path="/onboarding/score" element={<ProfitabilityScore />} />
+          <Route path="/onboarding/profitability" element={<ProfitabilityWizard />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/labor-information" element={<RestaurantInfo />} />
           <Route path="/onboarding/food-cost-details" element={<RestaurantInfo />} />
@@ -144,12 +146,12 @@ function App() {
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/dashboard/chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
-        <Route path="dashboard/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
-        <Route path="dashboard/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />
-        <Route path="dashboard/profitability/results" element={<Wrapper showSidebar={true} children={<Navigate to="dashboard/profitability/form" replace />} />} />
+        <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
+        <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />
+        <Route path="/onboarding/profitability/results" element={<Wrapper showSidebar={true} children={<Navigate to="/onboarding/profitability/form" replace />} />} />
 
         {/* Report Card Test Route */}
-        <Route path="dashboard/report-card-test" element={<Wrapper showSidebar={true} children={<ReportCardTestPage />} />} />
+        <Route path="/dashboard/report-card" element={<Wrapper showSidebar={true} children={<ReportCardTestPage />} />} />
           {/* Admin */}
           {/* <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} /> */}

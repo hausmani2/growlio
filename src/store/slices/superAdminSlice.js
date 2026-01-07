@@ -317,7 +317,7 @@ const createSuperAdminSlice = (set, get) => {
         
         // Fetch new user's restaurant information
         try {
-          const restaurantResponse = await apiGet('/restaurant/restaurants-onboarding/');
+          const restaurantResponse = await apiGet('/restaurant_v2/restaurants-onboarding/');
           if (restaurantResponse.data?.restaurants?.length > 0) {
             const userRestaurant = restaurantResponse.data.restaurants[0];
             if (userRestaurant.restaurant_id) {
@@ -387,7 +387,7 @@ const createSuperAdminSlice = (set, get) => {
         
         // Fetch impersonated user's restaurant information
         try {
-          const restaurantResponse = await apiGet('/restaurant/restaurants-onboarding/');
+          const restaurantResponse = await apiGet('/restaurant_v2/restaurants-onboarding/');
           if (restaurantResponse.data?.restaurants?.length > 0) {
             const userRestaurant = restaurantResponse.data.restaurants[0];
             if (userRestaurant.restaurant_id) {

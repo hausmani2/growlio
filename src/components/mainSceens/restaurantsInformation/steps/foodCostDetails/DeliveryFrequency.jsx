@@ -32,6 +32,21 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
         updateData('selectedDays', updatedSelectedDays);
     };
 
+    const handleSelectAll = () => {
+        const allDaysSelected = {};
+        days.forEach(day => {
+            if (!day.disabled) {
+                allDaysSelected[day.name] = true;
+            }
+        });
+        updateData('selectedDays', allDaysSelected);
+    };
+
+    // Check if all non-disabled days are selected
+    const areAllDaysSelected = days
+        .filter(day => !day.disabled)
+        .every(day => data.selectedDays[day.name] === true);
+
     const handleGoBack = () => {
         navigateToPreviousStep();
     };
@@ -62,10 +77,19 @@ const DeliveryFrequency = ({ data, updateData, onSaveAndContinue, loading = fals
 
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Select your delivery days <span className="text-red-500">*</span>
-                    <TooltipIcon text={tooltips['delivery_days']} />
-                </label>
+                <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-gray-700">
+                        Select your delivery days <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['delivery_days']} />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={handleSelectAll}
+                        className="px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-colors duration-200"
+                    >
+                        Select All
+                    </button>
+                </div>
                 
                 <div className="space-y-3">
                     {days.map((day, index) => (

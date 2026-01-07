@@ -28,6 +28,8 @@ export const GuidanceProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState('');
   const hasInitializedRef = useRef(false); // Track if we've initialized guidance status
+  const isCheckingStatusRef = useRef(false); // Track if we're currently checking status to prevent infinite loops
+  const lastCheckedPathnameRef = useRef(''); // Track last pathname we checked to prevent duplicate calls
 
   // Map route paths to page names
   const getPageNameFromRoute = (pathname) => {
@@ -65,6 +67,12 @@ export const GuidanceProvider = ({ children }) => {
 
   // Check if user has seen guidance
   const checkGuidanceStatus = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isCheckingStatusRef.current) {
+      // Return null to indicate we're already checking
+      return { hasSeen: null, hasSeenData: null };
+    }
+    
     // Check if user is authenticated before making API call
     const token = useStore.getState().token;
     const isAuthenticated = !!token;
@@ -75,6 +83,9 @@ export const GuidanceProvider = ({ children }) => {
       setHasSeenDataGuidance(false);
       return { hasSeen: false, hasSeenData: false };
     }
+    
+    // Mark as checking to prevent concurrent calls
+    isCheckingStatusRef.current = true;
     
     try {
       const response = await apiGet('/authentication/user/guidance-status/');
@@ -100,6 +111,9 @@ export const GuidanceProvider = ({ children }) => {
       setHasSeenGuidance(false);
       setHasSeenDataGuidance(false);
       return { hasSeen: false, hasSeenData: false };
+    } finally {
+      // Reset the checking flag after the call completes
+      isCheckingStatusRef.current = false;
     }
   }, []);
 
@@ -902,6 +916,11 @@ export const GuidanceProvider = ({ children }) => {
 
   // Initialize guidance on route change
   useEffect(() => {
+    // Prevent multiple simultaneous calls
+    if (isCheckingStatusRef.current) {
+      return;
+    }
+    
     setLoading(true);
     setIsActive(false);
     setIsDataGuidanceActive(false);
@@ -958,6 +977,10 @@ export const GuidanceProvider = ({ children }) => {
       
       // Still refresh status in background, but don't let it block navigation-based guidance
       const refreshStatus = async () => {
+        // Prevent concurrent calls
+        if (isCheckingStatusRef.current) {
+          return;
+        }
         try {
           const { hasSeen, hasSeenData } = await checkGuidanceStatus();
           if (hasSeen !== null && hasSeenData !== null) {
@@ -974,19 +997,44 @@ export const GuidanceProvider = ({ children }) => {
     }
     
     // No navigation flags - normal route change, refresh status first
-    const refreshStatus = async () => {
-      try {
-        const { hasSeen, hasSeenData } = await checkGuidanceStatus();
-        if (hasSeen !== null && hasSeenData !== null) {
-          setHasSeenGuidance(hasSeen);
-          setHasSeenDataGuidance(hasSeenData);
-        }
-      } catch (error) {
-        // Silently handle errors - already handled in checkGuidanceStatus
-      }
-    };
+    // Only refresh if we haven't checked this pathname recently
+    const lastCheckTime = sessionStorage.getItem('guidance_status_last_check');
+    const now = Date.now();
+    const thirtySeconds = 30 * 1000; // 30 seconds cache
     
-    refreshStatus();
+    // Prevent duplicate calls for the same pathname
+    if (lastCheckedPathnameRef.current === location.pathname) {
+      setLoading(false);
+      return;
+    }
+    
+    // Only refresh if it's been more than 30 seconds since last check
+    if (!lastCheckTime || (now - parseInt(lastCheckTime)) > thirtySeconds) {
+      const refreshStatus = async () => {
+        // Prevent concurrent calls
+        if (isCheckingStatusRef.current) {
+          return;
+        }
+        try {
+          const { hasSeen, hasSeenData } = await checkGuidanceStatus();
+          if (hasSeen !== null && hasSeenData !== null) {
+            setHasSeenGuidance(hasSeen);
+            setHasSeenDataGuidance(hasSeenData);
+            // Store timestamp of last check and current pathname
+            sessionStorage.setItem('guidance_status_last_check', now.toString());
+            lastCheckedPathnameRef.current = location.pathname;
+          }
+        } catch (error) {
+          // Silently handle errors - already handled in checkGuidanceStatus
+        }
+      };
+      
+      refreshStatus();
+    } else {
+      // Use cached status, just update loading state
+      setLoading(false);
+      lastCheckedPathnameRef.current = location.pathname;
+    }
     
     const timer = setTimeout(() => {
       startGuidance();

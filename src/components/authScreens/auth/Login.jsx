@@ -32,7 +32,7 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/dashboard/report-card');
     }
   }, [isAuthenticated, navigate]);
 
@@ -107,7 +107,7 @@ const Login = () => {
           if (isComplete) {
             message.success('Welcome back! Redirecting to dashboard...');
             setTimeout(() => {
-              navigate('/dashboard/budget');
+              navigate('/dashboard/report-card');
             }, 1000);
           } else {
             message.success('Welcome to Growlio! Let\'s get you set up.');

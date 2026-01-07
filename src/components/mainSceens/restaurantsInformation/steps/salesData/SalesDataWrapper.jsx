@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { Input, Select } from "antd";
+import React, { useMemo, useState, useEffect } from "react";
+import { Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import useStore from "../../../../../store/store";
 
 const MONTHS = [
   "January",
@@ -18,6 +19,17 @@ const MONTHS = [
   "December",
 ];
 
+// Convert month name to number (1-12)
+const monthToNumber = (monthName) => {
+  const index = MONTHS.findIndex(m => m === monthName);
+  return index >= 0 ? index + 1 : 1;
+};
+
+// Convert month number to name
+const numberToMonth = (monthNum) => {
+  return MONTHS[monthNum - 1] || "January";
+};
+
 const toNumber = (v) => {
   const n = Number(String(v || "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -31,10 +43,45 @@ const formatMoney = (n) => {
 
 const SalesDataWrapper = () => {
   const navigate = useNavigate();
-  const [rows, setRows] = useState([
-    { id: 1, month: "January", year: "2024", sales: "50000", expenses: "39000" },
-    { id: 2, month: "February", year: "2024", sales: "42000", expenses: "39000" },
-  ]);
+  const { submitStepData, loadExistingOnboardingData, completeOnboardingData, onboardingLoading } = useStore();
+  const [rows, setRows] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load existing sales data on mount
+  useEffect(() => {
+    const loadSalesData = async () => {
+      try {
+        // Load onboarding data which includes Sales Information
+        await loadExistingOnboardingData();
+        
+        // Get updated state from store after loading
+        const currentState = useStore.getState();
+        const salesInfo = currentState.completeOnboardingData?.["Sales Information"];
+        
+        if (salesInfo && salesInfo.data && Array.isArray(salesInfo.data) && salesInfo.data.length > 0) {
+          // Transform API data to component format
+          const transformedRows = salesInfo.data
+            .filter(item => item.year && item.month) // Only include items with year and month
+            .map((item, idx) => ({
+              id: item.id || Date.now() + idx,
+              month: numberToMonth(item.month),
+              year: String(item.year),
+              sales: item.sales ? String(item.sales) : "",
+              expenses: item.expenses ? String(item.expenses) : "",
+            }));
+          
+          if (transformedRows.length > 0) {
+            setRows(transformedRows);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading sales data:', error);
+      }
+    };
+    
+    loadSalesData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const withProfit = useMemo(() => {
     return rows.map((r) => ({
@@ -52,6 +99,48 @@ const SalesDataWrapper = () => {
       ...prev,
       { id: Date.now(), month: "January", year: String(new Date().getFullYear()), sales: "", expenses: "" },
     ]);
+  };
+
+  const handleSave = async () => {
+    // Validate rows
+    const validRows = rows.filter(row => {
+      const sales = toNumber(row.sales);
+      const expenses = toNumber(row.expenses);
+      const year = Number(row.year);
+      return sales > 0 && expenses >= 0 && year > 0 && row.month;
+    });
+
+    if (validRows.length === 0) {
+      message.warning('Please add at least one valid sales entry with sales, expenses, month, and year.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Transform rows to API format matching the expected structure
+      const salesDataArray = validRows.map(row => ({
+        year: Number(row.year),
+        month: monthToNumber(row.month),
+        sales: toNumber(row.sales),
+        expenses: toNumber(row.expenses),
+        profit: toNumber(row.sales) - toNumber(row.expenses),
+      }));
+
+      // Use submitStepData from onboarding slice
+      const result = await submitStepData("Sales Information", salesDataArray, (responseData) => {
+        message.success('Sales data saved successfully!');
+        navigate("/dashboard/budget");
+      });
+
+      if (!result.success) {
+        message.error('Failed to save sales data. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving sales data:', error);
+      message.error(error.message || 'Failed to save sales data. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -126,14 +215,16 @@ const SalesDataWrapper = () => {
         <button
           className="px-10 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
           onClick={() => navigate("/dashboard/budget")}
+          disabled={isSaving || onboardingLoading}
         >
           Skip
         </button>
         <button
-          className="px-10 py-2.5 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600"
-          onClick={() => navigate("/dashboard/budget")}
+          className="px-10 py-2.5 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleSave}
+          disabled={isSaving || onboardingLoading}
         >
-          Next
+          {isSaving || onboardingLoading ? "Saving..." : "Save"}
         </button>
       </div>
     </div>

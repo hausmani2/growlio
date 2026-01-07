@@ -8,6 +8,7 @@ import createSupportSlice from './slices/supportSlice';
 import createSuperAdminSlice from './slices/superAdminSlice';
 import createFaqSlice from './slices/faqSlice';
 import createChatSlice from './slices/chatSlice';
+import createSalesInformationSlice from './slices/salesInformationSlice';
 
 const useStore = create(
   devtools(
@@ -21,6 +22,7 @@ const useStore = create(
         ...createSuperAdminSlice(set, get),
         ...createFaqSlice(set, get),
         ...createChatSlice(set, get),
+        ...createSalesInformationSlice(set, get),
       
         
         // Function to completely clear all persisted state
@@ -161,7 +163,15 @@ const useStore = create(
             searchQuery: '',
             selectedCategory: 'all',
             searchLoading: false,
-            searchTimeout: null
+            searchTimeout: null,
+            
+            // Sales information slice reset
+            salesInformationLoading: false,
+            salesInformationError: null,
+            salesInformationData: null,
+            salesInformationSummary: null,
+            salesInformationSummaryLoading: false,
+            salesInformationSummaryError: null
           }));
           
         }

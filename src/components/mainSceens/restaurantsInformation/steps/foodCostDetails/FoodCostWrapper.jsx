@@ -26,7 +26,7 @@ const FoodCostWrapperContent = () => {
     
     // State for Food Cost Details
     const [foodCostData, setFoodCostData] = useState({
-        cogs_goal: ""
+        cogs_goal: "30%" // Default to 30%
     });
 
     // State for Delivery Frequency
@@ -36,7 +36,7 @@ const FoodCostWrapperContent = () => {
 
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
-        cogs_goal: "",
+        cogs_goal: "30%", // Default to 30%
         delivery_days: []
     });
 
@@ -49,12 +49,12 @@ const FoodCostWrapperContent = () => {
             
             setFoodCostData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : ""
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%"
             }));
             
             setCombinedData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : "",
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%",
                 delivery_days: data.delivery_days || []
             }));
             
@@ -142,6 +142,12 @@ const FoodCostWrapperContent = () => {
                 setValidationErrors(validationResult);
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
+            }
+
+            // Additional check for cogs_goal
+            if (!combinedData.cogs_goal || combinedData.cogs_goal.trim() === '' || combinedData.cogs_goal === '0%') {
+                message.error("Please select a COGS goal percentage");
+                return { success: false, error: "COGS goal is required" };
             }
 
             // Step 3: Prepare data for API

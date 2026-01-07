@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   RadialBarChart,
   RadialBar,
@@ -8,6 +8,10 @@ import {
   Cell,
 } from "recharts";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { DatePicker } from "antd";
+import dayjs from "dayjs";
+
+const { RangePicker } = DatePicker;
 
 export const getColor = (value, goal) => {
   if (value > goal) return "#dc2626"; // red
@@ -131,7 +135,7 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct }) => {
         <RadialBarChart
           width={150}
           height={150}
-          innerRadius="78%"
+          innerRadius="85%"
           outerRadius="100%"
           data={data}
           startAngle={210}
@@ -153,7 +157,7 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct }) => {
         </div>
       </div>
 
-      <div className="mt-1 text-sm font-bold text-gray-900">{label}</div>
+      <div className=" text-base font-bold text-gray-900">{label}</div>
     </div>
   );
 };
@@ -169,17 +173,56 @@ const ReportCard = ({
     rent: { value: 18, amount: 7000, deltaPct: -2 },
   },
   summary = { sales: 40000, profit: 6000 },
+  onDateRangeChange,
 }) => {
+  // Initialize with last 30 days
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(30, 'day'),
+    dayjs(),
+  ]);
+
+  // Format date label based on selected range
+  const formattedDateLabel = useMemo(() => {
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const start = dateRange[0].format('MMM D, YYYY');
+      const end = dateRange[1].format('MMM D, YYYY');
+      return `${start} - ${end}`;
+    }
+    return dateLabel;
+  }, [dateRange, dateLabel]);
+
+  // Handle date range change
+  const handleDateChange = (dates) => {
+    if (dates && dates[0] && dates[1]) {
+      setDateRange(dates);
+      if (onDateRangeChange) {
+        onDateRangeChange(dates);
+      }
+    }
+  };
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-5 sm:p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xl font-bold text-gray-900">{title}</div>
-        <div className="flex items-center gap-3">
-          <div className="text-xs font-semibold text-gray-900">{dateLabel}</div>
-          <button className="px-3 py-1.5 rounded-md border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-            Date Range
-          </button>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-2xl font-bold text-gray-900 lg:ml-14">{title}</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="text-xs font-semibold text-gray-900">{formattedDateLabel}</div>
+          <RangePicker
+            value={dateRange}
+            onChange={handleDateChange}
+            format="MMM D, YYYY"
+            className="border border-gray-200 rounded-md"
+            style={{
+              borderRadius: '6px',
+              height: '32px',
+            }}
+            size="small"
+            allowClear={false}
+            separator=" to "
+            popupStyle={{ zIndex: 1000 }}
+            getPopupContainer={(trigger) => trigger.parentNode}
+          />
         </div>
       </div>
 

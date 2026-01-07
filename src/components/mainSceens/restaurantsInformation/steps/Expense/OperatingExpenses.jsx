@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Modal, Select } from "antd";
+import { Button, Input, Modal } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 
-const COST_TYPES = [
-  { value: "fixed", label: "Fixed" },
-  { value: "variable", label: "Variable" },
-];
+// Removed COST_TYPES - no longer using fixed/variable distinction
 
 const clampStrAmount = (v) => {
   if (v === "") return "";
@@ -23,12 +20,11 @@ const clampStrAmount = (v) => {
 const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newLabel, setNewLabel] = useState("");
-  const [newType, setNewType] = useState("fixed");
 
-  // Franchise: ensure royalty & brand fields exist in variable list (keeps previous behavior)
+  // Franchise: ensure royalty & brand fields exist in expense list
   useEffect(() => {
     if (!isFranchise) return;
-    const current = Array.isArray(data.dynamicVariableFields) ? data.dynamicVariableFields : [];
+    const current = Array.isArray(data.dynamicFixedFields) ? data.dynamicFixedFields : [];
     const lower = (s) => String(s || "").toLowerCase();
     const hasRoyalty = current.some((f) => lower(f.label).includes("royalty"));
     const hasBrand = current.some(
@@ -42,8 +38,8 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         id: Date.now() + Math.random(),
         label: "Royalty",
         value: "",
-        key: `dynamic_variable_royalty_${Date.now()}_${Math.random()}`,
-        variable_expense_type: "monthly",
+        key: `dynamic_expense_royalty_${Date.now()}_${Math.random()}`,
+        expense_type: "monthly",
       });
     }
     if (!hasBrand) {
@@ -51,57 +47,48 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         id: Date.now() + Math.random() + 1,
         label: "Brand/Ad Fund",
         value: "",
-        key: `dynamic_variable_brand_ad_fund_${Date.now()}_${Math.random()}`,
-        variable_expense_type: "monthly",
+        key: `dynamic_expense_brand_ad_fund_${Date.now()}_${Math.random()}`,
+        expense_type: "monthly",
       });
     }
-    updateData("dynamicVariableFields", next);
-  }, [isFranchise, data.dynamicVariableFields, updateData]);
+    updateData("dynamicFixedFields", next);
+  }, [isFranchise, data.dynamicFixedFields, updateData]);
 
   const rows = useMemo(() => {
-    const fixed = (data.dynamicFixedFields || []).map((f) => ({
+    // Combine all expenses into a single list
+    const allExpenses = (data.dynamicFixedFields || []).map((f) => ({
       ...f,
-      __costType: "fixed",
-      __freq: f.fixed_expense_type || "monthly",
+      __costType: "expense",
+      __freq: f.expense_type || f.fixed_expense_type || "monthly",
     }));
-    const variable = (data.dynamicVariableFields || []).map((f) => ({
+    // Also include variable fields if they exist (for backward compatibility)
+    const variableExpenses = (data.dynamicVariableFields || []).map((f) => ({
       ...f,
-      __costType: "variable",
-      __freq: f.variable_expense_type || "monthly",
+      __costType: "expense",
+      __freq: f.expense_type || f.variable_expense_type || "monthly",
     }));
-    return [...fixed, ...variable];
+    return [...allExpenses, ...variableExpenses];
   }, [data.dynamicFixedFields, data.dynamicVariableFields]);
 
   const showModal = () => setIsModalVisible(true);
   const handleCancel = () => {
     setIsModalVisible(false);
     setNewLabel("");
-    setNewType("fixed");
   };
 
   const handleOk = () => {
     const label = newLabel.trim();
     if (!label || label.length < 2) return;
 
-    if (newType === "fixed") {
-      const newField = {
-        id: Date.now() + Math.random(),
-        label,
-        value: "",
-        key: `dynamic_fixed_${Date.now()}_${Math.random()}`,
-        fixed_expense_type: "monthly",
-      };
-      updateData("dynamicFixedFields", [...(data.dynamicFixedFields || []), newField]);
-    } else {
-      const newField = {
-        id: Date.now() + Math.random(),
-        label,
-        value: "",
-        key: `dynamic_variable_${Date.now()}_${Math.random()}`,
-        variable_expense_type: "monthly",
-      };
-      updateData("dynamicVariableFields", [...(data.dynamicVariableFields || []), newField]);
-    }
+    // Add to fixed fields (we'll treat all expenses the same way)
+    const newField = {
+      id: Date.now() + Math.random(),
+      label,
+      value: "",
+      key: `dynamic_expense_${Date.now()}_${Math.random()}`,
+      expense_type: "monthly",
+    };
+    updateData("dynamicFixedFields", [...(data.dynamicFixedFields || []), newField]);
 
     handleCancel();
   };
@@ -109,13 +96,20 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
   const updateAmount = useCallback(
     (row, value) => {
       const v = clampStrAmount(value);
-      if (row.__costType === "fixed") {
-        const next = (data.dynamicFixedFields || []).map((f) =>
+      // Update in fixed fields (we're treating all expenses the same)
+      const fixedFields = data.dynamicFixedFields || [];
+      const variableFields = data.dynamicVariableFields || [];
+      
+      // Check if row exists in fixed fields
+      const inFixed = fixedFields.some(f => f.id === row.id);
+      if (inFixed) {
+        const next = fixedFields.map((f) =>
           f.id === row.id ? { ...f, value: v } : f
         );
         updateData("dynamicFixedFields", next);
       } else {
-        const next = (data.dynamicVariableFields || []).map((f) =>
+        // Check if row exists in variable fields (for backward compatibility)
+        const next = variableFields.map((f) =>
           f.id === row.id ? { ...f, value: v } : f
         );
         updateData("dynamicVariableFields", next);
@@ -127,14 +121,20 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
   const updateFrequency = useCallback(
     (row, isMonthly) => {
       const freq = isMonthly ? "monthly" : "weekly";
-      if (row.__costType === "fixed") {
-        const next = (data.dynamicFixedFields || []).map((f) =>
-          f.id === row.id ? { ...f, fixed_expense_type: freq } : f
+      const fixedFields = data.dynamicFixedFields || [];
+      const variableFields = data.dynamicVariableFields || [];
+      
+      // Check if row exists in fixed fields
+      const inFixed = fixedFields.some(f => f.id === row.id);
+      if (inFixed) {
+        const next = fixedFields.map((f) =>
+          f.id === row.id ? { ...f, expense_type: freq, fixed_expense_type: freq } : f
         );
         updateData("dynamicFixedFields", next);
       } else {
-        const next = (data.dynamicVariableFields || []).map((f) =>
-          f.id === row.id ? { ...f, variable_expense_type: freq } : f
+        // Check if row exists in variable fields (for backward compatibility)
+        const next = variableFields.map((f) =>
+          f.id === row.id ? { ...f, expense_type: freq, variable_expense_type: freq } : f
         );
         updateData("dynamicVariableFields", next);
       }
@@ -144,15 +144,21 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
 
   const deleteRow = useCallback(
     (row) => {
-      if (row.__costType === "fixed") {
+      const fixedFields = data.dynamicFixedFields || [];
+      const variableFields = data.dynamicVariableFields || [];
+      
+      // Check if row exists in fixed fields
+      const inFixed = fixedFields.some(f => f.id === row.id);
+      if (inFixed) {
         updateData(
           "dynamicFixedFields",
-          (data.dynamicFixedFields || []).filter((f) => f.id !== row.id)
+          fixedFields.filter((f) => f.id !== row.id)
         );
       } else {
+        // Check if row exists in variable fields (for backward compatibility)
         updateData(
           "dynamicVariableFields",
-          (data.dynamicVariableFields || []).filter((f) => f.id !== row.id)
+          variableFields.filter((f) => f.id !== row.id)
         );
       }
     },
@@ -240,15 +246,6 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         cancelText="Cancel"
       >
         <div className="flex flex-col gap-3">
-          <div>
-            <label className="text-sm font-medium">Expense Type</label>
-            <Select
-              value={newType}
-              onChange={setNewType}
-              options={COST_TYPES}
-              className="w-full mt-1"
-            />
-          </div>
           <div>
             <label className="text-sm font-medium">Expense Name</label>
             <Input
