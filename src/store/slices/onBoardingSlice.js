@@ -708,11 +708,52 @@ const createOnBoardingSlice = (set, get) => ({
     
     // Load existing onboarding data from API and populate forms
     loadExistingOnboardingData: async () => {
+        const state = get();
+        
+        // Prevent multiple concurrent calls - if already loading, return the existing promise
+        if (state.onboardingLoading) {
+            // Wait for the existing request to complete
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    const currentState = get();
+                    if (!currentState.onboardingLoading) {
+                        clearInterval(checkInterval);
+                        // Return the current data if available
+                        resolve({
+                            success: true,
+                            data: currentState.completeOnboardingData,
+                            message: 'Data already loaded'
+                        });
+                    }
+                }, 100);
+                
+                // Timeout after 15 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve({ success: false, message: 'Request timeout' });
+                }, 15000);
+            });
+        }
+        
+        // Check if we already have complete data loaded (prevent unnecessary calls)
+        const hasCompleteData = state.completeOnboardingData?.restaurant_id && 
+            Object.values(state.completeOnboardingData).some(step => 
+                step && typeof step === 'object' && step.status === true
+            );
+        
+        if (hasCompleteData) {
+            // Data already loaded, return it without making API call
+            return {
+                success: true,
+                data: state.completeOnboardingData,
+                message: 'Data already loaded'
+            };
+        }
+        
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
             // First, ensure we have a restaurant ID
-            const state = get();
             let restaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             
             // If no restaurant ID, this means the user is new and hasn't completed onboarding
@@ -724,11 +765,6 @@ const createOnBoardingSlice = (set, get) => ({
                     message: 'No restaurant ID found - user needs to complete onboarding first',
                     isNewUser: true
                 };
-            }
-            
-            if (!restaurantId) {
-                set(() => ({ onboardingLoading: false, onboardingError: null }));
-                return { success: false, message: 'No restaurant ID available' };
             }
             
             // Add timeout to prevent infinite loading
@@ -902,10 +938,25 @@ const createOnBoardingSlice = (set, get) => ({
                     };
                 } else if (stepName === "Expense" && data) {
                     // Handle Expenses data mapping
-                    processedData = {
-                        fixed_costs: data.fixed_costs || [],
-                        variable_costs: data.variable_costs || []
-                    };
+                    // Support both new format (expenses array) and old format (fixed_costs/variable_costs)
+                    if (data.expenses && Array.isArray(data.expenses)) {
+                        // New format: expenses array
+                        processedData = {
+                            expenses: data.expenses,
+                            fixed_costs: [], // Keep for backward compatibility
+                            variable_costs: [] // Keep for backward compatibility
+                        };
+                    } else {
+                        // Old format: fixed_costs and variable_costs
+                        processedData = {
+                            expenses: [
+                                ...(data.fixed_costs || []),
+                                ...(data.variable_costs || [])
+                            ],
+                            fixed_costs: data.fixed_costs || [],
+                            variable_costs: data.variable_costs || []
+                        };
+                    }
                 }
                 
                 // Update the step data and status
@@ -1650,6 +1701,43 @@ const createOnBoardingSlice = (set, get) => ({
     restaurantGoals: null,
 
     getRestaurentGoal: async (restaurantId = null) => {
+        const state = get();
+        
+        // Prevent multiple concurrent calls - if already loading, wait for existing request
+        if (state.restaurantGoalsLoading) {
+            // Wait for the existing request to complete
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    const currentState = get();
+                    if (!currentState.restaurantGoalsLoading) {
+                        clearInterval(checkInterval);
+                        // Return the current data if available
+                        resolve(currentState.restaurantGoals);
+                    }
+                }, 100);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    resolve(null);
+                }, 10000);
+            });
+        }
+        
+        // Check if we already have goals data loaded for this restaurant
+        if (state.restaurantGoals) {
+            // Verify it's for the correct restaurant
+            let finalRestaurantId = restaurantId;
+            if (!finalRestaurantId) {
+                finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
+            }
+            
+            // If we have data and restaurant ID matches (or we don't have a specific ID to check), return cached data
+            if (!restaurantId || !finalRestaurantId || state.restaurantGoals.restaurant_id === finalRestaurantId) {
+                return state.restaurantGoals;
+            }
+        }
+        
         set(() => ({ 
             restaurantGoalsLoading: true, 
             restaurantGoalsError: null 
@@ -1659,7 +1747,6 @@ const createOnBoardingSlice = (set, get) => ({
             // Get restaurant_id from store or localStorage if not provided
             let finalRestaurantId = restaurantId;
             if (!finalRestaurantId) {
-                const state = get();
                 finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             }
 

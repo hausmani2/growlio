@@ -105,7 +105,6 @@ export const SETUP_ITEMS = [
  * @returns {Object} - Progress data with completion percentage, completed items, and current step
  */
 export const getOnboardingProgress = (restaurantData) => {
-  console.log("🔍 [getOnboardingProgress] Input restaurantData:", restaurantData);
   
   // Handle case where restaurantData might be nested
   let dataToProcess = restaurantData;
@@ -115,10 +114,8 @@ export const getOnboardingProgress = (restaurantData) => {
     dataToProcess = restaurantData;
   }
   
-  console.log("🔍 [getOnboardingProgress] Processed data:", dataToProcess);
   
   const restaurant = getFirstRestaurant(dataToProcess);
-  console.log("🔍 [getOnboardingProgress] First restaurant:", restaurant);
   
   if (!restaurant) {
     console.warn("⚠️ [getOnboardingProgress] No restaurant found in data");
@@ -165,10 +162,6 @@ export const getOnboardingProgress = (restaurantData) => {
   const finalCompletionPercentage = restaurant.completion_percentage !== undefined 
     ? restaurant.completion_percentage 
     : completionPercentage;
-
-  console.log("🔍 [getOnboardingProgress] Final completion percentage:", finalCompletionPercentage);
-  console.log("🔍 [getOnboardingProgress] Restaurant completion_percentage:", restaurant.completion_percentage);
-  console.log("🔍 [getOnboardingProgress] Calculated completion percentage:", completionPercentage);
 
   return {
     completionPercentage: finalCompletionPercentage,

@@ -73,14 +73,10 @@ const ReportCardTestPage = () => {
         try {
           // Force refresh to get latest data
           const result = await getRestaurantOnboarding(true);
-          console.log("🔍 [ReportCardTestPage] getRestaurantOnboarding result:", result);
-          
+              
           if (result.success && result.data) {
-            console.log("🔍 [ReportCardTestPage] Restaurant data structure:", result.data);
-            console.log("🔍 [ReportCardTestPage] Restaurants array:", result.data?.restaurants);
             
             const progress = getOnboardingProgress(result.data);
-            console.log("🔍 [ReportCardTestPage] Calculated progress:", progress);
             setFetchedOnboardingProgress(progress);
           } else {
             console.warn("⚠️ [ReportCardTestPage] API call failed or no data:", result);
@@ -135,9 +131,6 @@ const ReportCardTestPage = () => {
   const restaurant = onboardingProgress?.restaurant;
   const isOnboardingComplete = restaurant?.onboarding_complete === true;
   
-  // Debug log to see current state
-  console.log("🔍 [ReportCardTestPage] Current onboardingProgress state:", onboardingProgress);
-  console.log("🔍 [ReportCardTestPage] Current completionPercentage:", completionPercentage);
 
   // Calculate grade based on score
   const getGradeFromScore = (score) => {

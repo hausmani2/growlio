@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -48,19 +48,44 @@ const SalesDataWrapper = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   // Load existing sales data on mount
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     const loadSalesData = async () => {
+      if (hasLoadedRef.current) return;
+      
+      // Check if we already have sales data loaded
+      const salesInfo = completeOnboardingData?.["Sales Information"];
+      if (salesInfo && salesInfo.data && Array.isArray(salesInfo.data) && salesInfo.data.length > 0) {
+        // Data already loaded, transform and use it
+        const transformedRows = salesInfo.data
+          .filter(item => item.year && item.month) // Only include items with year and month
+          .map((item, idx) => ({
+            id: item.id || Date.now() + idx,
+            month: numberToMonth(item.month),
+            year: String(item.year),
+            sales: item.sales ? String(item.sales) : "",
+            expenses: item.expenses ? String(item.expenses) : "",
+          }));
+        
+        if (transformedRows.length > 0) {
+          setRows(transformedRows);
+        }
+        hasLoadedRef.current = true;
+        return;
+      }
+      
+      hasLoadedRef.current = true;
       try {
         // Load onboarding data which includes Sales Information
         await loadExistingOnboardingData();
         
         // Get updated state from store after loading
         const currentState = useStore.getState();
-        const salesInfo = currentState.completeOnboardingData?.["Sales Information"];
+        const updatedSalesInfo = currentState.completeOnboardingData?.["Sales Information"];
         
-        if (salesInfo && salesInfo.data && Array.isArray(salesInfo.data) && salesInfo.data.length > 0) {
+        if (updatedSalesInfo && updatedSalesInfo.data && Array.isArray(updatedSalesInfo.data) && updatedSalesInfo.data.length > 0) {
           // Transform API data to component format
-          const transformedRows = salesInfo.data
+          const transformedRows = updatedSalesInfo.data
             .filter(item => item.year && item.month) // Only include items with year and month
             .map((item, idx) => ({
               id: item.id || Date.now() + idx,
@@ -76,6 +101,7 @@ const SalesDataWrapper = () => {
         }
       } catch (error) {
         console.error('Error loading sales data:', error);
+        hasLoadedRef.current = false; // Allow retry on error
       }
     };
     

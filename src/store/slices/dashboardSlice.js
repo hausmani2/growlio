@@ -183,6 +183,35 @@ const createDashboardSlice = (set, get) => {
 
         // Fetch goals data
         fetchGoalsData: async (restaurantId = null) => {
+            const currentState = get();
+            
+            // Prevent multiple concurrent calls - if already loading, wait for existing request
+            if (currentState.loading) {
+                return new Promise((resolve) => {
+                    const checkInterval = setInterval(() => {
+                        const state = get();
+                        if (!state.loading) {
+                            clearInterval(checkInterval);
+                            resolve(state.goalsData);
+                        }
+                    }, 100);
+                    
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve(null);
+                    }, 10000);
+                });
+            }
+            
+            // Check if we already have goals data loaded
+            if (currentState.goalsData) {
+                // Verify it's for the correct restaurant if restaurantId is provided
+                if (!restaurantId || currentState.goalsData.restaurant_id === restaurantId) {
+                    return currentState.goalsData;
+                }
+            }
+            
             try {
                 set({ loading: true, error: null });
                 

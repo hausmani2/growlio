@@ -12,7 +12,7 @@ import { useGuidance } from '../../../contexts/GuidanceContext';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
-  // Guidance hook for data guidance
+  // Guidance hook for data guidance - safe to use even without provider (returns defaults)
   const { startDataGuidance, hasSeenDataGuidance, isDataGuidanceActive } = useGuidance();
   
   // Store integration
@@ -61,19 +61,30 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   };
 
   // Function to fetch restaurant goals if not already available
+  const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
+    // Prevent multiple calls
+    if (hasFetchedGoalsRef.current) {
+      return;
+    }
+    
     try {
       if (!restaurantGoals) {
+        hasFetchedGoalsRef.current = true;
         await getRestaurentGoal();
+      } else {
+        hasFetchedGoalsRef.current = true;
       }
     } catch (error) {
       console.error('Error fetching restaurant goals:', error);
+      hasFetchedGoalsRef.current = false; // Allow retry on error
     }
   };
 
   // Fetch restaurant goals on component mount
   useEffect(() => {
     fetchRestaurantGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Refetch restaurant goals when needed and reprocess data

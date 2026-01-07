@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -48,19 +48,44 @@ const LaborDataWrapper = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   // Load existing labor data on mount
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     const loadLaborData = async () => {
+      if (hasLoadedRef.current) return;
+      
+      // Check if we already have labor data loaded
+      const laborData = completeOnboardingData?.["Labor Data"];
+      if (laborData && laborData.data && Array.isArray(laborData.data) && laborData.data.length > 0) {
+        // Data already loaded, transform and use it
+        const transformedRows = laborData.data
+          .filter(item => item.year && item.month) // Only include items with year and month
+          .map((item, idx) => ({
+            id: item.id || Date.now() + idx,
+            month: numberToMonth(item.month),
+            year: String(item.year),
+            laborHours: item.labor_hours ? String(item.labor_hours) : "",
+            laborCost: item.labor_cost ? String(item.labor_cost) : "",
+          }));
+        
+        if (transformedRows.length > 0) {
+          setRows(transformedRows);
+        }
+        hasLoadedRef.current = true;
+        return;
+      }
+      
+      hasLoadedRef.current = true;
       try {
         // Load onboarding data which includes Labor Data
         await loadExistingOnboardingData();
         
         // Get updated state from store after loading
         const currentState = useStore.getState();
-        const laborData = currentState.completeOnboardingData?.["Labor Data"];
+        const updatedLaborData = currentState.completeOnboardingData?.["Labor Data"];
         
-        if (laborData && laborData.data && Array.isArray(laborData.data) && laborData.data.length > 0) {
+        if (updatedLaborData && updatedLaborData.data && Array.isArray(updatedLaborData.data) && updatedLaborData.data.length > 0) {
           // Transform API data to component format
-          const transformedRows = laborData.data
+          const transformedRows = updatedLaborData.data
             .filter(item => item.year && item.month) // Only include items with year and month
             .map((item, idx) => ({
               id: item.id || Date.now() + idx,
@@ -76,6 +101,7 @@ const LaborDataWrapper = () => {
         }
       } catch (error) {
         console.error('Error loading labor data:', error);
+        hasLoadedRef.current = false; // Allow retry on error
       }
     };
     

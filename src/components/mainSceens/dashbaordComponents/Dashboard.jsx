@@ -578,6 +578,11 @@ const Dashboard = () => {
 
     const fetchRestaurantGoals = async () => {
       try {
+        // Check if we already have goals data loaded
+        if (restaurantGoals) {
+          return; // Data already loaded, skip API call
+        }
+        
         const restaurantId = await ensureRestaurantId();
         
         if (!restaurantId) {

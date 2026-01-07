@@ -8,7 +8,24 @@ export const GuidanceContext = createContext(null);
 export const useGuidance = () => {
   const context = useContext(GuidanceContext);
   if (!context) {
-    throw new Error('useGuidance must be used within GuidanceProvider');
+    // Return default values instead of throwing error to prevent crashes
+    // This allows components to work even if GuidanceProvider is not available
+    console.warn('useGuidance called outside GuidanceProvider, returning default values');
+    return {
+      startGuidance: () => Promise.resolve(),
+      startDataGuidance: () => Promise.resolve(),
+      stopGuidance: () => {},
+      hasSeenGuidance: null,
+      hasSeenDataGuidance: null,
+      isActive: false,
+      isDataGuidanceActive: false,
+      popups: [],
+      dataGuidancePopups: [],
+      currentPopupIndex: 0,
+      currentDataGuidanceIndex: 0,
+      loading: false,
+      currentPage: ''
+    };
   }
   return context;
 };

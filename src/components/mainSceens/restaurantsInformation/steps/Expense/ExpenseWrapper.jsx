@@ -14,7 +14,7 @@ import PrimaryButton from "../../../../buttons/Buttons";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding } = useTabHook();
 
@@ -25,6 +25,35 @@ const ExpenseWrapperContent = () => {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
+    // Load existing expense data on mount if in update mode
+    // Use ref to prevent multiple calls
+    const hasLoadedRef = useRef(false);
+    useEffect(() => {
+        const loadExpenseData = async () => {
+            if (isUpdateMode && !hasLoadedRef.current) {
+                // Check if we already have expense data loaded
+                const expenseInfoData = completeOnboardingData["Expense"];
+                if (expenseInfoData && expenseInfoData.data && (expenseInfoData.data.expenses?.length > 0 || expenseInfoData.data.fixed_costs?.length > 0 || expenseInfoData.data.variable_costs?.length > 0)) {
+                    // Data already loaded, skip API call
+                    hasLoadedRef.current = true;
+                    return;
+                }
+                
+                hasLoadedRef.current = true;
+                try {
+                    // Load onboarding data which includes Expense information
+                    await loadExistingOnboardingData();
+                } catch (error) {
+                    console.error('Error loading expense data:', error);
+                    hasLoadedRef.current = false; // Allow retry on error
+                }
+            }
+        };
+        
+        loadExpenseData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateMode]);
 
     // Get is_franchise data from Basic Information
     const isFranchise = completeOnboardingData["Basic Information"]?.data?.locations?.[0]?.is_franchise || false;
@@ -59,11 +88,11 @@ const ExpenseWrapperContent = () => {
             ];
 
             if (allCosts.length > 0) {
-                const dynamicExpenses = allCosts.map(cost => ({
-                    id: Date.now() + Math.random(),
+                const dynamicExpenses = allCosts.map((cost, index) => ({
+                    id: cost.id || Date.now() + index, // Preserve API ID if available
                     label: cost.name,
-                    value: cost.amount.toString(),
-                    key: `dynamic_expense_${Date.now()}_${Math.random()}`,
+                    value: cost.amount ? cost.amount.toString() : "0",
+                    key: `dynamic_expense_${cost.id || Date.now()}_${index}`,
                     expense_type: cost.expense_type || cost.fixed_expense_type || cost.variable_expense_type || "monthly"
                 }));
 

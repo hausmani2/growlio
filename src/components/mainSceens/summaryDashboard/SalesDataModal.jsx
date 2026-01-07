@@ -100,19 +100,30 @@ const SalesDataModal = ({
   };
 
   // Function to fetch restaurant goals if not already available
+  const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
+    // Prevent multiple calls
+    if (hasFetchedGoalsRef.current) {
+      return;
+    }
+    
     try {
       if (!restaurantGoals) {
+        hasFetchedGoalsRef.current = true;
         await getRestaurentGoal();
+      } else {
+        hasFetchedGoalsRef.current = true;
       }
     } catch (error) {
       console.error('Error fetching restaurant goals:', error);
+      hasFetchedGoalsRef.current = false; // Allow retry on error
     }
   };
 
   // Fetch restaurant goals and average hourly rate on component mount
   useEffect(() => {
     fetchRestaurantGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Function to fetch average hourly rate from API

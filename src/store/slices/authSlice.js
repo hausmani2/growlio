@@ -456,7 +456,6 @@ const createAuthSlice = (set, get) => {
           set(() => ({ loading: false, error: null }));
           
           // Automatically call restaurants-onboarding API after successful POST
-          console.log("✅ [authSlice] Restaurant simulation updated successfully (status 200), fetching restaurant onboarding data...");
           try {
             // Clear sessionStorage flags to ensure the call goes through
             sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
@@ -465,7 +464,6 @@ const createAuthSlice = (set, get) => {
             // Use forceRefresh to bypass cache and get fresh data
             const onboardingResult = await get().getRestaurantOnboarding(true);
             if (onboardingResult.success) {
-              console.log("✅ [authSlice] Restaurant onboarding data fetched successfully after simulation update");
             } else {
               console.warn("⚠️ [authSlice] Failed to fetch restaurant onboarding data after simulation update:", onboardingResult.error);
             }
@@ -497,7 +495,6 @@ const createAuthSlice = (set, get) => {
       if (!forceRefresh && currentState.restaurantOnboardingData && currentState.restaurantOnboardingDataTimestamp) {
         const timeSinceCache = now - currentState.restaurantOnboardingDataTimestamp;
         if (timeSinceCache < CACHE_DURATION) {
-          console.log("🔍 [authSlice] Returning cached restaurant onboarding data");
           return { 
             success: true, 
             data: currentState.restaurantOnboardingData,
@@ -516,7 +513,6 @@ const createAuthSlice = (set, get) => {
         if (timeSinceCheck < 2000) {
           // Too soon to check again - return cached data if available
           if (currentState.restaurantOnboardingData) {
-            console.log("🔍 [authSlice] Request throttled, returning cached data");
             return { 
               success: true, 
               data: currentState.restaurantOnboardingData,
@@ -531,7 +527,6 @@ const createAuthSlice = (set, get) => {
       if (currentState.loading) {
         // If already loading, return cached data if available
         if (currentState.restaurantOnboardingData) {
-          console.log("🔍 [authSlice] Request in progress, returning cached data");
           return { 
             success: true, 
             data: currentState.restaurantOnboardingData,
@@ -550,9 +545,6 @@ const createAuthSlice = (set, get) => {
       try {
         const response = await apiGet('/restaurant_v2/restaurants-onboarding/');
         
-        console.log("🔍 [authSlice] Raw API response:", response);
-        console.log("🔍 [authSlice] response.data:", response.data);
-        
         // IMPORTANT: The API response structure might be response.data or response.data.data
         // Let's handle both cases - check if response.data has a 'data' property with restaurants
         let restaurantData = response.data;
@@ -570,9 +562,6 @@ const createAuthSlice = (set, get) => {
           restaurantData = response.data.data;
         }
         
-        console.log("🔍 [authSlice] Extracted restaurantData:", restaurantData);
-        console.log("🔍 [authSlice] Restaurants array:", restaurantData?.restaurants);
-        
         // IMPORTANT: Even if restaurants array is empty, we still need to return the data
         // This allows components to know that the API was called and user has no restaurants
         
@@ -586,8 +575,6 @@ const createAuthSlice = (set, get) => {
         
         // Extract restaurant_id from response
         const restaurantId = restaurantData?.restaurant_id || restaurantData?.restaurants?.[0]?.restaurant_id || null;
-        
-        console.log("🔍 [authSlice] Extracted restaurantId:", restaurantId);
         
         // Store restaurant_id in localStorage and store if found
         if (restaurantId) {
