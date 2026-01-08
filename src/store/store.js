@@ -9,6 +9,8 @@ import createSuperAdminSlice from './slices/superAdminSlice';
 import createFaqSlice from './slices/faqSlice';
 import createChatSlice from './slices/chatSlice';
 import createSalesInformationSlice from './slices/salesInformationSlice';
+import createPlansSlice from './slices/plansSlice';
+import createSquareSlice from './slices/squareSlice';
 
 const useStore = create(
   devtools(
@@ -23,6 +25,8 @@ const useStore = create(
         ...createFaqSlice(set, get),
         ...createChatSlice(set, get),
         ...createSalesInformationSlice(set, get),
+        ...createPlansSlice(set, get),
+        ...createSquareSlice(set, get),
       
         
         // Function to completely clear all persisted state
@@ -171,7 +175,14 @@ const useStore = create(
             salesInformationData: null,
             salesInformationSummary: null,
             salesInformationSummaryLoading: false,
-            salesInformationSummaryError: null
+            salesInformationSummaryError: null,
+            
+            // Square slice reset
+            squareLoading: false,
+            squareError: null,
+            squareStatus: null,
+            squareConnectionData: null,
+            lastStatusCheck: null
           }));
           
         }

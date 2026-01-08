@@ -30,6 +30,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/expense': 'expense',
     '/dashboard/support': 'support',
+    '/dashboard/plans': 'plans',
+    '/dashboard/square': 'square',
     '/dashboard/profile': 'profile',
     '/dashboard/faq': 'faq',
     '/dashboard/chat': 'chat',

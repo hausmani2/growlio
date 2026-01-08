@@ -257,9 +257,20 @@ const ProtectedRoutes = () => {
 
   // Handle onboarding redirects based on restaurant and sales info status
   useEffect(() => {
+    // CRITICAL: Skip redirect logic if still loading - prevents redirects on page reload
+    // This must happen FIRST to prevent redirects before data is loaded
+    if (
+      restaurantCheckLoading ||
+      isLoading ||
+      salesInformationLoading ||
+      !restaurantData // Don't redirect if we don't have restaurant data yet
+    ) {
+      return;
+    }
+
     // CRITICAL: If One Month Sales Info is complete, allow ALL dashboard routes
-    // This check must happen FIRST, even before loading checks, to prevent redirects
-    // when navigating between dashboard pages
+    // This check must happen AFTER loading checks, to prevent redirects
+    // when navigating between dashboard pages or reloading any dashboard page
     if (oneMonthSalesInfoComplete && location.pathname.startsWith('/dashboard')) {
       hasRedirectedRef.current = false; // Reset redirect flag
       sessionStorage.setItem('lastProcessedPath', location.pathname);
@@ -267,13 +278,14 @@ const ProtectedRoutes = () => {
       return; // Allow access to all dashboard routes - exit early to prevent any redirects
     }
 
-    // Skip if still loading restaurant data
-    if (
-      restaurantCheckLoading ||
-      isLoading ||
-      salesInformationLoading
-    ) {
-      return;
+    // CRITICAL: If sales data is complete, allow ALL dashboard routes
+    // This prevents redirects when reloading any dashboard page
+    const hasSalesData = isSalesInformationComplete(salesInformationData);
+    if (hasSalesData && location.pathname.startsWith('/dashboard')) {
+      hasRedirectedRef.current = false; // Reset redirect flag
+      sessionStorage.setItem('lastProcessedPath', location.pathname);
+      sessionStorage.removeItem('lastRedirectRoute'); // Clear any pending redirects
+      return; // Allow access to all dashboard routes - exit early to prevent any redirects
     }
 
     // CRITICAL: Check if user is on an allowed path FIRST, before any other logic
@@ -327,8 +339,17 @@ const ProtectedRoutes = () => {
       return;
     }
     
-    // Calculate hasSalesData once at the start
-    const hasSalesData = isSalesInformationComplete(salesInformationData);
+    // CRITICAL: If user is on any dashboard route and has completed onboarding,
+    // don't redirect - allow them to stay on whatever dashboard page they're on
+    // This prevents redirects when reloading any dashboard page
+    if (location.pathname.startsWith('/dashboard')) {
+      if (oneMonthSalesInfoComplete || hasSalesData) {
+        hasRedirectedRef.current = false;
+        sessionStorage.setItem('lastProcessedPath', location.pathname);
+        sessionStorage.removeItem('lastRedirectRoute');
+        return; // Already on a valid dashboard route, no redirect needed
+      }
+    }
     
     // If we're already on the correct route based on our status, don't redirect
     if (oneMonthSalesInfoComplete && location.pathname === ONBOARDING_ROUTES.REPORT_CARD) {
@@ -601,16 +622,21 @@ const ProtectedRoutes = () => {
   }
 
   // If sales data is complete, user should access report card
+  // CRITICAL: Allow ALL dashboard routes when sales data is complete
+  // This prevents redirects when reloading any dashboard page
   if (salesDataComplete) {
     // Block access to onboarding/score/profitability when sales data is complete
     if (isOnboardingPath && !isCompleteStepsPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
+    // Allow all dashboard routes and other paths
     return <Outlet />;
   }
 
   // If One Month Sales Info is TRUE, user should access report card only
   // Block access to onboarding/score/profitability pages
+  // CRITICAL: Allow ALL dashboard routes when One Month Sales Info is complete
+  // This prevents redirects when reloading any dashboard page
   if (oneMonthSalesInfoComplete) {
     // Block access to onboarding, score, and profitability pages
     if (isOnboardingPath && !isCompleteStepsPath) {
@@ -619,7 +645,7 @@ const ProtectedRoutes = () => {
     if (isScorePath || isProfitabilityPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
-    // Allow access to report card and other dashboard routes
+    // Allow access to report card and ALL other dashboard routes
     return <Outlet />;
   }
 
@@ -640,10 +666,18 @@ const ProtectedRoutes = () => {
     }
     
     // If One Month Sales Info is FALSE, block dashboard routes
-    if (!oneMonthSalesInfoComplete) {
+    // CRITICAL: Only block if we have restaurant data loaded
+    // This prevents redirects when data is still loading on page reload
+    if (!oneMonthSalesInfoComplete && restaurantData) {
       if (isDashboardPath) {
         return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
       }
+    }
+    
+    // If we're on a dashboard route but don't have restaurant data yet, show loading
+    // This prevents redirects before data is loaded
+    if (isDashboardPath && !restaurantData && restaurantCheckLoading) {
+      return <LoadingSpinner message="Checking your setup..." />;
     }
     
   } else {

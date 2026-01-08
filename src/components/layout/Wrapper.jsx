@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -134,6 +134,18 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       icon: <QuestionCircleOutlined />,
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
+    },
+    {
+      key: 'plans',
+      icon: <StarOutlined />,
+      label: 'Plans',
+      onClick: () => navigate('/dashboard/plans'),
+    },
+    {
+      key: 'square',
+      icon: <ShoppingOutlined />,
+      label: 'Square POS',
+      onClick: () => navigate('/dashboard/square'),
     },
     {
       key: 'leo-ai',
@@ -290,8 +302,8 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
             />
           </div>
         )}
-        <div className={`flex-1 min-h-0 overflow-auto`}>
-          <Content className={`px-2 sm:px-4 py-2 sm:py-1 bg-gray-100 w-full ${className}`}>
+        <div className={`flex-1 min-h-0 overflow-auto bg-gray-100`}>
+          <Content className={`px-2 sm:px-4 py-2 sm:py-1  w-full ${className}`}>
             <ImpersonationBanner />
             {children}
             <GuidanceOverlay />

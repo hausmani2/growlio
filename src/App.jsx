@@ -37,11 +37,15 @@ import SuperAdminUsers from './components/superadmin/SuperAdminUsers';
 import SuperAdminTooltips from './components/superadmin/components/SuperAdminTooltips';
 import SuperAdminUserManagement from './components/superadmin/components/SuperAdminUserManagement';
 import SupportPage from './components/mainSceens/support/SupportPage';
+import PlansWrapper from './components/mainSceens/plans/PlansWrapper';
+import SubscriptionSuccess from './components/mainSceens/plans/SubscriptionSuccess';
+import SubscriptionCancel from './components/mainSceens/plans/SubscriptionCancel';
 import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
 import ChatWidget from './components/chatbot/ChatWidget';
 import ChatPage from './components/mainSceens/chat/ChatPage';
 import { ProfitabilityScore, ProfitabilityWizard } from './components/profitability';
 import ReportCardTestPage from './components/reportCard/ReportCardTestPage';
+import { SquareIntegration, SquareCallbackHandler } from './components/square';
 
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
@@ -113,6 +117,9 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/congratulations" element={<Congratulations />} />
+        
+        {/* Square OAuth Callback - Public route for OAuth redirect */}
+        <Route path="/square/callback" element={<SquareCallbackHandler />} />
 
     
 
@@ -143,8 +150,12 @@ function App() {
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />
+          <Route path="/dashboard/plans" element={<Wrapper showSidebar={true} children={<PlansWrapper />} />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/dashboard/chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />
+          <Route path="/dashboard/square" element={<Wrapper showSidebar={true} children={<SquareIntegration />} />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
         <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />

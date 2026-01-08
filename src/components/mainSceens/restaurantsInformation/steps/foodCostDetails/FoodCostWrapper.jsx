@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { message } from "antd";
 import FoodCostDetails from "./FoodCostDetails";
-import DeliveryFrequency from "./DeliveryFrequency";
+// import DeliveryFrequency from "./DeliveryFrequency";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
@@ -229,13 +229,13 @@ const FoodCostWrapperContent = () => {
                             errors={validationErrors}
                         />
 
-                        <DeliveryFrequency 
+                        {/* <DeliveryFrequency 
                             data={deliveryData}
                             updateData={updateDeliveryData}
                             onSaveAndContinue={handleSaveAndContinue}
                             errors={validationErrors}
                             loading={loading}
-                        />
+                        /> */}
                         
                         {isUpdateMode && (
                             <div className="flex justify-end mt-8 pt-6">
@@ -277,13 +277,13 @@ const FoodCostWrapperContent = () => {
                     errors={validationErrors}
                 />
 
-                <DeliveryFrequency 
+                {/* <DeliveryFrequency 
                     data={deliveryData}
                     updateData={updateDeliveryData}
                     onSaveAndContinue={handleSaveAndContinue}
                     errors={validationErrors}
                     loading={loading}
-                />
+                /> */}
             </div>
             
             {isUpdateMode && (
