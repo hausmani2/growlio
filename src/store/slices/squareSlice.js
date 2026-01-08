@@ -85,12 +85,8 @@ const createSquareSlice = (set, get) => ({
     set({ squareLoading: true, squareError: null });
     
     try {
-      const baseURL = import.meta.env.VITE_ROOT_URL || 'http://127.0.0.1:8000';
-      const response = await apiPost('/square_pos/callback/', {
-        code,
-        state
-      });
-      
+      // POST the authorization code and state to the callback endpoint
+      const response = await apiGet(`/square_pos/callback/?code=${code}&state=${state}`);
       const data = response.data?.data || response.data;
       
       set({ 
