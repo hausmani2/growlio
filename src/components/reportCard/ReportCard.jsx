@@ -133,19 +133,29 @@ const ScoreDonut = ({ score = 0, size = 200 }) => {
   );
 };
 
-const MiniGauge = ({ label, goal, value, amount, deltaPct }) => {
-  const v = clamp(Number(value) || 0, 0, 100);
+const MiniGauge = ({ label, goal, value, amount, deltaPct, percentage }) => {
+  // percentage prop is actually the score value
+  const scoreValue = percentage !== undefined && percentage !== null 
+    ? clamp(Number(percentage) || 0, 0, 100)
+    : null;
+  
+  // deltaPct prop is actually the percentage value
+  const percentageValue = deltaPct !== undefined && deltaPct !== null
+    ? clamp(Number(deltaPct) || 0, 0, 100)
+    : clamp(Number(value) || 0, 0, 100);
+  
   const g = clamp(Number(goal) || 0, 0, 100);
-  const color = getColor(v, g);
+  const color = getColor(percentageValue, g);
   const isUp = Number(deltaPct) > 0;
   const deltaColor = isUp ? "text-red-600" : "text-green-600";
   const deltaSign = isUp ? "+" : "";
 
-  const data = useMemo(() => [{ name: label, value: v, fill: color }], [label, v, color]);
+  // Use percentage for the progress bar visualization
+  const data = useMemo(() => [{ name: label, value: percentageValue, fill: color }], [label, percentageValue, color]);
 
   return (
     <div className="flex flex-col items-center">
-      <div className="text-xs font-semibold text-gray-900 flex items-center gap-1">
+      <div className="text-base font-semibold text-gray-900 flex items-center gap-1">
         GOAL {g}%
         <InfoCircleOutlined className="text-gray-400" />
       </div>
@@ -165,20 +175,25 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct }) => {
         </RadialBarChart>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-xl font-extrabold text-gray-900 tabular-nums leading-none">
-            {v.toFixed(1)}%
+          {/* Center: Score (100) - percentage prop is actually the score */}
+          <div className="text-4xl font-extrabold text-gray-900 tabular-nums leading-none mb-1">
+            {scoreValue !== null ? Math.round(scoreValue) : Math.round(percentageValue)} <span className="text-sm text-gray-500 absolute top-10 ml-1">%</span>
           </div>
-          <div className="text-xs text-gray-700 font-semibold">{formatCurrency(amount || 0)}</div>
-          {deltaPct !== 0 && (
-          <div className={`text-[11px] font-semibold ${deltaColor}`}>
-            {deltaSign}
-              {Math.abs(Number(deltaPct) || 0).toFixed(1)}%
+          {/* Below center: Dollar amount ($15,000) */}
+          <div className="text-sm text-gray-900 font-semibold mb-0.5">
+            {formatCurrency(amount || 0)}
           </div>
+          {/* Below dollar: Percentage (16.95%) - deltaPct prop is actually the percentage */}
+          {scoreValue !== null && deltaPct !== undefined && deltaPct !== null && (
+            <div className="text-sm font-semibold text-gray-900 leading-none">
+              {Math.round(percentageValue)}%
+            </div>
           )}
         </div>
       </div>
 
-      <div className=" text-base font-bold text-gray-900">{label}</div>
+      {/* Label at bottom (Labor) */}
+      <div className="text-lg font-bold text-gray-900">{label}</div>
     </div>
   );
 };
@@ -367,6 +382,7 @@ const ReportCard = ({
               label="Labor"
               goal={goals.labor}
               value={metrics.labor?.value}
+              percentage={metrics.labor?.percentage}
               amount={metrics.labor?.amount}
               deltaPct={metrics.labor?.deltaPct}
             />
@@ -374,6 +390,7 @@ const ReportCard = ({
               label="COGs"
               goal={goals.cogs}
               value={metrics.cogs?.value}
+              percentage={metrics.cogs?.percentage}
               amount={metrics.cogs?.amount}
               deltaPct={metrics.cogs?.deltaPct}
             />
@@ -381,6 +398,7 @@ const ReportCard = ({
               label="Rent"
               goal={goals.rent}
               value={metrics.rent?.value}
+              percentage={metrics.rent?.percentage}
               amount={metrics.rent?.amount}
               deltaPct={metrics.rent?.deltaPct}
             />

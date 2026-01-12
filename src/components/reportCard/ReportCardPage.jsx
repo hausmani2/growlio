@@ -171,21 +171,25 @@ const ReportCardPage = () => {
   };
   
   // Map metrics from API response - ensure all values are properly extracted
+  // Note: percentage prop in MiniGauge is actually the score, deltaPct prop is the percentage
   const metrics = {
     labor: {
-      value: Number(apiSummary?.labour?.percentage) || Number(apiSummary?.labor?.percentage) || 0,
+      value: Number(apiSummary?.labour?.value) || Number(apiSummary?.labor?.value) || 0,
+      percentage: Number(apiSummary?.labour?.score) || Number(apiSummary?.labor?.score) || 0, // score goes to percentage prop
       amount: Number(apiSummary?.labour?.value) || Number(apiSummary?.labor?.value) || 0,
-      deltaPct: 0, // API doesn't provide delta, calculate if needed
+      deltaPct: Number(apiSummary?.labour?.percentage) || Number(apiSummary?.labor?.percentage) || 0, // percentage goes to deltaPct prop
     },
     cogs: {
-      value: Number(apiSummary?.cogs?.percentage) || 0,
+      value: Number(apiSummary?.cogs?.value) || 0,
+      percentage: Number(apiSummary?.cogs?.score) || 0, // score goes to percentage prop
       amount: Number(apiSummary?.cogs?.value) || 0,
-      deltaPct: 0,
+      deltaPct: Number(apiSummary?.cogs?.percentage) || 0, // percentage goes to deltaPct prop
     },
     rent: {
-      value: Number(apiSummary?.expenses?.percentage) || 0,
+      value: Number(apiSummary?.expenses?.value) || 0,
+      percentage: Number(apiSummary?.expenses?.score) || 0, // score goes to percentage prop
       amount: Number(apiSummary?.expenses?.value) || 0,
-      deltaPct: 0,
+      deltaPct: Number(apiSummary?.expenses?.percentage) || 0, // percentage goes to deltaPct prop
     },
   };
   
