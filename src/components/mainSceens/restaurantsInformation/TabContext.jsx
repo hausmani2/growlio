@@ -94,6 +94,13 @@ export const TabProvider = ({ children }) => {
 
     // Check if user can navigate to a specific tab
     const canNavigateToTab = (targetTabId, showMessage = true) => {
+        // Check if this is update mode (dashboard flow) - in update mode, allow all navigation
+        const isUpdateMode = location.pathname.includes('/dashboard/');
+        
+        // In update mode, always allow navigation to any tab
+        if (isUpdateMode) {
+            return true;
+        }
 
         // Always allow navigation to Basic Information (tab 0)
         if (targetTabId === 0) {
@@ -200,9 +207,12 @@ export const TabProvider = ({ children }) => {
 
         if (pathToTabId[lastSegment] !== undefined) {
             const targetTabId = pathToTabId[lastSegment];
+           
 
             // Check if user can navigate to this tab (don't show messages for URL-based navigation)
-            if (canNavigateToTab(targetTabId, false)) {
+            const canNavigate = canNavigateToTab(targetTabId, false);
+
+            if (canNavigate) {
                 setActiveTab(targetTabId);
                 // Scroll to top when URL changes (e.g., direct navigation or browser back/forward)
                 setTimeout(() => {
@@ -226,6 +236,7 @@ export const TabProvider = ({ children }) => {
             // Only redirect to onboarding if we're in onboarding mode
             setActiveTab(0);
             navigate('/onboarding/basic-information', { replace: true });
+        } else {
         }
     }, [location.pathname, navigate, completeOnboardingData]);
 
@@ -308,22 +319,32 @@ export const TabProvider = ({ children }) => {
                 handleTabClick(nextTabId);
             }
         } else {
-            // All local steps completed - check if onboarding is actually complete
+            // All local steps completed - navigate to Sales Data if skipping, otherwise check completion
+            if (skipCompletionCheck) {
+                // When skipping the last step, navigate to Sales Data
+                navigate('/dashboard/sales-data', { replace: false });
+                // Scroll to top after navigation
+                setTimeout(() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 100);
+                return; // Exit early to prevent further execution
+            } else {
+                // All local steps completed - check if onboarding is actually complete
+                try {
+                    const completionResult = await checkOnboardingCompletion();
 
-            try {
-                const completionResult = await checkOnboardingCompletion();
-
-                if (completionResult.success && completionResult.isComplete) {
-                    message.success('Congratulations! Your onboarding is complete!');
-                    completeOnboarding();
-                } else {
-                    // Even if the server check fails, if all local steps are complete, show completion page
+                    if (completionResult.success && completionResult.isComplete) {
+                        message.success('Congratulations! Your onboarding is complete!');
+                        completeOnboarding();
+                    } else {
+                        // Even if the server check fails, if all local steps are complete, show completion page
+                        completeOnboarding();
+                    }
+                } catch (error) {
+                    console.error('❌ Error checking onboarding completion:', error);
+                    // Even on error, if all local steps are complete, show completion page
                     completeOnboarding();
                 }
-            } catch (error) {
-                console.error('❌ Error checking onboarding completion:', error);
-                // Even on error, if all local steps are complete, show completion page
-                completeOnboarding();
             }
         }
     };

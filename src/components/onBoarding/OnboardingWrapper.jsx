@@ -330,7 +330,7 @@ const OnboardingWrapper = () => {
                         <div className="mt-4">
                             <button
                                 onClick={handleSubmit}
-                                disabled={isChecking}
+                                disabled={isChecking || selectedOption === 'simulation'}
                                 className="w-full rounded-lg p-3 bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isChecking ? (

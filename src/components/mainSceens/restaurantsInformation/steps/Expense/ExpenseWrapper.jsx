@@ -16,7 +16,7 @@ const ExpenseWrapperContent = () => {
     const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
-    const { navigateToNextStep, completeOnboarding } = useTabHook();
+    const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -377,12 +377,18 @@ const ExpenseWrapperContent = () => {
                         </div>
 
                         {isUpdateMode && (
-                            <div className="flex justify-end mt-8 pt-6">
-                                <PrimaryButton
-                                    title={"Skip"}
-                                    onClick={() => handleSkip(console.log("skipped"))}
+                            <div className="flex justify-end gap-3 mt-8 pt-6">
+                                <button
+                                    onClick={() => {
+                                        navigateToNextStep(true);
+                                    }}
                                     disabled={loading}
-                                />
+                                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                    }`}
+                                >
+                                    Skip
+                                </button>
                                 <button
                                     onClick={handleSave}
                                     className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
@@ -425,8 +431,20 @@ const ExpenseWrapperContent = () => {
                 />
             </div>
 
-            {isUpdateMode && (
-                <div className="flex justify-end mt-8 pt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6">
+                <button
+                    onClick={() => {
+                     
+                        navigateToNextStep(true);
+                    }}
+                    disabled={loading}
+                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                    }`}
+                >
+                    Skip
+                </button>
+                {isUpdateMode && (
                     <button
                         onClick={handleSave}
                         className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
@@ -434,8 +452,8 @@ const ExpenseWrapperContent = () => {
                     >
                         {loading ? "Saving..." : "Save Changes"}
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

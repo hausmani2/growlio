@@ -218,6 +218,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/superadmin/user-management'),
         },
         {
+          key: 'superadmin-user-info',
+          icon: <InfoCircleOutlined />,
+          label: 'User Onboarding',
+          onClick: () => navigate('/superadmin/user-info'),
+        },
+        {
           key: 'superadmin-tooltips',
           icon: <BellOutlined />,
           label: 'Tooltips',

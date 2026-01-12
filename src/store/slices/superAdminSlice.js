@@ -47,45 +47,78 @@ const createSuperAdminSlice = (set, get) => {
     loading: false,
     error: null,
     
+    // Onboarding status data
+    onboardingStatusData: null,
+    onboardingStatusLoading: false,
+    onboardingStatusError: null,
+    
     // Password reset state
     passwordResetLoading: false,
     passwordResetError: null,
     passwordResetSuccess: false,
 
-    // Fetch dashboard statistics
-    fetchDashboardStats: async () => {
-      set(() => ({ loading: true, error: null }));
+    // Fetch dashboard statistics with request deduplication
+    fetchDashboardStats: (() => {
+      let fetchPromise = null;
+      let lastFetchTime = 0;
+      const CACHE_DURATION = 5000; // 5 seconds cache to prevent rapid duplicate calls
       
-      try {
-        const response = await apiGet('/admin_access/dashboard/');
+      return async () => {
+        const now = Date.now();
         
-        set(() => ({ 
-          dashboardStats: {
-            totalUsers: response.data.user_role_stats.total_users,
-            totalRestaurants: response.data.locations_per_user.reduce((sum, user) => sum + user.total_restaurants, 0),
-            totalLocations: response.data.locations_per_user.reduce((sum, user) => sum + user.total_locations, 0),
-            activeUsers: response.data.user_role_stats.total_users,
-            newUsersThisMonth: 0, // Not provided in API
-            totalAdmins: response.data.user_role_stats.admin,
-            totalSuperusers: response.data.user_role_stats.superadmins,
-            platformHealth: 98.5 // Not provided in API
-          },
-          dashboardData: response.data,
-          loading: false,
-          error: null 
-        }));
+        // If there's an ongoing request, return the same promise
+        if (fetchPromise) {
+          return fetchPromise;
+        }
         
-        return { success: true, data: response.data };
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-        const errorMessage = error.response?.data?.message || 'Failed to fetch dashboard stats';
-        set(() => ({ 
-          loading: false, 
-          error: errorMessage 
-        }));
-        return { success: false, error: errorMessage };
-      }
-    },
+        // If we recently fetched (within cache duration), return cached data
+        const state = get();
+        if (state.dashboardData && (now - lastFetchTime) < CACHE_DURATION) {
+          return { success: true, data: state.dashboardData };
+        }
+        
+        // Create new fetch promise
+        fetchPromise = (async () => {
+          try {
+            set(() => ({ loading: true, error: null }));
+            
+            const response = await apiGet('/admin_access/dashboard/');
+            
+            set(() => ({ 
+              dashboardStats: {
+                totalUsers: response.data.user_role_stats.total_users,
+                totalRestaurants: response.data.locations_per_user.reduce((sum, user) => sum + user.total_restaurants, 0),
+                totalLocations: response.data.locations_per_user.reduce((sum, user) => sum + user.total_locations, 0),
+                activeUsers: response.data.user_role_stats.total_users,
+                newUsersThisMonth: 0, // Not provided in API
+                totalAdmins: response.data.user_role_stats.admin,
+                totalSuperusers: response.data.user_role_stats.superadmins,
+                platformHealth: 98.5 // Not provided in API
+              },
+              dashboardData: response.data,
+              loading: false,
+              error: null 
+            }));
+            
+            lastFetchTime = Date.now();
+            return { success: true, data: response.data };
+          } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            const errorMessage = error.response?.data?.message || 'Failed to fetch dashboard stats';
+            set(() => ({ 
+              loading: false, 
+              error: errorMessage 
+            }));
+            return { success: false, error: errorMessage };
+          } finally {
+            // Clear the promise after completion
+            fetchPromise = null;
+          }
+        })();
+        
+        return fetchPromise;
+      };
+    })(),
 
     // SuperAdmin login via dedicated endpoint
     superAdminLogin: async (credentials) => {
@@ -537,6 +570,31 @@ const createSuperAdminSlice = (set, get) => {
 
     // Get impersonation message
     getImpersonationMessage,
+
+    // Fetch onboarding status for all users
+    fetchOnboardingStatus: async () => {
+      set(() => ({ onboardingStatusLoading: true, onboardingStatusError: null }));
+      
+      try {
+        const response = await apiGet('/restaurant_v2/admin/onboarding-status');
+        
+        set(() => ({ 
+          onboardingStatusData: response.data,
+          onboardingStatusLoading: false,
+          onboardingStatusError: null 
+        }));
+        
+        return { success: true, data: response.data };
+      } catch (error) {
+        console.error('Error fetching onboarding status:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to fetch onboarding status';
+        set(() => ({ 
+          onboardingStatusLoading: false, 
+          onboardingStatusError: errorMessage 
+        }));
+        return { success: false, error: errorMessage };
+      }
+    },
 
     // Clear error state
     clearError: () => {

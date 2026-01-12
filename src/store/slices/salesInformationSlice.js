@@ -258,35 +258,9 @@ const createSalesInformationSlice = (set, get) => ({
         }
     },
     
-    // GET: Fetch sales information summary for last month
-    getSalesInformationSummary: async () => {
-        const state = get();
-        
-        // Check if already loading - prevent duplicate calls
-        if (state.salesInformationSummaryLoading) {
-            return {
-                success: false,
-                error: 'Summary is already being fetched'
-            };
-        }
-        
-        // Check if data already exists and is recent (within last 5 minutes)
-        // Only fetch if data doesn't exist or is stale
-        if (state.salesInformationSummary) {
-            const lastFetchTime = state.salesInformationSummaryLastFetch || 0;
-            const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
-            const now = Date.now();
-            
-            // If data exists and was fetched recently, return cached data
-            if (now - lastFetchTime < fiveMinutes) {
-                return {
-                    success: true,
-                    data: state.salesInformationSummary,
-                    cached: true
-                };
-            }
-        }
-        
+    // GET: Fetch sales information summary (for report card)
+    // Accepts optional date parameters for dynamic date selection
+    getSalesInformationSummary: async (startDate = null, endDate = null) => {
         set(() => ({ 
             salesInformationSummaryLoading: true, 
             salesInformationSummaryError: null 
@@ -301,12 +275,31 @@ const createSalesInformationSlice = (set, get) => ({
                 throw new Error('Restaurant ID is required');
             }
             
-            // Calculate previous month's start and end dates
+            // Use provided dates or calculate previous month's start and end dates
+            let startDateStr, endDateStr;
+            
+            if (startDate && endDate) {
+                // Format provided dates (dayjs objects or strings)
+                const formatDate = (date) => {
+                    if (typeof date === 'string') {
+                        return date.split('T')[0]; // Extract YYYY-MM-DD from ISO string
+                    }
+                    // Handle dayjs objects
+                    const d = date.format ? date : new Date(date);
+                    const year = d.format ? d.year() : d.getFullYear();
+                    const month = d.format ? d.month() + 1 : d.getMonth() + 1;
+                    const day = d.format ? d.date() : d.getDate();
+                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                };
+                
+                startDateStr = formatDate(startDate);
+                endDateStr = formatDate(endDate);
+            } else {
+                // Default to previous month if no dates provided
             const today = new Date();
             const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
             
-            // Format dates as YYYY-MM-DD
             const formatDate = (date) => {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -314,14 +307,15 @@ const createSalesInformationSlice = (set, get) => ({
                 return `${year}-${month}-${day}`;
             };
             
-            const startDate = formatDate(lastMonth);
-            const endDate = formatDate(lastMonthEnd);
+                startDateStr = formatDate(lastMonth);
+                endDateStr = formatDate(lastMonthEnd);
+            }
             
             // Build query parameters
             const params = new URLSearchParams({
                 restaurant_id: restaurantId.toString(),
-                start_date: startDate,
-                end_date: endDate
+                start_date: startDateStr,
+                end_date: endDateStr
             });
             
             const response = await apiGet(`/restaurant_v2/sales-information/summary/?${params.toString()}`);

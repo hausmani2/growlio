@@ -8,7 +8,8 @@ import {
   Cell,
 } from "recharts";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { DatePicker } from "antd";
+import { DatePicker, Button, Dropdown } from "antd";
+import { DownOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -74,13 +75,18 @@ const buildScoreSegments = (score) => {
   });
 };
 
-const ScoreDonut = ({ score = 0, size = 170 }) => {
+const ScoreDonut = ({ score = 0, size = 200 }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const segments = useMemo(() => buildScoreSegments(s), [s]);
   const grade = useMemo(() => getGrade(s), [s]);
 
+  // Calculate inner radius to leave proper space for text
+  const innerRadius = Math.round(size * 0.40); // Increased from 0.33 to 0.40 for more text space
+  const outerRadius = Math.round(size * 0.48);
+  const centerY = size / 2;
+
   return (
-    <div className="relative w-fit">
+    <div className="relative w-fit mx-auto" style={{ width: size, height: size }}>
       {/* Segmented arc with gaps (matches screenshot style better than stacked radial bars) */}
       <PieChart width={size} height={size}>
         <Pie
@@ -88,8 +94,8 @@ const ScoreDonut = ({ score = 0, size = 170 }) => {
           dataKey="value"
           cx="50%"
           cy="50%"
-          innerRadius={Math.round(size * 0.33)}
-          outerRadius={Math.round(size * 0.48)}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
           startAngle={240}
           endAngle={-60}
           paddingAngle={2}
@@ -102,10 +108,23 @@ const ScoreDonut = ({ score = 0, size = 170 }) => {
         </Pie>
       </PieChart>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-3xl font-bold text-gray-900 leading-none">
+      {/* Text overlay - positioned to fit within inner circle */}
+      <div 
+        className="absolute flex flex-col items-center justify-center"
+        style={{
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: `${innerRadius * 2}px`,
+          height: `${innerRadius * 2}px`,
+          pointerEvents: 'none'
+        }}
+      >
+        {/* Grade - Large and bold at top */}
+        <div className="text-4xl font-bold text-gray-900 leading-none mb-0.5">
           {grade}
         </div>
+        {/* Score - Very large and prominent */}
         <div className="text-6xl font-extrabold text-gray-900 leading-none tabular-nums">
           {Math.round(s)}
         </div>
@@ -147,13 +166,15 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct }) => {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className="text-xl font-extrabold text-gray-900 tabular-nums leading-none">
-            {Math.round(v)}%
+            {v.toFixed(1)}%
           </div>
-          <div className="text-xs text-gray-700 font-semibold">{formatCurrency(amount)}</div>
+          <div className="text-xs text-gray-700 font-semibold">{formatCurrency(amount || 0)}</div>
+          {deltaPct !== 0 && (
           <div className={`text-[11px] font-semibold ${deltaColor}`}>
             {deltaSign}
-            {Math.abs(Number(deltaPct) || 0)}%
+              {Math.abs(Number(deltaPct) || 0).toFixed(1)}%
           </div>
+          )}
         </div>
       </div>
 
@@ -174,12 +195,14 @@ const ReportCard = ({
   },
   summary = { sales: 40000, profit: 6000 },
   onDateRangeChange,
+  loading = false,
 }) => {
-  // Initialize with last 30 days
+  // Initialize with last month (default for report card)
   const [dateRange, setDateRange] = useState([
-    dayjs().subtract(30, 'day'),
-    dayjs(),
+    dayjs().subtract(1, 'month').startOf('month'),
+    dayjs().subtract(1, 'month').endOf('month'),
   ]);
+  const [quickSelectLabel, setQuickSelectLabel] = useState('Last Month');
 
   // Format date label based on selected range
   const formattedDateLabel = useMemo(() => {
@@ -195,44 +218,145 @@ const ReportCard = ({
   const handleDateChange = (dates) => {
     if (dates && dates[0] && dates[1]) {
       setDateRange(dates);
+      // Update quick select label based on selection
+      const today = dayjs();
+      const lastMonthStart = today.subtract(1, 'month').startOf('month');
+      const lastMonthEnd = today.subtract(1, 'month').endOf('month');
+      const last3MonthsStart = today.subtract(3, 'month').startOf('month');
+      const last6MonthsStart = today.subtract(6, 'month').startOf('month');
+      const lastYearStart = today.subtract(1, 'year').startOf('year');
+      const lastYearEnd = today.subtract(1, 'year').endOf('year');
+      const currentMonthStart = today.startOf('month');
+      const currentMonthEnd = today.endOf('month');
+      
+      if (dates[0].isSame(currentMonthStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
+        setQuickSelectLabel('Current Month');
+      } else if (dates[0].isSame(lastMonthStart, 'day') && dates[1].isSame(lastMonthEnd, 'day')) {
+        setQuickSelectLabel('Last Month');
+      } else if (dates[0].isSame(last3MonthsStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
+        setQuickSelectLabel('Last 3 Months');
+      } else if (dates[0].isSame(last6MonthsStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
+        setQuickSelectLabel('Last 6 Months');
+      } else if (dates[0].isSame(lastYearStart, 'day') && dates[1].isSame(lastYearEnd, 'day')) {
+        setQuickSelectLabel('Last Year');
+      } else {
+        setQuickSelectLabel('Custom');
+      }
+      
       if (onDateRangeChange) {
         onDateRangeChange(dates);
       }
     }
   };
 
+  // Quick select handlers
+  const handleQuickSelect = (option) => {
+    let newDates = null;
+    switch (option) {
+      case 'current_month':
+        newDates = [dayjs().startOf('month'), dayjs().endOf('month')];
+        setQuickSelectLabel('Current Month');
+        break;
+      case 'last_month':
+        newDates = [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')];
+        setQuickSelectLabel('Last Month');
+        break;
+      case 'last_3_months':
+        newDates = [dayjs().subtract(3, 'month').startOf('month'), dayjs().endOf('month')];
+        setQuickSelectLabel('Last 3 Months');
+        break;
+      case 'last_6_months':
+        newDates = [dayjs().subtract(6, 'month').startOf('month'), dayjs().endOf('month')];
+        setQuickSelectLabel('Last 6 Months');
+        break;
+      case 'last_year':
+        newDates = [dayjs().subtract(1, 'year').startOf('year'), dayjs().subtract(1, 'year').endOf('year')];
+        setQuickSelectLabel('Last Year');
+        break;
+      case 'custom':
+        setQuickSelectLabel('Custom');
+        return; // Let user select custom range
+      default:
+        return;
+    }
+    if (newDates) {
+      handleDateChange(newDates);
+    }
+  };
+
+  const quickSelectMenu = {
+    items: [
+      { key: 'current_month', label: 'Current Month' },
+      { key: 'last_month', label: 'Last Month' },
+      { key: 'last_3_months', label: 'Last 3 Months' },
+      { key: 'last_6_months', label: 'Last 6 Months' },
+      { key: 'last_year', label: 'Last Year' },
+      { key: 'custom', label: 'Custom' },
+    ],
+    onClick: ({ key }) => handleQuickSelect(key),
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-2xl font-bold text-gray-900 lg:ml-14">{title}</div>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 flex-wrap">
+        <div className="text-2xl font-bold text-gray-900">{title}</div>
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="text-xs font-semibold text-gray-900">{formattedDateLabel}</div>
+          <div className="text-xs font-semibold text-gray-900 hidden lg:block">{formattedDateLabel}</div>
+          <div className="flex items-center gap-2">
+            {/* Quick Select Dropdown */}
+            <Dropdown
+              menu={quickSelectMenu}
+              trigger={['click']}
+              disabled={loading}
+            >
+              <Button
+                style={{
+                  borderRadius: '6px',
+                  height: '40px',
+                  minWidth: '120px'
+                }}
+                disabled={loading}
+              >
+                {quickSelectLabel} <DownOutlined />
+              </Button>
+            </Dropdown>
+            
+            {/* Date Range Picker */}
           <RangePicker
             value={dateRange}
             onChange={handleDateChange}
             format="MMM D, YYYY"
-            className="border border-gray-200 rounded-md"
+              placeholder={['Start Date', 'End Date']}
+              disabled={loading}
             style={{
               borderRadius: '6px',
-              height: '32px',
+                width: 'auto',
+                minWidth: '280px',
+                height: '40px',
+                cursor: 'pointer'
             }}
-            size="small"
             allowClear={false}
+              size="middle"
             separator=" to "
+              showTime={false}
+              inputReadOnly={true}
+              showToday={true}
             popupStyle={{ zIndex: 1000 }}
             getPopupContainer={(trigger) => trigger.parentNode}
+              disabledDate={() => false}
           />
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 items-center">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
         {/* Left: Score */}
-        <div className="flex flex-col items-center">
-          <ScoreDonut score={score} size={170} />
-          <div className="mt-3 text-center leading-[1.05]">
-            <div className="text-xl font-bold text-gray-900">Profitability</div>
-            <div className="text-xl font-bold text-gray-900">Score</div>
+        <div className="flex flex-col items-center justify-center">
+          <ScoreDonut score={score} size={200} />
+          <div className="mt-4 text-center leading-tight">
+            <div className="text-2xl font-bold text-gray-900">Profitability</div>
+            <div className="text-2xl font-bold text-gray-900">Score</div>
           </div>
         </div>
 
@@ -262,14 +386,14 @@ const ReportCard = ({
             />
           </div>
 
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-2">
             <div className="text-lg font-medium text-gray-900">
               Sales:{" "}
-              <span className="text-green-400 font-bold">{formatCompactCurrency(summary.sales)}</span>
+              <span className="text-green-500 font-bold">{formatCurrency(summary.sales || 0)}</span>
             </div>
             <div className="text-lg font-medium text-gray-900">
               Profit:{" "}
-              <span className="text-green-400 font-bold">{formatCompactCurrency(summary.profit)}</span>
+              <span className="text-green-500 font-bold">{formatCurrency(summary.profit || 0)}</span>
             </div>
           </div>
         </div>

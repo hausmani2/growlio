@@ -6,13 +6,14 @@ import PrimaryButton from '../../../../buttons/Buttons';
 import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { TiArrowLeft } from 'react-icons/ti';
 import { useTabHook } from '../../useTabHook';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
 
 const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false, errors = {} }) => {
     const location = useLocation();
-    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    const navigate = useNavigate();
+    const { navigateToNextStep, navigateToPreviousStep, activeTab, tabs } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -240,12 +241,23 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         onClick={handleGoBack} 
                         disabled={loading} 
                     />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand w-full sm:w-auto"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
+                    <div className="flex gap-3">
+                        <PrimaryButton 
+                            title="Skip" 
+                            className="bg-gray-200 text-gray-700 h-10 w-full sm:w-auto text-sm" 
+                            onClick={() => {
+                              
+                                navigate('/dashboard/labor-data');
+                            }} 
+                            disabled={loading} 
+                        />
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand w-full sm:w-auto"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
             )}
         </div>

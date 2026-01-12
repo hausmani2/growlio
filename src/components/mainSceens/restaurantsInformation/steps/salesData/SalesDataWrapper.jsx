@@ -240,7 +240,9 @@ const SalesDataWrapper = () => {
       <div className="flex justify-end gap-3 mt-8">
         <button
           className="px-10 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
-          onClick={() => navigate("/dashboard/budget")}
+          onClick={() => {
+            navigate("/dashboard/basic-information");
+          }}
           disabled={isSaving || onboardingLoading}
         >
           Skip

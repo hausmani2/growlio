@@ -40,6 +40,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/superadmin/dashboard': 'superadmin-dashboard',
     '/superadmin/users': 'superadmin-users',
     '/superadmin/user-management': 'superadmin-user-management',
+    '/superadmin/user-info': 'superadmin-user-info',
     '/superadmin/tooltips': 'superadmin-tooltips',
     '/superadmin/faq': 'superadmin-faq',
     '/superadmin/superadmin-chat': 'superadmin-chat',

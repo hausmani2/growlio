@@ -10,7 +10,7 @@ import TooltipIcon from '../../../../common/TooltipIcon';
 
 const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAndContinue }) => {
     const location = useLocation();
-    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    const { navigateToNextStep, navigateToPreviousStep, activeTab, tabs } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -178,12 +178,22 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                         className="border-none w-full sm:w-auto"
                         disabled={loading}
                     />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand w-full sm:w-auto"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
+                    <div className="flex gap-3">
+                        {activeTab < tabs.length - 1 && (
+                            <PrimaryButton 
+                                title="Skip" 
+                                className="bg-gray-200 text-gray-700 w-full sm:w-auto" 
+                                onClick={() => navigateToNextStep(true)} 
+                                disabled={loading} 
+                            />
+                        )}
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand w-full sm:w-auto"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
             )}
         </div>

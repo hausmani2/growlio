@@ -201,6 +201,7 @@ const ReportCardPage = () => {
   const setupItems = onboardingProgress?.items ?? [];
   const restaurant = onboardingProgress?.restaurant;
   const isOnboardingComplete = restaurant?.onboarding_complete === true;
+  
 
   // Handle close out previous days button
   const handleCloseOutDays = () => {
@@ -250,5 +251,3 @@ const ReportCardPage = () => {
 };
 
 export default ReportCardPage;
-
-

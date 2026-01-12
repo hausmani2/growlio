@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Table, 
   Button, 
@@ -49,6 +49,8 @@ const SimpleUserTable = () => {
     title: '',
     message: ''
   });
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
   // Fetch users from API with search support
   const fetchUsers = async (page = 1, pageSize = 10, searchQuery = '') => {
@@ -79,7 +81,27 @@ const SimpleUserTable = () => {
 
   // Initial load
   useEffect(() => {
-    fetchUsers(pagination.current, pagination.pageSize);
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Only fetch if we don't have users yet
+    if (hasFetchedRef.current && users.length > 0) {
+      return;
+    }
+
+    const loadUsers = async () => {
+      isFetchingRef.current = true;
+      try {
+        await fetchUsers(pagination.current, pagination.pageSize);
+        hasFetchedRef.current = true;
+      } finally {
+        isFetchingRef.current = false;
+      }
+    };
+
+    loadUsers();
   }, []);
 
   const handleImpersonate = async (user) => {

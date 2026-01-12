@@ -9,7 +9,7 @@ import useTooltips from "../../../../../utils/useTooltips";
 
 const TotalExpense = ({ data,  onSave }) => {
     const location = useLocation();
-    const { handleTabClick } = useTabHook();
+    const { handleTabClick, navigateToNextStep, activeTab, tabs } = useTabHook();
     const tooltips = useTooltips('onboarding-expense');
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -125,11 +125,20 @@ const TotalExpense = ({ data,  onSave }) => {
                         className="bg-gray-200 text-black h-11" 
                         onClick={handleBack} 
                     />
-                    <PrimaryBtn 
-                        title="Save & Continue" 
-                        className="btn-brand h-11"
-                        onClick={onSave}
-                    />
+                    <div className="flex gap-3">
+                        <PrimaryBtn 
+                            title="Skip" 
+                            className="bg-gray-200 text-gray-700 h-11" 
+                            onClick={() => {
+                                navigateToNextStep(true);
+                            }} 
+                        />
+                        <PrimaryBtn 
+                            title="Save & Continue" 
+                            className="btn-brand h-11"
+                            onClick={onSave}
+                        />
+                    </div>
                 </div>
             )}
         </div>

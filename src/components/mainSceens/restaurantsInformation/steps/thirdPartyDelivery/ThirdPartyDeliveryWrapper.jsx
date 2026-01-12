@@ -190,7 +190,9 @@ const ThirdPartyDeliveryWrapperContent = () => {
         <div className="flex justify-end gap-3 mt-8">
           <button
             className="px-10 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
-            onClick={() => navigateToNextStep(true)}
+            onClick={() => {
+              navigate('/dashboard/budget');
+            }}
           >
             Skip
           </button>
@@ -206,20 +208,23 @@ const ThirdPartyDeliveryWrapperContent = () => {
           </button>
         </div>
       ) : (
-        <div className="flex justify-end mt-8 pt-6">
+        <div className="flex justify-end gap-3 mt-8 pt-6">
+          <button
+            onClick={() => {
+           
+              navigate('/dashboard/budget');
+            }}
+            className="bg-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+            disabled={loading}
+          >
+            Skip
+          </button>
           <button
             onClick={handleSave}
             className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
             disabled={loading}
           >
             {loading ? "Saving..." : "Save Changes"}
-          </button>
-          <button
-            onClick={() => navigate("/dashboard/sales-channels")}
-            className="ml-3 bg-white border border-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-            disabled={loading}
-          >
-            Back
           </button>
         </div>
       )}

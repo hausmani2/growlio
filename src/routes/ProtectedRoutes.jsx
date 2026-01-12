@@ -124,6 +124,17 @@ const ProtectedRoutes = () => {
       return;
     }
     
+    // CRITICAL: Skip restaurant check for super admins when not impersonating
+    const isSuperAdminUser = user?.is_superuser;
+    const impersonating = isImpersonating();
+    
+    if (isSuperAdminUser && !impersonating) {
+      // Super admins don't need restaurant checks
+      setRestaurantCheckLoading(false);
+      hasCheckedRestaurantRef.current = true;
+      return;
+    }
+    
     // CRITICAL: If One Month Sales Info is complete and we're navigating between dashboard routes,
     // skip re-checking restaurant data to prevent unnecessary API calls and state resets
     // This prevents the redirect issue when clicking on setup items
@@ -257,6 +268,20 @@ const ProtectedRoutes = () => {
 
   // Handle onboarding redirects based on restaurant and sales info status
   useEffect(() => {
+    // CRITICAL: Skip ALL onboarding logic for super admins when not impersonating
+    const isSuperAdminUser = user?.is_superuser;
+    const impersonating = isImpersonating();
+    
+    if (isSuperAdminUser && !impersonating) {
+      // Super admins should never be redirected to onboarding
+      // If they're not on a super admin path, redirect them there
+      if (!location.pathname.startsWith('/superadmin')) {
+        hasRedirectedRef.current = false;
+        navigate('/superadmin/dashboard', { replace: true });
+      }
+      return;
+    }
+    
     // CRITICAL: Skip redirect logic if still loading - prevents redirects on page reload
     // This must happen FIRST to prevent redirects before data is loaded
     if (
@@ -562,23 +587,6 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // SuperAdmin route guard + redirect logic
-  const isSuperAdminPath = location.pathname.startsWith('/superadmin');
-  const isSuperAdminUser = user?.is_superuser;
-  const impersonating = isImpersonating();
-  if (isSuperAdminPath && !isSuperAdminUser) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  
-  // Allow superadmin to access profile page
-  const isProfilePath = location.pathname === '/dashboard/profile';
-  
-  // If current user is SuperAdmin and not impersonating, redirect to SuperAdmin dashboard
-  // EXCEPT for profile page which should be accessible to all users
-  if (isSuperAdminUser && !impersonating && !isSuperAdminPath && !isProfilePath) {
-    return <Navigate to="/superadmin/dashboard" replace />;
-  }
-
   // Check if sales information is complete (using utility function)
   const hasSalesData = () => {
     if (salesInformationError) return false;
@@ -594,7 +602,31 @@ const ProtectedRoutes = () => {
   const isReportCardPath = location.pathname === ONBOARDING_ROUTES.REPORT_CARD;
   const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS;
   const isDashboardPath = location.pathname.startsWith('/dashboard');
+  const isSuperAdminPath = location.pathname.startsWith('/superadmin');
+  const isProfilePath = location.pathname === '/dashboard/profile';
   const salesDataComplete = hasSalesData();
+
+  // SuperAdmin route guard - check if non-superadmin is trying to access superadmin routes
+  const isSuperAdminUser = user?.is_superuser;
+  const impersonating = isImpersonating();
+  if (isSuperAdminPath && !isSuperAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // CRITICAL: SuperAdmin routing - HIGHEST PRIORITY - must be checked before any onboarding logic
+  // This prevents super admins from seeing onboarding pages or being redirected
+  if (isSuperAdminUser && !impersonating) {
+    // If super admin is trying to access onboarding or regular dashboard, redirect to super admin dashboard
+    if (isOnboardingPath || (isDashboardPath && !isSuperAdminPath)) {
+      return <Navigate to="/superadmin/dashboard" replace />;
+    }
+    // If already on super admin path or profile page, allow access
+    if (isSuperAdminPath || isProfilePath) {
+      return <Outlet />;
+    }
+    // Default: redirect to super admin dashboard
+    return <Navigate to="/superadmin/dashboard" replace />;
+  }
 
   // CRITICAL: Show loading while checking restaurant status for onboarding-related routes
   // This prevents showing wrong route while data is loading
@@ -614,11 +646,6 @@ const ProtectedRoutes = () => {
     if (!hasChecked) {
       return <LoadingSpinner message="Checking your setup..." />;
     }
-  }
-
-  // SuperAdmin routing - highest priority
-  if (isSuperAdminUser && !impersonating && !isSuperAdminPath && !isProfilePath) {
-    return <Navigate to="/superadmin/dashboard" replace />;
   }
 
   // If sales data is complete, user should access report card

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Popconfirm, message, Space, Card, Tag, Avatar, Switch, notification } from 'antd';
 import { 
   UserOutlined, 
@@ -77,6 +77,8 @@ const SuperAdminUserManagement = () => {
     total: 0
   });
   const [search, setSearch] = useState('');
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
   // Calculate counts for admin and users
   const userCounts = useMemo(() => {
@@ -115,7 +117,27 @@ const SuperAdminUserManagement = () => {
   };
 
   useEffect(() => {
-    fetchUsers(pagination.current, pagination.pageSize);
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Only fetch if we don't have users yet
+    if (hasFetchedRef.current && users.length > 0) {
+      return;
+    }
+
+    const loadUsers = async () => {
+      isFetchingRef.current = true;
+      try {
+        await fetchUsers(pagination.current, pagination.pageSize);
+        hasFetchedRef.current = true;
+      } finally {
+        isFetchingRef.current = false;
+      }
+    };
+
+    loadUsers();
   }, []);
 
   const handleDelete = async (id) => {

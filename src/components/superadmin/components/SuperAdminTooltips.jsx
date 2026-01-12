@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Switch, message, Popconfirm, Card, Space, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
@@ -19,6 +19,9 @@ const SuperAdminTooltips = () => {
   const [editing, setEditing] = useState(null);
   const [selectedPage, setSelectedPage] = useState('onboarding-basic');
   const [form] = Form.useForm();
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
+  const lastPageFilterRef = useRef('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -34,7 +37,33 @@ const SuperAdminTooltips = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    // Reset fetch flag if page filter changed
+    if (lastPageFilterRef.current !== pageFilter) {
+      hasFetchedRef.current = false;
+      lastPageFilterRef.current = pageFilter;
+    }
+
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Only fetch if we don't have items yet or filter changed
+    if (hasFetchedRef.current && items.length > 0 && lastPageFilterRef.current === pageFilter) {
+      return;
+    }
+
+    const loadData = async () => {
+      isFetchingRef.current = true;
+      try {
+        await fetchData();
+        hasFetchedRef.current = true;
+      } finally {
+        isFetchingRef.current = false;
+      }
+    };
+
+    loadData();
   }, [pageFilter]);
 
   // Debug form values when modal opens

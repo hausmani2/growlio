@@ -65,7 +65,6 @@ const PlansPage = () => {
         if (packagesResult.success && packagesResult.data) {
           // If we got current package from subscription API, use it (this is the source of truth)
           if (currentPackageResult.success && currentPackageResult.data) {
-            console.log('✅ [PlansPage] Setting current package from subscription API:', currentPackageResult.data);
             setCurrentPackage(currentPackageResult.data);
             
             // Clear is_current flags from all packages to avoid confusion
@@ -79,7 +78,6 @@ const PlansPage = () => {
             // Fallback: find current package from is_current flag (only if API didn't return one)
             const currentPlanFromPackages = packagesResult.data.find(p => p.is_current);
             if (currentPlanFromPackages) {
-              console.log('⚠️ [PlansPage] Using is_current flag as fallback:', currentPlanFromPackages);
               setCurrentPackage(currentPlanFromPackages);
             }
           }

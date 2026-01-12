@@ -36,6 +36,7 @@ import SuperAdminDashboard from './components/superadmin/SuperAdminDashboard';
 import SuperAdminUsers from './components/superadmin/SuperAdminUsers';
 import SuperAdminTooltips from './components/superadmin/components/SuperAdminTooltips';
 import SuperAdminUserManagement from './components/superadmin/components/SuperAdminUserManagement';
+import SuperAdminUserInfo from './components/superadmin/components/SuperAdminUserInfo';
 import SupportPage from './components/mainSceens/support/SupportPage';
 import PlansWrapper from './components/mainSceens/plans/PlansWrapper';
 import SubscriptionSuccess from './components/mainSceens/plans/SubscriptionSuccess';
@@ -44,7 +45,7 @@ import FaqWrapper from './components/mainSceens/faq/FaqWrapper';
 import ChatWidget from './components/chatbot/ChatWidget';
 import ChatPage from './components/mainSceens/chat/ChatPage';
 import { ProfitabilityScore, ProfitabilityWizard } from './components/profitability';
-import ReportCardTestPage from './components/reportCard/ReportCardTestPage';
+import ReportCardPage from './components/reportCard/ReportCardPage';
 import { SquareIntegration, SquareCallbackHandler } from './components/square';
 
 function App() {
@@ -161,8 +162,8 @@ function App() {
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />
         <Route path="/onboarding/profitability/results" element={<Wrapper showSidebar={true} children={<Navigate to="/onboarding/profitability/form" replace />} />} />
 
-        {/* Report Card Test Route */}
-        <Route path="/dashboard/report-card" element={<Wrapper showSidebar={true} children={<ReportCardTestPage />} />} />
+        {/* Report Card Route */}
+        <Route path="/dashboard/report-card" element={<Wrapper showSidebar={true} children={<ReportCardPage />} />} />
           {/* Admin */}
           {/* <Route path="/admin/users" element={<Wrapper showSidebar={true} children={<UsersAdmin />} />} />
           <Route path="/admin/tooltips" element={<Wrapper showSidebar={true} children={<TooltipsAdmin />} />} /> */}
@@ -172,6 +173,7 @@ function App() {
           <Route path="/superadmin/dashboard" element={<Wrapper showSidebar={true} children={<SuperAdminDashboard />} />} />
           <Route path="/superadmin/users" element={<Wrapper showSidebar={true} children={<SuperAdminUsers />} />} />
           <Route path="/superadmin/user-management" element={<Wrapper showSidebar={true} children={<SuperAdminUserManagement />} />} />
+          <Route path="/superadmin/user-info" element={<Wrapper showSidebar={true} children={<SuperAdminUserInfo />} />} />
           <Route path="/superadmin/tooltips" element={<Wrapper showSidebar={true} children={<SuperAdminTooltips />} />} />
           <Route path="/superadmin/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/superadmin/superadmin-chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />          <Route path="/superadmin/guidance-popups" element={<Wrapper showSidebar={true} children={<GuidancePopupsAdmin />} />} />
