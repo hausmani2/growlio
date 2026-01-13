@@ -247,7 +247,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             className="bg-gray-200 text-gray-700 h-10 w-full sm:w-auto text-sm" 
                             onClick={() => {
                               
-                                navigate('/dashboard/labor-data');
+                                navigate('/dashboard/food-cost-details');
                             }} 
                             disabled={loading} 
                         />

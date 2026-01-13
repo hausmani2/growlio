@@ -71,10 +71,6 @@ const createOnBoardingSlice = (set, get) => ({
         "Sales Information": {
             status: false,
             data: []
-        },
-        "Labor Data": {
-            status: false,
-            data: []
         }
     },
 
@@ -523,7 +519,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             // Add other steps with status: false if they're not the active step
-            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense", "Sales Information", "Labor Data"];
+            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense", "Sales Information"];
             otherSteps.forEach(step => {
                 if (step !== stepName) {
                     payload[step] = {
@@ -842,10 +838,6 @@ const createOnBoardingSlice = (set, get) => ({
                     }
                 },
                 "Sales Information": {
-                    status: false,
-                    data: []
-                },
-                "Labor Data": {
                     status: false,
                     data: []
                 }

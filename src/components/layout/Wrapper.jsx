@@ -101,12 +101,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/labor-information'),
         },
         {
-          key: 'labor-data',
-          // icon: <FaUsers />,
-          label: 'Labor Data',
-          onClick: () => navigate('/dashboard/labor-data'),
-        },
-        {
           key: 'food-cost-details',
           // icon: <MdOutlineFoodBank  />,
           label: 'COGs',

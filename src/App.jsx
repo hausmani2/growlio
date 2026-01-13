@@ -25,7 +25,6 @@ import SalesChannelsWrapper from './components/mainSceens/restaurantsInformation
 import ThirdPartyDeliveryWrapper from './components/mainSceens/restaurantsInformation/steps/thirdPartyDelivery/ThirdPartyDeliveryWrapper';
 import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps/Expense/ExpenseWrapper';
 import SalesDataWrapper from './components/mainSceens/restaurantsInformation/steps/salesData/SalesDataWrapper';
-import LaborDataWrapper from './components/mainSceens/restaurantsInformation/steps/laborData/LaborDataWrapper';
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
@@ -147,7 +146,6 @@ function App() {
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
           <Route path="/dashboard/third-party-delivery" element={<Wrapper showSidebar={true} children={<ThirdPartyDeliveryWrapper />} />} />
           <Route path="/dashboard/sales-data" element={<Wrapper showSidebar={true} children={<SalesDataWrapper />} />} />
-          <Route path="/dashboard/labor-data" element={<Wrapper showSidebar={true} children={<LaborDataWrapper />} />} />
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />

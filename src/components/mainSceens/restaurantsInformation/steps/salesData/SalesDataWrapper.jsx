@@ -36,8 +36,11 @@ const toNumber = (v) => {
 };
 
 const formatMoney = (n) => {
+  if (n === null || n === undefined || n === "") return "";
   const v = Number(n);
-  if (!Number.isFinite(v)) return "";
+  if (!Number.isFinite(v) || isNaN(v)) return "";
+  // Display $0 for zero values, otherwise format normally
+  if (v === 0) return "$0";
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
@@ -47,31 +50,33 @@ const SalesDataWrapper = () => {
   const [rows, setRows] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load existing sales data on mount
+  // Load existing sales and labor data on mount
   const hasLoadedRef = useRef(false);
   useEffect(() => {
-    const loadSalesData = async () => {
+    const loadData = async () => {
       if (hasLoadedRef.current) return;
       
       // Check if we already have sales data loaded
       const salesInfo = completeOnboardingData?.["Sales Information"];
+      
+      // Load sales data (which includes labour field)
       if (salesInfo && salesInfo.data && Array.isArray(salesInfo.data) && salesInfo.data.length > 0) {
-        // Data already loaded, transform and use it
         const transformedRows = salesInfo.data
-          .filter(item => item.year && item.month) // Only include items with year and month
+          .filter(item => item.year && item.month)
           .map((item, idx) => ({
             id: item.id || Date.now() + idx,
             month: numberToMonth(item.month),
             year: String(item.year),
-            sales: item.sales ? String(item.sales) : "",
-            expenses: item.expenses ? String(item.expenses) : "",
+            sales: (item.sales !== null && item.sales !== undefined) ? String(item.sales) : "",
+            expenses: (item.expenses !== null && item.expenses !== undefined) ? String(item.expenses) : "",
+            laborCost: (item.labour !== null && item.labour !== undefined) ? String(item.labour) : "",
           }));
         
         if (transformedRows.length > 0) {
           setRows(transformedRows);
+          hasLoadedRef.current = true;
+          return;
         }
-        hasLoadedRef.current = true;
-        return;
       }
       
       hasLoadedRef.current = true;
@@ -84,15 +89,16 @@ const SalesDataWrapper = () => {
         const updatedSalesInfo = currentState.completeOnboardingData?.["Sales Information"];
         
         if (updatedSalesInfo && updatedSalesInfo.data && Array.isArray(updatedSalesInfo.data) && updatedSalesInfo.data.length > 0) {
-          // Transform API data to component format
+          // Transform API data to component format (labour field from sales data)
           const transformedRows = updatedSalesInfo.data
-            .filter(item => item.year && item.month) // Only include items with year and month
+            .filter(item => item.year && item.month)
             .map((item, idx) => ({
               id: item.id || Date.now() + idx,
               month: numberToMonth(item.month),
               year: String(item.year),
-              sales: item.sales ? String(item.sales) : "",
-              expenses: item.expenses ? String(item.expenses) : "",
+              sales: (item.sales !== null && item.sales !== undefined) ? String(item.sales) : "",
+              expenses: (item.expenses !== null && item.expenses !== undefined) ? String(item.expenses) : "",
+              laborCost: (item.labour !== null && item.labour !== undefined) ? String(item.labour) : "",
             }));
           
           if (transformedRows.length > 0) {
@@ -100,20 +106,26 @@ const SalesDataWrapper = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading sales data:', error);
+        console.error('Error loading sales and labor data:', error);
         hasLoadedRef.current = false; // Allow retry on error
       }
     };
     
-    loadSalesData();
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const withProfit = useMemo(() => {
-    return rows.map((r) => ({
-      ...r,
-      profit: toNumber(r.sales) - toNumber(r.expenses),
-    }));
+  const withCalculatedFields = useMemo(() => {
+    return rows.map((r) => {
+      const sales = toNumber(r.sales);
+      const expenses = toNumber(r.expenses);
+      const profit = sales - expenses;
+      
+      return {
+        ...r,
+        profit,
+      };
+    });
   }, [rows]);
 
   const updateRow = (id, patch) => {
@@ -123,47 +135,58 @@ const SalesDataWrapper = () => {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { id: Date.now(), month: "January", year: String(new Date().getFullYear()), sales: "", expenses: "" },
+      { 
+        id: Date.now(), 
+        month: "January", 
+        year: String(new Date().getFullYear()), 
+        sales: "", 
+        expenses: "",
+        laborCost: "",
+      },
     ]);
   };
 
   const handleSave = async () => {
-    // Validate rows
+    // Validate rows - all fields are optional, but at least one field must be filled per row
     const validRows = rows.filter(row => {
       const sales = toNumber(row.sales);
       const expenses = toNumber(row.expenses);
+      const laborCost = toNumber(row.laborCost);
       const year = Number(row.year);
-      return sales > 0 && expenses >= 0 && year > 0 && row.month;
+      
+      // Row is valid if it has year, month, and at least one data field filled
+      return year > 0 && row.month && (sales > 0 || expenses > 0 || laborCost > 0);
     });
 
     if (validRows.length === 0) {
-      message.warning('Please add at least one valid sales entry with sales, expenses, month, and year.');
+      message.warning('Please add at least one entry with month, year, and at least one data field (sales, expenses, or labor).');
       return;
     }
 
     setIsSaving(true);
     try {
-      // Transform rows to API format matching the expected structure
+      // Save sales data with labour field included
       const salesDataArray = validRows.map(row => ({
         year: Number(row.year),
         month: monthToNumber(row.month),
         sales: toNumber(row.sales),
         expenses: toNumber(row.expenses),
         profit: toNumber(row.sales) - toNumber(row.expenses),
+        labour: toNumber(row.laborCost) > 0 ? toNumber(row.laborCost) : null,
       }));
 
-      // Use submitStepData from onboarding slice
+      // Save all data as Sales Information (includes labour field)
       const result = await submitStepData("Sales Information", salesDataArray, (responseData) => {
-        message.success('Sales data saved successfully!');
+        message.success('Sales and labor data saved successfully!');
         navigate("/dashboard/budget");
       });
 
       if (!result.success) {
-        message.error('Failed to save sales data. Please try again.');
+        message.error('Failed to save data. Please try again.');
       }
     } catch (error) {
-      console.error('Error saving sales data:', error);
-      message.error(error.message || 'Failed to save sales data. Please try again.');
+      console.error('Error saving data:', error);
+      message.error(error.message || 'Failed to save data. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -173,29 +196,30 @@ const SalesDataWrapper = () => {
     <div className="w-full">
       {/* Top Card */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-        <div className="text-xs text-gray-400 mb-2">Onboarding / Sales Data</div>
-        <div className="text-lg font-bold text-orange-600">Sales Data</div>
+        <div className="text-xs text-gray-400 mb-2">Onboarding / Sales & Labor Data</div>
+        <div className="text-lg font-bold text-orange-600">Sales & Labor Data</div>
         <div className="text-xs text-gray-600 mt-1 max-w-3xl">
-          Enter any previous sales information that you have to get a better analysis of your restaurant.
+          Enter any previous sales and labor information that you have to get a better analysis of your restaurant. All fields are optional - you can enter sales and labor and skip expenses, or vice versa.
         </div>
       </div>
 
       {/* Table Card */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-        <div className="text-sm font-bold text-orange-600">Previous Sales Information</div>
+        <div className="text-sm font-bold text-orange-600">Previous Sales & Labor Information</div>
 
         <div className="mt-4">
-          <div className="grid grid-cols-5 gap-4 text-xs font-semibold text-gray-700 px-2">
+          <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-700 px-2">
             <div>Month</div>
             <div>Year</div>
             <div>Sales</div>
-            <div>Expenses</div>
+            <div>Labor Cost</div>
+            <div>Expense</div>
             <div>Profit</div>
           </div>
 
           <div className="mt-3 space-y-2">
-            {withProfit.map((r) => (
-              <div key={r.id} className="grid grid-cols-5 gap-4 items-center bg-gray-50 rounded-lg p-3">
+            {withCalculatedFields.map((r) => (
+              <div key={r.id} className="grid grid-cols-6 gap-4 items-center bg-gray-50 rounded-lg p-3">
                 <Select
                   value={r.month}
                   onChange={(v) => updateRow(r.id, { month: v })}
@@ -210,13 +234,19 @@ const SalesDataWrapper = () => {
                   placeholder="2024"
                 />
                 <Input
-                  value={r.sales ? formatMoney(r.sales) : ""}
+                  value={formatMoney(r.sales)}
                   onChange={(e) => updateRow(r.id, { sales: String(toNumber(e.target.value)) })}
                   className="w-full"
                   placeholder="$0"
                 />
                 <Input
-                  value={r.expenses ? formatMoney(r.expenses) : ""}
+                  value={formatMoney(r.laborCost)}
+                  onChange={(e) => updateRow(r.id, { laborCost: String(toNumber(e.target.value)) })}
+                  className="w-full"
+                  placeholder="$0"
+                />
+                <Input
+                  value={formatMoney(r.expenses)}
                   onChange={(e) => updateRow(r.id, { expenses: String(toNumber(e.target.value)) })}
                   className="w-full"
                   placeholder="$0"
@@ -231,7 +261,7 @@ const SalesDataWrapper = () => {
             className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50"
           >
             <PlusOutlined />
-            Add Sales Data
+            Add Sales & Labor Data
           </button>
         </div>
       </div>

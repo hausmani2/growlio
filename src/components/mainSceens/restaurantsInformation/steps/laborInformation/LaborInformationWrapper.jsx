@@ -182,7 +182,7 @@ const LaborInformationWrapperContent = () => {
                             <button
                                 onClick={() => {
                                    
-                                    navigate('/dashboard/labor-data');
+                                    navigate('/dashboard/food-cost-details');
                                 }}
                                 disabled={loading}
                                 className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
@@ -241,7 +241,7 @@ const LaborInformationWrapperContent = () => {
             <div className="flex justify-end gap-3 mt-8 pt-6">
                 <button
                     onClick={() => {
-                        navigate('/dashboard/labor-data');
+                        navigate('/dashboard/food-cost-details');
                     }}
                     disabled={loading}
                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${

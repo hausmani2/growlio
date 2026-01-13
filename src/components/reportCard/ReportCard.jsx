@@ -175,18 +175,18 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct, percentage }) => {
         </RadialBarChart>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {/* Center: Score (100) - percentage prop is actually the score */}
+          {/* Center: Percentage - deltaPct prop is actually the percentage */}
           <div className="text-4xl font-extrabold text-gray-900 tabular-nums leading-none mb-1">
-            {scoreValue !== null ? Math.round(scoreValue) : Math.round(percentageValue)} <span className="text-sm text-gray-500 absolute top-10 ml-1">%</span>
+            {Math.round(percentageValue)} <span className="text-sm text-gray-500 absolute top-10 ml-1">%</span>
           </div>
           {/* Below center: Dollar amount ($15,000) */}
           <div className="text-sm text-gray-900 font-semibold mb-0.5">
             {formatCurrency(amount || 0)}
           </div>
-          {/* Below dollar: Percentage (16.95%) - deltaPct prop is actually the percentage */}
-          {scoreValue !== null && deltaPct !== undefined && deltaPct !== null && (
+          {/* Below dollar: Score (100) - percentage prop is actually the score */}
+          {scoreValue !== null && (
             <div className="text-sm font-semibold text-gray-900 leading-none">
-              {Math.round(percentageValue)}%
+              {Math.round(scoreValue)}
             </div>
           )}
         </div>
