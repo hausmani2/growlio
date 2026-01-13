@@ -48,6 +48,10 @@ export const clearStoreAndRedirectToLogin = () => {
   // Clear sessionStorage
   sessionStorage.clear();
   
+  // Explicitly clear restaurant onboarding flags
+  sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
+  sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
+  
   // Dispatch custom event to notify other tabs/windows about logout
   window.dispatchEvent(new Event('auth-storage-change'));
   

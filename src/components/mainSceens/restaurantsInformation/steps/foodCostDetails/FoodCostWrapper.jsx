@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
 import { message } from "antd";
 import FoodCostDetails from "./FoodCostDetails";
-import DeliveryFrequency from "./DeliveryFrequency";
+// import DeliveryFrequency from "./DeliveryFrequency";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const FoodCostWrapperContent = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateFoodCostDetails, setValidationErrors, clearAllErrors } = useStepValidation();
-    const { navigateToNextStep } = useTabHook();
+    const { navigateToNextStep, activeTab, tabs } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -26,7 +27,7 @@ const FoodCostWrapperContent = () => {
     
     // State for Food Cost Details
     const [foodCostData, setFoodCostData] = useState({
-        cogs_goal: ""
+        cogs_goal: "30%" // Default to 30%
     });
 
     // State for Delivery Frequency
@@ -36,7 +37,7 @@ const FoodCostWrapperContent = () => {
 
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
-        cogs_goal: "",
+        cogs_goal: "30%", // Default to 30%
         delivery_days: []
     });
 
@@ -49,12 +50,12 @@ const FoodCostWrapperContent = () => {
             
             setFoodCostData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : ""
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%"
             }));
             
             setCombinedData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? data.cogs_goal.toString() : "",
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%",
                 delivery_days: data.delivery_days || []
             }));
             
@@ -144,6 +145,12 @@ const FoodCostWrapperContent = () => {
                 return { success: false, error: "Validation failed" };
             }
 
+            // Additional check for cogs_goal
+            if (!combinedData.cogs_goal || combinedData.cogs_goal.trim() === '' || combinedData.cogs_goal === '0%') {
+                message.error("Please select a COGS goal percentage");
+                return { success: false, error: "COGS goal is required" };
+            }
+
             // Step 3: Prepare data for API
             const cogsGoalClean = combinedData.cogs_goal ? combinedData.cogs_goal.toString().replace('%', '') : '';
             
@@ -223,16 +230,27 @@ const FoodCostWrapperContent = () => {
                             errors={validationErrors}
                         />
 
-                        <DeliveryFrequency 
+                        {/* <DeliveryFrequency 
                             data={deliveryData}
                             updateData={updateDeliveryData}
                             onSaveAndContinue={handleSaveAndContinue}
                             errors={validationErrors}
                             loading={loading}
-                        />
+                        /> */}
                         
-                        {isUpdateMode && (
-                            <div className="flex justify-end mt-8 pt-6">
+                        <div className="flex justify-end gap-3 mt-8 pt-6">
+                            <button
+                                onClick={() => {
+                                    navigate('/dashboard/third-party-delivery');
+                                }}
+                                disabled={loading}
+                                className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                }`}
+                            >
+                                Skip
+                            </button>
+                            {isUpdateMode && (
                                 <button
                                     onClick={handleSaveAndContinue}
                                     disabled={loading}
@@ -245,8 +263,8 @@ const FoodCostWrapperContent = () => {
                                     )}
                                     Save Changes
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -271,17 +289,28 @@ const FoodCostWrapperContent = () => {
                     errors={validationErrors}
                 />
 
-                <DeliveryFrequency 
+                {/* <DeliveryFrequency 
                     data={deliveryData}
                     updateData={updateDeliveryData}
                     onSaveAndContinue={handleSaveAndContinue}
                     errors={validationErrors}
                     loading={loading}
-                />
+                /> */}
             </div>
             
-            {isUpdateMode && (
-                <div className="flex justify-end mt-8 pt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6">
+                <button
+                    onClick={() => {
+                        navigate('/dashboard/third-party-delivery');
+                    }}
+                    disabled={loading}
+                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                    }`}
+                >
+                    Skip
+                </button>
+                {isUpdateMode && (
                     <button
                         onClick={handleSaveAndContinue}
                         disabled={loading}
@@ -294,8 +323,8 @@ const FoodCostWrapperContent = () => {
                         )}
                         Save Changes
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

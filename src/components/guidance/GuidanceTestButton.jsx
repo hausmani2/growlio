@@ -24,7 +24,6 @@ const GuidanceTestButton = () => {
 
   const handleResetGuidance = async () => {
     try {
-      console.log('🔄 Forcing guidance to show...');
       setForceShow(true);
       
       // Force start guidance by bypassing the hasSeenGuidance check
@@ -38,7 +37,6 @@ const GuidanceTestButton = () => {
   const handleCheckStatus = async () => {
     try {
       const response = await apiGet('/authentication/user/guidance-status/');
-      console.log('📊 Current guidance status:', response.data);
       alert(`Guidance Status: ${JSON.stringify(response.data, null, 2)}`);
     } catch (error) {
       // Handle 401 errors gracefully
@@ -54,7 +52,6 @@ const GuidanceTestButton = () => {
 
   const handleForceShow = async () => {
     try {
-      console.log('🔄 Force showing guidance...');
       setForceShow(true);
       
       // Force start guidance with forceShow flag
@@ -66,7 +63,6 @@ const GuidanceTestButton = () => {
 
   const handleForceShowDataGuidance = async () => {
     try {
-      console.log('🔄 Force showing data guidance...');
       await startDataGuidance(true);
     } catch (error) {
       console.error('Failed to force show data guidance:', error);
@@ -90,8 +86,6 @@ const GuidanceTestButton = () => {
       const dataPopups = allPopups.filter(p => 
         dataGuidanceKeys.includes(p.key) && p.page === currentPage
       );
-      console.log('📊 All popups:', allPopups);
-      console.log('📊 Data guidance popups for current page:', dataPopups);
       alert(`Total Popups: ${allPopups.length}\nData Guidance Popups for "${currentPage}": ${dataPopups.length}\n\nCheck console for details.`);
     } catch (error) {
       console.error('Failed to check popups:', error);

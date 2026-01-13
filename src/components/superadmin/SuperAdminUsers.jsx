@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Card, 
   Button, 
@@ -35,6 +35,8 @@ const SuperAdminUsers = () => {
     loading
   } = useStore();
   const [users, setUsers] = useState([]);
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
   useEffect(() => {
     // Check if currently impersonating
@@ -44,15 +46,29 @@ const SuperAdminUsers = () => {
       message.info(impersonationMessage || `Currently impersonating: ${impersonatedUser}`);
     }
 
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Only fetch if we don't have users yet
+    if (hasFetchedRef.current && users.length > 0) {
+      return;
+    }
+
     // Load users for statistics
     const loadUsers = async () => {
+      isFetchingRef.current = true;
       try {
         const result = await fetchAllUsers(1, 100); // Load first 100 users for stats
         if (result.success) {
           setUsers(result.data);
+          hasFetchedRef.current = true;
         }
       } catch (error) {
         console.error('Error loading users for statistics:', error);
+      } finally {
+        isFetchingRef.current = false;
       }
     };
 

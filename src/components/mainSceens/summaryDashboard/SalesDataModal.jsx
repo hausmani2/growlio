@@ -65,6 +65,7 @@ const SalesDataModal = ({
   const [previousWeekLaborRate, setPreviousWeekLaborRate] = useState(null);
   const [showEditWeeklyRateWarningModal, setShowEditWeeklyRateWarningModal] = useState(false);
   const [selectedLaborRateChoice, setSelectedLaborRateChoice] = useState(null); // 'current' or 'previous'
+  const [newLaborRateValue, setNewLaborRateValue] = useState('');
 
   // Add state for the week confirmation modal
   const [showWeekConfirmationModal, setShowWeekConfirmationModal] = useState(false);
@@ -99,19 +100,30 @@ const SalesDataModal = ({
   };
 
   // Function to fetch restaurant goals if not already available
+  const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
+    // Prevent multiple calls
+    if (hasFetchedGoalsRef.current) {
+      return;
+    }
+    
     try {
       if (!restaurantGoals) {
+        hasFetchedGoalsRef.current = true;
         await getRestaurentGoal();
+      } else {
+        hasFetchedGoalsRef.current = true;
       }
     } catch (error) {
       console.error('Error fetching restaurant goals:', error);
+      hasFetchedGoalsRef.current = false; // Allow retry on error
     }
   };
 
   // Fetch restaurant goals and average hourly rate on component mount
   useEffect(() => {
     fetchRestaurantGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Function to fetch average hourly rate from API
@@ -744,13 +756,12 @@ const SalesDataModal = ({
 
   // Handle user choice in labor rate confirmation modal
   const handleLaborRateConfirmationChoice = (choice) => {
-    
-    setShowLaborRateConfirmationModal(false);
     setShowPopupDelay(false); // Reset delay indicator
     
-    if (choice === 'previous') {
-      // User wants to use previous week's rate
-      setSelectedLaborRateChoice('previous'); // Track the choice
+    if (choice === 'yes') {
+      // User wants to use last week's rate
+      setShowLaborRateConfirmationModal(false);
+      setSelectedLaborRateChoice('previous');
       if (previousWeekLaborRate) {
         setFormData(prev => ({
           ...prev,
@@ -759,33 +770,38 @@ const SalesDataModal = ({
             average_hourly_rate: previousWeekLaborRate
           }
         }));
-        message.success(`Last week's rate of $${previousWeekLaborRate.toFixed(2)} set in input field. You can modify it if needed.`);
-        setShowLaborRateInput(true); // Show input field so user can see/modify the value
+        message.success(`Using last week's rate of $${previousWeekLaborRate.toFixed(2)}`);
+        setShowLaborRateInput(false);
         setLaborRateConfirmed(true);
-      } else {
-        // No previous week rate available, show input field
-        setShowLaborRateInput(true);
-        setLaborRateConfirmed(true);
-        message.info('No previous week rate available. Please enter your labor rate below');
       }
-    } else if (choice === 'current') {
-      // User wants to use current rate (explicitly)
-      setSelectedLaborRateChoice('current'); // Track the choice
-      message.success(`Using current labor rate of $${formData.weeklyTotals.average_hourly_rate || 0}`);
+    } else if (choice === 'budgeted') {
+      // User wants to use budgeted labor rate
+      setShowLaborRateConfirmationModal(false);
+      setSelectedLaborRateChoice('budgeted');
+      const budgetedRate = restaurantGoals?.avg_hourly_rate || formData.weeklyTotals.average_hourly_rate || 0;
+      setFormData(prev => ({
+        ...prev,
+        weeklyTotals: {
+          ...prev.weeklyTotals,
+          average_hourly_rate: budgetedRate
+        }
+      }));
+      message.success(`Using budgeted labor rate of $${budgetedRate.toFixed(2)}`);
       setShowLaborRateInput(false);
       setLaborRateConfirmed(true);
-    } else if (choice === 'continue') {
-      // User wants to continue with current labor rate
-      setSelectedLaborRateChoice('current'); // Track as current
-      message.success('Continuing with current labor rate settings');
-      setShowLaborRateInput(false);
+    } else if (choice === 'setNew') {
+      // User wants to set a new labor rate - show input field
+      setShowLaborRateConfirmationModal(false);
+      setSelectedLaborRateChoice('new');
+      setShowLaborRateInput(true);
       setLaborRateConfirmed(true);
+      setNewLaborRateValue('');
     } else {
       // Default fallback
+      setShowLaborRateConfirmationModal(false);
       setSelectedLaborRateChoice(null);
       setShowLaborRateInput(true);
       setLaborRateConfirmed(true);
-      message.info('Please enter your new average hourly rate below');
     }
   };
 
@@ -1029,17 +1045,19 @@ const SalesDataModal = ({
           </Card>
         )}
 
-        {/* Labor Rate Input - Always show when user wants to change labor rate */}
-       
+        {/* Labor Rate Input - Show when user clicks "Set New Labor Rate" */}
         {showLaborRateInput && (
           <Card 
             title={
               <div className="flex items-center justify-between w-full">
-                <span>Labor Rate Settings</span>
+                <span>Set New Labor Rate</span>
                 <Button 
                   type="text" 
                   size="small" 
-                  onClick={() => setShowLaborRateInput(false)}
+                  onClick={() => {
+                    setShowLaborRateInput(false);
+                    setNewLaborRateValue('');
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   ✕ Close
@@ -1047,7 +1065,7 @@ const SalesDataModal = ({
               </div>
             }
             size="small"
-            style={{ borderColor: '#1890ff', borderWidth: '2px' }}
+            style={{ borderColor: '#84cc16', borderWidth: '2px', marginTop: '16px' }}
           >
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={12} md={8} lg={6}>
@@ -1055,16 +1073,36 @@ const SalesDataModal = ({
                   <Text strong className="text-sm">Average Hourly Rate:</Text>
                   <Input
                     type="number"
-                    value={formData.weeklyTotals.average_hourly_rate}
-                    onChange={(e) => handleLaborRateChange(e.target.value)}
+                    value={newLaborRateValue || formData.weeklyTotals.average_hourly_rate}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNewLaborRateValue(value);
+                      handleLaborRateChange(value);
+                    }}
                     prefix="$"
                     placeholder="0.00"
                     className="mt-1"
-                    style={{ borderColor: '#1890ff' }}
+                    style={{ borderColor: '#84cc16' }}
                   />
                   <Text type="secondary" className="text-xs mt-1 block">
-                    Enter your current average hourly labor rate
+                    Enter your new average hourly labor rate
                   </Text>
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      if (newLaborRateValue && parseFloat(newLaborRateValue) > 0) {
+                        message.success(`New labor rate of $${parseFloat(newLaborRateValue).toFixed(2)} has been set`);
+                        setShowLaborRateInput(false);
+                        setNewLaborRateValue('');
+                      } else {
+                        message.warning('Please enter a valid labor rate');
+                      }
+                    }}
+                    className="mt-2"
+                    style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+                  >
+                    Set Rate
+                  </Button>
                 </div>
               </Col>
             </Row>
@@ -1510,100 +1548,55 @@ const SalesDataModal = ({
  
       <Modal
         title={
-          <div className="flex items-center gap-2" >
+          <div className="flex items-center gap-2">
             <UserOutlined className="text-blue-500" />
             <span>Labor Rate Confirmation</span>
           </div>
         }
         open={showLaborRateConfirmationModal}
-        onCancel={() => handleLaborRateConfirmationChoice(true)} // Default to continue if user closes modal
-        footer={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Button 
-              onClick={() => handleLaborRateConfirmationChoice('previous')}
-              icon={<UserOutlined />}
-              style={{ backgroundColor: '#1890ff', borderColor: '#1890ff', color: 'white' }}
-            >
-              {previousWeekLaborRate ? 
-                `Use Last Week's Rate ($${previousWeekLaborRate.toFixed(2)})` :
-                'Update Labor Rate'
-              }
-            </Button>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {previousWeekLaborRate ? (
-                <Button 
-                  onClick={() => handleLaborRateConfirmationChoice('current')}
-                  icon={<CalculatorOutlined />}
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
-                >
-                  Use Current Rate (${formData.weeklyTotals.average_hourly_rate || 0})
-                </Button>
-              ) : (
-                <Button 
-                  type="primary" 
-                  onClick={() => handleLaborRateConfirmationChoice('continue')}
-                  icon={<CalculatorOutlined />}
-                >
-                  Continue
-                </Button>
-              )}
-            </div>
-          </div>
-        }
+        onCancel={() => setShowLaborRateConfirmationModal(false)}
+        footer={null}
         width={500}
         destroyOnClose
         closable={true}
         maskClosable={false}
         zIndex={1001}
       >
-        <div className="text-center">
-          <QuestionCircleOutlined 
-            className="text-6xl text-blue-500 mb-4" 
-            style={{ fontSize: '64px' }}
-          />
-          <Title level={4} className="mb-4" >
+        <div>
+          <Title level={4} className="mb-6 text-center" style={{ fontWeight: 700 }}>
             {previousWeekLaborRate ? 
-              `Last week's labor rate was $${previousWeekLaborRate.toFixed(2)}. Would you like to use that labor rate this week?` :
+              `Would you like to use last week's average labor rate of $${previousWeekLaborRate.toFixed(2)}?` :
               'Would you like to update your average hourly labor rate?'
             }
           </Title>
           
-          <div className="bg-blue-50 p-4 rounded-lg mb-4">
-            <Text strong className="text-blue-700 mb-2 block">
-              {previousWeekLaborRate ? 
-                'Labor rate information:' :
-                'Before adding sales data, please confirm your labor rate:'
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => handleLaborRateConfirmationChoice('yes')}
+              className="w-full h-12 rounded-lg text-white font-semibold"
+              style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+            >
+              Yes
+            </Button>
+            
+            <Button
+              onClick={() => handleLaborRateConfirmationChoice('budgeted')}
+              className="w-full h-12 rounded-lg text-white font-semibold"
+              style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+            >
+              {restaurantGoals?.avg_hourly_rate ? 
+                `No, Use Budgeted Labor Rate of $${parseFloat(restaurantGoals.avg_hourly_rate).toFixed(2)}` :
+                `No, Use Budgeted Labor Rate of $${(formData.weeklyTotals.average_hourly_rate || 0).toFixed(2)}`
               }
-            </Text>
-            <div className="text-sm text-blue-600 space-y-1">
-              {previousWeekLaborRate ? (
-                <>
-                  <p>• Last week's average hourly rate: <strong>${previousWeekLaborRate.toFixed(2)}</strong></p>
-                  <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
-                  <p>• You can use last week's rate or enter a new one</p>
-                  <p>• Accurate labor rates ensure better profit/loss analysis</p>
-                </>
-              ) : (
-                <>
-                  <p>• Current average hourly rate: <strong>${formData.weeklyTotals.average_hourly_rate || 0}</strong></p>
-                  <p>• Average hourly rate will be used for labor cost calculations</p>
-                  <p>• You can update the rate if needed</p>
-                  <p>• Accurate labor rates ensure better profit/loss analysis</p>
-                </>
-              )}
-            </div>
-          </div>
-          
-          <div className="text-sm text-gray-600">
-            <p className="mb-2">
-              <strong>Continue:</strong> {previousWeekLaborRate ? 
-                `Use last week's rate of $${previousWeekLaborRate.toFixed(2)}` :
-                'Continue with current labor rate'
-              }
-            </p>
-            <p>
-              <strong>Update Labor Rate:</strong> Enter a new average hourly rate
-            </p>
+            </Button>
+            
+            <Button
+              onClick={() => handleLaborRateConfirmationChoice('setNew')}
+              className="w-full h-12 rounded-lg text-white font-semibold"
+              style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+            >
+              Set New Labor Rate
+            </Button>
           </div>
         </div>
       </Modal>

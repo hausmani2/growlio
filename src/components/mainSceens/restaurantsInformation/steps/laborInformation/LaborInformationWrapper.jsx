@@ -6,15 +6,16 @@ import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useStepValidation from "../useStepValidation";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 
 const LaborInformationWrapperContent = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
-    const { navigateToNextStep } = useTabHook();
+    const { navigateToNextStep, activeTab, tabs } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -26,7 +27,7 @@ const LaborInformationWrapperContent = () => {
 
     // State for labor data
     const [laborData, setLaborData] = useState({
-        labour_goal: '',
+        labour_goal: '28', // Default to 28%
         avg_hourly_rate: '',
         labor_record_method: 'daily_hours_costs',
         daily_ticket_count: false,
@@ -43,7 +44,7 @@ const LaborInformationWrapperContent = () => {
             setLaborData(prev => {
                 const newData = {
                     ...prev,
-                    labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : '',
+                    labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : prev.labour_goal || '28',
                     avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
                     labor_record_method: data.labor_record_method || 'daily_hours_costs',
                     daily_ticket_count: data.daily_ticket_count,
@@ -177,8 +178,20 @@ const LaborInformationWrapperContent = () => {
                             loading={loading}
                         />
 
-                        {isUpdateMode && (
-                            <div className="flex justify-end mt-8 pt-6">
+                        <div className="flex justify-end gap-3 mt-8 pt-6">
+                            <button
+                                onClick={() => {
+                                   
+                                    navigate('/dashboard/labor-data');
+                                }}
+                                disabled={loading}
+                                className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                }`}
+                            >
+                                Skip
+                            </button>
+                            {isUpdateMode && (
                                 <button
                                     onClick={handleSaveAndContinue}
                                     disabled={loading}
@@ -191,8 +204,8 @@ const LaborInformationWrapperContent = () => {
                                     )}
                                     Save Changes
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,8 +238,19 @@ const LaborInformationWrapperContent = () => {
                 />
             </div>
 
-            {isUpdateMode && (
-                <div className="flex justify-end mt-8 pt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6">
+                <button
+                    onClick={() => {
+                        navigate('/dashboard/labor-data');
+                    }}
+                    disabled={loading}
+                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                    }`}
+                >
+                    Skip
+                </button>
+                {isUpdateMode && (
                     <button
                         onClick={handleSaveAndContinue}
                         disabled={loading}
@@ -239,8 +263,8 @@ const LaborInformationWrapperContent = () => {
                         )}
                         Save Changes
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

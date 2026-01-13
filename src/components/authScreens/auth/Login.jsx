@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
-import GrowlioLogo from '../../common/GrowlioLogo';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import { Link } from 'react-router-dom';
 import { Input, message, Button, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
+import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 
 const Login = () => {
   const [form, setForm] = useState({ 
@@ -32,7 +32,7 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/dashboard/report-card');
     }
   }, [isAuthenticated, navigate]);
 
@@ -107,7 +107,7 @@ const Login = () => {
           if (isComplete) {
             message.success('Welcome back! Redirecting to dashboard...');
             setTimeout(() => {
-              navigate('/dashboard/budget');
+              navigate('/dashboard/report-card');
             }, 1000);
           } else {
             message.success('Welcome to Growlio! Let\'s get you set up.');
@@ -153,7 +153,7 @@ const Login = () => {
       
       {/* Logo Section - Outside the form box */}
       <div className="text-center mb-8">
-        <GrowlioLogo width={220} height={80} className="mx-auto" />
+        <img src={growlioLogo} alt="Growlio Logo" className="w-48 mx-auto" />
       </div>
       
       <form

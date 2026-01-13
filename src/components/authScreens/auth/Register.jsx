@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
-import GrowlioLogo from '../../common/GrowlioLogo';
 import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
@@ -9,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { Input, message, Button, Spin, Checkbox, Tooltip } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import DisclaimerModal from './DisclaimerModal';
+import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 
 const Register = () => {
   const [form, setForm] = useState({ 
@@ -172,7 +172,7 @@ const Register = () => {
     <div className="w-full max-w-md">
       {/* Logo Section - Outside the form box */}
       <div className="text-center mb-8">
-        <GrowlioLogo width={180} height={60} className="mx-auto" />
+        <img src={growlioLogo} alt="Growlio Logo" className="w-48 mx-auto" />
       </div>
       
       <form
@@ -184,8 +184,8 @@ const Register = () => {
           <h1 className="text-3xl font-bold text-orange-600 mb-3">
             Join Growlio Today! <span role="img" aria-label="rocket" className="text-2xl">🚀</span>
           </h1>
-          <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto">
-            Get discovered, manage bookings, and showcase your menu — all in one place.
+          <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto px-4">
+            A more <strong> profitable </strong> restaurant is just a few clicks away.
           </p>
         </div>
         

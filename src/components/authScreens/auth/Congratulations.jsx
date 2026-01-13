@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Staff from "../../../assets/pngs/shaff.png"
-import Cafe from "../../../assets/pngs/cafe.png"
+import Mask from "../../../assets/pngs/new-onboard.png"
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../../store/store";
@@ -15,43 +14,95 @@ const Congratulations = () => {
     // Zustand store hooks
     const {
         isAuthenticated,
-        checkOnboardingCompletion
+        checkOnboardingCompletion,
+        getSalesInformation,
+        salesInformationData,
+        forceOnboardingCheck
     } = useStore();
+    
+    // Helper function to check if sales information exists
+    const hasSalesInformation = () => {
+        if (!salesInformationData) return false;
+        const data = extractSalesData(salesInformationData);
+        if (!data) return false;
+        return (
+            data.sales != null &&
+            data.expenses != null &&
+            data.labour != null &&
+            data.cogs != null
+        );
+    };
 
-    // Check authentication and onboarding status on component mount
+    // Helper function to extract and check sales data
+    const extractSalesData = (data) => {
+        if (Array.isArray(data) && data.length > 0) {
+            return data[0];
+        }
+        if (data?.results) {
+            return typeof data.results === 'object' ? data.results : (Array.isArray(data.results) ? data.results[0] : null);
+        }
+        if (data?.data) {
+            return Array.isArray(data.data) ? data.data[0] : data.data;
+        }
+        if (data && typeof data === 'object' && ('sales' in data || 'cogs' in data)) {
+            return data;
+        }
+        return null;
+    };
+
+    // Check authentication, sales information, and onboarding status on component mount
     useEffect(() => {
         const checkAuthAndOnboarding = async () => {
-            // If not authenticated, redirect to login
             if (!isAuthenticated) {
                 navigate('/login');
                 return;
             }
 
-            // Check onboarding completion status
+            // Fetch sales information if not in store
+            const currentSalesData = useStore.getState().salesInformationData;
+            if (!currentSalesData) {
+                try {
+                    await getSalesInformation();
+                } catch (error) {
+                    console.error('Error fetching sales information:', error);
+                }
+            }
+
+            // Check if sales information exists
+            const updatedSalesData = useStore.getState().salesInformationData;
+            if (updatedSalesData) {
+                const salesData = extractSalesData(updatedSalesData);
+                if (salesData) {
+                    const hasAllData = (
+                        salesData.sales != null &&
+                        salesData.expenses != null &&
+                        salesData.labour != null &&
+                        salesData.cogs != null
+                    );
+                    
+                    if (hasAllData) {
+                        navigate('/dashboard/report-card');
+                        setIsChecking(false);
+                        return;
+                    }
+                }
+            }
+
+            // Check onboarding completion
             try {
                 const result = await checkOnboardingCompletion();
-
-                if (result.success) {
-                    const isComplete = result.isComplete;
-
-                    if (isComplete) {
-                        // If onboarding is complete, redirect to dashboard
-                        navigate('/dashboard/budget');
-                    }
-                    // If not complete, stay on this page (which is correct)
-                } else {
-                    // If check fails, stay on this page (assume incomplete)
-                    console.warn('Onboarding check failed, staying on congratulations page');
+                if (result.success && result.isComplete) {
+                    navigate('/dashboard/report-card');
                 }
             } catch (error) {
                 console.error('Error checking onboarding status:', error);
-                // If error occurs, stay on this page (assume incomplete)
             } finally {
                 setIsChecking(false);
             }
         };
 
         checkAuthAndOnboarding();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, navigate]);
 
     // Show loading spinner while checking authentication and onboarding status
@@ -78,32 +129,39 @@ const Congratulations = () => {
                                 Running a restaurant is tough—but managing your numbers doesn't have to be. That's why we built Growlio: a simple budgeting tool designed to help you stay profitable and in control.
                             </p>
 
-                            <p className="text-sm sm:text-base">
-                                Here's the deal: restaurants live and die by three things—sales, food costs, and labor costs. Food and labor are your biggest expenses, and the key is keeping them in line with your sales. It's not about the dollar amount—it's about the percentage.
+                            <p className="text-sm sm:text-base flex flex-col">
+                                <strong>Here's the deal</strong>
+                                Restaurants live and die by three things—sales, food costs, and labor costs. Food and labor are your biggest expenses, and the key is keeping them in line with your sales. It's not about the dollar amount—it's about the percentage.
                             </p>
 
-                            <p className="text-sm sm:text-base">
-                                For example, if you do $10,000 in sales this week and your food cost target is 30%, you should only spend about $3,000 on food. If sales dip to $8,000, your food budget drops to $2,400. Same goes for labor. When sales go up, you can spend more. When sales go down, you have to spend less. That's how you stay profitable.
+                            <p className="text-sm sm:text-base flex flex-col">
+                                <strong>Example</strong>
+                               If you do $10,000 in sales this week and your food cost target is 30%, you should only spend about $3,000 on food. If sales dip to $8,000, your food budget drops to $2,400. Same goes for labor. When sales go up, you can spend more. When sales go down, you have to spend less. That's how you stay profitable.
                             </p>
 
-                            <p className="text-sm sm:text-base">
-                                Growlio makes this easy. At the start of each week, you enter your sales goal. Based on the food and labor targets you set during setup, Growlio gives you clear weekly budgets. Each day, you enter your actual sales, food costs, and labor costs, and Growlio automatically updates your budgets—so you always know exactly where you stand.
+                            <p className="text-sm sm:text-base flex flex-col">
+                                <strong>Growlio makes this easy</strong>
+                                 At the start of each week, you enter your sales goal. Based on the food and labor targets you set during setup, Growlio gives you clear weekly budgets. Each day, you enter your actual sales, food costs, and labor costs, and Growlio automatically updates your budgets—so you always know exactly where you stand.
                             </p>
 
-                            <p className="text-sm sm:text-base">
-                                Stick to your percentages, and Growlio will help you spot problems early and fix them before they turn into headaches.
-                            </p>
-
-                            <p className="text-sm sm:text-base">
-                                Getting started is quick and painless—we'll ask you a few simple questions about your restaurant, and in just a couple of minutes, you'll be ready to roll. And along the way, Growlio will keep giving you tips and insights to make sure you're never left guessing.
+                            <p className="text-sm sm:text-base flex flex-col">
+                                <strong>Just stick to your percentages</strong>
+                                Growlio will help you spot problems early and fix them before they turn into headaches.
                             </p>
                         </div>
                         {/* Button */}
-                        <div className="space-y-4">
+                        <div className="space-y-4 mt-4">
                             <PrimaryBtn
                                 title="Let's get started!"
                                 className="btn-brand w-full text-lg py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
-                                onClick={() => navigate('/onboarding')}
+                                onClick={() => {
+                                    // Check if sales information exists - if yes, redirect to dashboard
+                                    if (hasSalesInformation()) {
+                                        navigate('/dashboard/report-card');
+                                    } else {
+                                        navigate('/onboarding');
+                                    }
+                                }}
                             />
                         </div>
                     </div>
@@ -119,8 +177,8 @@ const Congratulations = () => {
                 <ImageLayout>
                     <div className="relative flex items-end justify-center">
                         <img
-                            src={Staff}
-                            className="h-[calc(100vh-100px)] object-cover"
+                            src={Mask}
+                            className="h-[calc(100vh-100px)] object-contain"
                             alt="Staff illustration"
                         />
                     </div>

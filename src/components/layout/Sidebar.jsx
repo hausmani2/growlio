@@ -16,16 +16,22 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Map pathname to menu key
   const pathKeyMap = {
+    '/dashboard/report-card': 'report-card',
     '/dashboard/budget': 'budget',
     '/dashboard/profit-loss': 'profit-loss',
     '/dashboard': 'dashboard',
     '/dashboard/onboarding': 'onboarding',
     '/dashboard/basic-information': 'basic-information',
     '/dashboard/sales-channels': 'sales-channels',
+    '/dashboard/third-party-delivery': 'third-party-delivery',
+    '/dashboard/sales-data': 'sales-data',
+    '/dashboard/labor-data': 'labor-data',
     '/dashboard/labor-information': 'labor-information',
     '/dashboard/food-cost-details': 'food-cost-details',
     '/dashboard/expense': 'expense',
     '/dashboard/support': 'support',
+    '/dashboard/plans': 'plans',
+    '/dashboard/square': 'square',
     '/dashboard/profile': 'profile',
     '/dashboard/faq': 'faq',
     '/dashboard/chat': 'chat',
@@ -34,6 +40,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/superadmin/dashboard': 'superadmin-dashboard',
     '/superadmin/users': 'superadmin-users',
     '/superadmin/user-management': 'superadmin-user-management',
+    '/superadmin/user-info': 'superadmin-user-info',
     '/superadmin/tooltips': 'superadmin-tooltips',
     '/superadmin/faq': 'superadmin-faq',
     '/superadmin/superadmin-chat': 'superadmin-chat',
@@ -134,18 +141,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
         <button
           onClick={() => handleMenuItemClick(item)}
           data-guidance={`sidebar_${item.key}`}
-          className={`w-full flex items-center px-2 py-3 text-left transition-all duration-200 group ${
+          className={`w-full flex items-center px-2 py-2 text-left transition-all duration-200 group ${
             isSelected
               ? 'bg-orange-50 border-r-2 border-orange-500 text-orange-700'
               : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-          } ${collapsed ? 'lg:justify-center lg:px-2' : ''} ${level > 0 ? 'pl-7' : ''}`}
+          } ${collapsed ? 'lg:justify-center lg:px-2' : ''} ${level > 0 ? (item.icon ? 'pl-5' : 'pl-4') : ''}`}
         >
           {item.icon && (
             <span className={`mr-3 text-lg ${isSelected ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'} ${collapsed ? 'lg:mr-0' : ''}`}>
               {item.icon}
             </span>
           )}
-          <span className={`font-medium flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
+          <span className={`font-medium flex-1 ${collapsed ? 'lg:hidden' : ''} ${!item.icon && level > 0 ? 'text-sm' : ''}`}>
             {item.label}
           </span>
           {hasChildren && !collapsed && (
@@ -237,7 +244,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
         {/* Menu Content - Improved scrolling and spacing */}
         <div className="flex-1 flex flex-col h-[calc(90vh-100px)] overflow-hidden">
-          <div className="flex-1 overflow-y-auto py-4 thin-scrollbar">
+          <div className="flex-1 overflow-y-auto py-3 thin-scrollbar">
             <nav className="space-y-1 px-2">
               {/* Main menu items */}
               {menuItems.slice(0, -1).map((item) => renderMenuItem(item))}

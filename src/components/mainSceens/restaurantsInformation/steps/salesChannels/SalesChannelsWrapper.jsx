@@ -16,7 +16,7 @@ const SalesChannelsWrapperContent = () => {
     const location = useLocation();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
-    const { navigateToNextStep } = useTabHook();
+    const { navigateToNextStep, activeTab, tabs } = useTabHook();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -282,8 +282,20 @@ const SalesChannelsWrapperContent = () => {
                             loading={loading}
                         />
 
-                        {isUpdateMode && (
-                            <div className="flex justify-end mt-8 pt-6">
+                        <div className="flex justify-end gap-3 mt-8 pt-6">
+                            <button
+                                onClick={() => {
+                                    
+                                    navigate('/dashboard/labor-information');
+                                }}
+                                disabled={loading}
+                                className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                }`}
+                            >
+                                Skip
+                            </button>
+                            {isUpdateMode && (
                                 <button
                                     onClick={handleSaveAndContinue}
                                     disabled={loading}
@@ -296,8 +308,8 @@ const SalesChannelsWrapperContent = () => {
                                     )}
                                     Save Changes
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -309,8 +321,8 @@ const SalesChannelsWrapperContent = () => {
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
-                    currentStep="Sales Channels"
-                    description="Configure your restaurant's sales channels including in-store, online, app, and third-party delivery options."
+                    currentStep="Operating Information"
+                    description="Configure your restaurant's operating information including sales channels and POS details."
                 />
             </div>
 
@@ -338,8 +350,19 @@ const SalesChannelsWrapperContent = () => {
                 loading={loading}
             />
 
-            {isUpdateMode && (
-                <div className="flex justify-end mt-8 pt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6">
+                <button
+                    onClick={() => {
+                        navigate('/dashboard/labor-information');
+                    }}
+                    disabled={loading}
+                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                    }`}
+                >
+                    Skip
+                </button>
+                {isUpdateMode && (
                     <button
                         onClick={handleSaveAndContinue}
                         disabled={loading}
@@ -352,8 +375,8 @@ const SalesChannelsWrapperContent = () => {
                         )}
                         Save Changes
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

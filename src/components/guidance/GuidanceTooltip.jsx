@@ -10,11 +10,9 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
 
   useEffect(() => {
     if (!popup) {
-      console.log('⚠️ GuidanceTooltip: No popup provided');
       return;
     }
 
-    console.log('🔍 GuidanceTooltip: Looking for element with key:', popup.key);
     
     // Try to find element with retry logic for dynamically rendered modals
     let retryCount = 0;
@@ -24,20 +22,15 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
       const element = document.querySelector(`[data-guidance="${popup.key}"]`);
       
       if (element) {
-        console.log('✅ GuidanceTooltip: Found element:', element);
         setupElement(element);
         return;
       }
       
       if (retryCount < maxRetries) {
         retryCount++;
-        console.log(`⏳ GuidanceTooltip: Element not found, retrying... (${retryCount}/${maxRetries})`);
         setTimeout(findElement, 500);
       } else {
-        console.warn(`❌ Element with data-guidance="${popup.key}" not found after ${maxRetries} retries`);
-        console.log('💡 Available data-guidance elements:', 
-          Array.from(document.querySelectorAll('[data-guidance]')).map(el => el.getAttribute('data-guidance'))
-        );
+        console.warn(`Element with data-guidance="${popup.key}" not found after ${maxRetries} retries`);
       }
     };
     

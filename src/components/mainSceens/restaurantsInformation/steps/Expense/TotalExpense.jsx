@@ -9,7 +9,7 @@ import useTooltips from "../../../../../utils/useTooltips";
 
 const TotalExpense = ({ data,  onSave }) => {
     const location = useLocation();
-    const { handleTabClick } = useTabHook();
+    const { handleTabClick, navigateToNextStep, activeTab, tabs } = useTabHook();
     const tooltips = useTooltips('onboarding-expense');
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -20,8 +20,14 @@ const TotalExpense = ({ data,  onSave }) => {
         // Conversion factor: 4.33 weeks per month (52 weeks ÷ 12 months)
         const WEEKS_PER_MONTH = 4.33;
         
+        // Combine all expenses into a single list
+        const allExpenses = [
+            ...(data.dynamicFixedFields || []),
+            ...(data.dynamicVariableFields || [])
+        ];
+        
         // Calculate total monthly expenses by converting all expenses to monthly
-        const totalMonthlyExpenses = (data.dynamicVariableFields || []).reduce((sum, field) => {
+        const totalMonthlyExpenses = allExpenses.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
                 field.label.toLowerCase().includes(keyword)
@@ -31,16 +37,9 @@ const TotalExpense = ({ data,  onSave }) => {
             }
             
             const value = parseFloat(field.value || 0);
-            if (field.variable_expense_type === 'weekly') {
-                // Convert weekly to monthly: weekly * 4.33
-                return sum + (value * WEEKS_PER_MONTH);
-            } else {
-                // Already monthly
-                return sum + value;
-            }
-        }, 0) + (data.dynamicFixedFields || []).reduce((sum, field) => {
-            const value = parseFloat(field.value || 0);
-            if (field.fixed_expense_type === 'weekly') {
+            const expenseType = field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly';
+            
+            if (expenseType === 'weekly') {
                 // Convert weekly to monthly: weekly * 4.33
                 return sum + (value * WEEKS_PER_MONTH);
             } else {
@@ -50,7 +49,7 @@ const TotalExpense = ({ data,  onSave }) => {
         }, 0);
 
         // Calculate total weekly expenses by converting all expenses to weekly
-        const totalWeeklyExpenses = (data.dynamicVariableFields || []).reduce((sum, field) => {
+        const totalWeeklyExpenses = allExpenses.reduce((sum, field) => {
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
                 field.label.toLowerCase().includes(keyword)
@@ -60,16 +59,9 @@ const TotalExpense = ({ data,  onSave }) => {
             }
             
             const value = parseFloat(field.value || 0);
-            if (field.variable_expense_type === 'monthly') {
-                // Convert monthly to weekly: monthly ÷ 4.33
-                return sum + (value / WEEKS_PER_MONTH);
-            } else {
-                // Already weekly
-                return sum + value;
-            }
-        }, 0) + (data.dynamicFixedFields || []).reduce((sum, field) => {
-            const value = parseFloat(field.value || 0);
-            if (field.fixed_expense_type === 'monthly') {
+            const expenseType = field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly';
+            
+            if (expenseType === 'monthly') {
                 // Convert monthly to weekly: monthly ÷ 4.33
                 return sum + (value / WEEKS_PER_MONTH);
             } else {
@@ -94,7 +86,7 @@ const TotalExpense = ({ data,  onSave }) => {
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600">Total Expenses</h3>
                 <p className="text-gray-600 text-sm">
-                   Your total expenses are calculated by adding your variable and fixed costs.
+                   Your total expenses are calculated by adding all your expenses.
                 </p>
             </div>
             
@@ -133,11 +125,20 @@ const TotalExpense = ({ data,  onSave }) => {
                         className="bg-gray-200 text-black h-11" 
                         onClick={handleBack} 
                     />
-                    <PrimaryBtn 
-                        title="Save & Continue" 
-                        className="btn-brand h-11"
-                        onClick={onSave}
-                    />
+                    <div className="flex gap-3">
+                        <PrimaryBtn 
+                            title="Skip" 
+                            className="bg-gray-200 text-gray-700 h-11" 
+                            onClick={() => {
+                                navigateToNextStep(true);
+                            }} 
+                        />
+                        <PrimaryBtn 
+                            title="Save & Continue" 
+                            className="btn-brand h-11"
+                            onClick={onSave}
+                        />
+                    </div>
                 </div>
             )}
         </div>

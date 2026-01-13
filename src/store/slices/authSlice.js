@@ -1,4 +1,4 @@
-import { apiPost } from '../../utils/axiosInterceptors';
+import { apiPost, apiGet } from '../../utils/axiosInterceptors';
 
 // Simple token check - just undefined vs token
 const hasToken = (token) => {
@@ -44,6 +44,9 @@ const createAuthSlice = (set, get) => {
     activeToken: hasStoredToken ? storedToken : null,
     loading: false,
     error: null,
+    // Cached restaurant onboarding data to avoid duplicate API calls
+    restaurantOnboardingData: null,
+    restaurantOnboardingDataTimestamp: null,
     // Note: Onboarding status checking is now handled by onBoardingSlice
     
     // Onboarding status checking is now handled by onBoardingSlice.checkOnboardingCompletion()
@@ -186,6 +189,8 @@ const createAuthSlice = (set, get) => {
       
       // Clear onboarding-specific session storage
       sessionStorage.removeItem('onboarding_completion_check_time');
+      sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
+      sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
       
       // Clear chat conversation ID on logout
       sessionStorage.removeItem('chat_conversation_id');
@@ -205,6 +210,17 @@ const createAuthSlice = (set, get) => {
         error: null, 
         loading: false
       }));
+      
+      // Force redirect to login page using window.location to ensure full page reload
+      // This prevents any routing state issues and ensures clean logout
+      const currentPath = window.location.pathname;
+      const isAdminPath = currentPath.startsWith('/admin');
+      
+      if (isAdminPath) {
+        window.location.href = '/admin/login';
+      } else {
+        window.location.href = '/login';
+      }
       
     },
     
@@ -411,6 +427,169 @@ const createAuthSlice = (set, get) => {
       }
       
       return restaurantId;
+    },
+
+    // Get restaurant simulation status
+    getRestaurantSimulation: async () => {
+      set(() => ({ loading: true, error: null }));
+      
+      try {
+        const response = await apiGet('/authentication/user/restaurant-simulation/');
+        set(() => ({ loading: false, error: null }));
+        return { success: true, data: response.data };
+      } catch (error) {
+        const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant simulation status';
+        set(() => ({ loading: false, error: errorMessage }));
+        return { success: false, error: errorMessage };
+      }
+    },
+
+    // Update restaurant simulation status
+    updateRestaurantSimulation: async (payload) => {
+      set(() => ({ loading: true, error: null }));
+      
+      try {
+        const response = await apiPost('/authentication/user/restaurant-simulation/', payload);
+        
+        // Check if the response status is 200 (success)
+        if (response.status === 200 || response.status === 201) {
+          set(() => ({ loading: false, error: null }));
+          
+          // Automatically call restaurants-onboarding API after successful POST
+          try {
+            // Clear sessionStorage flags to ensure the call goes through
+            sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
+            sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
+            
+            // Use forceRefresh to bypass cache and get fresh data
+            const onboardingResult = await get().getRestaurantOnboarding(true);
+            if (onboardingResult.success) {
+            } else {
+              console.warn("⚠️ [authSlice] Failed to fetch restaurant onboarding data after simulation update:", onboardingResult.error);
+            }
+          } catch (onboardingError) {
+            console.error("❌ [authSlice] Error fetching restaurant onboarding after simulation update:", onboardingError);
+            // Don't fail the main request if onboarding fetch fails
+          }
+          
+          return { success: true, data: response.data };
+        } else {
+          const errorMessage = `API request failed with status ${response.status}`;
+          set(() => ({ loading: false, error: errorMessage }));
+          return { success: false, error: errorMessage };
+        }
+      } catch (error) {
+        const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to update restaurant simulation status';
+        set(() => ({ loading: false, error: errorMessage }));
+        return { success: false, error: errorMessage };
+      }
+    },
+
+    // Get restaurant ID from restaurant-onboarding endpoint
+    getRestaurantOnboarding: async (forceRefresh = false) => {
+      const currentState = get();
+      const now = Date.now();
+      const CACHE_DURATION = 5000; // 5 seconds cache
+      
+      // Check if we have cached data that's still fresh
+      if (!forceRefresh && currentState.restaurantOnboardingData && currentState.restaurantOnboardingDataTimestamp) {
+        const timeSinceCache = now - currentState.restaurantOnboardingDataTimestamp;
+        if (timeSinceCache < CACHE_DURATION) {
+          return { 
+            success: true, 
+            data: currentState.restaurantOnboardingData,
+            restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+          };
+        }
+      }
+      
+      // GLOBAL GUARD: Check sessionStorage FIRST to prevent infinite calls
+      const hasCheckedGlobally = sessionStorage.getItem('hasCheckedRestaurantOnboardingGlobal');
+      const lastCheckTime = sessionStorage.getItem('restaurantOnboardingLastCheckTime');
+      
+      // If we've checked in the last 2 seconds, return cached data if available
+      if (hasCheckedGlobally === 'true' && lastCheckTime) {
+        const timeSinceCheck = now - parseInt(lastCheckTime);
+        if (timeSinceCheck < 2000) {
+          // Too soon to check again - return cached data if available
+          if (currentState.restaurantOnboardingData) {
+            return { 
+              success: true, 
+              data: currentState.restaurantOnboardingData,
+              restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+            };
+          }
+          return { success: false, error: 'Request throttled - please wait' };
+        }
+      }
+      
+      // Check if we're already loading to prevent concurrent calls
+      if (currentState.loading) {
+        // If already loading, return cached data if available
+        if (currentState.restaurantOnboardingData) {
+          return { 
+            success: true, 
+            data: currentState.restaurantOnboardingData,
+            restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+          };
+        }
+        return { success: false, error: 'Request already in progress' };
+      }
+      
+      // Mark as checking globally IMMEDIATELY
+      sessionStorage.setItem('hasCheckedRestaurantOnboardingGlobal', 'true');
+      sessionStorage.setItem('restaurantOnboardingLastCheckTime', now.toString());
+      
+      set(() => ({ loading: true, error: null }));
+      
+      try {
+        const response = await apiGet('/restaurant_v2/restaurants-onboarding/');
+        
+        // IMPORTANT: The API response structure might be response.data or response.data.data
+        // Let's handle both cases - check if response.data has a 'data' property with restaurants
+        let restaurantData = response.data;
+        
+        // If response.data.data exists and has restaurants, use that
+        if (response.data?.data && (response.data.data.restaurants || Array.isArray(response.data.data))) {
+          restaurantData = response.data.data;
+        } 
+        // If response.data has restaurants directly, use it
+        else if (response.data?.restaurants) {
+          restaurantData = response.data;
+        }
+        // Otherwise, try response.data.data as fallback
+        else if (response.data?.data) {
+          restaurantData = response.data.data;
+        }
+        
+        // IMPORTANT: Even if restaurants array is empty, we still need to return the data
+        // This allows components to know that the API was called and user has no restaurants
+        
+        // Store the data in the store for caching
+        set(() => ({ 
+          loading: false, 
+          error: null,
+          restaurantOnboardingData: restaurantData,
+          restaurantOnboardingDataTimestamp: now
+        }));
+        
+        // Extract restaurant_id from response
+        const restaurantId = restaurantData?.restaurant_id || restaurantData?.restaurants?.[0]?.restaurant_id || null;
+        
+        // Store restaurant_id in localStorage and store if found
+        if (restaurantId) {
+          localStorage.setItem('restaurant_id', restaurantId.toString());
+          set(() => ({ restaurantId: restaurantId.toString() }));
+        }
+        
+        return { success: true, data: restaurantData, restaurantId };
+      } catch (error) {
+        console.error('❌ [authSlice] API call failed:', error);
+        const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant onboarding';
+        set(() => ({ loading: false, error: errorMessage }));
+        // Don't clear the global flag on error - we still checked
+        return { success: false, error: errorMessage };
+      }
     },
   };
 };

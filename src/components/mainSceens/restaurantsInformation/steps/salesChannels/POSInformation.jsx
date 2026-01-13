@@ -4,11 +4,12 @@ import ToggleSwitch from '../../../../buttons/ToggleSwitch';
 import { useTabHook } from '../../useTabHook';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import PrimaryButton from '../../../../buttons/Buttons';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const POSInformation = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false }) => {
-    const { navigateToNextStep, navigateToPreviousStep } = useTabHook();
+    const { navigateToNextStep, navigateToPreviousStep, activeTab, tabs } = useTabHook();
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -200,12 +201,23 @@ const POSInformation = ({ data, updateData, errors = {}, onSaveAndContinue, load
                         onClick={handleGoBack} 
                         disabled={loading} 
                     />
-                    <PrimaryButton 
-                        title={loading ? "Saving..." : "Save & Continue"} 
-                        className="btn-brand w-full sm:w-auto"
-                        onClick={handleSaveAndContinueClick}
-                        disabled={loading}
-                    />
+                    <div className="flex gap-3">
+                        <PrimaryButton 
+                            title="Skip" 
+                            className="bg-gray-200 text-gray-700 h-11 w-full sm:w-auto text-sm" 
+                            onClick={() => {
+                            
+                                navigate('/dashboard/sales-data');
+                            }} 
+                            disabled={loading} 
+                        />
+                        <PrimaryButton 
+                            title={loading ? "Saving..." : "Save & Continue"} 
+                            className="btn-brand w-full sm:w-auto"
+                            onClick={handleSaveAndContinueClick}
+                            disabled={loading}
+                        />
+                    </div>
                 </div>
             )}
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Card, 
   Table, 
@@ -40,9 +40,21 @@ const CorporateSupportAccess = () => {
 
   // Real API data for corporate support users
   const [supportUsers, setSupportUsers] = useState([]);
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
   // Fetch support users from API
   useEffect(() => {
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    // Only fetch if we don't have users yet (allow empty array after first fetch)
+    if (hasFetchedRef.current) {
+      return;
+    }
+
     const fetchSupportUsers = async () => {
       try {
         setLoading(true);
@@ -50,11 +62,13 @@ const CorporateSupportAccess = () => {
         // const response = await apiGet('/admin_access/support-users/');
         // setSupportUsers(response.data);
         setSupportUsers([]); // Empty array until API is implemented
+        hasFetchedRef.current = true;
       } catch (error) {
         console.error('Error fetching support users:', error);
         message.error('Failed to fetch support users');
       } finally {
         setLoading(false);
+        isFetchingRef.current = false;
       }
     };
 

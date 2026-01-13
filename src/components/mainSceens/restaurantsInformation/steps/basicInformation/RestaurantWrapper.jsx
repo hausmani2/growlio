@@ -7,13 +7,15 @@ import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
 import useFormValidation from "./useFormValidation";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import StepDataManager from "../../StepDataManager";
+import PrimaryButton from "../../../../../components/buttons/Buttons";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { 
         submitStepData, 
         onboardingLoading: loading, 
@@ -24,7 +26,7 @@ const RestaurantWrapperContent = () => {
         updateTempFormData
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
-    const { navigateToNextStep } = useTabHook();
+    const { navigateToNextStep, activeTab, tabs } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
@@ -75,6 +77,8 @@ const RestaurantWrapperContent = () => {
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
+        if (!completeOnboardingData) return;
+        
         const basicInfoData = completeOnboardingData["Basic Information"];
         
         if (basicInfoData && basicInfoData.data) {
@@ -335,24 +339,33 @@ const RestaurantWrapperContent = () => {
                             />
                             
                             <div className="flex justify-between mt-6">
-                                {isUpdateMode && (
-                                    <>
-                                        <div className="ml-auto">
-                                            <button
-                                                onClick={handleSaveAndContinue}
-                                                disabled={loading}
-                                                className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
-                                                }`}
-                                            >
-                                                {loading && (
-                                                    <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                                )}
-                                                {isUpdateMode ? "Save Changes" : "Save & Continue"}
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
+                                <div className="flex gap-3 ml-auto">
+                                    <button
+                                        onClick={() => {
+                                            // Navigate directly to Sales Data instead of next tab
+                                            navigate('/dashboard/sales-channels');
+                                        }}
+                                        disabled={loading}
+                                        className={`bg-gray-200 text-gray-700 px-6 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium ${
+                                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        Skip
+                                    </button>
+                                    <button
+                                        onClick={handleSaveAndContinue}
+                                        disabled={loading}
+                                        className={`bg-orange-300 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-500'
+                                        }`}
+                                    >
+                                        {loading && (
+                                            <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
+                                        )}
+
+                                        {isUpdateMode ? "Save Changes" : "Save & Continue"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -392,8 +405,20 @@ const RestaurantWrapperContent = () => {
                 />
             </div>
 
-            {isUpdateMode && (
-                <div className="flex justify-end mt-8 pt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6">
+                <button
+                    onClick={() => {
+                        // Navigate directly to Sales Data instead of next tab
+                        navigate('/dashboard/sales-channels');
+                    }}
+                    disabled={loading}
+                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                    }`}
+                >
+                    Skip
+                </button>
+                {isUpdateMode && (
                     <button
                         onClick={handleSaveAndContinue}
                         disabled={loading}
@@ -406,8 +431,8 @@ const RestaurantWrapperContent = () => {
                         )}
                         Save Changes
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

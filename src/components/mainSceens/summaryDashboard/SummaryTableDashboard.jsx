@@ -209,16 +209,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
   }, [dashboardData, dashboardSummaryData, parseNumericValue]);
 
-  // Categories for the summary table - Updated to remove profit columns as separate rows
+  // Categories for the summary table - Updated to match image design
   const categories = useMemo(() => [
-    { key: 'sales_budget', label: 'Sales Budget', type: 'currency' },
-    { key: 'labour', label: 'Labor Budget', type: 'currency' },
-    { key: 'hours', label: 'Hours', type: 'number' },
-    { key: 'average_hourly_rate', label: 'Average Hourly Rate', type: 'currency' },
-    { key: 'food_cost', label: 'Food Cost', type: 'currency' },
-    { key: 'fixed_cost', label: 'Fixed Cost', type: 'currency' },
-    { key: 'variable_cost', label: 'Variable Cost', type: 'currency' },
-    { key: 'budgeted_profit_loss', label: 'Profit/Loss', type: 'currency' },
+    { key: 'sales_budget', label: 'Sales Goal', type: 'currency', bgColor: 'bg-green-100' },
+    { key: 'labour', label: 'Labor Budget', type: 'currency', bgColor: 'bg-yellow-100' },
+    { key: 'hours', label: 'Hours', type: 'number', bgColor: 'bg-yellow-100' },
+    { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency', bgColor: 'bg-yellow-100' },
+    { key: 'food_cost', label: 'COGs Budget', type: 'currency', bgColor: 'bg-purple-100' },
+    { key: 'operating_expenses', label: 'Operating Expenses', type: 'currency', bgColor: 'bg-blue-100' },
+    { key: 'budgeted_profit_loss', label: 'Profit/Loss', type: 'currency', bgColor: 'bg-white' },
   ], []);
 
   // Helper function to format percentage
@@ -248,11 +247,29 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     const totals = {};
     categories.forEach(category => {
       let total = 0;
-      tableData.forEach(entry => {
-        const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
-        const value = processedData[category.key]?.[dateKey] || 0;
-        total += value;
-      });
+      
+      // Average hourly rate should be the same value (not a sum) - use first day's value
+      if (category.key === 'average_hourly_rate') {
+        if (tableData.length > 0) {
+          const firstEntry = tableData[0];
+          const dateKey = firstEntry.month_start || firstEntry.date || firstEntry.day || 'N/A';
+          total = processedData[category.key]?.[dateKey] || 0;
+        }
+      } else {
+        tableData.forEach(entry => {
+          const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
+          let value = 0;
+          if (category.key === 'operating_expenses') {
+            // Combine fixed_cost and variable_cost for operating expenses
+            const fixedCost = processedData['fixed_cost']?.[dateKey] || 0;
+            const variableCost = processedData['variable_cost']?.[dateKey] || 0;
+            value = fixedCost + variableCost;
+          } else {
+            value = processedData[category.key]?.[dateKey] || 0;
+          }
+          total += value;
+        });
+      }
       totals[category.key] = total;
     });
     return totals;
@@ -311,40 +328,89 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       return {
         day: date.format('ddd'),
         date: date.format('MMM DD'),
+        shortDate: date.format('M/D'), // For "Mon 12/8" format
         fullDate: date.format('MMM DD, YYYY')
       };
     } catch {
       return {
         day: 'N/A',
         date: 'N/A',
+        shortDate: 'N/A',
         fullDate: 'N/A'
       };
     }
   }, []);
 
-  // CSV generation
+  // Table data source - Redesigned: dates as rows, categories as columns
+  // Moved before generateCSV to fix initialization order
+  const tableDataSource = useMemo(() => {
+    const rows = tableData.map((entry, index) => {
+      let dateInfo, dateKey;
+      
+      // Handle monthly data structure
+      if (entry.month_start) {
+        const startDate = dayjs(entry.month_start);
+        dateInfo = {
+          day: startDate.format('MMM'),
+          date: startDate.format('YYYY'),
+          shortDate: startDate.format('M/D'),
+          fullDate: startDate.format('MMMM YYYY')
+        };
+        dateKey = entry.month_start;
+      } else {
+        // Handle daily data structure
+        dateInfo = formatDateForDisplay(entry.date || entry.day);
+        dateKey = entry.date || entry.day || 'N/A';
+      }
+      
+      const rowData = {
+        key: `day-${dateKey}-${index}`,
+        day: `${dateInfo.day} ${dateInfo.shortDate}`, // Format: "Mon 12/8"
+      };
+      
+      // Add category values
+      categories.forEach(category => {
+        if (category.key === 'operating_expenses') {
+          // Combine fixed_cost and variable_cost
+          const fixedCost = processedData['fixed_cost']?.[dateKey] || 0;
+          const variableCost = processedData['variable_cost']?.[dateKey] || 0;
+          rowData[category.key] = fixedCost + variableCost;
+        } else {
+          rowData[category.key] = processedData[category.key]?.[dateKey] || 0;
+        }
+      });
+      
+      return rowData;
+    });
+    
+    // Add total row
+    const totalRow = {
+      key: 'total',
+      day: 'TOTAL',
+    };
+    
+    categories.forEach(category => {
+      totalRow[category.key] = totals[category.key] || 0;
+    });
+    
+    return [...rows, totalRow];
+  }, [tableData, categories, processedData, formatDateForDisplay, totals]);
+
+  // CSV generation - Updated for new table structure
   const generateCSV = useCallback(() => {
     if (!tableData || tableData.length === 0) return '';
     
-    const dates = tableData.map(entry => {
-      const dateInfo = formatDateForDisplay(entry.date || entry.day);
-      return dateInfo.fullDate;
-    });
-    const headers = ['Category', ...dates, 'Total'];
-    const rows = categories.map(category => {
-      const rowData = [category.label];
-      dates.forEach((_, index) => {
-        const entry = tableData[index];
-        const dateKey = entry.date || entry.day || 'N/A';
-        const value = processedData[category.key]?.[dateKey] || 0;
+    const headers = ['Day', ...categories.map(c => c.label)];
+    const rows = tableDataSource.map(row => {
+      const rowData = [row.day];
+      categories.forEach(category => {
+        const value = row[category.key] || 0;
         rowData.push(value.toString());
       });
-      // Add total value
-      rowData.push((totals[category.key] || 0).toString());
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay, totals]);
+  }, [tableData, categories, tableDataSource]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -447,184 +513,60 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   const monthDisplayName = getMonthDisplayName();
   const weekStartDay = getWeekStartDate();
 
-  // Table columns configuration
+  // Table columns configuration - Redesigned to match image: dates as rows, categories as columns
   const tableColumns = useMemo(() => [
     {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-      width: 180,
+      title: 'Day',
+      dataIndex: 'day',
+      key: 'day',
+      width: 120,
       fixed: 'left',
       render: (text) => (
-        <div className="flex flex-col">
+        <div className="bg-white px-3 py-2">
           <span className="font-semibold text-gray-800 text-sm">{text}</span>
         </div>
       ),
-      responsive: ['md']
     },
-    ...tableData.map((entry, index) => {
-      let dateInfo, uniqueKey, dateKey;
-      
-      // Handle monthly data structure
-      if (entry.month_start) {
-        const startDate = dayjs(entry.month_start);
-        dateInfo = {
-          day: startDate.format('MMM'),
-          date: startDate.format('YYYY'),
-          fullDate: startDate.format('MMMM YYYY')
-        };
-        uniqueKey = `month-${entry.month_start}-${index}`;
-        dateKey = entry.month_start;
-      } else {
-        // Handle daily data structure
-        dateInfo = formatDateForDisplay(entry.date || entry.day);
-        uniqueKey = `${dateInfo.fullDate}-${index}`;
-        dateKey = entry.date || entry.day || 'N/A';
-      }
-      
-      return {
-        title: (
-          <div className="text-start">
-            <div className="font-semibold text-xs text-gray-800">
-              {dateInfo.day}
-            </div>
-            { isMonthlyView ? (
-              <div className="text-xs text-gray-600">
-                {dateInfo.date}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-600">
-                {dateInfo.date}
-              </div>
-            )}
-          </div>
-        ),
-        dataIndex: uniqueKey,
-        key: uniqueKey,
-        width: 120,
-        
-        render: (value, record) => {
-          const categoryKey = record.key;
-          const rawValue = processedData[categoryKey]?.[dateKey] || 0;
-          
-          
-          // For fixed_cost and variable_cost, we need to check if we have any cost data to display
-          let shouldDisplay = true;
-          if (categoryKey === 'fixed_cost') {
-            // Check if we have any fixed cost data (either from array or direct field)
-            const hasFixedCosts = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
-            const hasFixedCost = entry.fixed_cost && entry.fixed_cost !== 'None' && entry.fixed_cost !== null && entry.fixed_cost !== undefined;
-            shouldDisplay = hasFixedCosts || hasFixedCost;
-          } else if (categoryKey === 'variable_cost') {
-            // Check if we have any variable cost data (either from array or direct field)
-            const hasVariableCosts = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
-            const hasVariableCost = entry.variable_cost && entry.variable_cost !== 'None' && entry.variable_cost !== null && entry.variable_cost !== undefined;
-            shouldDisplay = hasVariableCosts || hasVariableCost;
-          } else {
-            // Check if the original value was None/null/undefined for other fields
-            const originalValue = entry[categoryKey];
-            const displayValue = handleValue(originalValue);
-            shouldDisplay = displayValue !== '-';
-          }
-          
-          if (!shouldDisplay) {
-            return <span className="text-xs text-gray-500">-</span>;
-          }
-          
-
-          
-          // Handle currency fields
-          if (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost' || 
-              categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
-              categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
-              categoryKey === 'budgeted_profit_loss') {
-            const colorClass = categoryKey === 'budgeted_profit_loss' ? getProfitLossColor(rawValue) : 'text-gray-700';
-            const formattedValue = categoryKey === 'budgeted_profit_loss' ? formatProfitLoss(rawValue) : formatCurrency(rawValue);
-            
-            return (
-              <div className="flex items-start justify-start">
-                <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-              </div>
-            );
-          }
-          // Handle number fields
-          if (categoryKey === 'hours') {
-            return (
-              <div className="flex items-start justify-start">
-                <span className="text-sm text-gray-700">{formatNumber(rawValue)}</span>
-
-              </div>
-            );
-          }
-          return <span className="text-sm text-gray-700">{rawValue}</span>;
-        }
-      };
-    }),
-    // Add Total column
-    {
+    ...categories.map((category) => ({
       title: (
-        <div className="text-center">
-          <div className="font-semibold text-xs text-gray-800">Total</div>
+        <div className="text-center font-semibold text-gray-800 text-sm px-2">
+          {category.label}
         </div>
       ),
-      dataIndex: 'total',
-      key: 'total',
-      width: 120,
-      render: (value, record) => {
-        const categoryKey = record.key;
-        const totalValue = totals[categoryKey] || 0;
-        
-        // Handle currency fields
-        if (categoryKey === 'sales_budget' || categoryKey === 'labour' || categoryKey === 'food_cost' || 
-            categoryKey === 'amount' || categoryKey === 'average_hourly_rate' || 
-            categoryKey === 'fixed_cost' || categoryKey === 'variable_cost' ||
-            categoryKey === 'budgeted_profit_loss') {
-          const colorClass = categoryKey === 'budgeted_profit_loss' ? getProfitLossColor(totalValue) : 'text-gray-700 font-semibold';
-          const formattedValue = categoryKey === 'budgeted_profit_loss' ? formatProfitLoss(totalValue) : formatCurrency(totalValue);
-          
-          return (
-            <div className="flex items-start justify-center">
-              <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
-            </div>
-          );
-        }
-        // Handle number fields
-        if (categoryKey === 'hours') {
-          return (
-            <div className="flex items-start justify-center">
-              <span className="text-sm text-gray-700 font-semibold">{formatNumber(totalValue)}</span>
-            </div>
-          );
-        }
-        return <span className="text-sm text-gray-700 font-semibold">{totalValue}</span>;
-      }
-    }
-  ], [tableData, processedData, formatCurrency, formatNumber, getProfitLossColor, formatDateForDisplay, handleValue, formatProfitLoss, formatPercentage, getPercentageColor, isMonthlyView, totals]);
-
-  // Table data source
-  const tableDataSource = useMemo(() => 
-    categories.map(category => ({
+      dataIndex: category.key,
       key: category.key,
-      category: category.label,
-      total: totals[category.key] || 0,
-      ...tableData.reduce((acc, entry, index) => {
-        let uniqueKey, dateKey;
+      width: 130,
+      align: 'center',
+      render: (value, record) => {
+        const isTotalRow = record.key === 'total';
+        const bgColor = isTotalRow ? 'bg-orange-400' : category.bgColor;
+        const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
         
-        // Handle monthly data structure
-        if (entry.month_start) {
-          uniqueKey = `month-${entry.month_start}-${index}`;
-          dateKey = entry.month_start;
-        } else {
-          // Handle daily data structure
-          const dateInfo = formatDateForDisplay(entry.date || entry.day);
-          uniqueKey = `${dateInfo.fullDate}-${index}`;
-          dateKey = entry.date || entry.day || 'N/A';
+        let displayValue = value;
+        if (category.type === 'currency') {
+          if (category.key === 'budgeted_profit_loss') {
+            displayValue = formatProfitLoss(value);
+            const profitColor = value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : textColor;
+            return (
+              <div className={`${bgColor} px-3 py-2 ${isTotalRow ? profitColor : textColor} text-sm`}>
+                {displayValue}
+              </div>
+            );
+          } else {
+            displayValue = formatCurrency(value);
+          }
+        } else if (category.type === 'number') {
+          displayValue = formatNumber(value);
         }
         
-        acc[uniqueKey] = processedData[category.key]?.[dateKey] || 0;
-        return acc;
-      }, {})
-    })), [categories, tableData, processedData, formatDateForDisplay, totals]);
+        return (
+          <div className={`${bgColor} px-3 py-2 ${textColor} text-sm`}>
+            {displayValue}
+          </div>
+        );
+      },
+    })),
+  ], [categories, formatCurrency, formatNumber, formatProfitLoss]);
   
   
 
@@ -671,18 +613,13 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     <Card key={`dashboard-${dataTimestamp}`} className="shadow-lg border-0" data-guidance="summary_table">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-3 border-b border-gray-200">
         <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-0 drop-shadow-sm">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 mb-0">
               {isMonthlyView && monthDisplayName 
                 ? `Your Budget For The Month of ${monthDisplayName}` 
                 : weekStartDay 
                   ? `Your Budget For The Week of ${weekStartDay}` 
                   : "Your Budget Dashboard"}
           </h2>
-          {dataToProcess?.total_days && (
-            <p className="text-sm text-gray-600 mt-1">
-              Fixed and Variable costs from API (Total days: {dataToProcess.total_days})
-            </p>
-          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
@@ -714,137 +651,141 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       </div>
 
       {/* Desktop table */}
-      <div className="hidden sm:block">
-        <Table
-          columns={tableColumns}
-          dataSource={tableDataSource}
-          pagination={false}
-          scroll={{ x: 'max-content' }}
-          className="summary-table"
-          rowKey="key"
-          size="small"
-         
-        />
+      <div className="hidden sm:block mt-4">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                {tableColumns.map((col) => (
+                  <th
+                    key={col.key}
+                    className={`px-3 py-2 border border-gray-200 font-semibold text-gray-800 text-sm ${
+                      col.key === 'day' ? 'text-left' : 'text-center'
+                    }`}
+                    style={{ minWidth: col.width }}
+                  >
+                    {col.title}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tableDataSource.map((row) => {
+                const isTotalRow = row.key === 'total';
+                return (
+                  <tr
+                    key={row.key}
+                    className={isTotalRow ? 'bg-orange-400 font-bold' : 'hover:bg-gray-50'}
+                  >
+                    {tableColumns.map((col) => {
+                      const value = row[col.dataIndex];
+                      const category = categories.find(c => c.key === col.key);
+                      const isTotalRow = row.key === 'total';
+                      const bgColor = isTotalRow ? 'bg-orange-400' : (category?.bgColor || 'bg-white');
+                      const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
+                      
+                      // Handle Day column separately
+                      if (col.key === 'day') {
+                        return (
+                          <td
+                            key={col.key}
+                            className="bg-white px-3 py-2 border border-gray-200 text-left text-sm font-semibold text-gray-800"
+                          >
+                            {value}
+                          </td>
+                        );
+                      }
+                      
+                      let displayValue = value;
+                      if (category?.type === 'currency') {
+                        if (category.key === 'budgeted_profit_loss') {
+                          displayValue = formatProfitLoss(value);
+                          // Profit/Loss: only red or green, no gray
+                          const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+                          return (
+                            <td
+                              key={col.key}
+                              className={`${bgColor} px-3 py-2 border border-gray-200 text-center text-sm ${profitColor}`}
+                            >
+                              {displayValue}
+                            </td>
+                          );
+                        } else {
+                          displayValue = formatCurrency(value);
+                        }
+                      } else if (category?.type === 'number') {
+                        displayValue = formatNumber(value);
+                      }
+                      
+                      // All other columns: semibold text
+                      return (
+                        <td
+                          key={col.key}
+                          className={`${bgColor} px-3 py-2 border border-gray-200 text-center text-sm font-semibold ${textColor}`}
+                        >
+                          {displayValue}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Mobile table */}
-      <div className="block sm:hidden">
-        <div className="space-y-4">
-          {tableDataSource.map((row) => (
-            <Card key={row.key} size="small" className="shadow-sm !mb-4">
-              <div className="font-semibold text-gray-800 mb-3 border-b pb-2">
-                {row.category}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {tableData.map((entry, index) => {
-                  let dateInfo, uniqueKey, dateKey;
-                  
-                  // Handle monthly data structure
-                  if (entry.month_start) {
-                    const startDate = dayjs(entry.month_start);
-                    dateInfo = {
-                      day: startDate.format('MMM'),
-                      date: startDate.format('YYYY'),
-                      fullDate: startDate.format('MMMM YYYY')
-                    };
-                    uniqueKey = `month-${entry.month_start}-${index}`;
-                    dateKey = entry.month_start;
-                  } else {
-                    // Handle daily data structure
-                    dateInfo = formatDateForDisplay(entry.date || entry.day);
-                    uniqueKey = `${dateInfo.fullDate}-${index}`;
-                    dateKey = entry.date || entry.day || 'N/A';
-                  }
-                  
-                  const rawValue = processedData[row.key]?.[dateKey] || 0;
-                  
-                   // For fixed_cost and variable_cost, we need to check if we have any cost data to display
-                   let shouldDisplay = true;
-                   if (row.key === 'fixed_cost') {
-                     // Check if we have any fixed cost data (either from array or direct field)
-                     const hasFixedCosts = entry.fixed_costs && Array.isArray(entry.fixed_costs) && entry.fixed_costs.length > 0;
-                     const hasFixedCost = entry.fixed_cost && entry.fixed_cost !== 'None' && entry.fixed_cost !== null && entry.fixed_cost !== undefined;
-                     shouldDisplay = hasFixedCosts || hasFixedCost;
-                   } else if (row.key === 'variable_cost') {
-                     // Check if we have any variable cost data (either from array or direct field)
-                     const hasVariableCosts = entry.variable_costs && Array.isArray(entry.variable_costs) && entry.variable_costs.length > 0;
-                     const hasVariableCost = entry.variable_cost && entry.variable_cost !== 'None' && entry.variable_cost !== null && entry.variable_cost !== undefined;
-                     shouldDisplay = hasVariableCosts || hasVariableCost;
-                   } else {
-                     // Check if the original value was None/null/undefined for other fields
-                     const originalValue = entry[row.key];
-                     const displayValue = handleValue(originalValue);
-                     shouldDisplay = displayValue !== '-';
-                   }
-                  
-                  // Get profit percentage for inline display
-                  let profitPercentage = null;
-                  if (row.key === 'sales_budget' && entry.sales_budeget_profit) {
-                    profitPercentage = formatPercentage(entry.sales_budeget_profit);
-                  } else if (row.key === 'labour' && entry.labour_profit) {
-                    profitPercentage = formatPercentage(entry.labour_profit);
-                  } else if (row.key === 'food_cost' && entry.food_cost_profit) {
-                    profitPercentage = formatPercentage(entry.food_cost_profit);
-                  }
-                  
-                  return (
-                    <div key={uniqueKey} className="flex justify-between text-xs">
-                      <span className="text-gray-600">
-                        {dateInfo.day} {dateInfo.date}
-                      </span>
-                      <div className="flex items-center">
-                        <span className={`font-medium ${
-                          !shouldDisplay ? 'text-gray-500' :
-                          row.key === 'budgeted_profit_loss'
-                            ? getProfitLossColor(rawValue) : 'text-gray-600'
-                        }`}>
-                          {!shouldDisplay ? '-' :
-                           row.key === 'budgeted_profit_loss'
-                            ? formatProfitLoss(rawValue)
-                            : row.key === 'sales_budget' || row.key === 'labour' || row.key === 'food_cost' || 
-                              row.key === 'amount' || row.key === 'average_hourly_rate' ||
-                              row.key === 'fixed_cost' || row.key === 'variable_cost'
-                            ? formatCurrency(rawValue)
-                            : row.key === 'hours'
-                            ? formatNumber(rawValue)
-                            : rawValue
-                          }
-                        </span>
-                        {profitPercentage && (
-                          <span className={`text-xs ml-1 ${getPercentageColor(entry.sales_budeget_profit || entry.labour_profit || entry.food_cost_profit)} font-bold`}>
-                            {profitPercentage}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                {/* Add Total row for mobile */}
-                <div className="col-span-2 border-t pt-2 mt-2">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-gray-800">Total</span>
-                    <div className="flex items-center">
-                      <span className={`font-bold ${
-                        row.key === 'budgeted_profit_loss'
-                          ? getProfitLossColor(totals[row.key]) : 'text-gray-800'
-                      }`}>
-                        {row.key === 'budgeted_profit_loss'
-                          ? formatProfitLoss(totals[row.key])
-                          : row.key === 'sales_budget' || row.key === 'labour' || row.key === 'food_cost' || 
-                            row.key === 'amount' || row.key === 'average_hourly_rate' ||
-                            row.key === 'fixed_cost' || row.key === 'variable_cost'
-                          ? formatCurrency(totals[row.key])
-                          : row.key === 'hours'
-                          ? formatNumber(totals[row.key])
-                          : totals[row.key]
-                        }
-                      </span>
-                    </div>
-                  </div>
+      <div className="block sm:hidden mt-4">
+        <div className="space-y-2">
+          {tableDataSource.map((row) => {
+            const isTotalRow = row.key === 'total';
+            return (
+              <Card 
+                key={row.key} 
+                size="small" 
+                className={`shadow-sm !mb-2 ${isTotalRow ? 'bg-orange-400' : ''}`}
+              >
+                <div className={`font-semibold mb-2 ${isTotalRow ? 'text-white' : 'text-gray-800'}`}>
+                  {row.day}
                 </div>
-              </div>
-            </Card>
-          ))}
+                <div className="grid grid-cols-2 gap-2">
+                  {categories.map((category) => {
+                    const value = row[category.key] || 0;
+                    const bgColor = isTotalRow ? 'bg-orange-400' : category.bgColor;
+                    const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
+                    
+                    let displayValue = value;
+                    if (category.type === 'currency') {
+                      if (category.key === 'budgeted_profit_loss') {
+                        displayValue = formatProfitLoss(value);
+                        // Profit/Loss: only red or green, no gray
+                        const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+                        return (
+                          <div key={category.key} className="flex justify-between text-xs">
+                            <span className={textColor}>{category.label}</span>
+                            <span className={profitColor}>{displayValue}</span>
+                          </div>
+                        );
+                      } else {
+                        displayValue = formatCurrency(value);
+                      }
+                    } else if (category.type === 'number') {
+                      displayValue = formatNumber(value);
+                    }
+                    
+                    // All other columns: semibold text
+                    return (
+                      <div key={category.key} className="flex justify-between text-xs">
+                        <span className={textColor}>{category.label}</span>
+                        <span className={`${textColor} font-semibold`}>{displayValue}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </div>
 

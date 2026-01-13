@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   message, 
   Spin, 
@@ -35,6 +35,7 @@ import SuperAdminUsers from './SuperAdminUsers';
 import SystemSettings from './components/SystemSettings';
 import AuditLogs from './components/AuditLogs';
 import CorporateSupportAccess from './components/CorporateSupportAccess';
+import SuperAdminUserInfo from './components/SuperAdminUserInfo';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import TokenStateDebugger from '../debug/TokenStateDebugger'; // Uncomment for debugging
@@ -52,21 +53,55 @@ const SuperAdminDashboard = () => {
     loading, 
     error,
     user,
+    isAuthenticated,
     fetchDashboardStats, 
     fetchRecentUsers, 
     fetchRecentRestaurants,
     fetchAnalyticsData 
   } = useStore();
 
+  // Use refs to track state and prevent duplicate calls
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const userEmailRef = useRef(null);
+  const fetchPromiseRef = useRef(null);
+
+  // Store fetchDashboardStats in ref to avoid dependency issues
+  const fetchDashboardStatsRef = useRef(fetchDashboardStats);
   useEffect(() => {
-    const loadDashboardData = async () => {
+    fetchDashboardStatsRef.current = fetchDashboardStats;
+  }, [fetchDashboardStats]);
+
+  // Memoize the fetch function to prevent unnecessary re-renders
+  const loadDashboardData = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return fetchPromiseRef.current;
+    }
+
+    // Check if already fetched for current user
+    const currentUserEmail = user?.email || user?.id || null;
+    if (hasFetchedRef.current && dashboardData && userEmailRef.current === currentUserEmail) {
+      return Promise.resolve();
+    }
+
+    // Set fetching flag and create promise
+    isFetchingRef.current = true;
+    userEmailRef.current = currentUserEmail;
+
+    const fetchPromise = (async () => {
       try {
+        // Check if component is still mounted
+        if (!mountedRef.current) {
+          return;
+        }
+
         // Check if we need to fix missing original super admin token
         const hasOriginalToken = localStorage.getItem('original_superadmin_token');
         const hasMainToken = localStorage.getItem('token');
-        const hasUser = user;
         
-        if (!hasOriginalToken && hasMainToken && hasUser) {
+        if (!hasOriginalToken && hasMainToken && user) {
           // Import the force store function
           const { forceStoreOriginalToken } = await import('../../utils/tokenManager');
           const userWithToken = {
@@ -77,18 +112,54 @@ const SuperAdminDashboard = () => {
           forceStoreOriginalToken(userWithToken);
         }
         
-        // Fetch all dashboard data in parallel
-        await Promise.all([
-          fetchDashboardStats(),
-        ]);
+        // Fetch dashboard data using ref to avoid dependency issues
+        await fetchDashboardStatsRef.current();
+        
+        // Mark as fetched only if component is still mounted
+        if (mountedRef.current) {
+          hasFetchedRef.current = true;
+        }
       } catch (error) {
-        message.error('Failed to load dashboard data');
-        console.error('Dashboard data loading error:', error);
+        if (mountedRef.current) {
+          message.error('Failed to load dashboard data');
+          console.error('Dashboard data loading error:', error);
+        }
+      } finally {
+        if (mountedRef.current) {
+          isFetchingRef.current = false;
+          fetchPromiseRef.current = null;
+        }
       }
-    };
+    })();
 
+    fetchPromiseRef.current = fetchPromise;
+    return fetchPromise;
+  }, [user, dashboardData]);
+
+  useEffect(() => {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated || !user) {
+      return;
+    }
+
+    // Reset fetch flag if user changed
+    const currentUserEmail = user.email || user.id || null;
+    if (userEmailRef.current !== null && userEmailRef.current !== currentUserEmail) {
+      hasFetchedRef.current = false;
+    }
+
+    // Load dashboard data
     loadDashboardData();
-  }, [fetchDashboardStats, fetchRecentUsers, fetchRecentRestaurants, fetchAnalyticsData, user]);
+  }, [isAuthenticated, user?.email, user?.id, loadDashboardData]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      isFetchingRef.current = false;
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -143,6 +214,20 @@ const SuperAdminDashboard = () => {
       children: (
         <div className="p-6">
           <AnalyticsCharts loading={loading} dashboardData={dashboardData} />
+        </div>
+      ),
+    },
+    {
+      key: 'user-info',
+      label: (
+        <span>
+          <UserOutlined />
+          <span className="">User Onboarding</span>
+        </span>
+      ),
+      children: (
+        <div className="p-6">
+          <SuperAdminUserInfo />
         </div>
       ),
     },
