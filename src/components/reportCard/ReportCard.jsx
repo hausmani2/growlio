@@ -201,7 +201,7 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct, percentage }) => {
 const ReportCard = ({
   title = "Report Card",
   dateLabel = "Last 30 Days (10/30/25 - Present)",
-  score = 85,
+  score = 0,
   goals = { labor: 30, cogs: 32, rent: 10 },
   metrics = {
     labor: { value: 38, amount: 15000, deltaPct: 13 },
@@ -311,14 +311,58 @@ const ReportCard = ({
     onClick: ({ key }) => handleQuickSelect(key),
   };
 
+  // Responsive popup style for mobile
+  const [popupStyle, setPopupStyle] = useState({
+    zIndex: 9999,
+  });
+
+  useEffect(() => {
+    const updatePopupStyle = () => {
+      const isMobile = window.innerWidth < 640;
+      setPopupStyle({
+        zIndex: 9999,
+        ...(isMobile && {
+          maxWidth: 'calc(100vw - 32px)',
+        }),
+      });
+    };
+
+    updatePopupStyle();
+    window.addEventListener('resize', updatePopupStyle);
+    return () => window.removeEventListener('resize', updatePopupStyle);
+  }, []);
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3">
+    <>
+      <style>{`
+        .responsive-date-picker-popup {
+          z-index: 9999 !important;
+        }
+        @media (max-width: 640px) {
+          .responsive-date-picker-popup {
+            max-width: calc(100vw - 32px) !important;
+            left: 16px !important;
+            right: 16px !important;
+          }
+          .responsive-date-picker-popup .ant-picker-panels {
+            flex-direction: column !important;
+          }
+          .responsive-date-picker-popup .ant-picker-panel {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .responsive-date-picker-popup .ant-picker-panel-container {
+            flex-direction: column !important;
+          }
+        }
+      `}</style>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3 sm:p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 flex-wrap">
-        <div className="text-2xl font-bold text-gray-900">{title}</div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="text-xs font-semibold text-gray-900 hidden lg:block">{formattedDateLabel}</div>
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 flex-wrap">
+        <div className="text-xl sm:text-2xl font-bold text-gray-900">{title}</div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="text-xs font-semibold text-gray-900 hidden sm:block lg:block text-center sm:text-left">{formattedDateLabel}</div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             {/* Quick Select Dropdown */}
             <Dropdown
               menu={quickSelectMenu}
@@ -332,35 +376,42 @@ const ReportCard = ({
                   minWidth: '120px'
                 }}
                 disabled={loading}
+                className="w-full sm:w-auto"
               >
                 {quickSelectLabel} <DownOutlined />
               </Button>
             </Dropdown>
             
             {/* Date Range Picker */}
-          <RangePicker
-            value={dateRange}
-            onChange={handleDateChange}
-            format="MMM D, YYYY"
+            <RangePicker
+              value={dateRange}
+              onChange={handleDateChange}
+              format="MMM D, YYYY"
               placeholder={['Start Date', 'End Date']}
               disabled={loading}
-            style={{
-              borderRadius: '6px',
-                width: 'auto',
+              style={{
+                borderRadius: '6px',
+                width: '100%',
                 minWidth: '280px',
                 height: '40px',
                 cursor: 'pointer'
-            }}
-            allowClear={false}
+              }}
+              allowClear={false}
               size="middle"
-            separator=" to "
+              separator=" to "
               showTime={false}
               inputReadOnly={true}
               showToday={true}
-            popupStyle={{ zIndex: 1000 }}
-            getPopupContainer={(trigger) => trigger.parentNode}
+              popupStyle={popupStyle}
+              popupClassName="responsive-date-picker-popup"
+              placement="bottomLeft"
               disabledDate={() => false}
-          />
+              panelRender={(panelNode) => (
+                <div className="mobile-calendar-wrapper">
+                  {panelNode}
+                </div>
+              )}
+            />
           </div>
         </div>
       </div>
@@ -416,7 +467,8 @@ const ReportCard = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

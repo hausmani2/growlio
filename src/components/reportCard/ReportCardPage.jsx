@@ -38,6 +38,7 @@ const ReportCardPage = () => {
     getSalesInformationSummary, 
     salesInformationSummary, 
     salesInformationSummaryLoading,
+    salesInformationSummaryError,
     getRestaurantOnboarding,
     restaurantOnboardingData,
     restaurantOnboardingDataTimestamp
@@ -157,9 +158,19 @@ const ReportCardPage = () => {
   // API response structure: { restaurant_id, start_date, end_date, summary: { sales, expenses, labour, cogs, profit, overall_score, grade } }
   const apiSummary = summaryData?.summary || summaryData;
   
+  // Check if API returned an error message like "Insufficient Data"
+  const hasError = salesInformationSummaryError === "Insufficient Data" ||
+                   summaryData?.message === "Insufficient Data" || 
+                   summaryData?.error === "Insufficient Data" ||
+                   apiSummary?.message === "Insufficient Data" ||
+                   apiSummary?.error === "Insufficient Data" ||
+                   !apiSummary || 
+                   !summaryData;
+  
   // Map API response to component props
   // Clamp score to 0-100 range (API might return 1000, which should be 100)
-  const rawScore = apiSummary?.overall_score || summaryData?.overall_score || summaryData?.score || summaryData?.profitability_score || 85;
+  // If there's an error or insufficient data, set score to 0
+  const rawScore = hasError ? 0 : (apiSummary?.overall_score || summaryData?.overall_score || summaryData?.score || summaryData?.profitability_score || 0);
   const score = Math.min(100, Math.max(0, rawScore)); // Clamp between 0 and 100
   const grade = apiSummary?.grade || getGradeFromScore(score);
   

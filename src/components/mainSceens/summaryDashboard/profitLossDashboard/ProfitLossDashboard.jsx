@@ -216,7 +216,7 @@ const ProfitLossDashboard = () => {
             </div>
 
             {/* Right Side - Date Picker and Controls */}
-            <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
               <CalendarUtils
                 selectedDates={calendarDateRange}
                 onDateChange={handleDateChange}
@@ -227,6 +227,7 @@ const ProfitLossDashboard = () => {
                 loading={calendarLoading}
                 error={calendarError}
                 autoSelectCurrentWeek={true}
+                className="w-full sm:w-auto"
               />
             </div>
           </div>

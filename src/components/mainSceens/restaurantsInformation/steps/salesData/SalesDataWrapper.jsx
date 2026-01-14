@@ -70,6 +70,7 @@ const SalesDataWrapper = () => {
             sales: (item.sales !== null && item.sales !== undefined) ? String(item.sales) : "",
             expenses: (item.expenses !== null && item.expenses !== undefined) ? String(item.expenses) : "",
             laborCost: (item.labour !== null && item.labour !== undefined) ? String(item.labour) : "",
+            cogs: (item.cogs !== null && item.cogs !== undefined) ? String(item.cogs) : "",
           }));
         
         if (transformedRows.length > 0) {
@@ -119,7 +120,10 @@ const SalesDataWrapper = () => {
     return rows.map((r) => {
       const sales = toNumber(r.sales);
       const expenses = toNumber(r.expenses);
-      const profit = sales - expenses;
+      const laborCost = toNumber(r.laborCost);
+      const cogs = toNumber(r.cogs);
+      // Profit = Sales - (COGS + Labor Cost + Expense)
+      const profit = sales - (cogs + laborCost + expenses);
       
       return {
         ...r,
@@ -142,6 +146,7 @@ const SalesDataWrapper = () => {
         sales: "", 
         expenses: "",
         laborCost: "",
+        cogs: "",
       },
     ]);
   };
@@ -152,28 +157,39 @@ const SalesDataWrapper = () => {
       const sales = toNumber(row.sales);
       const expenses = toNumber(row.expenses);
       const laborCost = toNumber(row.laborCost);
+      const cogs = toNumber(row.cogs);
       const year = Number(row.year);
       
       // Row is valid if it has year, month, and at least one data field filled
-      return year > 0 && row.month && (sales > 0 || expenses > 0 || laborCost > 0);
+      return year > 0 && row.month && (sales > 0 || expenses > 0 || laborCost > 0 || cogs > 0);
     });
 
     if (validRows.length === 0) {
-      message.warning('Please add at least one entry with month, year, and at least one data field (sales, expenses, or labor).');
+      message.warning('Please add at least one entry with month, year, and at least one data field (sales, expenses, labor, or COGS).');
       return;
     }
 
     setIsSaving(true);
     try {
-      // Save sales data with labour field included
-      const salesDataArray = validRows.map(row => ({
-        year: Number(row.year),
-        month: monthToNumber(row.month),
-        sales: toNumber(row.sales),
-        expenses: toNumber(row.expenses),
-        profit: toNumber(row.sales) - toNumber(row.expenses),
-        labour: toNumber(row.laborCost) > 0 ? toNumber(row.laborCost) : null,
-      }));
+      // Save sales data with labour and cogs fields included
+      const salesDataArray = validRows.map(row => {
+        const sales = toNumber(row.sales);
+        const expenses = toNumber(row.expenses);
+        const laborCost = toNumber(row.laborCost);
+        const cogs = toNumber(row.cogs);
+        // Profit = Sales - (COGS + Labor Cost + Expense)
+        const profit = sales - (cogs + laborCost + expenses);
+        
+        return {
+          year: Number(row.year),
+          month: monthToNumber(row.month),
+          sales,
+          expenses,
+          profit,
+          labour: laborCost > 0 ? laborCost : null,
+          cogs: cogs > 0 ? cogs : null,
+        };
+      });
 
       // Save all data as Sales Information (includes labour field)
       const result = await submitStepData("Sales Information", salesDataArray, (responseData) => {
@@ -208,50 +224,68 @@ const SalesDataWrapper = () => {
         <div className="text-sm font-bold text-orange-600">Previous Sales & Labor Information</div>
 
         <div className="mt-4">
-          <div className="grid grid-cols-6 gap-4 text-xs font-semibold text-gray-700 px-2">
+          <div className="grid grid-cols-7 gap-4 text-xs font-semibold text-gray-700 px-2">
             <div>Month</div>
             <div>Year</div>
             <div>Sales</div>
             <div>Labor Cost</div>
+            <div>COGS</div>
             <div>Expense</div>
             <div>Profit</div>
           </div>
 
           <div className="mt-3 space-y-2">
             {withCalculatedFields.map((r) => (
-              <div key={r.id} className="grid grid-cols-6 gap-4 items-center bg-gray-50 rounded-lg p-3">
+              <div key={r.id} className="grid grid-cols-7 gap-4 items-center bg-gray-50 rounded-lg p-3">
                 <Select
                   value={r.month}
                   onChange={(v) => updateRow(r.id, { month: v })}
                   options={MONTHS.map((m) => ({ value: m, label: m }))}
                   className="w-full"
                   size="middle"
+                  style={{ height: '40px' }}
                 />
                 <Input
                   value={r.year}
                   onChange={(e) => updateRow(r.id, { year: e.target.value })}
                   className="w-full"
                   placeholder="2024"
+                  style={{ height: '40px' }}
                 />
                 <Input
                   value={formatMoney(r.sales)}
                   onChange={(e) => updateRow(r.id, { sales: String(toNumber(e.target.value)) })}
                   className="w-full"
                   placeholder="$0"
+                  style={{ height: '40px' }}
                 />
                 <Input
                   value={formatMoney(r.laborCost)}
                   onChange={(e) => updateRow(r.id, { laborCost: String(toNumber(e.target.value)) })}
                   className="w-full"
                   placeholder="$0"
+                  style={{ height: '40px' }}
+                />
+                <Input
+                  value={formatMoney(r.cogs)}
+                  onChange={(e) => updateRow(r.id, { cogs: String(toNumber(e.target.value)) })}
+                  className="w-full"
+                  placeholder="$0"
+                  style={{ height: '40px' }}
                 />
                 <Input
                   value={formatMoney(r.expenses)}
                   onChange={(e) => updateRow(r.id, { expenses: String(toNumber(e.target.value)) })}
                   className="w-full"
                   placeholder="$0"
+                  style={{ height: '40px' }}
                 />
-                <Input value={formatMoney(r.profit)} className="w-full" disabled />
+                <Input 
+                  value={formatMoney(r.profit)} 
+                  className="w-full" 
+                  disabled 
+                  style={{ height: '40px' }}
+                />
               </div>
             ))}
           </div>

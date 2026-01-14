@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { message } from "antd";
 import FoodCostDetails from "./FoodCostDetails";
-// import DeliveryFrequency from "./DeliveryFrequency";
 import { TabProvider } from "../../TabContext";
 import { useTabHook } from "../../useTabHook";
 import useStore from "../../../../../store/store";
@@ -30,15 +29,9 @@ const FoodCostWrapperContent = () => {
         cogs_goal: "30%" // Default to 30%
     });
 
-    // State for Delivery Frequency
-    const [deliveryData, setDeliveryData] = useState({
-        selectedDays: {}
-    });
-
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
-        cogs_goal: "30%", // Default to 30%
-        delivery_days: []
+        cogs_goal: "30%" // Default to 30%
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -55,23 +48,8 @@ const FoodCostWrapperContent = () => {
             
             setCombinedData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%",
-                delivery_days: data.delivery_days || []
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%"
             }));
-            
-            // Set delivery days
-            if (data.delivery_days && Array.isArray(data.delivery_days)) {
-                const selectedDays = {};
-                data.delivery_days.forEach(day => {
-                    // Convert to proper case for display
-                    const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
-                    selectedDays[dayName] = true;
-                });
-                setDeliveryData(prev => ({
-                    ...prev,
-                    selectedDays
-                }));
-            }
         }
     }, [completeOnboardingData]);
 
@@ -103,60 +81,23 @@ const FoodCostWrapperContent = () => {
         }
     };
 
-    // Function to update delivery data
-    const updateDeliveryData = (field, value) => {
-        setDeliveryData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-        
-        // Update combined data
-        if (field === 'selectedDays') {
-            const selectedDays = Object.keys(value).filter(day => value[day]);
-            setCombinedData(prev => ({
-                ...prev,
-                delivery_days: selectedDays
-            }));
-        }
-        // Clear validation error for this field when user starts typing
-        if (validationErrors[field]) {
-            clearFieldError(field);
-        }
-    };
 
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
             
-            // Step 1: Prepare comprehensive data for validation
-            const validationData = {
-                ...combinedData,
-                selectedDays: deliveryData.selectedDays
-            };
-            
-            
-            // Step 2: Validate form
-            const validationResult = validateFoodCostDetails(validationData);
-            
-            if (!validationResult || Object.keys(validationResult).length > 0) {
-                // Set validation errors in state so they display in UI
-                setValidationErrors(validationResult);
-                message.error("Please fill in all required fields correctly");
-                return { success: false, error: "Validation failed" };
-            }
-
-            // Additional check for cogs_goal
+            // Step 1: Validate form - check if cogs_goal is filled
             if (!combinedData.cogs_goal || combinedData.cogs_goal.trim() === '' || combinedData.cogs_goal === '0%') {
-                message.error("Please select a COGS goal percentage");
+                message.error("Please fill all the field");
+                setValidationErrors({ cogs_goal: "COGS goal is required" });
                 return { success: false, error: "COGS goal is required" };
             }
 
-            // Step 3: Prepare data for API
+            // Step 2: Prepare data for API
             const cogsGoalClean = combinedData.cogs_goal ? combinedData.cogs_goal.toString().replace('%', '') : '';
             
             const stepData = {
-                cogs_goal: parseFloat(cogsGoalClean) || 0,
-                delivery_days: combinedData.delivery_days.map(day => day.toLowerCase()) || []
+                cogs_goal: parseFloat(cogsGoalClean) || 0
             };
 
             
@@ -229,14 +170,6 @@ const FoodCostWrapperContent = () => {
                             updateData={updateFoodCostData}
                             errors={validationErrors}
                         />
-
-                        {/* <DeliveryFrequency 
-                            data={deliveryData}
-                            updateData={updateDeliveryData}
-                            onSaveAndContinue={handleSaveAndContinue}
-                            errors={validationErrors}
-                            loading={loading}
-                        /> */}
                         
                         <div className="flex justify-end gap-3 mt-8 pt-6">
                             <button
@@ -277,7 +210,7 @@ const FoodCostWrapperContent = () => {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
                 <OnboardingBreadcrumb 
                     currentStep="Food Cost Details"
-                    description="Set up your food cost management including COGS goals and delivery schedules."
+                    description="Set up your food cost management including COGS goals."
                 />
             </div>
             
@@ -288,14 +221,6 @@ const FoodCostWrapperContent = () => {
                     updateData={updateFoodCostData}
                     errors={validationErrors}
                 />
-
-                {/* <DeliveryFrequency 
-                    data={deliveryData}
-                    updateData={updateDeliveryData}
-                    onSaveAndContinue={handleSaveAndContinue}
-                    errors={validationErrors}
-                    loading={loading}
-                /> */}
             </div>
             
             <div className="flex justify-end gap-3 mt-8 pt-6">

@@ -20,6 +20,26 @@ const { RangePicker } = DatePicker;
 
 // Year Range Picker component for annual mode
 const YearRangePicker = ({ value, onChange, disabled, loading }) => {
+  const [popupStyle, setPopupStyle] = useState({
+    zIndex: 9999,
+  });
+
+  useEffect(() => {
+    const updatePopupStyle = () => {
+      const isMobile = window.innerWidth < 640;
+      setPopupStyle({
+        zIndex: 9999,
+        ...(isMobile && {
+          maxWidth: 'calc(100vw - 32px)',
+        }),
+      });
+    };
+
+    updatePopupStyle();
+    window.addEventListener('resize', updatePopupStyle);
+    return () => window.removeEventListener('resize', updatePopupStyle);
+  }, []);
+
   const handleYearChange = (dates) => {
     if (dates && dates.length === 2 && dates[0] && dates[1]) {
       // Convert to dayjs objects for consistency
@@ -51,7 +71,7 @@ const YearRangePicker = ({ value, onChange, disabled, loading }) => {
       disabled={disabled || loading}
       style={{
         borderRadius: '6px',
-        width: 'auto',
+        width: '100%',
         minWidth: '280px',
         height: '40px',
         cursor: 'pointer'
@@ -60,8 +80,9 @@ const YearRangePicker = ({ value, onChange, disabled, loading }) => {
       size="middle"
       separator=" to "
       inputReadOnly={true}
-      popupStyle={{ zIndex: 1000 }}
-      getPopupContainer={(trigger) => trigger.parentNode}
+      popupStyle={popupStyle}
+      popupClassName="calendar-utils-popup"
+      placement="bottomLeft"
       disabledDate={() => false}
     />
   );
@@ -400,28 +421,73 @@ const CalendarUtils = ({
 
   const quickSelectMenu = getQuickSelectMenu();
 
+  // Responsive popup style for mobile
+  const [popupStyle, setPopupStyle] = useState({
+    zIndex: 9999,
+  });
+
+  useEffect(() => {
+    const updatePopupStyle = () => {
+      const isMobile = window.innerWidth < 640;
+      setPopupStyle({
+        zIndex: 9999,
+        ...(isMobile && {
+          maxWidth: 'calc(100vw - 32px)',
+        }),
+      });
+    };
+
+    updatePopupStyle();
+    window.addEventListener('resize', updatePopupStyle);
+    return () => window.removeEventListener('resize', updatePopupStyle);
+  }, []);
+
   return (
-    <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Quick Select Dropdown */}
-        {quickSelectMenu && (
-          <Dropdown
-            menu={quickSelectMenu}
-            trigger={['click']}
-            disabled={disabled || loading}
-          >
-            <Button
-              style={{
-                borderRadius: '6px',
-                height: '40px',
-                minWidth: '120px'
-              }}
+    <>
+      <style>{`
+        .calendar-utils-popup {
+          z-index: 9999 !important;
+        }
+        @media (max-width: 640px) {
+          .calendar-utils-popup {
+            max-width: calc(100vw - 32px) !important;
+            left: 16px !important;
+            right: 16px !important;
+          }
+          .calendar-utils-popup .ant-picker-panels {
+            flex-direction: column !important;
+          }
+          .calendar-utils-popup .ant-picker-panel {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .calendar-utils-popup .ant-picker-panel-container {
+            flex-direction: column !important;
+          }
+        }
+      `}</style>
+      <div className={`calendar-container ${className}`} style={{ ...style, position: 'relative' }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          {/* Quick Select Dropdown */}
+          {quickSelectMenu && (
+            <Dropdown
+              menu={quickSelectMenu}
+              trigger={['click']}
               disabled={disabled || loading}
             >
-              {quickSelectLabel} <DownOutlined />
-            </Button>
-          </Dropdown>
-        )}
+              <Button
+                style={{
+                  borderRadius: '6px',
+                  height: '40px',
+                  minWidth: '120px'
+                }}
+                disabled={disabled || loading}
+                className="w-full sm:w-auto"
+              >
+                {quickSelectLabel} <DownOutlined />
+              </Button>
+            </Dropdown>
+          )}
 
         {/* Year Range Picker for Annual Mode */}
         {groupBy === 'annual' ? (
@@ -443,7 +509,7 @@ const CalendarUtils = ({
             disabled={disabled || loading}
             style={{
               borderRadius: '6px',
-              width: 'auto',
+              width: '100%',
               minWidth: '280px',
               height: '40px',
               cursor: 'pointer'
@@ -455,8 +521,9 @@ const CalendarUtils = ({
             inputReadOnly={true}
             showToday={true}
             picker="date"
-            popupStyle={{ zIndex: 1000 }}
-            getPopupContainer={(trigger) => trigger.parentNode}
+            popupStyle={popupStyle}
+            popupClassName="calendar-utils-popup"
+            placement="bottomLeft"
             // Allow all dates including future dates
             disabledDate={() => false}
             // Remove any default restrictions
@@ -496,7 +563,7 @@ const CalendarUtils = ({
         )}
 
         {/* Group By Selector */}
-        <div className="w-24">
+        <div className="w-full sm:w-24">
           <Select
             value={groupBy}
             onChange={handleGroupByChange}
@@ -529,7 +596,8 @@ const CalendarUtils = ({
           <Text type="secondary" className="text-sm">Loading...</Text>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 
