@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
 import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
 import { FaChartLine, FaPeopleCarry, FaStore, FaDollarSign, FaUsers } from 'react-icons/fa';
@@ -21,12 +21,70 @@ import lioIcon from "../../assets/lio.png";
  */
 const Wrapper = ({ showSidebar = false, children, className }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
   const isSuperAdmin = user?.is_superuser;
   const impersonating = isImpersonating();
+    // Get simulation status from store
+    const simulationOnboardingStatus = useStore((state) => state.simulationOnboardingStatus);
+    const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
+    const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  
+    // Check if user is in simulation mode
+    useEffect(() => {
+      const checkSimulationMode = async () => {
+        try {
+          
+          // Check restaurant simulation status
+          const simulationResult = await getRestaurantSimulation();
+          
+          // restaurant_simulation === true means simulation mode (user selected "I do not have a restaurant")
+          // Based on OnboardingWrapper: simulation (second option) = true
+          const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+          
+          // Check simulation onboarding status
+          const onboardingResult = await getSimulationOnboardingStatus();
+          
+          const restaurants = onboardingResult?.data?.restaurants || [];
+          
+          const isOnboardingComplete = onboardingResult?.success && 
+                                       restaurants.some(
+                                         (r) => r.simulation_onboarding_complete === true
+                                       );
+          
+          // Only show simulation dashboard menu when BOTH conditions are met:
+          // 1. isSimulator === true (restaurant_simulation === true)
+          // 2. isOnboardingComplete === true (simulation_onboarding_complete === true)
+          // If onboarding is not complete, show all menus so user can navigate to complete onboarding
+          if (isSimulator && isOnboardingComplete) {
+            setIsSimulationMode(true);
+  
+          } else {
+            setIsSimulationMode(false);
+          }
+        } catch (error) {
+          console.error('❌ [Wrapper] Error checking simulation mode:', error);
+          setIsSimulationMode(false);
+        }
+      };
+  
+      checkSimulationMode();
+    }, [getRestaurantSimulation, getSimulationOnboardingStatus, location.pathname]);
+  
+    // Simulation Dashboard menu (only shown when in simulation mode)
+    const simulationMenu = [
+      {
+        key: 'simulation-dashboard',
+        icon: <FaChartLine />,
+        label: 'Simulation Dashboard',
+        onClick: () => navigate('/simulation/dashboard'),
+      },
+    ];
+  
 
   const userMenus = [
     {
@@ -271,7 +329,14 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   // Show user menus for non-superadmin users, or when superadmin is impersonating
   const showUserMenus = !isSuperAdmin || impersonating;
-  const menuItems = [
+ // If in simulation mode, only show simulation dashboard menu (no settings)
+  // This happens when:
+  // 1. restaurant_simulation === true (user selected "I do not have a restaurant" - simulation mode)
+  // 2. simulation_onboarding_complete === true (simulation onboarding is complete)
+  const menuItems = isSimulationMode ? [
+    ...simulationMenu,
+    // Settings menu is hidden in simulation mode
+  ] : [
     ...(showUserMenus ? userMenus : []),
     // ...adminMenu,
     ...superAdminMenu,
@@ -306,7 +371,8 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           <Content className={`px-2 sm:px-4 py-2 sm:py-1  w-full ${className}`}>
             <ImpersonationBanner />
             {children}
-            <GuidanceOverlay />
+             {/* Hide Growlio Assistant (GuidanceOverlay) in simulation mode */}
+             {!isSimulationMode && <GuidanceOverlay />}
           </Content>
         </div>
       </div>

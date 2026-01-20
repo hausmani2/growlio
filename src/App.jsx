@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import useStore from './store/store';
 import { GuidanceProvider } from './contexts/GuidanceContext';
+import LoadingSpinner from './components/layout/LoadingSpinner';
+
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
@@ -10,6 +12,8 @@ import SuperAdminLoginPage from './components/authScreens/SuperAdminLoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
 import Congratulations from './components/authScreens/auth/Congratulations';
 import ForgotPassword from './components/authScreens/auth/ForgotPassword';
+import SimulationOnboarding from './components/onBoarding/SimulationOnboarding';
+import SimulationDashboard from './components/simulation/SimulationDashboard';
 import ResetPassword from './components/authScreens/auth/ResetPassword';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
@@ -47,11 +51,109 @@ import { ProfitabilityScore, ProfitabilityWizard } from './components/profitabil
 import ReportCardPage from './components/reportCard/ReportCardPage';
 import { SquareIntegration, SquareCallbackHandler } from './components/square';
 
+// Smart redirect component that checks simulation status
+const RootRedirect = () => {
+  const navigate = useNavigate();
+  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
+  const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  const [isChecking, setIsChecking] = useState(true);
+  
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    
+    const checkAndRedirect = async () => {
+      try {
+        // Check if user is a simulation user
+        const simulationResult = await getRestaurantSimulation();
+        const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+        
+        if (isSimulator) {
+          // Check simulation onboarding status
+          const onboardingResult = await getSimulationOnboardingStatus();
+          if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+            const restaurants = onboardingResult.data.restaurants;
+            const completeRestaurant = restaurants.find(
+              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+            );
+            
+            if (completeRestaurant) {
+              // Simulation onboarding is complete, redirect to simulation dashboard
+              localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+              navigate('/simulation/dashboard', { replace: true });
+              return;
+            }
+          }
+        }
+        
+        // Not a simulation user or simulation not complete, redirect to congratulations
+        navigate('/congratulations', { replace: true });
+      } catch (error) {
+        console.error('Error checking simulation status:', error);
+        // On error, default to congratulations
+        navigate('/congratulations', { replace: true });
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    checkAndRedirect();
+  }, [isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus, navigate]);
+  
+  if (isChecking) {
+    return <LoadingSpinner message="Checking your setup..." />;
+  }
+  
+  return null;
+};
+
 function App() {
   const initializeAuth = useStore((state) => state.initializeAuth);
   const syncAuthFromStorage = useStore((state) => state.syncAuthFromStorage);
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const token = useStore((state) => state.token);
+
+  const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
+  const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
+  
+  // Check if user is in simulation mode
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setIsSimulationMode(false);
+      return;
+    }
+    
+    const checkSimulationMode = async () => {
+      try {
+        // Check restaurant simulation status
+        const simulationResult = await getRestaurantSimulation();
+        const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+        
+        if (isSimulator) {
+          // Check simulation onboarding status
+          const onboardingResult = await getSimulationOnboardingStatus();
+          const restaurants = onboardingResult?.data?.restaurants || [];
+          const isOnboardingComplete = onboardingResult?.success && 
+                                     restaurants.some((r) => r.simulation_onboarding_complete === true);
+          
+          // Only set simulation mode if onboarding is complete
+          setIsSimulationMode(isOnboardingComplete);
+        } else {
+          setIsSimulationMode(false);
+        }
+      } catch (error) {
+        console.error('❌ [App] Error checking simulation mode:', error);
+        setIsSimulationMode(false);
+      }
+    };
+    
+    checkSimulationMode();
+  }, [isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus]);
   
   // Configure Ant Design message
   useEffect(() => {
@@ -125,9 +227,11 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>
-          <Route path="/" element={<Navigate to="/congratulations" replace />} />
+         <Route path="/" element={<RootRedirect />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/onboarding/setup" element={<OnboardingWrapper />} />
+          <Route path="/onboarding/simulation" element={<SimulationOnboarding />} />
+          <Route path="/simulation/dashboard" element={<Wrapper showSidebar={true} children={<SimulationDashboard />} />} />
           <Route path="/onboarding/score" element={<ProfitabilityScore />} />
           <Route path="/onboarding/profitability" element={<ProfitabilityWizard />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
@@ -182,8 +286,8 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       
-      {/* Chatbot Widget - Only show when authenticated */}
-      {isAuthenticated && <ChatWidget botName="Growlio Assistant" />}
+        {/* Chatbot Widget - Only show when authenticated and NOT in simulation mode */}
+        {isAuthenticated && !isSimulationMode && <ChatWidget botName="Growlio Assistant" />}
       </GuidanceProvider>
     </Router>
   );

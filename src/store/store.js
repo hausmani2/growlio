@@ -11,6 +11,8 @@ import createChatSlice from './slices/chatSlice';
 import createSalesInformationSlice from './slices/salesInformationSlice';
 import createPlansSlice from './slices/plansSlice';
 import createSquareSlice from './slices/squareSlice';
+import createSimulationSlice from './slices/simulationSlice';
+
 
 const useStore = create(
   devtools(
@@ -27,6 +29,8 @@ const useStore = create(
         ...createSalesInformationSlice(set, get),
         ...createPlansSlice(set, get),
         ...createSquareSlice(set, get),
+        ...createSimulationSlice(set, get),
+
       
         
         // Function to completely clear all persisted state

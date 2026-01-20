@@ -20,6 +20,8 @@ import {
   isSalesInformationComplete,
   ONBOARDING_ROUTES,
 } from "../../utils/onboardingUtils";
+import { checkAndRedirectToSimulation } from "../../utils/simulationUtils";
+
 
 const OnboardingWrapper = () => {
     const navigate = useNavigate();
@@ -28,6 +30,9 @@ const OnboardingWrapper = () => {
     const [selectedOption, setSelectedOption] = useState('profitability'); // 'profitability' or 'simulation'
     const [restaurantData, setRestaurantData] = useState(null);
     const hasCheckedRestaurantRef = useRef(false);
+    const hasCheckedSimulationRef = useRef(false);
+
+    
     
     const {
         checkOnboardingCompletion,
@@ -41,7 +46,8 @@ const OnboardingWrapper = () => {
         updateRestaurantSimulation,
         getRestaurantOnboarding,
         getSalesInformation,
-        salesInformationData
+        salesInformationData,
+        getSimulationOnboardingStatus
     } = useStore();
     
     // Check if sales information is complete using utility function
@@ -141,6 +147,86 @@ const OnboardingWrapper = () => {
         logout();
         // logout() function now handles redirect internally
     }
+     // Ref to prevent multiple simultaneous API calls
+     const simulationCheckRef = useRef(false);
+    
+     // Check for simulation restaurant on component mount (only once)
+     useEffect(() => {
+         // Prevent multiple calls
+         if (simulationCheckRef.current) {
+             return;
+         }
+         
+         // Only check on /onboarding page
+         if (location.pathname !== ONBOARDING_ROUTES.ONBOARDING) {
+             return;
+         }
+ 
+         // Mark as checking to prevent duplicate calls
+         simulationCheckRef.current = true;
+ 
+         const checkSimulationRestaurant = async () => {
+             console.log('🔄 [OnboardingWrapper] Checking for simulation restaurant...');
+             
+             try {
+                 const result = await getSimulationOnboardingStatus();
+                 
+                 console.log('✅ [OnboardingWrapper] Simulation status result:', result);
+                 
+                 if (result.success && result.data) {
+                     const restaurants = result.data.restaurants || [];
+                     
+                     console.log('📋 [OnboardingWrapper] Found simulation restaurants:', restaurants);
+                     
+                     if (restaurants.length > 0) {
+                         // Get the most recent restaurant
+                         const restaurant = restaurants[restaurants.length - 1] || restaurants[0];
+                         const restaurantId = restaurant.simulation_restaurant_id;
+                         const restaurantName = restaurant.simulation_restaurant_name;
+                         const onboardingComplete = restaurant.simulation_onboarding_complete;
+                         
+                         console.log('🏪 [OnboardingWrapper] Simulation restaurant found:', restaurant);
+                         console.log('🆔 [OnboardingWrapper] Restaurant ID:', restaurantId);
+                         console.log('📝 [OnboardingWrapper] Restaurant Name:', restaurantName);
+                         console.log('✅ [OnboardingWrapper] Onboarding Complete:', onboardingComplete);
+                         
+                         if (restaurantId) {
+                             // Store restaurant ID
+                             localStorage.setItem('simulation_restaurant_id', restaurantId.toString());
+                             
+                             // Only redirect to dashboard if:
+                             // 1. restaurant_name is not null
+                             // 2. simulation_onboarding_complete is true
+                             if (restaurantName !== null && onboardingComplete === true) {
+                                 console.log('🔄 [OnboardingWrapper] Restaurant is complete, redirecting to simulation dashboard...');
+                                 message.info('Simulation restaurant found. Redirecting to dashboard...');
+                                 navigate('/simulation/dashboard', { replace: true });
+                                 return;
+                             } else {
+                                 console.log('ℹ️ [OnboardingWrapper] Restaurant exists but onboarding not complete or name is null');
+                                 console.log('   - Restaurant Name:', restaurantName);
+                                 console.log('   - Onboarding Complete:', onboardingComplete);
+                                 console.log('   - User can continue with onboarding...');
+                             }
+                         }
+                     } else {
+                         console.log('ℹ️ [OnboardingWrapper] No simulation restaurant found');
+                     }
+                 } else {
+                     console.warn('⚠️ [OnboardingWrapper] Failed to check simulation status:', result.error);
+                 }
+             } catch (error) {
+                 console.error('❌ [OnboardingWrapper] Error checking simulation restaurant:', error);
+                 // Don't show error to user - just log it
+                 // Allow user to continue with normal onboarding flow
+             }
+         };
+ 
+         // Call on mount
+         checkSimulationRestaurant();
+         
+         // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [location.pathname]);
 
     // Simple check: If restaurant exists (restaurants array has items), redirect to score page
     useEffect(() => {
@@ -330,7 +416,7 @@ const OnboardingWrapper = () => {
                         <div className="mt-4">
                             <button
                                 onClick={handleSubmit}
-                                disabled={isChecking || selectedOption === 'simulation'}
+                                disabled={isChecking}
                                 className="w-full rounded-lg p-3 bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isChecking ? (

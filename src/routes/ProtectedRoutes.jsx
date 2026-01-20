@@ -18,7 +18,8 @@ const ProtectedRoutes = () => {
   const hasFetchedRef = useRef(false);
   const hasCheckedRestaurantRef = useRef(false); // Track if we've checked restaurant to prevent multiple checks
   const hasRedirectedRef = useRef(false); // Track if we've already redirected to prevent infinite loops
-  
+  const redirectTimeoutRef = useRef(null); // Track redirect timeout for cleanup
+
   // Get store values - using individual selectors to prevent unnecessary re-renders
   // All hooks must be called in the same order on every render
   const isAuthenticated = useStore((state) => state.isAuthenticated);
@@ -33,6 +34,8 @@ const ProtectedRoutes = () => {
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
   const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
   const restaurantOnboardingDataTimestamp = useStore((state) => state.restaurantOnboardingDataTimestamp);
+  const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
+  const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
   
   // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
   const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -57,6 +60,11 @@ const ProtectedRoutes = () => {
   // Initialize from cached store data to prevent null state on navigation
   const [restaurantData, setRestaurantData] = useState(getInitialRestaurantData);
   const [restaurantCheckLoading, setRestaurantCheckLoading] = useState(!getInitialRestaurantData());
+
+   // Check if user is a simulation user with complete onboarding when on congratulations page
+  // These hooks must be declared at the top level, before any conditional returns
+  const [isSimulationUserComplete, setIsSimulationUserComplete] = useState(false);
+  const [isCheckingSimulation, setIsCheckingSimulation] = useState(false);
   
   // Derived state from restaurant data
   const restaurantExists = hasRestaurant(restaurantData);
@@ -320,6 +328,8 @@ const ProtectedRoutes = () => {
         ONBOARDING_ROUTES.SCORE,
         ONBOARDING_ROUTES.PROFITABILITY,
         ONBOARDING_ROUTES.CONGRATULATIONS,
+        '/onboarding/simulation', // Allow simulation onboarding
+        '/simulation/dashboard', // Allow simulation dashboard
       ];
       
       // If user is on an allowed path, NEVER redirect - allow access immediately
@@ -331,6 +341,13 @@ const ProtectedRoutes = () => {
       }
     }
 
+     // CRITICAL: Always allow simulation routes - they handle their own logic
+     if (location.pathname === '/onboarding/simulation' || location.pathname === '/simulation/dashboard') {
+      hasRedirectedRef.current = false;
+      sessionStorage.setItem('lastProcessedPath', location.pathname);
+      sessionStorage.removeItem('lastRedirectRoute');
+      return; // Allow access to simulation routes - don't return JSX from useEffect
+    }
     // Don't process redirects if we don't have restaurant data yet
     // This prevents redirects from triggering before we know the user's status
     if (!restaurantData && restaurantExists === false && isAuthenticated) {
@@ -348,6 +365,8 @@ const ProtectedRoutes = () => {
       ONBOARDING_ROUTES.SCORE,
       ONBOARDING_ROUTES.PROFITABILITY,
       ONBOARDING_ROUTES.CONGRATULATIONS,
+      '/onboarding/simulation', // Allow simulation onboarding path
+      '/simulation/dashboard', // Allow simulation dashboard path
     ];
     
     // Track the last path we processed to prevent duplicate redirects
@@ -459,13 +478,24 @@ const ProtectedRoutes = () => {
         sessionStorage.setItem('lastProcessedPath', location.pathname);
         sessionStorage.setItem('lastRedirectRoute', redirectRoute);
         
+        // Clear any existing timeout
+        if (redirectTimeoutRef.current) {
+          clearTimeout(redirectTimeoutRef.current);
+        }
         // Use a small delay to batch navigation and prevent multiple calls
-        const redirectTimeout = setTimeout(() => {
+        redirectTimeoutRef.current = setTimeout(() => {
           navigate(redirectRoute, { replace: true });
+          redirectTimeoutRef.current = null;
         }, 50);
         
         // Store timeout ID to clear if component unmounts
-        return () => clearTimeout(redirectTimeout);
+          // Cleanup function - clear timeout if component unmounts or dependencies change
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+    };
       }
     }
 
@@ -496,6 +526,47 @@ const ProtectedRoutes = () => {
     salesInformationLoading,
     restaurantData, // Add restaurantData to dependencies to ensure we have it before redirecting
   ]);
+
+   // Check if user is a simulation user with complete onboarding when on congratulations page
+  // This useEffect must be declared before route checks to avoid hook order issues
+  useEffect(() => {
+    const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS;
+    if (isCongratulationsPath && isAuthenticated) {
+      setIsCheckingSimulation(true);
+      const checkSimulation = async () => {
+        try {
+          const simulationResult = await getRestaurantSimulation();
+          const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+          
+          if (isSimulator) {
+            const onboardingResult = await getSimulationOnboardingStatus();
+            if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+              const restaurants = onboardingResult.data.restaurants;
+              const completeRestaurant = restaurants.find(
+                (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+              );
+              
+              if (completeRestaurant) {
+                setIsSimulationUserComplete(true);
+                localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+                navigate('/simulation/dashboard', { replace: true });
+                return;
+              }
+            }
+          }
+          setIsSimulationUserComplete(false);
+        } catch (error) {
+          console.error('Error checking simulation status:', error);
+          setIsSimulationUserComplete(false);
+        } finally {
+          setIsCheckingSimulation(false);
+        }
+      };
+      
+      checkSimulation();
+    }
+  }, [location.pathname, isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus, navigate]);
+
 
   // Check sales information and onboarding status when component mounts
   useEffect(() => {
@@ -600,11 +671,17 @@ const ProtectedRoutes = () => {
   const isProfitabilityPath = location.pathname === '/profitability' || location.pathname.includes('/onboarding/profitability');
   const isScorePath = location.pathname === ONBOARDING_ROUTES.SCORE; // '/onboarding/score'
   const isReportCardPath = location.pathname === ONBOARDING_ROUTES.REPORT_CARD;
-  const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS;
+  // CRITICAL: Always allow simulation routes - they handle their own redirect logic
+  const isSimulationPath = location.pathname === '/onboarding/simulation' || location.pathname === '/simulation/dashboard';
   const isDashboardPath = location.pathname.startsWith('/dashboard');
   const isSuperAdminPath = location.pathname.startsWith('/superadmin');
   const isProfilePath = location.pathname === '/dashboard/profile';
   const salesDataComplete = hasSalesData();
+
+    // If checking simulation status, show loading
+    if (isCheckingSimulation && isCongratulationsPath) {
+      return <LoadingSpinner message="Checking your setup..." />;
+    }
 
   // SuperAdmin route guard - check if non-superadmin is trying to access superadmin routes
   const isSuperAdminUser = user?.is_superuser;
@@ -666,10 +743,11 @@ const ProtectedRoutes = () => {
   // This prevents redirects when reloading any dashboard page
   if (oneMonthSalesInfoComplete) {
     // Block access to onboarding, score, and profitability pages
-    if (isOnboardingPath && !isCompleteStepsPath) {
+     // But allow simulation routes
+     if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
-    if (isScorePath || isProfitabilityPath) {
+    if ((isScorePath || isProfitabilityPath) && !isSimulationPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
     // Allow access to report card and ALL other dashboard routes
@@ -678,8 +756,13 @@ const ProtectedRoutes = () => {
 
   // Simple check: If restaurant exists (restaurants array has items)
   // Block /onboarding page, allow score/profitability
+  // CRITICAL: Always allow simulation routes FIRST - they handle their own redirect logic
+  if (isSimulationPath) {
+    return <Outlet />;
+  }
   
   if (restaurantExists) {
+    
     
     // If restaurant exists, block access to /onboarding page
     // User must go to /onboarding/score instead

@@ -35,6 +35,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/profile': 'profile',
     '/dashboard/faq': 'faq',
     '/dashboard/chat': 'chat',
+    '/simulation/dashboard': 'simulation-dashboard',
     '/admin/users': 'admin-users',
     '/admin/tooltips': 'admin-tooltips',
     '/superadmin/dashboard': 'superadmin-dashboard',

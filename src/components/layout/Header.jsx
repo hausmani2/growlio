@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
@@ -16,6 +16,39 @@ const Header = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const user = useStore((state) => state.user);
     const logout = useStore((state) => state.logout);
+    const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
+    const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+    
+    const [isSimulationMode, setIsSimulationMode] = useState(false);
+    
+    // Check if user is in simulation mode
+    useEffect(() => {
+        const checkSimulationMode = async () => {
+            try {
+                // Check restaurant simulation status
+                const simulationResult = await getRestaurantSimulation();
+                const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+                
+                if (isSimulator) {
+                    // Check simulation onboarding status
+                    const onboardingResult = await getSimulationOnboardingStatus();
+                    const restaurants = onboardingResult?.data?.restaurants || [];
+                    const isOnboardingComplete = onboardingResult?.success && 
+                                               restaurants.some((r) => r.simulation_onboarding_complete === true);
+                    
+                    // Only set simulation mode if onboarding is complete
+                    setIsSimulationMode(isOnboardingComplete);
+                } else {
+                    setIsSimulationMode(false);
+                }
+            } catch (error) {
+                console.error('❌ [Header] Error checking simulation mode:', error);
+                setIsSimulationMode(false);
+            }
+        };
+        
+        checkSimulationMode();
+    }, [getRestaurantSimulation, getSimulationOnboardingStatus]);
     
     // Format name with first letter capitalized
     const formatName = (fullName) => {
@@ -33,7 +66,8 @@ const Header = ({ onMenuClick }) => {
     };
 
     const menuItems = [
-        {
+        
+            ...(isSimulationMode ? [] : [{
             key: '1',
             label: (
                 <div className="flex items-center gap-2">
@@ -42,7 +76,7 @@ const Header = ({ onMenuClick }) => {
             ),
             onClick: () => navigate('/dashboard/profile'),
             className: 'hover:bg-gray-50'
-        },
+        }]),
         {
             key: '2',
             label: (

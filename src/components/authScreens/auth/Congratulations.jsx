@@ -17,7 +17,9 @@ const Congratulations = () => {
         checkOnboardingCompletion,
         getSalesInformation,
         salesInformationData,
-        forceOnboardingCheck
+        forceOnboardingCheck,
+        getRestaurantSimulation,
+        getSimulationOnboardingStatus
     } = useStore();
     
     // Helper function to check if sales information exists
@@ -56,6 +58,32 @@ const Congratulations = () => {
             if (!isAuthenticated) {
                 navigate('/login');
                 return;
+            }
+             // FIRST: Check if user is a simulation user with complete onboarding
+             try {
+                const simulationResult = await getRestaurantSimulation();
+                const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+                
+                if (isSimulator) {
+                    const onboardingResult = await getSimulationOnboardingStatus();
+                    if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+                        const restaurants = onboardingResult.data.restaurants;
+                        const completeRestaurant = restaurants.find(
+                            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+                        );
+                        
+                        if (completeRestaurant) {
+                            // Simulation onboarding is complete, redirect to simulation dashboard
+                            localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+                            navigate('/simulation/dashboard', { replace: true });
+                            setIsChecking(false);
+                            return;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking simulation status:', error);
+                // Continue with normal flow if simulation check fails
             }
 
             // Fetch sales information if not in store
