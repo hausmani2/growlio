@@ -358,18 +358,6 @@ const SimulationDashboard = () => {
                     )
                   },
                   {
-                    title: 'Original Amount',
-                    dataIndex: 'orignal_amount',
-                    key: 'orignal_amount',
-                    render: (amount, record) => (
-                      <span>
-                        {formatCurrency(amount)}
-                        {record.value_type === 'percentage' && '%'}
-                      </span>
-                    ),
-                    align: 'right'
-                  },
-                  {
                     title: 'Calculated Amount',
                     dataIndex: 'amount',
                     key: 'amount',
