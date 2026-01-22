@@ -1573,7 +1573,7 @@ const SalesDataModal = ({
           <div className="flex flex-col gap-3">
             <Button
               onClick={() => handleLaborRateConfirmationChoice('yes')}
-              className="w-full h-12 rounded-lg text-white font-semibold"
+              className="w-full h-12 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               Yes
@@ -1581,7 +1581,7 @@ const SalesDataModal = ({
             
             <Button
               onClick={() => handleLaborRateConfirmationChoice('budgeted')}
-              className="w-full h-12 rounded-lg text-white font-semibold"
+              className="w-full h-12 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               {restaurantGoals?.avg_hourly_rate ? 
@@ -1592,7 +1592,7 @@ const SalesDataModal = ({
             
             <Button
               onClick={() => handleLaborRateConfirmationChoice('setNew')}
-              className="w-full h-12 rounded-lg text-white font-semibold"
+              className="w-full h-12 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               Set New Labor Rate

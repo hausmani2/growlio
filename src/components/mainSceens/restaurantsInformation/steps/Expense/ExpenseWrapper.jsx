@@ -93,7 +93,10 @@ const ExpenseWrapperContent = () => {
                     label: cost.name,
                     value: cost.amount ? cost.amount.toString() : "0",
                     key: `dynamic_expense_${cost.id || Date.now()}_${index}`,
-                    expense_type: cost.expense_type || cost.fixed_expense_type || cost.variable_expense_type || "monthly"
+                    expense_type: cost.expense_type || cost.fixed_expense_type || cost.variable_expense_type || "monthly",
+                    is_active: cost.is_active !== undefined ? cost.is_active : true,
+                    is_value_type: cost.is_value_type !== undefined ? cost.is_value_type : true,
+                    category: cost.category || "Other"
                 }));
 
                 // Calculate total expense - convert all to monthly for consistent calculation
@@ -126,9 +129,8 @@ const ExpenseWrapperContent = () => {
                     totalVariableCost: "0.00"
                 }));
             }
-        } else {
-
         }
+        // Note: If no data exists, OperatingExpenses component will initialize with defaults
     }, [completeOnboardingData]);
 
     // Clear error when component mounts
@@ -146,15 +148,18 @@ const ExpenseWrapperContent = () => {
     // Update API-ready data when expense data changes
     useEffect(() => {
         // Combine all expenses into a single list
+        // Include ALL expenses (active and inactive) with their status
         const allExpenses = [
             ...expenseData.dynamicFixedFields,
             ...expenseData.dynamicVariableFields
         ]
-            .filter(field => parseFloat(field.value) > 0)
+            .filter(field => field && field.label && field.label.trim() !== '') // Only filter out invalid entries
             .map(field => ({
                 name: field.label,
-                amount: parseFloat(field.value),
-                expense_type: field.expense_type || field.fixed_expense_type || field.variable_expense_type || "monthly"
+                amount: parseFloat(field.value || 0),
+                expense_type: field.expense_type || field.fixed_expense_type || field.variable_expense_type || "monthly",
+                is_value_type: field.is_value_type !== undefined ? field.is_value_type : true,
+                is_active: field.is_active !== undefined ? field.is_active : true
             }));
 
         // Use new unified expenses format
@@ -183,7 +188,14 @@ const ExpenseWrapperContent = () => {
         ];
         
         // Calculate total expense - convert all to monthly for consistent calculation
+        // Only include active expenses
         const totalExpense = allExpenses.reduce((sum, field) => {
+            // Skip inactive expenses
+            const isActive = field.is_active !== undefined ? field.is_active : true;
+            if (!isActive) {
+                return sum;
+            }
+
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
             const labelLower = field.label.toLowerCase();
@@ -244,14 +256,16 @@ const ExpenseWrapperContent = () => {
             return errors;
         }
 
-        // Validate each expense has a name and valid amount
+        // Validate each expense has a name
+        // Amount can be 0 for inactive expenses
         if (data.expenses && data.expenses.length > 0) {
             data.expenses.forEach((expense, index) => {
                 if (!expense.name?.trim()) {
                     errors[`expense_${index}_name`] = "Expense name is required";
                 }
-                if (!expense.amount || isNaN(expense.amount) || parseFloat(expense.amount) <= 0) {
-                    errors[`expense_${index}_amount`] = "Please enter a valid amount greater than 0";
+                // Only validate amount > 0 for active expenses
+                if (expense.is_active && (!expense.amount || isNaN(expense.amount) || parseFloat(expense.amount) <= 0)) {
+                    errors[`expense_${index}_amount`] = "Please enter a valid amount greater than 0 for active expenses";
                 }
             });
         }
