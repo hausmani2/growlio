@@ -29,8 +29,9 @@ const LaborInformationWrapperContent = () => {
     const [laborData, setLaborData] = useState({
         labour_goal: '28', // Default to 28%
         avg_hourly_rate: '',
-        labor_record_method: 'daily_hours_costs',
-        daily_ticket_count: false,
+        // labor_record_method: 'daily_hours_costs', // COMMENTED OUT - No default value
+        labor_record_method: '', // No default value
+        daily_ticket_count: true, // Default to true (Yes)
         forward_previous_week_rate: false // Always default to false
     });
 
@@ -46,8 +47,9 @@ const LaborInformationWrapperContent = () => {
                     ...prev,
                     labour_goal: data.goal ? Math.round(parseFloat(data.goal)).toString() : data.labour_goal ? Math.round(parseFloat(data.labour_goal)).toString() : prev.labour_goal || '28',
                     avg_hourly_rate: data.avg_hourly_rate?.toString() || '',
-                    labor_record_method: data.labor_record_method || 'daily_hours_costs',
-                    daily_ticket_count: data.daily_ticket_count,
+                    // labor_record_method: data.labor_record_method || 'daily_hours_costs', // COMMENTED OUT - No default value
+                    labor_record_method: data.labor_record_method || '', // No default value
+                    daily_ticket_count: true, // Always default to true (Yes) - ignore saved value
                     forward_previous_week_rate: data.forward_previous_week_rate !== undefined ? data.forward_previous_week_rate : (data.forward_prev_week_rate !== undefined ? data.forward_prev_week_rate : false) // Default to true if not set
                 };
                 return newData;
@@ -105,7 +107,7 @@ const LaborInformationWrapperContent = () => {
                 needs_attention:"0",
                 avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
                 labor_record_method: laborData.labor_record_method,
-                daily_ticket_count: laborData.daily_ticket_count,
+                daily_ticket_count: true, // Always set to true (Yes) in payload by default
                 forward_previous_week_rate: false // Always set to true by default
             };
 

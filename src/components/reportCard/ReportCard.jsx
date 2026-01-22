@@ -48,6 +48,49 @@ const getGrade = (score) => {
   return "F";
 };
 
+// Get grade color classes based on grade letter
+const getGradeColorClasses = (grade) => {
+  const gradeLetter = grade?.toUpperCase() || '';
+  switch (gradeLetter) {
+    case 'A':
+      return {
+        bg: 'bg-green-100',
+        text: 'text-green-800',
+        border: 'border-green-300'
+      };
+    case 'B':
+      return {
+        bg: 'bg-blue-100',
+        text: 'text-blue-800',
+        border: 'border-blue-300'
+      };
+    case 'C':
+      return {
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-800',
+        border: 'border-yellow-300'
+      };
+    case 'D':
+      return {
+        bg: 'bg-orange-100',
+        text: 'text-orange-800',
+        border: 'border-orange-300'
+      };
+    case 'F':
+      return {
+        bg: 'bg-red-100',
+        text: 'text-red-800',
+        border: 'border-red-300'
+      };
+    default:
+      return {
+        bg: 'bg-gray-100',
+        text: 'text-gray-500',
+        border: 'border-gray-200'
+      };
+  }
+};
+
 const SCORE_COLORS = [
   "#7f1d1d",
   "#b91c1c",
@@ -75,14 +118,15 @@ const buildScoreSegments = (score) => {
   });
 };
 
-const ScoreDonut = ({ score = 0, size = 200 }) => {
+const ScoreDonut = ({ score = 0, size = 200, gradeLabel = null, grade = null }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const segments = useMemo(() => buildScoreSegments(s), [s]);
-  const grade = useMemo(() => getGrade(s), [s]);
+  const calculatedGrade = useMemo(() => grade || getGrade(s), [grade, s]);
+  const gradeColors = useMemo(() => getGradeColorClasses(calculatedGrade), [calculatedGrade]);
 
   // Calculate inner radius to leave proper space for text
   const innerRadius = Math.round(size * 0.40); // Increased from 0.33 to 0.40 for more text space
-  const outerRadius = Math.round(size * 0.48);
+  const outerRadius = Math.round(size * 0.50);
   const centerY = size / 2;
 
   return (
@@ -122,10 +166,15 @@ const ScoreDonut = ({ score = 0, size = 200 }) => {
       >
         {/* Grade - Large and bold at top */}
         <div className="text-4xl font-bold text-gray-900 leading-none mb-0.5">
-          {grade}
+          {calculatedGrade}
         </div>
+        {gradeLabel && (
+          <div className={`text-sm font-semibold leading-none mb-0.5 border ${gradeColors.border} ${gradeColors.bg} ${gradeColors.text} px-2 py-1 rounded-md`}>
+            {gradeLabel}
+          </div>
+        )}
         {/* Score - Very large and prominent */}
-        <div className="text-6xl font-extrabold text-gray-900 leading-none tabular-nums">
+        <div className="text-3xl font-extrabold text-gray-900 leading-none tabular-nums">
           {Math.round(s)}
         </div>
       </div>
@@ -211,7 +260,13 @@ const ReportCard = ({
   summary = { sales: 40000, profit: 6000 },
   onDateRangeChange,
   loading = false,
+  gradeDetails = null,
 }) => {
+  // Extract grade letter from label or calculate from score
+  const gradeFromLabel = gradeDetails?.label 
+    ? gradeDetails.label.match(/Grade\s+([A-F])/i)?.[1]?.toUpperCase() 
+    : null;
+  const currentGrade = gradeFromLabel || getGrade(score);
   // Initialize with last month (default for report card)
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(1, 'month').startOf('month'),
@@ -419,11 +474,17 @@ const ReportCard = ({
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
         {/* Left: Score */}
         <div className="flex flex-col items-center justify-center">
-          <ScoreDonut score={score} size={200} />
-          <div className="mt-4 text-center leading-tight">
-            <div className="text-2xl font-bold text-gray-900">Profitability</div>
-            <div className="text-2xl font-bold text-gray-900">Score</div>
+          <ScoreDonut 
+            score={score} 
+            size={200} 
+            gradeLabel={gradeDetails?.label || null}
+            grade={currentGrade}
+          />
+          <div className="mt-4 text-center leading-tight max-w-xs">
+            <div className="text-2xl font-bold text-gray-900 mb-2">Profitability Score</div>
+        
           </div>
+          
         </div>
 
         {/* Right: Gauges + summary */}
@@ -455,7 +516,7 @@ const ReportCard = ({
             />
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-2">
+          <div className="flex flex-row  items-center justify-center gap-6">
             <div className="text-lg font-medium text-gray-900">
               Sales:{" "}
               <span className="text-green-500 font-bold">{formatCurrency(summary.sales || 0)}</span>
@@ -467,6 +528,19 @@ const ReportCard = ({
           </div>
         </div>
       </div>
+          <div>
+          {gradeDetails?.message && (
+              <div className="text-base text-gray-700 mb-2 whitespace-pre-line">
+             <span className="font-semibold">Message:</span> {gradeDetails.message}
+              </div>
+            )}
+            {gradeDetails?.what_can_you_be_doing && (
+              <div className="text-sm text-gray-600 italic">
+                <span className="font-semibold not-italic">What can you be doing:</span> {gradeDetails.what_can_you_be_doing}
+              </div>
+            )}
+            
+          </div>
       </div>
     </>
   );

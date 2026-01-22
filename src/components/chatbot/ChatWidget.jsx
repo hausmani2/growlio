@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
 import MessageBubble from './MessageBubble';
 import { apiPost, apiGet } from '../../utils/axiosInterceptors';
+import chatIcon from '../../assets/lio.png';
 
 /**
  * ChatWidget Component
@@ -348,7 +349,7 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
         {isOpen ? (
           <FiX className="w-6 h-6 md:w-7 md:h-7" />
         ) : (
-          <FiMessageCircle className="w-6 h-6 md:w-7 md:h-7" />
+          <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
         )}
       </button>
 

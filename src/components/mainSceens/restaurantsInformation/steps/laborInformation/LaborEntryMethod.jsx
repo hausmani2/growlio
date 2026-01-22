@@ -21,24 +21,25 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
     // Local state for form data
     const [formData, setFormData] = useState({
         goal: '',
-        entryMethod: data.labor_record_method || 'daily-hours-costs', // default value
+        // entryMethod: data.labor_record_method || 'daily-hours-costs', // default value - COMMENTED OUT
+        entryMethod: data.labor_record_method || '', // No default value
         isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
     });
 
     // Update local state when props change and set default value
     useEffect(() => {
         if (data) {
-            const defaultMethod = data.labor_record_method || 'daily-hours-costs';
+            // const defaultMethod = data.labor_record_method || 'daily-hours-costs'; // COMMENTED OUT - No default value
             
-            // Set default value if not already set
-            if (!data.labor_record_method) {
-                updateData('labor_record_method', 'daily-hours-costs');
-            }
+            // Set default value if not already set - COMMENTED OUT
+            // if (!data.labor_record_method) {
+            //     updateData('labor_record_method', 'daily-hours-costs');
+            // }
             
             setFormData(prev => ({
                 ...prev,
-                entryMethod: defaultMethod,
-                isDailyHoursCostsEnabled: defaultMethod === 'daily-hours-costs'
+                entryMethod: data.labor_record_method || '', // No default value
+                isDailyHoursCostsEnabled: data.labor_record_method === 'daily-hours-costs'
             }));
         }
     }, [data]);
@@ -151,7 +152,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div>
                 
                 {/* Labor Recording Method */}
-                <div>
+                {/* <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         How would you like to record your labor?
                         <TooltipIcon text={tooltips['labor_record_method']} />
@@ -185,7 +186,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             onClick={() => handleEntryMethodSelect('cost-only')}
                         />
                     </div>
-                </div>
+                </div> */}
                 
                 {/* Toggle Switch */}
                 {/* <div 
@@ -202,7 +203,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                 </div> */}
                 
                 {/* Daily Ticket Count */}
-                <div>
+                {/* <div>
                     <label htmlFor="ticketCount" className="block text-sm font-semibold text-gray-700 mb-2">
                     Would you like to record your daily transaction count?
                         <TooltipIcon text={tooltips['daily_ticket_count']} />
@@ -219,7 +220,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                         <Select.Option value="No">No</Select.Option>
                         <Select.Option value="Yes">Yes (recommended)</Select.Option>
                     </Select>                
-                </div>
+                </div> */}
                 
                 {/* Forward Previous Week Rate - Hidden field, always false by default */}
                 <div style={{ display: 'none' }}>

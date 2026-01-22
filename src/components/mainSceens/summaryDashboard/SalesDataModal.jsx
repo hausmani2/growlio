@@ -1200,7 +1200,7 @@ const SalesDataModal = ({
                         <Text strong style={{ color: '#1890ff' }}>-</Text>
                       </Table.Summary.Cell>
                       <Table.Summary.Cell index={2}>
-                        <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                        <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                       </Table.Summary.Cell>
                     </Table.Summary.Row>
                   );
@@ -1216,7 +1216,7 @@ const SalesDataModal = ({
                       <Text strong style={{ color: '#1890ff' }}>-</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={2}>
-                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toFixed(2)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budgetedSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={3}>
                       <Text strong style={{ color: '#1890ff' }}>${totals.actualSalesInStore.toFixed(2)}</Text>
@@ -1465,7 +1465,7 @@ const SalesDataModal = ({
                   )
                 })),
                 {
-                  title: 'Net Sales - Actual (Auto-calculated)',
+                  title: 'Net Sales - Actual',
                   dataIndex: 'netSalesActual',
                   key: 'netSalesActual',
                   width: 150,

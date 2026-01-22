@@ -174,6 +174,9 @@ const ReportCardPage = () => {
   const score = Math.min(100, Math.max(0, rawScore)); // Clamp between 0 and 100
   const grade = apiSummary?.grade || getGradeFromScore(score);
   
+  // Extract grade details from API response
+  const gradeDetails = apiSummary?.grade_details || summaryData?.grade_details || null;
+  
   // Map goals from API response
   const goals = {
     labor: apiSummary?.labour?.goal || apiSummary?.labor?.goal || 18,
@@ -234,6 +237,7 @@ const ReportCardPage = () => {
           summary={summary}
           onDateRangeChange={setDateRange}
           loading={salesInformationSummaryLoading}
+          gradeDetails={gradeDetails}
         />
         
         {/* Show Daily Performance Card when onboarding is complete */}
