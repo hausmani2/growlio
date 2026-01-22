@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Checkbox, Select, Button } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Checkbox, Select, Button, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
@@ -33,7 +33,8 @@ const DAYS_OF_WEEK = [
   { value: 'sun', label: 'Sunday' }
 ];
 
-const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack }) => {
+const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, validateStep }) => {
+  const [errors, setErrors] = useState({});
   // Sales Channels state - third party delivery with multiple providers (same as regular onboarding)
   const [usesThirdPartyDelivery, setUsesThirdPartyDelivery] = useState(data?.saleschannels?.usesThirdPartyDelivery ?? false);
   const [thirdPartyProviders, setThirdPartyProviders] = useState(() => {
@@ -87,11 +88,16 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack })
   const toggleDay = (day) => {
     setSelectedDays(prev => {
       const prevArray = Array.isArray(prev) ? prev : [];
-      if (prevArray.includes(day)) {
-        return prevArray.filter(d => d !== day);
-      } else {
-        return [...prevArray, day];
+      const newDays = prevArray.includes(day)
+        ? prevArray.filter(d => d !== day)
+        : [...prevArray, day];
+      
+      // Clear error when days are selected
+      if (newDays.length > 0 && errors.operatingDays) {
+        setErrors(prev => ({ ...prev, operatingDays: '' }));
       }
+      
+      return newDays;
     });
   };
 
@@ -102,7 +108,38 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack })
     } else {
       setSelectedDays(DAYS_OF_WEEK.map(day => day.value));
     }
+    // Clear error when days are selected
+    if (errors.operatingDays) {
+      setErrors(prev => ({ ...prev, operatingDays: '' }));
+    }
   };
+
+  // Validation function that can be called from parent
+  // Use useCallback to ensure the function reference is stable and uses latest values
+  const validate = useCallback(() => {
+    const newErrors = {};
+    
+    if (!selectedDays || selectedDays.length === 0) {
+      newErrors.operatingDays = 'Please select at least one operating day';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      message.error(firstError);
+      return false;
+    }
+    
+    return true;
+  }, [selectedDays]);
+
+  // Expose validate function to parent via validateStep prop
+  useEffect(() => {
+    if (validateStep) {
+      validateStep.current = validate;
+    }
+  }, [validateStep, validate]);
 
   return (
     <div className="space-y-8">
@@ -162,9 +199,15 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack })
         </div>
 
         {selectedDays.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
-            <p className="text-sm text-yellow-800">
-              Please select at least one operating day.
+          <div className={`border rounded-lg p-4 mt-4 ${
+            errors.operatingDays 
+              ? 'bg-red-50 border-red-200' 
+              : 'bg-yellow-50 border-yellow-200'
+          }`}>
+            <p className={`text-sm ${
+              errors.operatingDays ? 'text-red-800' : 'text-yellow-800'
+            }`}>
+              {errors.operatingDays || 'Please select at least one operating day.'}
             </p>
           </div>
         )}

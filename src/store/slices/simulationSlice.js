@@ -6,6 +6,7 @@ const createSimulationSlice = (set, get) => ({
   
   // Simulation onboarding status
   simulationOnboardingStatus: null,
+  simulationOnboardingStatusTimestamp: null,
   simulationOnboardingLoading: false,
   simulationOnboardingError: null,
   
@@ -16,14 +17,94 @@ const createSimulationSlice = (set, get) => ({
   
   // Get simulation onboarding status
   getSimulationOnboardingStatus: async () => {
+    // CRITICAL: Check if user is in simulation mode before calling simulation API
+    // First check cached data from store to avoid unnecessary API calls
+    const currentState = get();
+    let simulationCheck = null;
+    
+    // Check if we have cached restaurant simulation data
+    if (currentState.restaurantSimulationData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      const timeSinceCache = currentState.restaurantSimulationDataTimestamp 
+        ? now - currentState.restaurantSimulationDataTimestamp 
+        : Infinity;
+      
+      if (timeSinceCache < CACHE_DURATION) {
+        // Use cached data
+        simulationCheck = {
+          success: true,
+          data: currentState.restaurantSimulationData
+        };
+      }
+    }
+    
+    // If no cached data, call API (which will use its own cache)
+    if (!simulationCheck) {
+      try {
+        const { getRestaurantSimulation } = get();
+        simulationCheck = await getRestaurantSimulation();
+      } catch (error) {
+        console.error('❌ [simulationSlice] Error checking simulation status:', error);
+        set({ 
+          simulationOnboardingLoading: false, 
+          simulationOnboardingError: 'Failed to verify simulation mode' 
+        });
+        return { success: false, error: 'Failed to verify simulation mode' };
+      }
+    }
+    
+    // CRITICAL: Allow calling API even if user is not in simulation mode
+    // This is needed for new users to check if they have simulation restaurants
+    // We'll try to call the API regardless, and handle errors gracefully
+    
+    // Check if we have cached data that's still fresh
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    
+    if (currentState.simulationOnboardingStatus && currentState.simulationOnboardingStatusTimestamp) {
+      const timeSinceCache = now - currentState.simulationOnboardingStatusTimestamp;
+      if (timeSinceCache < CACHE_DURATION) {
+        // Return cached data
+        return { 
+          success: true, 
+          data: currentState.simulationOnboardingStatus
+        };
+      }
+    }
+    
+    // GLOBAL GUARD: Check sessionStorage to prevent multiple concurrent calls
+    const hasCheckedGlobally = sessionStorage.getItem('hasCheckedSimulationOnboardingGlobal');
+    const lastCheckTime = sessionStorage.getItem('simulationOnboardingLastCheckTime');
+    
+    // If we've checked in the last 2 seconds, return cached data if available
+    if (hasCheckedGlobally === 'true' && lastCheckTime) {
+      const timeSinceCheck = now - parseInt(lastCheckTime);
+      if (timeSinceCheck < 2000) {
+        // Too soon to check again - return cached data if available
+        if (currentState.simulationOnboardingStatus) {
+          return { 
+            success: true, 
+            data: currentState.simulationOnboardingStatus
+          };
+        }
+        return { success: false, error: 'Request throttled - please wait' };
+      }
+    }
+    
+    // Mark that we're checking globally
+    sessionStorage.setItem('hasCheckedSimulationOnboardingGlobal', 'true');
+    sessionStorage.setItem('simulationOnboardingLastCheckTime', now.toString());
     
     set({ simulationOnboardingLoading: true, simulationOnboardingError: null });
     
     try {
       const response = await apiGet('/simulation/simulation-onboarding/');
       
+      // Cache the result
       set({
         simulationOnboardingStatus: response.data,
+        simulationOnboardingStatusTimestamp: now,
         simulationOnboardingLoading: false,
         simulationOnboardingError: null
       });
@@ -43,7 +124,30 @@ const createSimulationSlice = (set, get) => ({
                           error.message || 
                           'Failed to fetch simulation onboarding status';
       
+      // CRITICAL: If user is not in simulation mode, return success with empty array
+      // This allows the login flow to check both APIs without errors
+      const isSimulator = simulationCheck?.success && simulationCheck?.data?.restaurant_simulation === true;
+      if (!isSimulator && (error.response?.status === 403 || error.response?.status === 401 || errorMessage.includes('simulation') || errorMessage.includes('not available'))) {
+        // User is not in simulation mode, return empty result (not an error)
+        set({
+          simulationOnboardingStatus: { restaurants: [] },
+          simulationOnboardingStatusTimestamp: Date.now(),
+          simulationOnboardingLoading: false,
+          simulationOnboardingError: null
+        });
+        
+        // Clear global check flag
+        sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+        sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+        
+        return { success: true, data: { restaurants: [] } };
+      }
+      
       console.error('❌ [simulationSlice] Error message:', errorMessage);
+      
+      // Clear global check flag on error
+      sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+      sessionStorage.removeItem('simulationOnboardingLastCheckTime');
       
       set({
         simulationOnboardingLoading: false,
@@ -56,6 +160,49 @@ const createSimulationSlice = (set, get) => ({
   
   // Create/Update simulation dashboard
   createSimulationDashboard: async (payload) => {
+    // CRITICAL: Check if user is in simulation mode before calling simulation API
+    // Use cached data from store to avoid unnecessary API calls
+    const currentState = get();
+    let simulationCheck = null;
+    
+    if (currentState.restaurantSimulationData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000;
+      const timeSinceCache = currentState.restaurantSimulationDataTimestamp 
+        ? now - currentState.restaurantSimulationDataTimestamp 
+        : Infinity;
+      
+      if (timeSinceCache < CACHE_DURATION) {
+        simulationCheck = {
+          success: true,
+          data: currentState.restaurantSimulationData
+        };
+      }
+    }
+    
+    if (!simulationCheck) {
+      try {
+        const { getRestaurantSimulation } = get();
+        simulationCheck = await getRestaurantSimulation();
+      } catch (error) {
+        console.error('❌ [simulationSlice] Error checking simulation status:', error);
+        set({ 
+          simulationDashboardLoading: false, 
+          simulationDashboardError: 'Failed to verify simulation mode' 
+        });
+        return { success: false, error: 'Failed to verify simulation mode' };
+      }
+    }
+    
+    if (!simulationCheck?.success || simulationCheck?.data?.restaurant_simulation !== true) {
+      const errorMessage = 'User is not in simulation mode. Simulation APIs are not available.';
+      set({ 
+        simulationDashboardLoading: false, 
+        simulationDashboardError: errorMessage
+      });
+      return { success: false, error: errorMessage };
+    }
+    
     set({ simulationDashboardLoading: true, simulationDashboardError: null });
     
     try {
@@ -108,6 +255,48 @@ const createSimulationSlice = (set, get) => ({
   
   // Get simulation dashboard data
   getSimulationDashboard: async (restaurantId, year = null, month = null) => {
+    // CRITICAL: Check if user is in simulation mode before calling simulation API
+    // Use cached data from store to avoid unnecessary API calls
+    const currentState = get();
+    let simulationCheck = null;
+    
+    if (currentState.restaurantSimulationData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000;
+      const timeSinceCache = currentState.restaurantSimulationDataTimestamp 
+        ? now - currentState.restaurantSimulationDataTimestamp 
+        : Infinity;
+      
+      if (timeSinceCache < CACHE_DURATION) {
+        simulationCheck = {
+          success: true,
+          data: currentState.restaurantSimulationData
+        };
+      }
+    }
+    
+    if (!simulationCheck) {
+      try {
+        const { getRestaurantSimulation } = get();
+        simulationCheck = await getRestaurantSimulation();
+      } catch (error) {
+        console.error('❌ [simulationSlice] Error checking simulation status:', error);
+        set({ 
+          simulationDashboardLoading: false, 
+          simulationDashboardError: 'Failed to verify simulation mode' 
+        });
+        return { success: false, error: 'Failed to verify simulation mode' };
+      }
+    }
+    
+    if (!simulationCheck?.success || simulationCheck?.data?.restaurant_simulation !== true) {
+      const errorMessage = 'User is not in simulation mode. Simulation APIs are not available.';
+      set({ 
+        simulationDashboardLoading: false, 
+        simulationDashboardError: errorMessage
+      });
+      return { success: false, error: errorMessage };
+    }
     set({ simulationDashboardLoading: true, simulationDashboardError: null });
     
     try {
@@ -165,6 +354,51 @@ const createSimulationSlice = (set, get) => ({
   
   // Submit simulation onboarding data
   submitSimulationOnboarding: async (payload) => {
+    // CRITICAL: Check if user is in simulation mode before calling simulation API
+    // Use cached data from store to avoid unnecessary API calls
+    const currentState = get();
+    let simulationCheck = null;
+    
+    if (currentState.restaurantSimulationData) {
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000;
+      const timeSinceCache = currentState.restaurantSimulationDataTimestamp 
+        ? now - currentState.restaurantSimulationDataTimestamp 
+        : Infinity;
+      
+      if (timeSinceCache < CACHE_DURATION) {
+        simulationCheck = {
+          success: true,
+          data: currentState.restaurantSimulationData
+        };
+      }
+    }
+    
+    if (!simulationCheck) {
+      try {
+        const { getRestaurantSimulation } = get();
+        simulationCheck = await getRestaurantSimulation();
+      } catch (error) {
+        console.error('❌ [simulationSlice] Error checking simulation status:', error);
+        set({ 
+          simulationOnboardingLoading: false, 
+          simulationOnboardingError: 'Failed to verify simulation mode' 
+        });
+        message.error('Failed to verify simulation mode');
+        return { success: false, error: 'Failed to verify simulation mode' };
+      }
+    }
+    
+    if (!simulationCheck?.success || simulationCheck?.data?.restaurant_simulation !== true) {
+      const errorMessage = 'User is not in simulation mode. Simulation APIs are not available.';
+      set({ 
+        simulationOnboardingLoading: false, 
+        simulationOnboardingError: errorMessage
+      });
+      message.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+    
     set({ simulationOnboardingLoading: true, simulationOnboardingError: null });
     
     try {
@@ -205,12 +439,17 @@ const createSimulationSlice = (set, get) => ({
   clearSimulationState: () => {
     set({
       simulationOnboardingStatus: null,
+      simulationOnboardingStatusTimestamp: null,
       simulationOnboardingLoading: false,
       simulationOnboardingError: null,
       simulationDashboardData: null,
       simulationDashboardLoading: false,
       simulationDashboardError: null
     });
+    
+    // Clear sessionStorage cache
+    sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+    sessionStorage.removeItem('simulationOnboardingLastCheckTime');
   }
 });
 

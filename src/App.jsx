@@ -51,12 +51,13 @@ import { ProfitabilityScore, ProfitabilityWizard } from './components/profitabil
 import ReportCardPage from './components/reportCard/ReportCardPage';
 import { SquareIntegration, SquareCallbackHandler } from './components/square';
 
-// Smart redirect component that checks simulation status
+// Smart redirect component that checks simulation status and restaurant onboarding
 const RootRedirect = () => {
   const navigate = useNavigate();
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
   const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
   const [isChecking, setIsChecking] = useState(true);
   
   useEffect(() => {
@@ -67,32 +68,71 @@ const RootRedirect = () => {
     
     const checkAndRedirect = async () => {
       try {
-        // Check if user is a simulation user
+        // CRITICAL: Check BOTH APIs to determine user status
+        // 1. Check restaurant simulation status
         const simulationResult = await getRestaurantSimulation();
         const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
         
-        if (isSimulator) {
-          // Check simulation onboarding status
-          const onboardingResult = await getSimulationOnboardingStatus();
-          if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
-            const restaurants = onboardingResult.data.restaurants;
-            const completeRestaurant = restaurants.find(
-              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-            );
-            
-            if (completeRestaurant) {
-              // Simulation onboarding is complete, redirect to simulation dashboard
-              localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
-              navigate('/simulation/dashboard', { replace: true });
-              return;
-            }
-          }
+        // 2. Check simulation onboarding status (regardless of isSimulator flag)
+        const simulationOnboardingResult = await getSimulationOnboardingStatus();
+        const simulationRestaurants = simulationOnboardingResult?.success && simulationOnboardingResult?.data?.restaurants 
+          ? simulationOnboardingResult.data.restaurants 
+          : [];
+        const hasSimulationRestaurant = simulationRestaurants.length > 0;
+        
+        // 3. Check regular restaurant onboarding status
+        const restaurantResult = await getRestaurantOnboarding();
+        const regularRestaurants = restaurantResult?.success && restaurantResult?.data?.restaurants 
+          ? restaurantResult.data.restaurants 
+          : [];
+        const hasRegularRestaurant = regularRestaurants.length > 0;
+        
+        // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
+        if (!hasSimulationRestaurant && !hasRegularRestaurant) {
+          navigate('/congratulations', { replace: true });
+          return;
         }
         
-        // Not a simulation user or simulation not complete, redirect to congratulations
+        // If user has simulation restaurant, handle simulation flow
+        if (hasSimulationRestaurant) {
+          const completeSimulationRestaurant = simulationRestaurants.find(
+            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+          );
+          
+          if (completeSimulationRestaurant) {
+            // Simulation onboarding is complete, redirect to simulation dashboard
+            localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
+            navigate('/simulation/dashboard', { replace: true });
+            return;
+          }
+          
+          // Simulation restaurant exists but not complete, redirect to simulation onboarding
+          navigate('/onboarding/simulation', { replace: true });
+          return;
+        }
+        
+        // If user has regular restaurant (but no simulation restaurant), handle regular flow
+        if (hasRegularRestaurant) {
+          const completeRestaurant = regularRestaurants.find(
+            (r) => r.onboarding_complete === true
+          );
+          
+          if (completeRestaurant) {
+            // Restaurant onboarding is complete, redirect to dashboard
+            localStorage.setItem('restaurant_id', completeRestaurant.restaurant_id.toString());
+            navigate('/dashboard/report-card', { replace: true });
+            return;
+          }
+          
+          // User has restaurant but onboarding not complete
+          navigate('/onboarding/score', { replace: true });
+          return;
+        }
+        
+        // Fallback: redirect to congratulations
         navigate('/congratulations', { replace: true });
       } catch (error) {
-        console.error('Error checking simulation status:', error);
+        console.error('Error checking status:', error);
         // On error, default to congratulations
         navigate('/congratulations', { replace: true });
       } finally {
@@ -101,7 +141,7 @@ const RootRedirect = () => {
     };
     
     checkAndRedirect();
-  }, [isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus, navigate]);
+  }, [isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus, getRestaurantOnboarding, navigate]);
   
   if (isChecking) {
     return <LoadingSpinner message="Checking your setup..." />;
@@ -121,11 +161,29 @@ function App() {
   
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   
-  // Check if user is in simulation mode
+  // Check if user is in simulation mode - only on login/authentication change
   useEffect(() => {
     if (!isAuthenticated) {
       setIsSimulationMode(false);
+      // Clear cache on logout
+      sessionStorage.removeItem('appSimulationMode');
+      sessionStorage.removeItem('appSimulationModeLastCheck');
       return;
+    }
+    
+    // Check cache first to avoid unnecessary API calls
+    const cacheKey = 'appSimulationMode';
+    const lastCheckTime = sessionStorage.getItem(`${cacheKey}LastCheck`);
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    
+    // If we have cached data and it's still fresh, use it
+    if (lastCheckTime && (now - parseInt(lastCheckTime)) < CACHE_DURATION) {
+      const cachedMode = sessionStorage.getItem(cacheKey);
+      if (cachedMode !== null) {
+        setIsSimulationMode(cachedMode === 'true');
+        return;
+      }
     }
     
     const checkSimulationMode = async () => {
@@ -142,9 +200,17 @@ function App() {
                                      restaurants.some((r) => r.simulation_onboarding_complete === true);
           
           // Only set simulation mode if onboarding is complete
-          setIsSimulationMode(isOnboardingComplete);
+          const simulationMode = isOnboardingComplete;
+          setIsSimulationMode(simulationMode);
+          
+          // Cache the result
+          sessionStorage.setItem(cacheKey, simulationMode.toString());
+          sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
         } else {
           setIsSimulationMode(false);
+          // Cache the result
+          sessionStorage.setItem(cacheKey, 'false');
+          sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
         }
       } catch (error) {
         console.error('❌ [App] Error checking simulation mode:', error);

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input, Select, message } from 'antd';
 
 const { Option } = Select;
 
-const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
+const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }) => {
+  const [errors, setErrors] = useState({});
   const [restaurantName, setRestaurantName] = useState(data?.restaurantName || '');
   const [restaurantType, setRestaurantType] = useState(data?.restaurantType || '');
   const [menuType, setMenuType] = useState(data?.menuType || '');
@@ -33,21 +34,42 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantName, restaurantType, menuType, isFranchise, city, state, fullAddress, address2, zipCode, sqft]);
 
-  const handleNextClick = () => {
-    // Validate required fields
+  // Validation function that can be called from parent
+  // Use useCallback to ensure the function reference is stable and uses latest values
+  const validate = useCallback(() => {
+    const newErrors = {};
+    
     if (!restaurantName.trim()) {
-      message.error('Restaurant Name is required');
-      return;
+      newErrors.restaurantName = 'Restaurant Name is required';
     }
     if (!city.trim()) {
-      message.error('City is required');
-      return;
+      newErrors.city = 'City is required';
     }
     if (!state) {
-      message.error('State is required');
-      return;
+      newErrors.state = 'State is required';
     }
-    if (onNext) {
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      // Show first error message
+      const firstError = Object.values(newErrors)[0];
+      message.error(firstError);
+      return false;
+    }
+    
+    return true;
+  }, [restaurantName, city, state]);
+
+  // Expose validate function to parent via validateStep prop
+  useEffect(() => {
+    if (validateStep) {
+      validateStep.current = validate;
+    }
+  }, [validateStep, validate]);
+
+  const handleNextClick = () => {
+    if (validate() && onNext) {
       onNext();
     }
   };
@@ -106,7 +128,7 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Basic Information</h2>
         <p className="text-gray-600">
@@ -125,10 +147,18 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
             <Input
               placeholder="Enter restaurant name"
               value={restaurantName}
-              onChange={(e) => setRestaurantName(e.target.value)}
-              className="h-11"
+              onChange={(e) => {
+                setRestaurantName(e.target.value);
+                if (errors.restaurantName) {
+                  setErrors(prev => ({ ...prev, restaurantName: '' }));
+                }
+              }}
+              className={`h-11 ${errors.restaurantName ? 'border-red-500' : ''}`}
               required
             />
+            {errors.restaurantName && (
+              <p className="text-red-500 text-xs mt-1">{errors.restaurantName}</p>
+            )}
             <p className="text-xs text-gray-500 mt-1">
               This will be used as your Location Name
             </p>
@@ -168,10 +198,18 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
                 <Input
                   placeholder="City"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="h-11"
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    if (errors.city) {
+                      setErrors(prev => ({ ...prev, city: '' }));
+                    }
+                  }}
+                  className={`h-11 ${errors.city ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.city && (
+                  <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -180,9 +218,15 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
                 <Select
                   placeholder="Select State"
                   value={state}
-                  onChange={setState}
-                  className="w-full h-11"
+                  onChange={(value) => {
+                    setState(value);
+                    if (errors.state) {
+                      setErrors(prev => ({ ...prev, state: '' }));
+                    }
+                  }}
+                  className={`w-full h-11 ${errors.state ? 'border-red-500' : ''}`}
                   required
+                  status={errors.state ? 'error' : ''}
                 >
                   {US_STATES.map(state => (
                     <Option key={state.value} value={state.value}>
@@ -190,6 +234,9 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack }) => {
                     </Option>
                   ))}
                 </Select>
+                {errors.state && (
+                  <p className="text-red-500 text-xs mt-1">{errors.state}</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

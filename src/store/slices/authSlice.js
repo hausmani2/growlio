@@ -49,6 +49,10 @@ const createAuthSlice = (set, get) => {
     restaurantOnboardingDataTimestamp: null,
     // Note: Onboarding status checking is now handled by onBoardingSlice
     
+    // Restaurant simulation status cache
+    restaurantSimulationData: null,
+    restaurantSimulationDataTimestamp: null,
+    
     // Onboarding status checking is now handled by onBoardingSlice.checkOnboardingCompletion()
     
     login: async (credentials) => {
@@ -81,12 +85,36 @@ const createAuthSlice = (set, get) => {
         // Clear any old chat conversation ID on new login
         sessionStorage.removeItem('chat_conversation_id');
         
+        // Clear simulation-related caches on new login to ensure fresh API calls
+        sessionStorage.removeItem('isSimulationMode');
+        sessionStorage.removeItem('simulationModeLastCheck');
+        sessionStorage.removeItem('appSimulationMode');
+        sessionStorage.removeItem('appSimulationModeLastCheck');
+        sessionStorage.removeItem('headerSimulationMode');
+        sessionStorage.removeItem('headerSimulationModeLastCheck');
+        sessionStorage.removeItem('simulationCheckCongratulations');
+        sessionStorage.removeItem('simulationCheckCongratulationsLastCheck');
+        sessionStorage.removeItem('simulationCheckCongratulationsComplete');
+        sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
+        sessionStorage.removeItem('restaurantSimulationLastCheckTime');
+        sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+        sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+        
+        // Clear restaurant simulation data from store on login
+        set(() => ({
+          restaurantSimulationData: null,
+          restaurantSimulationDataTimestamp: null
+        }));
+        
+        // Clear simulation onboarding status from store on login
+        if (currentState.clearSimulationState) {
+          currentState.clearSimulationState();
+        }
+        
         // Dispatch custom event to notify other tabs/windows in same origin
         window.dispatchEvent(new Event('auth-storage-change'));
         
         // Update store state
-        
-        
         set(() => ({ 
           user: userData, 
           token: access,
@@ -99,12 +127,27 @@ const createAuthSlice = (set, get) => {
           error: null 
         }));
         
-        // Check onboarding status after successful login
+        // CRITICAL: Call BOTH APIs immediately after login for ALL users
+        // This ensures we have restaurant data from both sources before any redirects happen
+        // We need to check both APIs to determine if user has restaurants in either one
         try {
-          // We'll check onboarding status separately after login
-          // This will be handled by the component that calls login
+          // Call restaurants-onboarding API first
+          const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
+          
+          // CRITICAL: Call simulation-onboarding API for ALL users (not just simulators)
+          // This is needed to check if user has simulation restaurants
+          // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
+          try {
+            const simulationOnboardingResult = await get().getSimulationOnboardingStatus();
+            // Result is cached in store, no need to do anything with it here
+          } catch (simError) {
+            // If simulation API fails (e.g., user doesn't have access), continue
+            // This is expected for non-simulation users, so we don't log it as an error
+            console.log('Simulation onboarding check skipped (user may not have simulation access)');
+          }
         } catch (onboardingError) {
           console.error('Failed to check onboarding status after login:', onboardingError);
+          // Don't fail login if onboarding check fails
         }
         
         return { success: true, data: response.data };
@@ -152,6 +195,9 @@ const createAuthSlice = (set, get) => {
     
     // Logout function - clears all state and redirects to login
     logout: () => {
+      // Clear restaurant simulation cache on logout
+      sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
+      sessionStorage.removeItem('restaurantSimulationLastCheckTime');
       
       // Use the store's clearPersistedState function to completely reset all state
       const currentState = get();
@@ -430,16 +476,67 @@ const createAuthSlice = (set, get) => {
     },
 
     // Get restaurant simulation status
-    getRestaurantSimulation: async () => {
+    getRestaurantSimulation: async (forceRefresh = false) => {
+      const currentState = get();
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+      
+      // Check if we have cached data that's still fresh
+      if (!forceRefresh && currentState.restaurantSimulationData && currentState.restaurantSimulationDataTimestamp) {
+        const timeSinceCache = now - currentState.restaurantSimulationDataTimestamp;
+        if (timeSinceCache < CACHE_DURATION) {
+          return { 
+            success: true, 
+            data: currentState.restaurantSimulationData
+          };
+        }
+      }
+      
+      // GLOBAL GUARD: Check sessionStorage to prevent multiple concurrent calls
+      const hasCheckedGlobally = sessionStorage.getItem('hasCheckedRestaurantSimulationGlobal');
+      const lastCheckTime = sessionStorage.getItem('restaurantSimulationLastCheckTime');
+      
+      // If we've checked in the last 2 seconds, return cached data if available
+      if (hasCheckedGlobally === 'true' && lastCheckTime) {
+        const timeSinceCheck = now - parseInt(lastCheckTime);
+        if (timeSinceCheck < 2000) {
+          // Too soon to check again - return cached data if available
+          if (currentState.restaurantSimulationData) {
+            return { 
+              success: true, 
+              data: currentState.restaurantSimulationData
+            };
+          }
+          return { success: false, error: 'Request throttled - please wait' };
+        }
+      }
+      
+      // Mark that we're checking globally
+      sessionStorage.setItem('hasCheckedRestaurantSimulationGlobal', 'true');
+      sessionStorage.setItem('restaurantSimulationLastCheckTime', now.toString());
+      
       set(() => ({ loading: true, error: null }));
       
       try {
         const response = await apiGet('/authentication/user/restaurant-simulation/');
-        set(() => ({ loading: false, error: null }));
+        
+        // Cache the result
+        set(() => ({ 
+          loading: false, 
+          error: null,
+          restaurantSimulationData: response.data,
+          restaurantSimulationDataTimestamp: now
+        }));
+        
         return { success: true, data: response.data };
       } catch (error) {
         const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant simulation status';
         set(() => ({ loading: false, error: errorMessage }));
+        
+        // Clear global check flag on error
+        sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
+        sessionStorage.removeItem('restaurantSimulationLastCheckTime');
+        
         return { success: false, error: errorMessage };
       }
     },
@@ -487,9 +584,50 @@ const createAuthSlice = (set, get) => {
 
     // Get restaurant ID from restaurant-onboarding endpoint
     getRestaurantOnboarding: async (forceRefresh = false) => {
-      const currentState = get();
+      // CRITICAL: Check if user is in simulation mode - if true, don't call non-simulation API
+      // Use cached data from store to avoid unnecessary API calls
+      const authState = get();
+      let simulationCheck = null;
+      
+      if (authState.restaurantSimulationData) {
+        const now = Date.now();
+        const CACHE_DURATION = 5 * 60 * 1000;
+        const timeSinceCache = authState.restaurantSimulationDataTimestamp 
+          ? now - authState.restaurantSimulationDataTimestamp 
+          : Infinity;
+        
+        if (timeSinceCache < CACHE_DURATION) {
+          simulationCheck = {
+            success: true,
+            data: authState.restaurantSimulationData
+          };
+        }
+      }
+      
+      if (!simulationCheck) {
+        try {
+          simulationCheck = await get().getRestaurantSimulation();
+        } catch (error) {
+          console.error('❌ [authSlice] Error checking simulation status:', error);
+          // Continue with API call if check fails
+        }
+      }
+      
+      if (simulationCheck?.success && simulationCheck?.data?.restaurant_simulation === true) {
+        // User is in simulation mode, don't call non-simulation API
+        set(() => ({ loading: false, error: null }));
+        return { 
+          success: false, 
+          error: 'User is in simulation mode. Non-simulation APIs are not available.',
+          data: null
+        };
+      }
+      
       const now = Date.now();
       const CACHE_DURATION = 5000; // 5 seconds cache
+      
+      // Get current state for cache checking
+      const currentState = get();
       
       // Check if we have cached data that's still fresh
       if (!forceRefresh && currentState.restaurantOnboardingData && currentState.restaurantOnboardingDataTimestamp) {

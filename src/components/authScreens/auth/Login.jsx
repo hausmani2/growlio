@@ -96,31 +96,117 @@ const Login = () => {
       const result = await login(form);
       
       if (result.success) {
-        message.success('Login successful! Checking your onboarding status...');
+        // Note: restaurants-onboarding and simulation-onboarding APIs are already called in login() function
+        // We just need to check the results and redirect accordingly
+        message.success('Login successful! Checking your setup...');
         
-        // Check onboarding status after successful login
-        const onboardingResult = await checkOnboardingCompletion();
+        // Get store functions for checking simulation status
+        const getRestaurantSimulation = useStore.getState().getRestaurantSimulation;
+        const getSimulationOnboardingStatus = useStore.getState().getSimulationOnboardingStatus;
+        const restaurantSimulationData = useStore.getState().restaurantSimulationData;
+        const simulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
         
-        if (onboardingResult.success) {
-          const isComplete = onboardingResult.isComplete;
-          
-          if (isComplete) {
-            message.success('Welcome back! Redirecting to dashboard...');
-            setTimeout(() => {
-              navigate('/dashboard/report-card');
-            }, 1000);
+        // CRITICAL: Check BOTH APIs to determine user status
+        // This prevents redirecting to wrong dashboard for new users
+        try {
+          // Use cached data if available (from login function)
+          let simulationResult = null;
+          if (restaurantSimulationData) {
+            simulationResult = { success: true, data: restaurantSimulationData };
           } else {
+            simulationResult = await getRestaurantSimulation();
+          }
+          
+          // Check simulation onboarding status
+          let simulationOnboardingResult = null;
+          if (simulationOnboardingStatus) {
+            simulationOnboardingResult = { success: true, data: simulationOnboardingStatus };
+          } else {
+            simulationOnboardingResult = await getSimulationOnboardingStatus();
+          }
+          
+          const simulationRestaurants = simulationOnboardingResult?.success && simulationOnboardingResult?.data?.restaurants 
+            ? simulationOnboardingResult.data.restaurants 
+            : [];
+          const hasSimulationRestaurant = simulationRestaurants.length > 0;
+          
+          // Check regular restaurant onboarding status
+          const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
+          const restaurantResult = await getRestaurantOnboarding();
+          const regularRestaurants = restaurantResult?.success && restaurantResult?.data?.restaurants 
+            ? restaurantResult.data.restaurants 
+            : [];
+          const hasRegularRestaurant = regularRestaurants.length > 0;
+          
+          // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
+          if (!hasSimulationRestaurant && !hasRegularRestaurant) {
             message.success('Welcome to Growlio! Let\'s get you set up.');
             setTimeout(() => {
-              navigate('/congratulations');
-            }, 1000);
+              navigate('/congratulations', { replace: true });
+            }, 500);
+            return;
           }
-        } else {
-          // Fallback to congratulations page if check fails
+          
+          // If user has simulation restaurant, handle simulation flow
+          if (hasSimulationRestaurant) {
+            const completeSimulationRestaurant = simulationRestaurants.find(
+              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+            );
+            
+            if (completeSimulationRestaurant) {
+              // Simulation onboarding is complete, redirect to simulation dashboard
+              localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
+              message.success('Welcome back! Redirecting to simulation dashboard...');
+              setTimeout(() => {
+                navigate('/simulation/dashboard', { replace: true });
+              }, 500);
+              return;
+            }
+            
+            // Simulation restaurant exists but not complete
+            message.success('Welcome to Growlio! Let\'s complete your setup.');
+            setTimeout(() => {
+              navigate('/onboarding/simulation', { replace: true });
+            }, 500);
+            return;
+          }
+          
+          // If user has regular restaurant (but no simulation restaurant), handle regular flow
+          if (hasRegularRestaurant) {
+            const completeRestaurant = regularRestaurants.find(
+              (r) => r.onboarding_complete === true
+            );
+            
+            if (completeRestaurant) {
+              // Restaurant onboarding is complete, redirect to dashboard
+              localStorage.setItem('restaurant_id', completeRestaurant.restaurant_id.toString());
+              message.success('Welcome back! Redirecting to dashboard...');
+              setTimeout(() => {
+                navigate('/dashboard/report-card', { replace: true });
+              }, 500);
+              return;
+            }
+            
+            // User has restaurant but onboarding not complete
+            message.success('Welcome back! Continuing your setup...');
+            setTimeout(() => {
+              navigate('/onboarding/score', { replace: true });
+            }, 500);
+            return;
+          }
+          
+          // Fallback: redirect to congratulations
           message.success('Welcome to Growlio! Let\'s get you set up.');
           setTimeout(() => {
-            navigate('/congratulations');
-          }, 1000);
+            navigate('/congratulations', { replace: true });
+          }, 500);
+        } catch (error) {
+          console.error('Error checking status:', error);
+          // On error, default to congratulations
+          message.success('Welcome to Growlio! Let\'s get you set up.');
+          setTimeout(() => {
+            navigate('/congratulations', { replace: true });
+          }, 500);
         }
       }
     } catch (err) {

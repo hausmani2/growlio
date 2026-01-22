@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import useStore from '../../store/store';
@@ -8,6 +8,7 @@ import SalesChannelsAndOperatingDaysStep from './simulationSteps/SalesChannelsAn
 import LaborInformationStep from './simulationSteps/LaborInformationStep';
 import ExpensesStep from './simulationSteps/ExpensesStep';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
+import Header from '../layout/Header';
 
 const STEPS = [
   { id: 'basic-information', title: 'Basic Information', component: BasicInformationStep },
@@ -25,6 +26,7 @@ const SimulationOnboarding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingRestaurant, setIsLoadingRestaurant] = useState(true);
   const [restaurantId, setRestaurantId] = useState(null);
+  const validateStepRef = useRef(null);
   const [formData, setFormData] = useState({
     basicinformation: {
       restaurantName: '',
@@ -188,8 +190,34 @@ const SimulationOnboarding = () => {
 
   const CurrentStepComponent = STEPS[currentStep].component;
 
+  // Reset validation ref when step changes
+  useEffect(() => {
+    validateStepRef.current = null;
+  }, [currentStep]);
+
   const handleNext = async () => {
-    // Validate current step before proceeding
+    // CRITICAL: Validate current step before proceeding
+    // Check if validation function exists and call it
+    if (validateStepRef.current && typeof validateStepRef.current === 'function') {
+      const isValid = validateStepRef.current();
+      if (!isValid) {
+        // Validation failed - don't proceed
+        return;
+      }
+    } else {
+      // If no validation function is set, it might be a step without validation
+      // But for safety, we should still try to validate
+      // Wait a brief moment in case the ref is being set asynchronously
+      await new Promise(resolve => setTimeout(resolve, 50));
+      if (validateStepRef.current && typeof validateStepRef.current === 'function') {
+        const isValid = validateStepRef.current();
+        if (!isValid) {
+          return;
+        }
+      }
+    }
+    
+    // Only proceed if validation passed (or no validation function exists)
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -199,11 +227,13 @@ const SimulationOnboarding = () => {
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
+    // Back button should work from step 2 onwards (currentStep >= 1, since 0-indexed)
+    // Step 1 is index 0, Step 2 is index 1, etc.
+    if (currentStep >= 1) {
+      // Go back one step
       setCurrentStep(currentStep - 1);
-    } else {
-      navigate(ONBOARDING_ROUTES.ONBOARDING);
     }
+    // If on step 1 (currentStep === 0), do nothing - back button is disabled
   };
 
   // Load simulation restaurant data when component mounts or restaurantId changes
@@ -403,10 +433,15 @@ const SimulationOnboarding = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 ">
+                 <div>
+             <Header />
+
+      </div>
+
+      <div className="max-w-4xl mx-auto py-4">
         {/* Progress Bar */}
-        <div className="mb-8">
+        <div className="mb-2">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">
               Step {currentStep + 1} of {STEPS.length}
@@ -449,6 +484,7 @@ const SimulationOnboarding = () => {
               onNext={handleNext}
               onBack={handleBack}
               isLastStep={currentStep === STEPS.length - 1}
+              validateStep={validateStepRef}
             />
           )}
         </div>
@@ -457,10 +493,12 @@ const SimulationOnboarding = () => {
         <div className="flex justify-between">
           <button
             onClick={handleBack}
-            className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={isSubmitting || currentStep === 0}
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {currentStep === 0 ? 'Back to Selection' : 'Previous'}
+            Back
           </button>
+  
           <button
             onClick={handleNext}
             disabled={isSubmitting}

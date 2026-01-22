@@ -209,6 +209,17 @@ export const hasOneMonthSalesInfo = (restaurantData) => {
 };
 
 /**
+ * Check if onboarding is completely finished
+ * @param {Object} restaurantData - Response from restaurants-onboarding API
+ * @returns {boolean} - True if onboarding_complete is true
+ */
+export const isOnboardingComplete = (restaurantData) => {
+  const restaurant = getFirstRestaurant(restaurantData);
+  if (!restaurant) return false;
+  return restaurant.onboarding_complete === true;
+};
+
+/**
  * Check if sales information data is complete (all 4 fields filled)
  * @param {any} salesInformationData - Sales information data from store
  * @returns {boolean} - True if all required fields are filled
@@ -266,7 +277,19 @@ export const getOnboardingRedirectRoute = ({
   hasSalesData,
   isOnBoardingCompleted,
   currentPath,
+  isOnboardingComplete = false, // Add parameter to check onboarding_complete
 }) => {
+  // CRITICAL: If onboarding is completely finished (onboarding_complete: true), 
+  // user should NOT be redirected to /onboarding - allow all dashboard routes
+  if (isOnboardingComplete) {
+    // Block /onboarding page - redirect to report card or dashboard
+    if (currentPath === ONBOARDING_ROUTES.ONBOARDING) {
+      return ONBOARDING_ROUTES.REPORT_CARD;
+    }
+    // Allow all other routes (dashboard, etc.)
+    return null;
+  }
+
   // If sales data is complete, user should go to report card
   if (hasSalesData) {
     if (currentPath === ONBOARDING_ROUTES.ONBOARDING) {

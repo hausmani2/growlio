@@ -9,6 +9,7 @@ import {
   isSalesInformationComplete,
   getOnboardingRedirectRoute,
   ONBOARDING_ROUTES,
+  isOnboardingComplete as checkOnboardingComplete,
 } from '../utils/onboardingUtils';
 
 const ProtectedRoutes = () => {
@@ -19,6 +20,8 @@ const ProtectedRoutes = () => {
   const hasCheckedRestaurantRef = useRef(false); // Track if we've checked restaurant to prevent multiple checks
   const hasRedirectedRef = useRef(false); // Track if we've already redirected to prevent infinite loops
   const redirectTimeoutRef = useRef(null); // Track redirect timeout for cleanup
+  const [isCheckingSimulationForDashboard, setIsCheckingSimulationForDashboard] = useState(false);
+  const hasCheckedSimulationRef = useRef(false);
 
   // Get store values - using individual selectors to prevent unnecessary re-renders
   // All hooks must be called in the same order on every render
@@ -36,6 +39,8 @@ const ProtectedRoutes = () => {
   const restaurantOnboardingDataTimestamp = useStore((state) => state.restaurantOnboardingDataTimestamp);
   const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
   const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  const restaurantSimulationData = useStore((state) => state.restaurantSimulationData);
+  const simulationOnboardingStatus = useStore((state) => state.simulationOnboardingStatus);
   
   // Check localStorage first (for cross-tab sync), then sessionStorage (for backward compatibility)
   const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -69,6 +74,7 @@ const ProtectedRoutes = () => {
   // Derived state from restaurant data
   const restaurantExists = hasRestaurant(restaurantData);
   const oneMonthSalesInfoComplete = hasOneMonthSalesInfo(restaurantData);
+  const onboardingComplete = checkOnboardingComplete(restaurantData);
   
   // Simple onboarding check function
   const checkOnboardingStatus = async () => {
@@ -301,6 +307,15 @@ const ProtectedRoutes = () => {
       return;
     }
 
+    // CRITICAL: If onboarding is completely finished (onboarding_complete: true), 
+    // allow ALL routes - user should NOT be redirected to /onboarding
+    if (onboardingComplete) {
+      hasRedirectedRef.current = false; // Reset redirect flag
+      sessionStorage.setItem('lastProcessedPath', location.pathname);
+      sessionStorage.removeItem('lastRedirectRoute'); // Clear any pending redirects
+      return; // Allow access to all routes - exit early to prevent any redirects
+    }
+
     // CRITICAL: If One Month Sales Info is complete, allow ALL dashboard routes
     // This check must happen AFTER loading checks, to prevent redirects
     // when navigating between dashboard pages or reloading any dashboard page
@@ -445,6 +460,7 @@ const ProtectedRoutes = () => {
       hasSalesData,
       isOnBoardingCompleted,
       currentPath: location.pathname,
+      isOnboardingComplete: onboardingComplete,
     });
 
     // Perform redirect if needed - but only once per route change
@@ -532,6 +548,28 @@ const ProtectedRoutes = () => {
   useEffect(() => {
     const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS;
     if (isCongratulationsPath && isAuthenticated) {
+      // Check cache first to avoid unnecessary API calls
+      const cacheKey = 'simulationCheckCongratulations';
+      const lastCheckTime = sessionStorage.getItem(`${cacheKey}LastCheck`);
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+      
+      // If we have cached data and it's still fresh, skip API call
+      if (lastCheckTime && (now - parseInt(lastCheckTime)) < CACHE_DURATION) {
+        const cachedComplete = sessionStorage.getItem(`${cacheKey}Complete`);
+        if (cachedComplete === 'true') {
+          const cachedRestaurantId = sessionStorage.getItem('simulation_restaurant_id');
+          if (cachedRestaurantId) {
+            setIsSimulationUserComplete(true);
+            navigate('/simulation/dashboard', { replace: true });
+            return;
+          }
+        }
+        setIsSimulationUserComplete(false);
+        setIsCheckingSimulation(false);
+        return;
+      }
+      
       setIsCheckingSimulation(true);
       const checkSimulation = async () => {
         try {
@@ -549,12 +587,18 @@ const ProtectedRoutes = () => {
               if (completeRestaurant) {
                 setIsSimulationUserComplete(true);
                 localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+                // Cache the result
+                sessionStorage.setItem(`${cacheKey}Complete`, 'true');
+                sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
                 navigate('/simulation/dashboard', { replace: true });
                 return;
               }
             }
           }
           setIsSimulationUserComplete(false);
+          // Cache the result
+          sessionStorage.setItem(`${cacheKey}Complete`, 'false');
+          sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
         } catch (error) {
           console.error('Error checking simulation status:', error);
           setIsSimulationUserComplete(false);
@@ -636,6 +680,62 @@ const ProtectedRoutes = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, token]); // Removed user from deps to prevent unnecessary re-runs
 
+  // Check simulation status if user is trying to access dashboard
+  useEffect(() => {
+    const isDashboardPath = location.pathname.startsWith('/dashboard');
+    
+    if (isDashboardPath && isAuthenticated && !hasCheckedSimulationRef.current && !isCheckingSimulationForDashboard) {
+      setIsCheckingSimulationForDashboard(true);
+      hasCheckedSimulationRef.current = true;
+      
+      const checkSimulationStatus = async () => {
+        try {
+          // Use cached data if available
+          let simulationResult = null;
+          if (restaurantSimulationData) {
+            simulationResult = { success: true, data: restaurantSimulationData };
+          } else {
+            simulationResult = await getRestaurantSimulation();
+          }
+          
+          const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+          
+          if (isSimulator) {
+            // User is in simulation mode, check simulation onboarding status
+            let onboardingResult = null;
+            if (simulationOnboardingStatus) {
+              onboardingResult = { success: true, data: simulationOnboardingStatus };
+            } else {
+              onboardingResult = await getSimulationOnboardingStatus();
+            }
+            
+            if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+              const restaurants = onboardingResult.data.restaurants;
+              const completeRestaurant = restaurants.find(
+                (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+              );
+              
+              if (completeRestaurant) {
+                // Simulation onboarding is complete, redirect to simulation dashboard
+                localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+                setIsCheckingSimulationForDashboard(false);
+                navigate('/simulation/dashboard', { replace: true });
+                return;
+              }
+            }
+          }
+          
+          setIsCheckingSimulationForDashboard(false);
+        } catch (error) {
+          console.error('Error checking simulation status for dashboard:', error);
+          setIsCheckingSimulationForDashboard(false);
+        }
+      };
+      
+      checkSimulationStatus();
+    }
+  }, [location.pathname, isAuthenticated, isCheckingSimulationForDashboard, restaurantSimulationData, simulationOnboardingStatus, getRestaurantSimulation, getSimulationOnboardingStatus, navigate]);
+
   // Early returns must come AFTER all hooks
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
@@ -645,7 +745,8 @@ const ProtectedRoutes = () => {
   // Show loading spinner while checking onboarding, sales data, or restaurant status
   // BUT: Don't show loading if we have cached restaurant data (prevents flashing)
   const hasCachedRestaurantData = !!sessionStorage.getItem('cachedRestaurantData');
-  const shouldShowLoading = (isLoading || salesInformationLoading || (restaurantCheckLoading && !hasCachedRestaurantData));
+  const isDashboardPathCheck = location.pathname.startsWith('/dashboard');
+  const shouldShowLoading = (isLoading || salesInformationLoading || (restaurantCheckLoading && !hasCachedRestaurantData) || (isCheckingSimulationForDashboard && isDashboardPathCheck));
   
   if (shouldShowLoading) {
     return <LoadingSpinner message="Checking your setup..." />;
@@ -724,11 +825,24 @@ const ProtectedRoutes = () => {
       return <LoadingSpinner message="Checking your setup..." />;
     }
   }
-
+  
   // If sales data is complete, user should access report card
   // CRITICAL: Allow ALL dashboard routes when sales data is complete
   // This prevents redirects when reloading any dashboard page
   if (salesDataComplete) {
+    // CRITICAL: Check simulation status first before allowing dashboard
+    if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
+      // User is in simulation mode, check if they should be redirected
+      if (simulationOnboardingStatus?.restaurants) {
+        const completeRestaurant = simulationOnboardingStatus.restaurants.find(
+          (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+        );
+        if (completeRestaurant) {
+          return <Navigate to="/simulation/dashboard" replace />;
+        }
+      }
+    }
+    
     // Block access to onboarding/score/profitability when sales data is complete
     if (isOnboardingPath && !isCompleteStepsPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
@@ -742,6 +856,19 @@ const ProtectedRoutes = () => {
   // CRITICAL: Allow ALL dashboard routes when One Month Sales Info is complete
   // This prevents redirects when reloading any dashboard page
   if (oneMonthSalesInfoComplete) {
+    // CRITICAL: Check simulation status first before allowing dashboard
+    if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
+      // User is in simulation mode, check if they should be redirected
+      if (simulationOnboardingStatus?.restaurants) {
+        const completeRestaurant = simulationOnboardingStatus.restaurants.find(
+          (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+        );
+        if (completeRestaurant) {
+          return <Navigate to="/simulation/dashboard" replace />;
+        }
+      }
+    }
+    
     // Block access to onboarding, score, and profitability pages
      // But allow simulation routes
      if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
@@ -762,7 +889,15 @@ const ProtectedRoutes = () => {
   }
   
   if (restaurantExists) {
-    
+    // CRITICAL: If onboarding is completely finished (onboarding_complete: true),
+    // allow all routes and block /onboarding page
+    if (onboardingComplete) {
+      if (isOnboardingMainPath) {
+        return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      }
+      // Allow all other routes
+      return <Outlet />;
+    }
     
     // If restaurant exists, block access to /onboarding page
     // User must go to /onboarding/score instead
@@ -770,7 +905,16 @@ const ProtectedRoutes = () => {
       return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
     }
     
-    // Allow score, profitability, and congratulations pages
+    // CRITICAL: If onboarding is complete, block congratulations page and redirect to dashboard
+    if (onboardingComplete) {
+      if (isCongratulationsPath) {
+        return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      }
+      // Allow all other routes
+      return <Outlet />;
+    }
+    
+    // Allow score, profitability, and congratulations pages (only if onboarding not complete)
     if (isScorePath || isProfitabilityPath || isCongratulationsPath) {
       return <Outlet />;
     }

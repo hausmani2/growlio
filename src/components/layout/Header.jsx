@@ -16,31 +16,34 @@ const Header = ({ onMenuClick }) => {
     const navigate = useNavigate();
     const user = useStore((state) => state.user);
     const logout = useStore((state) => state.logout);
+    // Get simulation status from store (use cached data)
+    const restaurantSimulationData = useStore((state) => state.restaurantSimulationData);
     const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
-    const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
     
     const [isSimulationMode, setIsSimulationMode] = useState(false);
     
-    // Check if user is in simulation mode
+    // Check if user is in simulation mode - use cached data from store first
     useEffect(() => {
         const checkSimulationMode = async () => {
             try {
-                // Check restaurant simulation status
-                const simulationResult = await getRestaurantSimulation();
-                const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+                let isSimulator = false;
                 
-                if (isSimulator) {
-                    // Check simulation onboarding status
-                    const onboardingResult = await getSimulationOnboardingStatus();
-                    const restaurants = onboardingResult?.data?.restaurants || [];
-                    const isOnboardingComplete = onboardingResult?.success && 
-                                               restaurants.some((r) => r.simulation_onboarding_complete === true);
-                    
-                    // Only set simulation mode if onboarding is complete
-                    setIsSimulationMode(isOnboardingComplete);
+                // First, try to use cached data from store
+                if (restaurantSimulationData) {
+                    isSimulator = restaurantSimulationData.restaurant_simulation === true;
                 } else {
-                    setIsSimulationMode(false);
+                    // If no cached data, make API call
+                    const simulationResult = await getRestaurantSimulation();
+                    isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
                 }
+                
+                // If user is a simulator, set simulation mode
+                // This is independent of onboarding completion status
+                setIsSimulationMode(isSimulator);
+                
+                // Cache the result in sessionStorage for quick access
+                sessionStorage.setItem('headerSimulationMode', isSimulator.toString());
+                sessionStorage.setItem('headerSimulationModeLastCheck', Date.now().toString());
             } catch (error) {
                 console.error('❌ [Header] Error checking simulation mode:', error);
                 setIsSimulationMode(false);
@@ -48,7 +51,7 @@ const Header = ({ onMenuClick }) => {
         };
         
         checkSimulationMode();
-    }, [getRestaurantSimulation, getSimulationOnboardingStatus]);
+    }, [restaurantSimulationData, getRestaurantSimulation]); // Use cached data from store
     
     // Format name with first letter capitalized
     const formatName = (fullName) => {

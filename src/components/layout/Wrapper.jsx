@@ -29,43 +29,35 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
   const isSuperAdmin = user?.is_superuser;
   const impersonating = isImpersonating();
-    // Get simulation status from store
+    // Get simulation status from store (use cached data)
+    const restaurantSimulationData = useStore((state) => state.restaurantSimulationData);
     const simulationOnboardingStatus = useStore((state) => state.simulationOnboardingStatus);
     const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
   
-    // Check if user is in simulation mode
+    // Check if user is in simulation mode - use cached data from store first
     useEffect(() => {
       const checkSimulationMode = async () => {
         try {
+          let isSimulator = false;
           
-          // Check restaurant simulation status
-          const simulationResult = await getRestaurantSimulation();
-          
-          // restaurant_simulation === true means simulation mode (user selected "I do not have a restaurant")
-          // Based on OnboardingWrapper: simulation (second option) = true
-          const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
-          
-          // Check simulation onboarding status
-          const onboardingResult = await getSimulationOnboardingStatus();
-          
-          const restaurants = onboardingResult?.data?.restaurants || [];
-          
-          const isOnboardingComplete = onboardingResult?.success && 
-                                       restaurants.some(
-                                         (r) => r.simulation_onboarding_complete === true
-                                       );
-          
-          // Only show simulation dashboard menu when BOTH conditions are met:
-          // 1. isSimulator === true (restaurant_simulation === true)
-          // 2. isOnboardingComplete === true (simulation_onboarding_complete === true)
-          // If onboarding is not complete, show all menus so user can navigate to complete onboarding
-          if (isSimulator && isOnboardingComplete) {
-            setIsSimulationMode(true);
-  
+          // First, try to use cached data from store
+          if (restaurantSimulationData) {
+            isSimulator = restaurantSimulationData.restaurant_simulation === true;
           } else {
-            setIsSimulationMode(false);
+            // If no cached data, make API call
+            const simulationResult = await getRestaurantSimulation();
+            isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
           }
+          
+          // If user is a simulator, show simulation sidebar
+          // This is independent of onboarding completion status
+          // If onboarding is not complete, they'll still see simulation sidebar but can navigate to complete onboarding
+          setIsSimulationMode(isSimulator);
+          
+          // Cache the result in sessionStorage for quick access
+          sessionStorage.setItem('isSimulationMode', isSimulator.toString());
+          sessionStorage.setItem('simulationModeLastCheck', Date.now().toString());
         } catch (error) {
           console.error('❌ [Wrapper] Error checking simulation mode:', error);
           setIsSimulationMode(false);
@@ -73,7 +65,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       };
   
       checkSimulationMode();
-    }, [getRestaurantSimulation, getSimulationOnboardingStatus, location.pathname]);
+    }, [restaurantSimulationData, getRestaurantSimulation]); // Use cached data from store
   
     // Simulation Dashboard menu (only shown when in simulation mode)
     const simulationMenu = [
