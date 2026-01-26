@@ -41,6 +41,7 @@ import SuperAdminTooltips from './components/superadmin/components/SuperAdminToo
 import SuperAdminUserManagement from './components/superadmin/components/SuperAdminUserManagement';
 import SuperAdminUserInfo from './components/superadmin/components/SuperAdminUserInfo';
 import SupportPage from './components/mainSceens/support/SupportPage';
+import Training from './components/mainSceens/traning/Traning';
 import PlansWrapper from './components/mainSceens/plans/PlansWrapper';
 import SubscriptionSuccess from './components/mainSceens/plans/SubscriptionSuccess';
 import SubscriptionCancel from './components/mainSceens/plans/SubscriptionCancel';
@@ -319,7 +320,8 @@ function App() {
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />
-          <Route path="/dashboard/plans" element={<Wrapper showSidebar={true} children={<PlansWrapper />} />} />
+          <Route path="/dashboard/training" element={<Wrapper showSidebar={true} children={<Training />} />} />
+          <Route path="/dashboard/pricing" element={<Wrapper showSidebar={true} children={<PlansWrapper />} />} />
           <Route path="/subscription/success" element={<SubscriptionSuccess />} />
           <Route path="/subscription/cancel" element={<SubscriptionCancel />} />
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />

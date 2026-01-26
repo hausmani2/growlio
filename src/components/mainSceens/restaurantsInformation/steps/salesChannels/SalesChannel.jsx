@@ -71,11 +71,19 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
                                 <span className="text-sm font-semibold text-gray-700">{channel.title}</span>
                                 <span className="text-xs text-gray-600">{channel.description}</span>
                             </div>
-                            <ToggleSwitch
-                                isOn={channel.enabled}
-                                setIsOn={() => handleToggle(channel.key)}
-                                size="large"
-                            />
+                            <div className="flex items-center gap-3">
+                                <span className={`text-sm font-medium ${channel.enabled ? 'text-gray-400' : 'text-gray-700'}`}>
+                                    No
+                                </span>
+                                <ToggleSwitch
+                                    isOn={channel.enabled}
+                                    setIsOn={() => handleToggle(channel.key)}
+                                    size="large"
+                                />
+                                <span className={`text-sm font-medium ${channel.enabled ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    Yes
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>

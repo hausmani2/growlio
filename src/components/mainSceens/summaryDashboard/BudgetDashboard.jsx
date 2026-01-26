@@ -146,7 +146,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
       const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
       
-      // Calculate fixed and variable costs
+      // Calculate operational expense (combining fixed and variable costs)
       let fixedCostsBudget = 0;
       let fixedCostsActual = 0;
       let variableCostsBudget = 0;
@@ -176,11 +176,15 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
       }
       
+      // Combine fixed and variable costs into operational expense
+      const operationalExpenseBudget = fixedCostsBudget + variableCostsBudget;
+      const operationalExpenseActual = fixedCostsActual + variableCostsActual;
+      
       // Use the pre-calculated profit/loss values from the data if available
       const budgetProfit = parseFloat(entry.budgeted_profit_loss ?? entry.budgetProfit ?? 0) || 
-                          (salesBudget - (foodCostBudget + laborBudget + fixedCostsBudget + variableCostsBudget));
+                          (salesBudget - (foodCostBudget + laborBudget + operationalExpenseBudget));
       const actualProfit = parseFloat(entry.actual_profit_loss ?? entry.actualProfit ?? 0) || 
-                          (salesActual - (foodCostActual + laborActual + fixedCostsActual + variableCostsActual));
+                          (salesActual - (foodCostActual + laborActual + operationalExpenseActual));
       
       const processedEntry = {
         day: dayLabel,
@@ -190,10 +194,8 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         foodCostActual,
         laborBudget,
         laborActual,
-        fixedCostsBudget,
-        fixedCostsActual,
-        variableCostsBudget,
-        variableCostsActual,
+        operationalExpenseBudget,
+        operationalExpenseActual,
         budgetProfit,
         actualProfit,
         profit: actualProfit // Keep for backward compatibility
@@ -247,15 +249,32 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
         const baseCats = Array.isArray(res.categories) ? res.categories : [];
         const labor = baseCats.find((c) => c.key === 'labor_budget');
         const food = baseCats.find((c) => c.key === 'food_cost');
+        const expenses = baseCats.find((c) => c.key === 'expenses');
+        const saleCost = baseCats.find((c) => c.key === 'sale_cost');
+        
+        // Use expenses for operational expense, or combine fixed/variable if they exist (backward compatibility)
         const fixed = baseCats.find((c) => c.key === 'fixed');
         const variable = baseCats.find((c) => c.key === 'variable');
+        const operationalExpenseValue = expenses 
+          ? Number(expenses.value || 0)
+          : Number(fixed?.value || 0) + Number(variable?.value || 0);
+        
         const categories = [
           { key: 'sales_budget', label: 'Sales Budget', value: Number(res.sales_budget || 0) },
           { key: 'labor_budget', label: 'Labor Budget', value: Number(labor?.value || 0) },
           { key: 'food_cost', label: 'Food Cost', value: Number(food?.value || 0) },
-          { key: 'fixed_cost', label: 'Fixed Cost', value: Number(fixed?.value || 0) },
-          { key: 'variable_cost', label: 'Variable Cost', value: Number(variable?.value || 0) },
+          { key: 'expenses', label: 'Operational Expense', value: operationalExpenseValue },
         ];
+        
+        // Include sale_cost if it exists in the response
+        if (saleCost) {
+          categories.push({
+            key: 'sale_cost',
+            label: saleCost.label || 'Sale Cost',
+            value: Number(saleCost.value || 0)
+          });
+        }
+        
         setDynamicCategories(categories);
       }
     });
@@ -425,7 +444,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     };
   }, [summaryData]);
 
-  // Build categories for Total Budget allocation pie (Labor, Food, Fixed, Variable) - excluding Sales Budget
+  // Build categories for Total Budget allocation pie (Labor, Food, Operational Expense) - excluding Sales Budget
   const computedCategories = dynamicCategories.length
     ? dynamicCategories.filter(category => category.key !== 'sales_budget')
     : [];
@@ -435,8 +454,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     sales_budget: { bg: '#f97316', border: '#ea580c' }, // orange
     labor_budget: { bg: '#6366f1', border: '#4f46e5' }, // indigo
     food_cost: { bg: '#ef4444', border: '#dc2626' }, // red
-    fixed_cost: { bg: '#94a3b8', border: '#64748b' }, // slate
-    variable_cost: { bg: '#0ea5e9', border: '#0284c7' }, // sky
+    variable: { bg: '#94a3b8', border: '#64748b' }, // slate
   };
 
   const fallback = { bg: '#22c55e', border: '#16a34a' }; // green fallback
@@ -663,14 +681,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           <Card className="h-full">
             <div className="mb-2">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-orange-600">Total Expense  Allocation</h2>
+                <h2 className="text-xl font-bold text-orange-600">Total Expense Allocation</h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
               <Pie data={categoryPieData} options={categoryPieOptions} />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p>This chart shows how your weekly expenses are allocated across Labor, Food, Fixed and Variable costs.</p>
+              <p>This chart shows how your weekly expenses are allocated across Labor, Food, and Operational Expense.</p>
             </div>
           </Card>
         </Col>

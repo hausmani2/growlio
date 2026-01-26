@@ -9,21 +9,21 @@ import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 
 const { Title, Text } = Typography;
 
-const SalesDataModal = ({ 
-  visible, 
-  onCancel, 
-  selectedWeekData, 
+const SalesDataModal = ({
+  visible,
+  onCancel,
+  selectedWeekData,
   onDataSaved,
   autoOpenFromSummary = false,
   isManuallyTriggered = false
 }) => {
   // Navigation hook
   const navigate = useNavigate();
-  
+
   // Store integration
-  const { 
-    saveDashboardData, 
-    loading: storeLoading, 
+  const {
+    saveDashboardData,
+    loading: storeLoading,
     completeOnboardingData,
     restaurantGoals,
     getRestaurentGoal,
@@ -75,11 +75,11 @@ const SalesDataModal = ({
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
   const lastBudgetedSalesValueRef = useRef({});
-  
+
   // Add ref to track if average hourly rate is being fetched
   const avgHourlyRateFetchingRef = useRef(false);
   const avgHourlyRateFetchedRef = useRef(false);
-  
+
   // Add ref to track if week has been initially confirmed (to prevent showing modal again during save)
   const weekInitiallyConfirmedRef = useRef(false);
 
@@ -88,11 +88,11 @@ const SalesDataModal = ({
     if (!restaurantGoals || !restaurantGoals.restaurant_days) {
       return false; // Default to open if no goals data
     }
-    
+
     // dayjs format('dddd') returns full day names like "Sunday", "Monday"
     // restaurant_days array contains capitalized day names like "Sunday", "Monday"
     // So we can compare directly without additional formatting
-    
+
     // Check if this day is IN the restaurant_days array
     // If it's in the array, it means the restaurant is CLOSED on that day
     // If it's NOT in the array, it means the restaurant is OPEN on that day
@@ -106,7 +106,7 @@ const SalesDataModal = ({
     if (hasFetchedGoalsRef.current) {
       return;
     }
-    
+
     try {
       if (!restaurantGoals) {
         hasFetchedGoalsRef.current = true;
@@ -131,21 +131,21 @@ const SalesDataModal = ({
     try {
       if (visible && selectedWeekData?.startDate && !avgHourlyRateFetchingRef.current && !avgHourlyRateFetchedRef.current) {
         const weekStart = dayjs(selectedWeekData.startDate).format('YYYY-MM-DD');
-        
+
         // Check if we already have the average hourly rate for this week
         if (hasAverageHourlyRateForWeek(weekStart)) {
           avgHourlyRateFetchedRef.current = true;
           return;
         }
-        
+
         avgHourlyRateFetchingRef.current = true;
-        
+
         const startDate = weekStart;
         const endDate = dayjs(selectedWeekData.startDate).add(6, 'day').format('YYYY-MM-DD');
-        
+
         // Fetch dashboard summary which will automatically include average hourly rate
         await fetchDashboardSummary(startDate, endDate, 'daily');
-        
+
         avgHourlyRateFetchedRef.current = true;
         avgHourlyRateFetchingRef.current = false;
       }
@@ -161,12 +161,12 @@ const SalesDataModal = ({
     if (visible && selectedWeekData) {
       // Reset the fetched flag when modal opens with new week data
       avgHourlyRateFetchedRef.current = false;
-      
+
       // Check week status first
       const weekStartDate = selectedWeekData.startDate;
       const status = CalendarHelpers.getWeekStatus(weekStartDate);
       setWeekStatus(status);
-      
+
       // If it's not the current week and week hasn't been initially confirmed, show confirmation modal
       // Don't show if week was already confirmed (prevents showing during save operations)
       if (!status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
@@ -174,13 +174,13 @@ const SalesDataModal = ({
         setWeekConfirmed(false);
         return; // Don't proceed with initialization until confirmed
       }
-      
+
       // If it's current week, mark as confirmed
       if (status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
         weekInitiallyConfirmedRef.current = true;
         setWeekConfirmed(true);
       }
-      
+
       // Proceed with initialization if week is confirmed or it's current week
       // (This prevents re-initialization during save operations)
       if (weekInitiallyConfirmedRef.current || status.isCurrentWeek) {
@@ -189,25 +189,25 @@ const SalesDataModal = ({
           await fetchAverageHourlyRate();
           initializeFormData();
         };
-        
+
         initializeModal();
       }
-      
+
       // Show labor rate confirmation modal with 1.5 second delay
       // Only show if forward_previous_week_rate is false AND there's no existing data (new entry only)
       // If forward_previous_week_rate is true, the system will automatically forward the previous week's rate
       // Check if there's existing data - if dailyData exists and has entries, it's an edit, not a new entry
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
-      
+
       if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
         setShowPopupDelay(true); // Show delay indicator
-        
+
         const popupTimer = setTimeout(() => {
           setShowLaborRateConfirmationModal(true);
           setLaborRateConfirmed(false);
           setShowPopupDelay(false); // Hide delay indicator
         }, 1500); // 1.5 seconds delay
-        
+
         // Cleanup timer if component unmounts or modal closes
         return () => {
           clearTimeout(popupTimer);
@@ -231,21 +231,21 @@ const SalesDataModal = ({
       if (avgHourlyRateFetchedRef.current || dashboardSummaryData?.average_hourly_rate) {
         initializeFormData();
       }
-      
+
       // Handle labor rate confirmation modal based on forward_previous_week_rate
       // Only show if there's no existing data (new entry only, not editing)
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
-      
+
       if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed && !hasExistingData) {
         // Show the confirmation modal if forward_previous_week_rate is false and it's a new entry
         setShowPopupDelay(true);
-        
+
         const popupTimer = setTimeout(() => {
           setShowLaborRateConfirmationModal(true);
           setLaborRateConfirmed(false);
           setShowPopupDelay(false);
         }, 1500);
-        
+
         return () => {
           clearTimeout(popupTimer);
         };
@@ -296,10 +296,10 @@ const SalesDataModal = ({
       message.error('Week data is missing. Please try again.');
       return;
     }
-    
+
     const startDate = dayjs(selectedWeekData.startDate);
     const currentProviders = getProviders();
-    
+
     // Check if we have existing daily data to use
     let dailyData;
     if (selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0) {
@@ -309,28 +309,28 @@ const SalesDataModal = ({
       // Generate new data
       dailyData = generateDailyData(startDate, currentProviders);
     }
-    
+
     // Get avg_hourly_rate from API response first, then fallback to restaurant goals
     let avgHourlyRateFromAPI = 0;
     if (dashboardSummaryData?.average_hourly_rate) {
       avgHourlyRateFromAPI = parseFloat(dashboardSummaryData.average_hourly_rate);
     }
-    
+
     // Get previous week's rate from API response
     if (dashboardSummaryData?.previous_week_average_hourly_rate) {
       setPreviousWeekLaborRate(parseFloat(dashboardSummaryData.previous_week_average_hourly_rate));
     } else {
       setPreviousWeekLaborRate(null);
     }
-    
+
     // Fallback to restaurant goals if API didn't return a value
-    const avgHourlyRateFromGoals = restaurantGoals?.avg_hourly_rate && restaurantGoals.avg_hourly_rate > 0 
-      ? parseFloat(restaurantGoals.avg_hourly_rate) 
+    const avgHourlyRateFromGoals = restaurantGoals?.avg_hourly_rate && restaurantGoals.avg_hourly_rate > 0
+      ? parseFloat(restaurantGoals.avg_hourly_rate)
       : 0;
-    
+
     // Use API value if available, otherwise use goals value
     const finalAvgHourlyRate = avgHourlyRateFromAPI > 0 ? avgHourlyRateFromAPI : avgHourlyRateFromGoals;
-    
+
     const initialWeeklyTotals = {
       salesBudget: 0,
       actualSalesInStore: 0,
@@ -344,7 +344,7 @@ const SalesDataModal = ({
         return acc;
       }, {})
     };
-    
+
     setFormData({
       weeklyTotals: initialWeeklyTotals,
       dailyData: dailyData
@@ -357,10 +357,10 @@ const SalesDataModal = ({
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
       const dayName = currentDate.format('dddd');
-      
+
       // Check restaurant goals to determine if this day should be closed
       const shouldBeClosed = shouldDayBeClosed(dayName);
-      
+
       const dayData = {
         key: `day-${currentDate.format('YYYY-MM-DD')}`,
         date: currentDate,
@@ -373,12 +373,12 @@ const SalesDataModal = ({
         restaurant_open: (() => {
           // If we have existing data, use it and convert if needed
           if (selectedWeekData?.dailyData && selectedWeekData.dailyData.length > 0) {
-            const existingDay = selectedWeekData.dailyData.find(d => 
+            const existingDay = selectedWeekData.dailyData.find(d =>
               d.date?.format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD')
             );
             if (existingDay?.restaurant_open !== undefined) {
               const value = existingDay.restaurant_open;
-              
+
               // Handle both boolean and integer values
               if (typeof value === 'boolean') {
                 return value ? 1 : 0;
@@ -395,7 +395,7 @@ const SalesDataModal = ({
               return value !== 0 ? 1 : 0;
             }
           }
-          
+
           // Use restaurant goals to determine if this day should be closed
           return shouldBeClosed ? 0 : 1; // 0 for closed, 1 for open
         })()
@@ -463,17 +463,17 @@ const SalesDataModal = ({
   // const handleNavigateToDashboardSales = (selectedDay) => {
   //   // Close current modal
   //   onCancel();
-    
+
   //   // Close the notification
   //   notification.destroy();
-    
+
   //   // Navigate to dashboard with selected date
   //   // You can implement navigation logic here
   //   console.log('Navigating to dashboard sales with date:', selectedDay.date.format('YYYY-MM-DD'));
-    
+
   //   // Show success message
   //   message.success(`Opening sales performance for ${selectedDay.dayName} (${selectedDay.date.format('MMM DD, YYYY')})`);
-    
+
   //   // You can emit an event or use a callback to navigate to the dashboard
   //   // For now, we'll just show a message
   //   setTimeout(() => {
@@ -485,9 +485,9 @@ const SalesDataModal = ({
   const handleDailyDataChange = (dayIndex, field, value) => {
     const newDailyData = [...formData.dailyData];
     newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
-    
-    setFormData({ 
-      ...formData, 
+
+    setFormData({
+      ...formData,
       dailyData: newDailyData
     });
 
@@ -496,20 +496,20 @@ const SalesDataModal = ({
       const changedDay = newDailyData[dayIndex];
       const dayKey = changedDay.key;
       const previousValue = lastBudgetedSalesValueRef.current[dayKey] || 0;
-      
+
       // Clear existing timeout for this day
       if (budgetedSalesTimeoutRef.current[dayKey]) {
         clearTimeout(budgetedSalesTimeoutRef.current[dayKey]);
       }
-      
+
       // Only show console log if value is greater than 0 and has actually changed significantly
       if (value > 0 && Math.abs(value - previousValue) >= 1) {
         // Set timeout to show console log after user stops typing (1 second delay)
         budgetedSalesTimeoutRef.current[dayKey] = setTimeout(() => {
-          
+
         }, 1000);
       }
-      
+
       // Update the last value for this day
       lastBudgetedSalesValueRef.current[dayKey] = value;
     }
@@ -568,14 +568,14 @@ const SalesDataModal = ({
       acc.actualSalesInStore += parseFloat(day.actualSalesInStore) || 0;
       acc.actualSalesAppOnline += parseFloat(day.actualSalesAppOnline) || 0;
       acc.dailyTickets += parseFloat(day.dailyTickets) || 0;
-      
+
       // Add dynamic provider totals
       currentProviders.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
         if (!acc[providerKey]) acc[providerKey] = 0;
         acc[providerKey] += parseFloat(day[providerKey]) || 0;
       });
-      
+
       return acc;
     }, {
       budgetedSales: 0,
@@ -595,9 +595,9 @@ const SalesDataModal = ({
       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
       allSalesFields.push(providerKey);
     });
-    
+
     totals.netSalesActual = allSalesFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
-    
+
     return totals;
   };
 
@@ -606,13 +606,13 @@ const SalesDataModal = ({
     try {
       // Check for open days without budgeted sales
       const openDaysWithoutBudget = checkOpenDaysWithoutBudget();
-      
+
       if (openDaysWithoutBudget.length > 0) {
         setOpenDaysWithoutBudget(openDaysWithoutBudget);
         setShowBudgetValidationModal(true);
         return;
       }
-      
+
       // Proceed with saving if all open days have budgets
       await saveSalesData();
     } catch (error) {
@@ -625,7 +625,7 @@ const SalesDataModal = ({
   const saveSalesData = async () => {
     try {
       setIsSubmitting(true);
-      
+
       if (!formData.dailyData || formData.dailyData.length === 0) {
         message.warning('Please add sales data before saving.');
         return;
@@ -638,17 +638,17 @@ const SalesDataModal = ({
       }
 
       const weeklyTotals = calculateWeeklyTotals();
-      
+
       // Ensure we always have a valid start date from selectedWeekData
       if (!selectedWeekData?.startDate) {
         console.error('selectedWeekData.startDate is missing in handleSubmit:', selectedWeekData);
         message.error('Week data is missing. Please try again.');
         return;
       }
-      
+
       const startDate = dayjs(selectedWeekData.startDate);
-      
-      
+
+
       const currentProviders = getProviders();
 
       // Transform data to API format with proper null checks
@@ -681,7 +681,7 @@ const SalesDataModal = ({
               daily_tickets: parseFloat(day.dailyTickets) || 0,
               restaurant_open: (() => {
                 const value = day.restaurant_open;
-                
+
                 // Ensure we always send integer values (0 or 1)
                 if (typeof value === 'boolean') {
                   return value ? 1 : 0;
@@ -717,12 +717,12 @@ const SalesDataModal = ({
 
       await saveDashboardData(transformedData);
       message.success('Sales data saved successfully! 🎉');
-      
+
       // Call the callback to refresh data
       if (onDataSaved) {
         onDataSaved();
       }
-      
+
       onCancel();
     } catch (error) {
       console.error('Error saving sales data:', error);
@@ -735,16 +735,16 @@ const SalesDataModal = ({
   // Handle user choice in budget validation modal
   const handleBudgetValidationChoice = async (addBudgets) => {
     setShowBudgetValidationModal(false);
-    
+
     if (addBudgets) {
       // User wants to add budgets - focus on first day without budget
       const firstDayWithoutBudget = openDaysWithoutBudget[0];
       const dayIndex = formData.dailyData.findIndex(day => day.key === firstDayWithoutBudget.key);
-      
+
       if (dayIndex !== -1) {
         // Focus on the budgeted sales input for that day
         message.info(`Please add budgeted sales for ${firstDayWithoutBudget.dayName}. The input field is now highlighted.`);
-        
+
         // You can add additional logic here to highlight or focus the input field
         // For now, we'll just show a message
       }
@@ -757,7 +757,7 @@ const SalesDataModal = ({
   // Handle user choice in labor rate confirmation modal
   const handleLaborRateConfirmationChoice = (choice) => {
     setShowPopupDelay(false); // Reset delay indicator
-    
+
     if (choice === 'yes') {
       // User wants to use last week's rate
       setShowLaborRateConfirmationModal(false);
@@ -808,33 +808,33 @@ const SalesDataModal = ({
   // Handle user choice in week confirmation modal
   const handleWeekConfirmationChoice = async (proceed) => {
     setShowWeekConfirmationModal(false);
-    
+
     if (proceed) {
       // User confirmed they want to proceed with this week
       setWeekConfirmed(true);
       weekInitiallyConfirmedRef.current = true; // Mark week as initially confirmed
-      
+
       // Now proceed with the normal initialization
       const initializeModal = async () => {
         await fetchAverageHourlyRate();
         initializeFormData();
       };
-      
+
       await initializeModal();
-      
+
       // Show labor rate confirmation modal if needed
       // Only show if there's no existing data (new entry only, not editing)
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
-      
+
       if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
         setShowPopupDelay(true);
-        
+
         const popupTimer = setTimeout(() => {
           setShowLaborRateConfirmationModal(true);
           setLaborRateConfirmed(false);
           setShowPopupDelay(false);
         }, 1500);
-        
+
         return () => {
           clearTimeout(popupTimer);
         };
@@ -895,7 +895,7 @@ const SalesDataModal = ({
 
   // Check for open days without budgeted sales
   const checkOpenDaysWithoutBudget = () => {
-    const openDaysWithoutBudget = formData.dailyData.filter(day => 
+    const openDaysWithoutBudget = formData.dailyData.filter(day =>
       day.restaurant_open === 1 && (!day.budgetedSales || day.budgetedSales === 0)
     );
     return openDaysWithoutBudget;
@@ -911,7 +911,7 @@ const SalesDataModal = ({
       title={
         <div className="flex items-center gap-2">
           <CalculatorOutlined className="text-blue-500" />
-          <span>Add Sales Data for Week {selectedWeekData?.weekNumber || ''}</span>
+          <span>Add Projected  Sales Data for Week {selectedWeekData?.weekNumber || ''}</span>
         </div>
       }
       open={visible}
@@ -920,16 +920,16 @@ const SalesDataModal = ({
         <Button key="cancel" onClick={onCancel}>
           Cancel
         </Button>,
-                 <Button 
-           key="submit" 
-           type="primary" 
-           icon={<SaveOutlined />}
-           onClick={handleSubmit} 
-           loading={isSubmitting || storeLoading}
-           disabled={isSaveButtonDisabled()}
-         >
-           Save Sales Data
-         </Button>
+        <Button
+          key="submit"
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={handleSubmit}
+          loading={isSubmitting || storeLoading}
+          disabled={isSaveButtonDisabled()}
+        >
+          Save Sales Data
+        </Button>
       ]}
       width="90vw"
       style={{ maxWidth: '1200px' }}
@@ -949,8 +949,8 @@ const SalesDataModal = ({
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         {/* Weekly Totals Section - Only show when not auto-opened from summary */}
         {!autoOpenFromSummary && (
-          <Card 
-            title="Weekly Totals" 
+          <Card
+            title="Weekly Totals"
             size="small"
             extra={
               <div className="text-xs text-gray-500">
@@ -1047,13 +1047,13 @@ const SalesDataModal = ({
 
         {/* Labor Rate Input - Show when user clicks "Set New Labor Rate" */}
         {showLaborRateInput && (
-          <Card 
+          <Card
             title={
               <div className="flex items-center justify-between w-full">
                 <span>Set New Labor Rate</span>
-                <Button 
-                  type="text" 
-                  size="small" 
+                <Button
+                  type="text"
+                  size="small"
                   onClick={() => {
                     setShowLaborRateInput(false);
                     setNewLaborRateValue('');
@@ -1111,7 +1111,7 @@ const SalesDataModal = ({
 
         {/* Edit Weekly Rate Button - Show only when "Use Current Rate" was selected */}
         {laborRateConfirmed && selectedLaborRateChoice === 'current' && !showLaborRateInput && (
-          <Card 
+          <Card
             size="small"
             style={{ borderColor: '#faad14', borderWidth: '2px', backgroundColor: '#fffbe6' }}
           >
@@ -1124,7 +1124,7 @@ const SalesDataModal = ({
                   Using current labor rate. Click below to edit if needed.
                 </Text>
               </div>
-              <Button 
+              <Button
                 onClick={() => setShowEditWeeklyRateWarningModal(true)}
                 icon={<EditOutlined />}
                 style={{ backgroundColor: '#faad14', borderColor: '#faad14', color: 'white' }}
@@ -1136,7 +1136,7 @@ const SalesDataModal = ({
         )}
 
         {/* Daily Data Table */}
-        <Card 
+        <Card
           title="Daily Sales Data"
           size="small"
           extra={
@@ -1155,7 +1155,7 @@ const SalesDataModal = ({
               size="small"
               rowKey={(record) => record.key}
               scroll={{ x: 'max-content' }}
-                             rowClassName={(record) => isDayClosed(record) ? 'opacity-50 bg-gray-50' : ''}
+              rowClassName={(record) => isDayClosed(record) ? 'opacity-50 bg-gray-50' : ''}
               summary={(pageData) => {
                 const currentProviders = getProviders();
                 const totals = pageData.reduce((acc, record) => {
@@ -1163,13 +1163,13 @@ const SalesDataModal = ({
                   acc.actualSalesInStore += parseFloat(record.actualSalesInStore) || 0;
                   acc.actualSalesAppOnline += parseFloat(record.actualSalesAppOnline) || 0;
                   acc.dailyTickets += parseFloat(record.dailyTickets) || 0;
-                  
+
                   currentProviders.forEach(provider => {
                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                     if (!acc[providerKey]) acc[providerKey] = 0;
                     acc[providerKey] += parseFloat(record[providerKey]) || 0;
                   });
-                  
+
                   return acc;
                 }, {
                   budgetedSales: 0,
@@ -1183,7 +1183,7 @@ const SalesDataModal = ({
                   }, {})
                 });
 
-                const netSalesActualTotal = totals.actualSalesInStore + totals.actualSalesAppOnline + 
+                const netSalesActualTotal = totals.actualSalesInStore + totals.actualSalesAppOnline +
                   currentProviders.reduce((sum, provider) => {
                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                     return sum + totals[providerKey];
@@ -1240,15 +1240,15 @@ const SalesDataModal = ({
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={7 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
-                        {totals.budgetedSales > 0 && netSalesActualTotal > 0 
-                          ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1) 
+                        {totals.budgetedSales > 0 && netSalesActualTotal > 0
+                          ? calculateActualSalesBudget(totals.budgetedSales, netSalesActualTotal).toFixed(1)
                           : '0.0'}%
                       </Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={8 + currentProviders.length}>
                       <Text strong style={{ color: '#1890ff' }}>
-                        {totals.dailyTickets > 0 
-                          ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets) 
+                        {totals.dailyTickets > 0
+                          ? calculateAverageDailyTicket(netSalesActualTotal, totals.dailyTickets)
                           : 0}
                       </Text>
                     </Table.Summary.Cell>
@@ -1271,11 +1271,10 @@ const SalesDataModal = ({
                         <div className="font-medium flex items-center gap-2">
                           {text}
                           {isDayClosed(record) && (
-                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                              isAutoClosed 
-                                ? 'bg-orange-100 text-orange-600' 
+                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${isAutoClosed
+                                ? 'bg-orange-100 text-orange-600'
                                 : 'bg-red-100 text-red-600'
-                            }`}>
+                              }`}>
                               {isAutoClosed ? 'CLOSED' : 'CLOSED'}
                             </span>
                           )}
@@ -1287,7 +1286,7 @@ const SalesDataModal = ({
                     );
                   }
                 },
-                                {
+                {
                   title: 'Days Open',
                   dataIndex: 'restaurant_open',
                   key: 'restaurant_open',
@@ -1305,28 +1304,28 @@ const SalesDataModal = ({
                     </div>
                   )
                 },
-                 {
-                   title: 'Budgeted Sales',
-                   dataIndex: 'budgetedSales',
-                   key: 'budgetedSales',
-                   width: 140,
-                   render: (value, record, index) => (
-                     <Input
-                       type="number"
-                       value={value}
-                       onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
-                       onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
-                       placeholder="0.00"
-                       className="w-full"
-                       disabled={isDayClosed(record)}
-                       style={{ 
-                         opacity: isDayClosed(record) ? 0.5 : 1,
-                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                       }}
-                     />
-                   )
-                 }
-               ] : [
+                {
+                  title: 'Budgeted Sales',
+                  dataIndex: 'budgetedSales',
+                  key: 'budgetedSales',
+                  width: 140,
+                  render: (value, record, index) => (
+                    <Input
+                      type="number"
+                      value={value}
+                      onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                      onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
+                      placeholder="0.00"
+                      className="w-full"
+                      disabled={isDayClosed(record)}
+                      style={{
+                        opacity: isDayClosed(record) ? 0.5 : 1,
+                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                      }}
+                    />
+                  )
+                }
+              ] : [
                 // Show all columns when not auto-opened from summary
                 {
                   title: 'Day',
@@ -1342,11 +1341,10 @@ const SalesDataModal = ({
                         <div className="font-medium flex items-center gap-2">
                           {text}
                           {isDayClosed(record) && (
-                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                              isAutoClosed 
-                                ? 'bg-orange-100 text-orange-600' 
+                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${isAutoClosed
+                                ? 'bg-orange-100 text-orange-600'
                                 : 'bg-red-100 text-red-600'
-                            }`}>
+                              }`}>
                               {isAutoClosed ? 'AUTO-CLOSED' : 'CLOSED'}
                             </span>
                           )}
@@ -1396,7 +1394,7 @@ const SalesDataModal = ({
                       placeholder="0.00"
                       className="w-full"
                       disabled={isDayClosed(record)}
-                      style={{ 
+                      style={{
                         opacity: isDayClosed(record) ? 0.5 : 1,
                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
                       }}
@@ -1416,7 +1414,7 @@ const SalesDataModal = ({
                       placeholder="0.00"
                       className="w-full"
                       disabled={isDayClosed(record)}
-                      style={{ 
+                      style={{
                         opacity: isDayClosed(record) ? 0.5 : 1,
                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
                       }}
@@ -1436,7 +1434,7 @@ const SalesDataModal = ({
                       placeholder="0.00"
                       className="w-full"
                       disabled={isDayClosed(record)}
-                      style={{ 
+                      style={{
                         opacity: isDayClosed(record) ? 0.5 : 1,
                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
                       }}
@@ -1457,7 +1455,7 @@ const SalesDataModal = ({
                       placeholder="0.00"
                       className="w-full"
                       disabled={isDayClosed(record)}
-                      style={{ 
+                      style={{
                         opacity: isDayClosed(record) ? 0.5 : 1,
                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
                       }}
@@ -1494,7 +1492,7 @@ const SalesDataModal = ({
                       placeholder="0"
                       className="w-full"
                       disabled={isDayClosed(record)}
-                      style={{ 
+                      style={{
                         opacity: isDayClosed(record) ? 0.5 : 1,
                         cursor: isDayClosed(record) ? 'not-allowed' : 'text'
                       }}
@@ -1545,7 +1543,7 @@ const SalesDataModal = ({
         </Card>
       </Space>
 
- 
+
       <Modal
         title={
           <div className="flex items-center gap-2">
@@ -1564,12 +1562,12 @@ const SalesDataModal = ({
       >
         <div>
           <Title level={4} className="mb-6 text-center" style={{ fontWeight: 700 }}>
-            {previousWeekLaborRate ? 
+            {previousWeekLaborRate ?
               `Would you like to use last week's average labor rate of $${previousWeekLaborRate.toFixed(2)}?` :
               'Would you like to update your average hourly labor rate?'
             }
           </Title>
-          
+
           <div className="flex flex-col gap-3">
             <Button
               onClick={() => handleLaborRateConfirmationChoice('yes')}
@@ -1578,18 +1576,18 @@ const SalesDataModal = ({
             >
               Yes
             </Button>
-            
+
             <Button
               onClick={() => handleLaborRateConfirmationChoice('budgeted')}
               className="w-full h-12 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
-              {restaurantGoals?.avg_hourly_rate ? 
+              {restaurantGoals?.avg_hourly_rate ?
                 `No, Use Budgeted Labor Rate of $${parseFloat(restaurantGoals.avg_hourly_rate).toFixed(2)}` :
                 `No, Use Budgeted Labor Rate of $${(formData.weeklyTotals.average_hourly_rate || 0).toFixed(2)}`
               }
             </Button>
-            
+
             <Button
               onClick={() => handleLaborRateConfirmationChoice('setNew')}
               className="w-full h-12 rounded-lg !text-white font-normal text-base"
@@ -1614,17 +1612,17 @@ const SalesDataModal = ({
           setShowEditWeeklyRateWarningModal(false);
         }}
         footer={[
-          <Button 
-            key="cancel" 
+          <Button
+            key="cancel"
             onClick={() => {
               setShowEditWeeklyRateWarningModal(false);
             }}
           >
             Cancel
           </Button>,
-          <Button 
-            key="proceed" 
-            type="primary" 
+          <Button
+            key="proceed"
+            type="primary"
             onClick={() => {
               setShowEditWeeklyRateWarningModal(false);
               setShowLaborRateInput(true);
@@ -1643,14 +1641,14 @@ const SalesDataModal = ({
         zIndex={1001}
       >
         <div className="text-center">
-          <WarningOutlined 
-            className="text-6xl text-orange-500 mb-4" 
+          <WarningOutlined
+            className="text-6xl text-orange-500 mb-4"
             style={{ fontSize: '64px' }}
           />
           <Title level={4} className="mb-4">
             Warning: Editing Weekly Labor Rate
           </Title>
-          
+
           <div className="bg-orange-50 p-4 rounded-lg mb-4">
             <Text strong className="text-orange-700 mb-2 block">
               Important Information:
@@ -1662,7 +1660,7 @@ const SalesDataModal = ({
               <p>• Make sure the new rate is accurate for this week</p>
             </div>
           </div>
-          
+
           <div className="text-sm text-gray-600">
             <p className="mb-2">
               <strong>Proceed to Edit:</strong> Open the labor rate input field to edit the rate
@@ -1688,16 +1686,16 @@ const SalesDataModal = ({
           <Button key="cancel" onClick={() => setShowBudgetValidationModal(false)}>
             Cancel
           </Button>,
-          <Button 
-            key="no" 
+          <Button
+            key="no"
             onClick={() => handleBudgetValidationChoice(false)}
             style={{ backgroundColor: '#ff4d4f', borderColor: '#ff4d4f', color: 'white' }}
           >
             No, Save with $0
           </Button>,
-          <Button 
-            key="yes" 
-            type="primary" 
+          <Button
+            key="yes"
+            type="primary"
             onClick={() => handleBudgetValidationChoice(true)}
             icon={<DollarOutlined />}
           >
@@ -1708,14 +1706,14 @@ const SalesDataModal = ({
         destroyOnClose
       >
         <div className="text-center">
-          <ExclamationCircleOutlined 
-            className="text-6xl text-orange-500 mb-4" 
+          <ExclamationCircleOutlined
+            className="text-6xl text-orange-500 mb-4"
             style={{ fontSize: '64px' }}
           />
           <Title level={4} className="mb-4">
             Some open days don't have sales budgets. Add them now?
           </Title>
-          
+
           <div className="bg-gray-50 p-4 rounded-lg mb-4">
             <Text strong className="text-gray-700 mb-2 block">
               The following days are open but have $0 budgeted sales:
@@ -1729,7 +1727,7 @@ const SalesDataModal = ({
               ))}
             </div>
           </div>
-          
+
           <div className="text-sm text-gray-600">
             <p className="mb-2">
               <strong>Yes:</strong> Add budgeted sales for these days before saving
@@ -1755,9 +1753,9 @@ const SalesDataModal = ({
           <Button key="cancel" onClick={() => handleWeekConfirmationChoice(false)}>
             Cancel
           </Button>,
-          <Button 
-            key="proceed" 
-            type="primary" 
+          <Button
+            key="proceed"
+            type="primary"
             onClick={() => handleWeekConfirmationChoice(true)}
             icon={<CalendarOutlined />}
             style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
@@ -1771,31 +1769,28 @@ const SalesDataModal = ({
         zIndex={1002}
       >
         <div className="text-center">
-          <WarningOutlined 
-            className="text-6xl mb-4" 
+          <WarningOutlined
+            className="text-6xl mb-4"
             style={{ fontSize: '64px', color: weekStatus?.isPastWeek ? '#ff4d4f' : '#ff4d4f' }}
           />
           <Title level={4} className="mb-4">
             {weekStatus?.isPastWeek ? 'Adding Data to Past Week' : 'Adding Data to Future Week'}
           </Title>
-          
-          <div className={`p-4 rounded-lg mb-4 ${
-            weekStatus?.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            <Text strong className={`mb-2 block ${
-              weekStatus?.isPastWeek ? 'text-red-700' : 'text-red-700'
+
+          <div className={`p-4 rounded-lg mb-4 ${weekStatus?.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
             }`}>
+            <Text strong className={`mb-2 block ${weekStatus?.isPastWeek ? 'text-red-700' : 'text-red-700'
+              }`}>
               Week Information:
             </Text>
-            <div className={`text-sm space-y-1 ${
-              weekStatus?.isPastWeek ? 'text-red-600' : 'text-red-600'
-            }`}>
+            <div className={`text-sm space-y-1 ${weekStatus?.isPastWeek ? 'text-red-600' : 'text-red-600'
+              }`}>
               <p>• Selected week: <strong>{weekStatus?.weekStart} - {weekStatus?.weekEnd}</strong></p>
               <p>• Current week: <strong>{weekStatus?.currentWeekStart} - {weekStatus?.currentWeekEnd}</strong></p>
               <p>• Week difference: <strong>{Math.abs(weekStatus?.daysDifference || 0)} days {weekStatus?.isPastWeek ? 'ago' : 'ahead'}</strong></p>
             </div>
           </div>
-          
+
           <div className="bg-blue-50 p-4 rounded-lg mb-4">
             <Text strong className="text-blue-700 mb-2 block">
               {weekStatus?.isPastWeek ? 'Past Week Warning:' : 'Future Week Warning:'}
@@ -1818,7 +1813,7 @@ const SalesDataModal = ({
               )}
             </div>
           </div>
-          
+
           <div className="text-sm text-gray-600">
             <p className="mb-2">
               <strong>Proceed:</strong> Continue adding data to this week

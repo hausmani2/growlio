@@ -62,17 +62,22 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       if (!res) return;
       
       // Handle the new data structure
-      const payloadCategories = res.categories || res.data?.categories || [];
-      const subcategories = res.subcategories || res.data?.subcategories || {};
+      // Response structure: { status, message, data: {...}, categories: [...], subcategories: {...} }
+      const payloadCategories = res.categories || [];
+      const subcategories = res.subcategories || {};
       
       setCategories(payloadCategories);
       setSignedValues(payloadCategories.map((c) => c.value));
       
       // Store detailed breakdowns for dropdown functionality using subcategories
+      // API returns: sales, labor, food, expenses, third_party_fees
       setDetailedBreakdowns({
         sales: subcategories.sales || [],
         labor: subcategories.labor || [],
         food: subcategories.food || [],
+        expenses: subcategories.expenses || [],
+        third_party_fees: subcategories.third_party_fees || [],
+        // Backward compatibility
         fixed_expenses: subcategories.fixed_expenses || [],
         variable_expenses: subcategories.variable_expenses || [],
       });
@@ -123,6 +128,15 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       'variable_royalty': '#eab308', // Yellow
       'variable_brand/ad fund': '#ca8a04', // Darker yellow
       
+      // Expenses (new structure)
+      'expenses': '#f97316', // Orange
+      'variable_Royalty': '#eab308', // Yellow
+      'variable_Brand/Ad Fund': '#ca8a04', // Darker yellow
+      
+      // Third-party fees
+      'third_party_fees': '#8b5cf6', // Purple
+      'third_party_fees_total': '#7c3aed', // Darker purple
+      
 
     };
     
@@ -167,15 +181,36 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     }
   };
 
-  // Dropdown options
-  const dropdownOptions = [
-    { value: 'totals', label: 'Totals' },
-    { value: 'sales', label: 'Sales Breakdown' },
-    { value: 'labor', label: 'Labor Breakdown' },
-    { value: 'food', label: 'Food Cost Breakdown' },
-    { value: 'fixed_expenses', label: 'Fixed Expenses Breakdown' },
-    { value: 'variable_expenses', label: 'Variable Expenses Breakdown' },
-  ];
+  // Dropdown options - dynamically build based on available subcategories
+  const dropdownOptions = useMemo(() => {
+    const options = [{ value: 'totals', label: 'Totals' }];
+    
+    if (detailedBreakdowns.sales && detailedBreakdowns.sales.length > 0) {
+      options.push({ value: 'sales', label: 'Sales Breakdown' });
+    }
+    if (detailedBreakdowns.labor && detailedBreakdowns.labor.length > 0) {
+      options.push({ value: 'labor', label: 'Labor Breakdown' });
+    }
+    if (detailedBreakdowns.food && detailedBreakdowns.food.length > 0) {
+      options.push({ value: 'food', label: 'Food Cost Breakdown' });
+    }
+    if (detailedBreakdowns.expenses && detailedBreakdowns.expenses.length > 0) {
+      options.push({ value: 'expenses', label: 'Expenses Breakdown' });
+    }
+    if (detailedBreakdowns.third_party_fees && detailedBreakdowns.third_party_fees.length > 0) {
+      options.push({ value: 'third_party_fees', label: 'Third-Party Fees Breakdown' });
+    }
+    
+    // Backward compatibility
+    if (detailedBreakdowns.fixed_expenses && detailedBreakdowns.fixed_expenses.length > 0) {
+      options.push({ value: 'fixed_expenses', label: 'Fixed Expenses Breakdown' });
+    }
+    if (detailedBreakdowns.variable_expenses && detailedBreakdowns.variable_expenses.length > 0) {
+      options.push({ value: 'variable_expenses', label: 'Variable Expenses Breakdown' });
+    }
+    
+    return options;
+  }, [detailedBreakdowns]);
 
   // Handle dropdown change
   const handleViewChange = (value) => {
@@ -214,8 +249,9 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
           <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
           <span className="font-medium text-red-800"> Dark Red</span>: Labor Budget; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
-          <span className="font-medium text-orange-600"> Orange</span>: Fixed Expenses; 
-          <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses;
+          <span className="font-medium text-orange-600"> Orange</span>: Expenses; 
+          <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses; 
+          <span className="font-medium text-purple-600"> Purple</span>: Third-Party Fees;
         </p>
       </div>
     </Card>

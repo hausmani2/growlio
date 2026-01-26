@@ -131,7 +131,7 @@ const createDashboardSummarySlice = (set, get) => {
                     if (!targetRestaurantId) return null;
                 }
 
-                let url = '/restaurant/profit-loss-summary/';
+                let url = '/restaurant_v2/profit-loss-summary/';
                 const params = new URLSearchParams({
                     restaurant_id: targetRestaurantId,
                     start_date: startDate,
@@ -139,8 +139,23 @@ const createDashboardSummarySlice = (set, get) => {
                 }).toString();
                 url += `?${params}`;
                 const response = await apiGet(url);
-                // Return full payload so caller can access categories as well
-                return response?.data || null;
+                
+                // Handle response structure: response.data contains the API response
+                // API response structure: { status, message, data: {...}, categories: [...], subcategories: {...} }
+                const responseData = response?.data || null;
+                
+                // Return the full structure with data, categories, and subcategories
+                if (responseData) {
+                    return {
+                        status: responseData.status,
+                        message: responseData.message,
+                        data: responseData.data || {},
+                        categories: Array.isArray(responseData.categories) ? responseData.categories : [],
+                        subcategories: responseData.subcategories || {}
+                    };
+                }
+                
+                return responseData;
             } catch (error) {
                 console.error('Error fetching profit/loss category summary:', error);
                 return null;
@@ -160,7 +175,7 @@ const createDashboardSummarySlice = (set, get) => {
                     if (!targetRestaurantId) return null;
                 }
 
-                let url = '/restaurant/budget-allocation-summary/';
+                let url = '/restaurant_v2/budget-allocation-summary/';
                 const params = new URLSearchParams({
                     restaurant_id: targetRestaurantId,
                     start_date: startDate,
@@ -168,7 +183,22 @@ const createDashboardSummarySlice = (set, get) => {
                 }).toString();
                 url += `?${params}`;
                 const response = await apiGet(url);
-                return response?.data || null;
+                
+                // Handle response structure: response.data contains the API response
+                // API response structure: { status, message, sales_budget, categories }
+                const responseData = response?.data || null;
+                
+                // Return the data structure with sales_budget and categories
+                if (responseData && (responseData.sales_budget !== undefined || responseData.categories)) {
+                    return {
+                        sales_budget: responseData.sales_budget || 0,
+                        categories: Array.isArray(responseData.categories) ? responseData.categories : [],
+                        status: responseData.status,
+                        message: responseData.message
+                    };
+                }
+                
+                return responseData;
             } catch (error) {
                 console.error('Error fetching budget allocation summary:', error);
                 return null;

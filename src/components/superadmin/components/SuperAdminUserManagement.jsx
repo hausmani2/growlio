@@ -9,9 +9,11 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   SearchOutlined,
-  LockOutlined
+  LockOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
+import api from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 
 const roleOptions = [
@@ -177,6 +179,56 @@ const SuperAdminUserManagement = () => {
       fetchUsers(pagination.current, pagination.pageSize);
     } catch (err) {
       message.error('Failed to update user status');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      message.loading({ content: 'Exporting emails...', key: 'export', duration: 0 });
+      
+      const response = await api.get('/authentication/admin/export-emails/', {
+        responseType: 'blob'
+      });
+      
+      // Create a blob from the response
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/octet-stream' 
+      });
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'emails-export.csv';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      } else {
+        // Generate filename with current date if not provided
+        const date = new Date().toISOString().split('T')[0];
+        filename = `emails-export-${date}.csv`;
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success({ content: 'Emails exported successfully', key: 'export' });
+    } catch (err) {
+      message.error({ 
+        content: err?.response?.data?.message || 'Failed to export emails', 
+        key: 'export' 
+      });
+      console.error('Export error:', err);
     }
   };
 
@@ -497,6 +549,15 @@ const SuperAdminUserManagement = () => {
               className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
               Add User
+            </Button>
+            <Button 
+            type='default'
+            icon={<DownloadOutlined />}
+            onClick={handleExport}
+            size="large"
+            className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
+              Export
             </Button>
           </div>
         </div>

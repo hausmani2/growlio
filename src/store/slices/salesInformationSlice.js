@@ -11,6 +11,14 @@ const createSalesInformationSlice = (set, get) => ({
     salesInformationSummaryLoading: false,
     salesInformationSummaryError: null,
     salesInformationSummaryLastFetch: null, // Track when summary was last fetched
+    // Daily performance data
+    dailyPerformanceData: null,
+    dailyPerformanceLoading: false,
+    dailyPerformanceError: null,
+    // Daily performance data
+    dailyPerformanceData: null,
+    dailyPerformanceLoading: false,
+    dailyPerformanceError: null,
     
     // Actions
     setSalesInformationLoading: (loading) => set({ salesInformationLoading: loading }),
@@ -372,6 +380,89 @@ const createSalesInformationSlice = (set, get) => ({
             salesInformationError: null,
             salesInformationData: null
         });
+    },
+
+    // GET: Fetch daily sales information summary for performance card
+    getDailyPerformanceData: async (startDate, endDate) => {
+        set(() => ({ 
+            dailyPerformanceLoading: true, 
+            dailyPerformanceError: null 
+        }));
+        
+        try {
+            // Get restaurant_id from store or localStorage
+            const currentState = get();
+            const restaurantId = currentState.restaurantId || localStorage.getItem('restaurant_id');
+            
+            if (!restaurantId) {
+                throw new Error('Restaurant ID is required');
+            }
+            
+            // Format dates (handle dayjs objects or strings)
+            const formatDate = (date) => {
+                if (!date) return null;
+                if (typeof date === 'string') {
+                    return date.split('T')[0]; // Extract YYYY-MM-DD from ISO string
+                }
+                // Handle dayjs objects
+                if (date.format) {
+                    return date.format('YYYY-MM-DD');
+                }
+                // Handle Date objects
+                const d = new Date(date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            const startDateStr = formatDate(startDate);
+            const endDateStr = formatDate(endDate);
+            
+            if (!startDateStr || !endDateStr) {
+                throw new Error('Start date and end date are required');
+            }
+            
+            // Build query parameters
+            const params = new URLSearchParams({
+                restaurant_id: restaurantId.toString(),
+                start_date: startDateStr,
+                end_date: endDateStr
+            });
+            
+            const response = await apiGet(`/restaurant_v2/sales-information-daily/summary/?${params.toString()}`);
+            
+            // Handle response structure
+            const responseData = response.data?.data || response.data || [];
+            
+            set(() => ({ 
+                dailyPerformanceData: responseData,
+                dailyPerformanceLoading: false,
+                dailyPerformanceError: null
+            }));
+            
+            return { 
+                success: true, 
+                data: responseData 
+            };
+        } catch (error) {
+            const errorMessage = error?.response?.data?.message || 
+                                error?.message || 
+                                'Failed to fetch daily performance data';
+            
+            console.error('❌ [salesInformationSlice] Error fetching daily performance data:', error);
+            
+            set(() => ({ 
+                dailyPerformanceData: null,
+                dailyPerformanceLoading: false,
+                dailyPerformanceError: errorMessage
+            }));
+            
+            return { 
+                success: false, 
+                error: errorMessage 
+            };
+        }
     }
 });
 

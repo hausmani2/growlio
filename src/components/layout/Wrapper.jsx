@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
-import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header';
 import useStore from '../../store/store';
@@ -180,10 +180,17 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       onClick: () => navigate('/dashboard/support'),
     },
     {
-      key: 'plans',
+      key: 'training',
+      icon: <BookOutlined />,
+      label: 'Training',
+      onClick: () => navigate('/dashboard/training'),
+
+    },
+    {
+      key: 'pricing',
       icon: <StarOutlined />,
-      label: 'Plans',
-      onClick: () => navigate('/dashboard/plans'),
+      label: 'Pricing',
+      onClick: () => navigate('/dashboard/pricing'),
     },
     {
       key: 'square',

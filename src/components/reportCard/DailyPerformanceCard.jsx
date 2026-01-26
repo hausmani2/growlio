@@ -1,10 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
 import { CalendarOutlined, FlagOutlined, CheckCircleOutlined } from "@ant-design/icons";
-import { DatePicker } from "antd";
+import { DatePicker, Spin, Empty, Alert } from "antd";
 import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+import useStore from "../../store/store";
 
-const { RangePicker } = DatePicker;
+dayjs.extend(weekOfYear);
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -26,20 +28,12 @@ const getScoreColor = (score) => {
 };
 
 // Daily Gauge Component
-const DailyGauge = ({ score, day, date, amount, isNegative = false }) => {
+const DailyGauge = ({ score, day, date, profitLoss }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const color = getScoreColor(s);
+  const profitLossValue = Number(profitLoss) || 0;
+  const isNegative = profitLossValue < 0;
   const amountColor = isNegative ? "text-red-600" : "text-green-600";
-  
-  // Calculate angle for the white circle indicator
-  // Score 0 = 180deg (left), Score 100 = 0deg (right)
-  const angle = 180 - (s / 100) * 180;
-  const radius = 50; // Half of width/height (120/2 = 60, but using 50 for inner radius)
-  const centerX = 60;
-  const centerY = 60;
-  const indicatorRadius = 60; // Outer radius
-  const indicatorX = centerX + Math.cos((angle - 90) * Math.PI / 180) * indicatorRadius;
-  const indicatorY = centerY - Math.sin((angle - 90) * Math.PI / 180) * indicatorRadius;
   
   const data = useMemo(() => [{ name: "score", value: s, fill: color }], [s, color]);
 
@@ -49,7 +43,7 @@ const DailyGauge = ({ score, day, date, amount, isNegative = false }) => {
         <RadialBarChart
           width={120}
           height={120}
-          innerRadius="85%"
+          innerRadius="80%"
           outerRadius="100%"
           data={data}
           startAngle={210}
@@ -70,21 +64,19 @@ const DailyGauge = ({ score, day, date, amount, isNegative = false }) => {
             {Math.round(s)}
           </div>
         </div>
-        
-     
       </div>
       
       {/* Day and date */}
-      <div className="mt-2 text-xs font-medium text-gray-700 text-center">
+      <div className="mt-2 text-sm font-medium text-gray-700 text-center">
         {day}
       </div>
       <div className="text-xs text-gray-500 text-center">
         {date}
       </div>
       
-      {/* Amount */}
+      {/* Profit/Loss */}
       <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
-        {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(amount))}
+        {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(profitLossValue))}
       </div>
     </div>
   );
@@ -108,37 +100,143 @@ const FindingItem = ({ text, type = "success" }) => {
 };
 
 const DailyPerformanceCard = ({ onCloseOutDays }) => {
-  // Static data for 7 days
-  const dailyData = [
-    { score: 73, day: "Mon", date: "10/27", amount: 1200, isNegative: false },
-    { score: 65, day: "Tue", date: "10/28", amount: 900, isNegative: false },
-    { score: 87, day: "Wed", date: "10/29", amount: 2500, isNegative: false },
-    { score: 54, day: "Thu", date: "10/30", amount: 200, isNegative: true },
-    { score: 85, day: "Fri", date: "10/31", amount: 3500, isNegative: false },
-    { score: 89, day: "Sat", date: "11/1", amount: 5000, isNegative: false },
-    { score: 94, day: "Sun", date: "11/2", amount: 3500, isNegative: false },
-  ];
+  // Store hooks
+  const { 
+    getDailyPerformanceData, 
+    dailyPerformanceData, 
+    dailyPerformanceLoading, 
+    dailyPerformanceError 
+  } = useStore();
 
-  // Static key findings
-  const keyFindings = {
-    issues: [
-      { text: "Monday labor over 8%", type: "error" },
-      { text: "Tuesday labor over 3%", type: "warning" },
-      { text: "Wednesday COGS over 5%", type: "error" },
-      { text: "Thursday labor over 2%", type: "warning" },
-    ],
-    successes: [
-      { text: "Monday COGS under 8%", type: "success" },
-      { text: "Tuesday COGS under 3%", type: "success" },
-      { text: "Wednesday sales over 10%", type: "success" },
-      { text: "Thursday COGS under 2%", type: "success" },
-    ],
-  };
-
-  const [dateRange, setDateRange] = React.useState([
-    dayjs().subtract(7, 'day'),
-    dayjs(),
+  // Week picker state - initialize with current week
+  const [weekPickerValue, setWeekPickerValue] = useState(dayjs());
+  const [dateRange, setDateRange] = useState([
+    dayjs().startOf('week'),
+    dayjs().endOf('week'),
   ]);
+
+  // Fetch daily performance data
+  const fetchDailyData = useCallback(async (startDate, endDate) => {
+    if (!startDate || !endDate) return;
+    
+    try {
+      await getDailyPerformanceData(startDate, endDate);
+    } catch (error) {
+      console.error('❌ [DailyPerformanceCard] Error fetching daily data:', error);
+    }
+  }, [getDailyPerformanceData]);
+
+  // Initialize with current week on mount and fetch data
+  useEffect(() => {
+    const startOfWeek = dayjs().startOf('week');
+    const endOfWeek = dayjs().endOf('week');
+    setDateRange([startOfWeek, endOfWeek]);
+    setWeekPickerValue(dayjs());
+    fetchDailyData(startOfWeek, endOfWeek);
+  }, [fetchDailyData]);
+
+  // Handle week picker change
+  const handleWeekPickerChange = useCallback((date) => {
+    if (!date) return;
+    setWeekPickerValue(date);
+    const start = dayjs(date).startOf('week');
+    const end = dayjs(date).endOf('week');
+    setDateRange([start, end]);
+    fetchDailyData(start, end);
+  }, [fetchDailyData]);
+
+  // Transform API data to component format
+  const transformedDailyData = useMemo(() => {
+    if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) {
+      return [];
+    }
+
+    return dailyPerformanceData.map((item) => {
+      const dateObj = dayjs(item.date);
+      // Convert full day name to short format (e.g., "Monday" -> "Mon")
+      let dayName = item.day || dateObj.format('ddd');
+      if (dayName && dayName.length > 3) {
+        // If it's a full day name, convert to short format
+        const dayMap = {
+          'Monday': 'Mon',
+          'Tuesday': 'Tue',
+          'Wednesday': 'Wed',
+          'Thursday': 'Thu',
+          'Friday': 'Fri',
+          'Saturday': 'Sat',
+          'Sunday': 'Sun'
+        };
+        dayName = dayMap[dayName] || dateObj.format('ddd');
+      }
+      const dateFormatted = dateObj.format('MM/DD');
+      
+      return {
+        score: item.main_score || 0,
+        day: dayName,
+        date: dateFormatted,
+        profitLoss: item.profit_loss || 0,
+      };
+    });
+  }, [dailyPerformanceData]);
+
+  // Generate key findings from data (placeholder - can be enhanced with actual logic)
+  const keyFindings = useMemo(() => {
+    if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) {
+      return { issues: [], successes: [] };
+    }
+
+    const issues = [];
+    const successes = [];
+
+    // Analyze data and generate findings
+    dailyPerformanceData.forEach((item) => {
+      let dayName = item.day || dayjs(item.date).format('ddd');
+      // Convert full day name to short format if needed
+      if (dayName && dayName.length > 3) {
+        const dayMap = {
+          'Monday': 'Mon',
+          'Tuesday': 'Tue',
+          'Wednesday': 'Wed',
+          'Thursday': 'Thu',
+          'Friday': 'Fri',
+          'Saturday': 'Sat',
+          'Sunday': 'Sun'
+        };
+        dayName = dayMap[dayName] || dayjs(item.date).format('ddd');
+      }
+      
+      const score = item.main_score || 0;
+      const profitLoss = item.profit_loss || 0;
+      
+      // Low score issues
+      if (score < 60) {
+        issues.push({ 
+          text: `${dayName} score below 60%`, 
+          type: "error" 
+        });
+      } else if (score < 70) {
+        issues.push({ 
+          text: `${dayName} score below 70%`, 
+          type: "warning" 
+        });
+      }
+
+      // Profit/Loss analysis
+      if (profitLoss < 0) {
+        issues.push({ 
+          text: `${dayName} had negative profit`, 
+          type: "error" 
+        });
+      } else if (profitLoss > 0 && score >= 70) {
+        successes.push({ 
+          text: `${dayName} achieved good performance`, 
+          type: "success" 
+        });
+      }
+    });
+
+    return { issues, successes };
+  }, [dailyPerformanceData]);
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -154,18 +252,21 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <h2 className="text-2xl font-bold text-orange-600">Last 7 Days</h2>
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => dates && setDateRange(dates)}
-            format="MMM D, YYYY"
-            className="border border-gray-200 rounded-md bg-white"
-            style={{
-              borderRadius: '6px',
-              height: '32px',
-            }}
-            size="small"
+          <DatePicker
+            picker="week"
+            value={weekPickerValue}
+            onChange={handleWeekPickerChange}
+            style={{ width: 220 }}
             allowClear={false}
-            separator=" to "
+            format={(value) => {
+              if (!value) return 'Select week';
+              const start = dayjs(value).startOf('week');
+              const end = dayjs(value).endOf('week');
+              const wk = dayjs(value).week();
+              return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
+            }}
+            className="border border-gray-200 rounded-md bg-white"
+            size="small"
             popupStyle={{ zIndex: 1000 }}
             getPopupContainer={(trigger) => trigger.parentNode}
             suffixIcon={<CalendarOutlined className="text-gray-400" />}
@@ -173,18 +274,39 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         </div>
 
         {/* Daily Gauges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 justify-items-center">
-          {dailyData.map((day, idx) => (
-            <DailyGauge
-              key={idx}
-              score={day.score}
-              day={day.day}
-              date={day.date}
-              amount={day.amount}
-              isNegative={day.isNegative}
+        {dailyPerformanceLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Spin size="large" />
+          </div>
+        ) : dailyPerformanceError ? (
+          <div className="py-6">
+            <Alert
+              message="Error Loading Data"
+              description={dailyPerformanceError}
+              type="error"
+              showIcon
             />
-          ))}
-        </div>
+          </div>
+        ) : transformedDailyData.length === 0 ? (
+          <div className="py-12">
+            <Empty 
+              description="No data available for this week" 
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 justify-items-center">
+            {transformedDailyData.map((day, idx) => (
+              <DailyGauge
+                key={`${day.date}-${idx}`}
+                score={day.score}
+                day={day.day}
+                date={day.date}
+                profitLoss={day.profitLoss}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Key Findings Section */}

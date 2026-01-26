@@ -177,11 +177,12 @@ const ReportCardPage = () => {
   // Extract grade details from API response
   const gradeDetails = apiSummary?.grade_details || summaryData?.grade_details || null;
   
-  // Map goals from API response
+  // Map goals from API response - use sales_information_goal if available
+  const salesInfoGoal = summaryData?.sales_information_goal || apiSummary?.sales_information_goal;
   const goals = {
-    labor: apiSummary?.labour?.goal || apiSummary?.labor?.goal || 18,
-    cogs: apiSummary?.cogs?.goal || 16,
-    rent: apiSummary?.expenses?.goal || 10,
+    labor: salesInfoGoal?.labour || salesInfoGoal?.labor || apiSummary?.labour?.goal || apiSummary?.labor?.goal || 18,
+    cogs: salesInfoGoal?.cogs || apiSummary?.cogs?.goal || 16,
+    rent: salesInfoGoal?.expenses || apiSummary?.expenses?.goal || 10,
   };
   
   // Map metrics from API response - ensure all values are properly extracted

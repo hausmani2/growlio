@@ -4,7 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosIntercep
 import { message, Modal } from 'antd';
 import useStore from '../../../store/store';
 import MessageBubble from '../../chatbot/MessageBubble';
-
+import chatIcon from '../../../assets/lio.png';
 /**
  * ChatPage Component
  * A full-page ChatGPT-like interface with conversation threads
@@ -524,7 +524,8 @@ const ChatPage = () => {
         }`}>
           {isLoadingConversations ? (
             <div className="flex items-center justify-center p-8">
-              <FiLoader className="w-6 h-6 text-gray-400 animate-spin" />
+              {/* <FiLoader className="w-6 h-6 text-gray-400 animate-spin" /> */}
+              <img src={chatIcon} alt="Loading" className="w-6 h-6 text-gray-400 animate-spin" />
             </div>
           ) : conversations.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
@@ -731,7 +732,8 @@ const ChatPage = () => {
           {isLoadingHistory && (
             <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
               <div className="flex items-center gap-2 text-gray-600">
-                <FiLoader className="w-5 h-5 animate-spin" />
+                {/* <FiLoader className="w-5 h-5 animate-spin" /> */}
+                <img src={chatIcon} alt="Loading" className="w-5 h-5 animate-spin" />
                 <span className="text-sm">Loading conversation...</span>
               </div>
             </div>
@@ -773,7 +775,8 @@ const ChatPage = () => {
             {isLoading && (
               <div className="flex justify-start mb-4">
                 <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                  <FiLoader className="w-5 h-5 text-gray-500 animate-spin" />
+                  {/* <FiLoader className="w-5 h-5 text-gray-500 animate-spin" /> */}
+                  <img src={chatIcon} alt="Loading" className="w-5 h-5 text-gray-500 animate-spin" />
                 </div>
               </div>
             )}
@@ -839,7 +842,7 @@ const ChatPage = () => {
                 aria-label="Send message"
               >
                 {isLoading ? (
-                  <FiLoader className="w-5 h-5 animate-spin" />
+                  <img src={chatIcon} alt="Loading" className="w-5 h-5 animate-spin" />
                 ) : (
                   <FiSend className="w-5 h-5" />
                 )}

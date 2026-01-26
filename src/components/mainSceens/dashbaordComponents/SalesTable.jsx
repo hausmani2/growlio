@@ -2709,7 +2709,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         }
         open={showWeekWarningModal}
         onCancel={handleWeekWarningCancel}
-        footer={[
+        footer={weekWarningData?.isFutureWeek ? [
+          <Button key="cancel" onClick={handleWeekWarningCancel}>
+            Cancel
+          </Button>
+        ] : [
           <Button key="cancel" onClick={handleWeekWarningCancel}>
             Cancel
           </Button>,
@@ -2737,62 +2741,81 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               className="text-6xl mb-4" 
               style={{ fontSize: '64px', color: weekWarningData.isPastWeek ? '#ff4d4f' : '#ff4d4f' }}
             />
-            <Title level={4} className="mb-4">
-              {weekWarningData.isPastWeek 
-                ? `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Past Week` 
-                : `${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Future Week`}
-            </Title>
-            
-            <div className={`p-4 rounded-lg mb-4 ${
-              weekWarningData.isPastWeek ? 'bg-red-50 border border-red-200' : 'bg-red-50 border border-red-200'
-            }`}>
-              <Text strong className={`mb-2 block ${
-                weekWarningData.isPastWeek ? 'text-red-700' : 'text-red-700'
-              }`}>
-                Week Information:
-              </Text>
-              <div className={`text-sm space-y-1 ${
-                weekWarningData.isPastWeek ? 'text-red-600' : 'text-red-600'
-              }`}>
-                <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
-                {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
-                  <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
-                )}
-                <p>• Week difference: <strong>{Math.abs(weekWarningData.daysDifference || 0)} days {weekWarningData.isPastWeek ? 'ago' : 'ahead'}</strong></p>
-              </div>
-            </div>
-            
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <Text strong className="text-blue-700 mb-2 block">
-                {weekWarningData.isPastWeek ? 'Past Week Warning:' : 'Future Week Warning:'}
-              </Text>
-              <div className="text-sm text-blue-600 space-y-1">
-                {weekWarningData.isPastWeek ? (
-                  <>
+            {weekWarningData.isFutureWeek ? (
+              <>
+                <Title level={4} className="mb-4">
+                  Cannot Enter Future Week Data
+                </Title>
+                
+                <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+                  <Text strong className="text-red-700 mb-2 block">
+                    Week Information:
+                  </Text>
+                  <div className="text-sm text-red-600 space-y-1">
+                    <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
+                    {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
+                      <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
+                    )}
+                    <p>• Week difference: <strong>{Math.abs(weekWarningData.daysDifference || 0)} days ahead</strong></p>
+                  </div>
+                </div>
+                
+                <div className="bg-red-50 p-4 rounded-lg mb-4">
+                  <Text strong className="text-red-700 mb-2 block">
+                    Important Notice:
+                  </Text>
+                  <div className="text-base text-red-600 font-medium">
+                    <p>You cannot enter the Future data only in this component closeout your days</p>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-600">
+                  <p>
+                    <strong>Cancel:</strong> Close this dialog and select the current week or a past week
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Title level={4} className="mb-4">
+                  {`${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Past Week`}
+                </Title>
+                
+                <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+                  <Text strong className="text-red-700 mb-2 block">
+                    Week Information:
+                  </Text>
+                  <div className="text-sm text-red-600 space-y-1">
+                    <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
+                    {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
+                      <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
+                    )}
+                    <p>• Week difference: <strong>{Math.abs(weekWarningData.daysDifference || 0)} days ago</strong></p>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <Text strong className="text-blue-700 mb-2 block">
+                    Past Week Warning:
+                  </Text>
+                  <div className="text-sm text-blue-600 space-y-1">
                     <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a week that has already passed</p>
                     <p>• This may affect historical reporting and analysis</p>
                     <p>• Make sure you have the correct week selected</p>
                     <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
-                  </>
-                ) : (
-                  <>
-                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} sales data to a future week</p>
-                    <p>• This is typically used for planning and forecasting</p>
-                    <p>• Make sure you have the correct week selected</p>
-                    <p>• Consider if this data should be {pendingActionType === 'edit' ? 'edited' : 'added'} to the current week instead</p>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            <div className="text-sm text-gray-600">
-              <p className="mb-2">
-                <strong>Proceed:</strong> Continue {pendingActionType === 'edit' ? 'editing' : 'adding'} data to this week
-              </p>
-              <p>
-                <strong>Cancel:</strong> Close this dialog and select a different week
-              </p>
-            </div>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-600">
+                  <p className="mb-2">
+                    <strong>Proceed:</strong> Continue {pendingActionType === 'edit' ? 'editing' : 'adding'} data to this week
+                  </p>
+                  <p>
+                    <strong>Cancel:</strong> Close this dialog and select a different week
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         )}
       </Modal>

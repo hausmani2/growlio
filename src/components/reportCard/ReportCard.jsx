@@ -290,6 +290,8 @@ const ReportCard = ({
       setDateRange(dates);
       // Update quick select label based on selection
       const today = dayjs();
+      const lastWeekStart = today.subtract(1, 'week').startOf('week');
+      const lastWeekEnd = today.subtract(1, 'week').endOf('week');
       const lastMonthStart = today.subtract(1, 'month').startOf('month');
       const lastMonthEnd = today.subtract(1, 'month').endOf('month');
       const last3MonthsStart = today.subtract(3, 'month').startOf('month');
@@ -299,7 +301,9 @@ const ReportCard = ({
       const currentMonthStart = today.startOf('month');
       const currentMonthEnd = today.endOf('month');
       
-      if (dates[0].isSame(currentMonthStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
+      if (dates[0].isSame(lastWeekStart, 'day') && dates[1].isSame(lastWeekEnd, 'day')) {
+        setQuickSelectLabel('Last Week');
+      } else if (dates[0].isSame(currentMonthStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
         setQuickSelectLabel('Current Month');
       } else if (dates[0].isSame(lastMonthStart, 'day') && dates[1].isSame(lastMonthEnd, 'day')) {
         setQuickSelectLabel('Last Month');
@@ -323,6 +327,12 @@ const ReportCard = ({
   const handleQuickSelect = (option) => {
     let newDates = null;
     switch (option) {
+      case 'last_week':
+        const lastWeekStart = dayjs().subtract(1, 'week').startOf('week');
+        const lastWeekEnd = dayjs().subtract(1, 'week').endOf('week');
+        newDates = [lastWeekStart, lastWeekEnd];
+        setQuickSelectLabel('Last Week');
+        break;
       case 'current_month':
         newDates = [dayjs().startOf('month'), dayjs().endOf('month')];
         setQuickSelectLabel('Current Month');
@@ -356,6 +366,7 @@ const ReportCard = ({
 
   const quickSelectMenu = {
     items: [
+      { key: 'last_week', label: 'Last Week' },
       { key: 'current_month', label: 'Current Month' },
       { key: 'last_month', label: 'Last Month' },
       { key: 'last_3_months', label: 'Last 3 Months' },
