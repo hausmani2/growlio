@@ -194,7 +194,6 @@ const SalesDataWrapper = () => {
       // Save all data as Sales Information (includes labour field)
       const result = await submitStepData("Sales Information", salesDataArray, (responseData) => {
         message.success('Sales and labor data saved successfully!');
-        navigate("/dashboard/budget");
       });
 
       if (!result.success) {

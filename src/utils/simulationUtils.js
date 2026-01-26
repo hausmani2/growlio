@@ -67,7 +67,6 @@ export const EXPENSE_CATEGORIES = [
   'Licenses & Permits',
   'Advertising and Promotion',
   'Loan',
-  'Royalty + Ad Fund',
   'Taxes',
   'Flowers',
   'Supplies',
@@ -359,16 +358,6 @@ export const DEFAULT_EXPENSES = [
     is_value_type: true,
     name: 'Loan',
     amount: 1500,
-    fixed_expense_type: 'MONTHLY',
-    is_active: true
-  },
-  
-  // Royalty + Ad Fund
-  {
-    category: 'Royalty + Ad Fund',
-    is_value_type: false, // Percentage
-    name: 'Royalty + Ad Fund',
-    amount: 5,
     fixed_expense_type: 'MONTHLY',
     is_active: true
   },
