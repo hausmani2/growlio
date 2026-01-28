@@ -1561,17 +1561,17 @@ const SalesDataModal = ({
         zIndex={1001}
       >
         <div>
-          <Title level={4} className="mb-6 text-center" style={{ fontWeight: 700 }}>
+          <Title level={3} className="mb-6 text-center" style={{ fontWeight: 700 }}>
             {previousWeekLaborRate ?
               `Would you like to use last week's average labor rate of $${previousWeekLaborRate.toFixed(2)}?` :
               'Would you like to update your average hourly labor rate?'
             }
           </Title>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col items-center gap-3">
             <Button
               onClick={() => handleLaborRateConfirmationChoice('yes')}
-              className="w-full h-12 rounded-lg !text-white font-normal text-base"
+              className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               Yes
@@ -1579,7 +1579,7 @@ const SalesDataModal = ({
 
             <Button
               onClick={() => handleLaborRateConfirmationChoice('budgeted')}
-              className="w-full h-12 rounded-lg !text-white font-normal text-base"
+              className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               {restaurantGoals?.avg_hourly_rate ?
@@ -1590,7 +1590,7 @@ const SalesDataModal = ({
 
             <Button
               onClick={() => handleLaborRateConfirmationChoice('setNew')}
-              className="w-full h-12 rounded-lg !text-white font-normal text-base"
+              className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
               Set New Labor Rate
