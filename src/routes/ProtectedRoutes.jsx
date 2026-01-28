@@ -772,6 +772,7 @@ const ProtectedRoutes = () => {
   const isProfitabilityPath = location.pathname === '/profitability' || location.pathname.includes('/onboarding/profitability');
   const isScorePath = location.pathname === ONBOARDING_ROUTES.SCORE; // '/onboarding/score'
   const isReportCardPath = location.pathname === ONBOARDING_ROUTES.REPORT_CARD;
+  const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS; // '/congratulations'
   // CRITICAL: Always allow simulation routes - they handle their own redirect logic
   const isSimulationPath = location.pathname === '/onboarding/simulation' || location.pathname === '/simulation/dashboard';
   const isDashboardPath = location.pathname.startsWith('/dashboard');

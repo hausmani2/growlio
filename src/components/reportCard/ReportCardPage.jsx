@@ -239,6 +239,7 @@ const ReportCardPage = () => {
           onDateRangeChange={setDateRange}
           loading={salesInformationSummaryLoading}
           gradeDetails={gradeDetails}
+          showNextSteps={!isOnboardingComplete}
         />
         
         {/* Show Daily Performance Card when onboarding is complete */}

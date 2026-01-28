@@ -7,9 +7,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { DatePicker, Button, Dropdown } from "antd";
+import { InfoCircleOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { DatePicker, Button, Dropdown, Modal } from "antd";
 import { DownOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -261,7 +262,18 @@ const ReportCard = ({
   onDateRangeChange,
   loading = false,
   gradeDetails = null,
+  showNextSteps = false,
 }) => {
+  const navigate = useNavigate();
+  const [isNextStepsModalOpen, setIsNextStepsModalOpen] = useState(false);
+  
+  // Auto-open modal when showNextSteps is true
+  useEffect(() => {
+    if (showNextSteps) {
+      setIsNextStepsModalOpen(true);
+    }
+  }, [showNextSteps]);
+  
   // Extract grade letter from label or calculate from score
   const gradeFromLabel = gradeDetails?.label 
     ? gradeDetails.label.match(/Grade\s+([A-F])/i)?.[1]?.toUpperCase() 
@@ -421,6 +433,13 @@ const ReportCard = ({
             flex-direction: column !important;
           }
         }
+        .next-steps-modal-top .ant-modal {
+          top: 20px !important;
+          margin: 0 auto;
+        }
+        .next-steps-modal-top .ant-modal-content {
+          border-radius: 12px;
+        }
       `}</style>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3 sm:p-4 md:p-6">
       {/* Header */}
@@ -539,7 +558,65 @@ const ReportCard = ({
           </div>
         </div>
       </div>
-          <div>
+      
+      {/* Next Steps Modal - Auto-opens for new users */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-orange-600 font-bold text-sm">💡</span>
+            </div>
+            <span>Next Steps</span>
+          </div>
+        }
+        open={isNextStepsModalOpen}
+        onCancel={() => setIsNextStepsModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsNextStepsModalOpen(false)}>
+            Close
+          </Button>,
+          <Button
+            key="expenses"
+            type="primary"
+            onClick={() => {
+              setIsNextStepsModalOpen(false);
+              navigate('/dashboard/expense');
+            }}
+            className="bg-orange-500 hover:bg-orange-600 border-0"
+            icon={<ArrowRightOutlined />}
+          >
+            Go to Operating Expenses
+          </Button>
+        ]}
+        width={500}
+        maskClosable={false}
+        style={{
+          top: '20px',
+          paddingBottom: 0,
+        }}
+        className="next-steps-modal-top"
+      >
+        <div className="py-2">
+          <p className="text-base text-gray-700 leading-relaxed mb-4">
+            Complete your setup below, then open the Budget on your dashboard to start building your budget. Growlio will guide your next actions.
+          </p>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <Button
+              type="link"
+              onClick={() => {
+                setIsNextStepsModalOpen(false);
+                navigate('/dashboard/expense');
+              }}
+              className="p-0 text-orange-600 hover:text-orange-700 font-semibold text-base"
+              icon={<ArrowRightOutlined />}
+            >
+              Complete Operating Expenses
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      
+      <div>
           {gradeDetails?.message && (
               <div className="text-base text-gray-700 mb-2 whitespace-pre-line">
              <span className="font-semibold">Message:</span> {gradeDetails.message}
