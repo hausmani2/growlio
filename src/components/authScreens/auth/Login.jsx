@@ -96,32 +96,37 @@ const Login = () => {
       const result = await login(form);
       
       if (result.success) {
-        // Note: restaurants-onboarding and simulation-onboarding APIs are already called in login() function
-        // We just need to check the results and redirect accordingly
+        // CRITICAL: simulation-onboarding and restaurants-onboarding APIs are already called in login() function
+        // They are called in this order:
+        // 1. simulation/simulation-onboarding/ (GET) - FIRST
+        // 2. /restaurant_v2/restaurants-onboarding/ (GET) - SECOND
+        // We should use the cached results from login() instead of calling them again
         message.success('Login successful! Checking your setup...');
         
-        // Get store functions for checking simulation status
-        const getRestaurantSimulation = useStore.getState().getRestaurantSimulation;
-        const getSimulationOnboardingStatus = useStore.getState().getSimulationOnboardingStatus;
+        // Get store state - these should already be populated from login() function
         const restaurantSimulationData = useStore.getState().restaurantSimulationData;
         const simulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
+        const restaurantOnboardingData = useStore.getState().restaurantOnboardingData;
         
-        // CRITICAL: Check BOTH APIs to determine user status
-        // This prevents redirecting to wrong dashboard for new users
+        // CRITICAL: Use cached data from login() function instead of making new API calls
+        // This ensures we use the data from the initial API calls that happened first
         try {
-          // Use cached data if available (from login function)
-          let simulationResult = null;
-          if (restaurantSimulationData) {
-            simulationResult = { success: true, data: restaurantSimulationData };
-          } else {
-            simulationResult = await getRestaurantSimulation();
-          }
+          // Wait a brief moment to ensure login() API calls have completed
+          // This is a safety measure in case the login function's async calls haven't finished
+          await new Promise(resolve => setTimeout(resolve, 100));
           
-          // Check simulation onboarding status
+          // Get fresh state after the brief wait
+          const currentSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
+          const currentRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+          
+          // Use cached simulation onboarding data (from login function)
           let simulationOnboardingResult = null;
-          if (simulationOnboardingStatus) {
-            simulationOnboardingResult = { success: true, data: simulationOnboardingStatus };
+          if (currentSimulationOnboardingStatus) {
+            simulationOnboardingResult = { success: true, data: currentSimulationOnboardingStatus };
           } else {
+            // Fallback: if data not available, call API (shouldn't happen if login worked correctly)
+            console.warn('⚠️ [Login] Simulation onboarding data not found in cache, calling API');
+            const getSimulationOnboardingStatus = useStore.getState().getSimulationOnboardingStatus;
             simulationOnboardingResult = await getSimulationOnboardingStatus();
           }
           
@@ -130,9 +135,17 @@ const Login = () => {
             : [];
           const hasSimulationRestaurant = simulationRestaurants.length > 0;
           
-          // Check regular restaurant onboarding status
-          const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
-          const restaurantResult = await getRestaurantOnboarding();
+          // Use cached restaurant onboarding data (from login function)
+          let restaurantResult = null;
+          if (currentRestaurantOnboardingData) {
+            restaurantResult = { success: true, data: currentRestaurantOnboardingData };
+          } else {
+            // Fallback: if data not available, call API (shouldn't happen if login worked correctly)
+            console.warn('⚠️ [Login] Restaurant onboarding data not found in cache, calling API');
+            const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
+            restaurantResult = await getRestaurantOnboarding();
+          }
+          
           const regularRestaurants = restaurantResult?.success && restaurantResult?.data?.restaurants 
             ? restaurantResult.data.restaurants 
             : [];

@@ -631,6 +631,37 @@ const ProtectedRoutes = () => {
         return;
       }
       
+      // CRITICAL: Wait for initial onboarding APIs to complete before making other API calls
+      // These APIs are called in the login function: 
+      // 1. simulation/simulation-onboarding/ (GET)
+      // 2. /restaurant_v2/restaurants-onboarding/ (GET)
+      // We need to ensure these complete before calling getSalesInformation() and checkOnboardingStatus()
+      const waitForInitialAPIs = async () => {
+        // Check if initial APIs have completed by checking if we have restaurant data
+        // Wait up to 5 seconds for the initial APIs to complete
+        const maxWaitTime = 5000; // 5 seconds
+        const checkInterval = 100; // Check every 100ms
+        let elapsedTime = 0;
+        
+        while (elapsedTime < maxWaitTime) {
+          // Check if we have restaurant onboarding data (from login API call)
+          const hasRestaurantData = restaurantOnboardingData !== null && restaurantOnboardingData !== undefined;
+          // Check if we have simulation onboarding data (from login API call)
+          const hasSimulationData = simulationOnboardingStatus !== null && simulationOnboardingStatus !== undefined;
+          
+          // If we have at least one of the initial API responses, proceed
+          // (Note: simulation data might be null for non-simulation users, which is OK)
+          if (hasRestaurantData || hasSimulationData || elapsedTime > 2000) {
+            // Initial APIs have completed (or we've waited long enough), proceed with other calls
+            break;
+          }
+          
+          // Wait before checking again
+          await new Promise(resolve => setTimeout(resolve, checkInterval));
+          elapsedTime += checkInterval;
+        }
+      };
+      
       // Check if sales information already exists in store
       // For new users, the API might return an empty array [], which is valid data
       // We should only fetch if we haven't fetched before (ref check) and data is truly null/undefined
@@ -647,6 +678,10 @@ const ProtectedRoutes = () => {
       // Fetch sales information and onboarding status together
       const fetchDataAndCheck = async () => {
         try {
+          // CRITICAL: Wait for initial onboarding APIs to complete first
+          await waitForInitialAPIs();
+          console.log('✅ [ProtectedRoutes] Initial onboarding APIs completed, proceeding with other API calls');
+          
           // Only fetch sales information if we don't have it
           if (needsSalesFetch) {
             const result = await getSalesInformation();
@@ -678,7 +713,7 @@ const ProtectedRoutes = () => {
       hasFetchedRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, token]); // Removed user from deps to prevent unnecessary re-runs
+  }, [isAuthenticated, token, restaurantOnboardingData, simulationOnboardingStatus]); // Added restaurantOnboardingData and simulationOnboardingStatus to deps
 
   // Check simulation status if user is trying to access dashboard
   useEffect(() => {

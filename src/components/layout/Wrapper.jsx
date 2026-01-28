@@ -32,22 +32,81 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     // Get simulation status from store (use cached data)
     const restaurantSimulationData = useStore((state) => state.restaurantSimulationData);
     const simulationOnboardingStatus = useStore((state) => state.simulationOnboardingStatus);
+    const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
     const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
   
     // Check if user is in simulation mode - use cached data from store first
+    // CRITICAL: Must verify BOTH restaurant_simulation flag AND that user has simulation restaurants
     useEffect(() => {
       const checkSimulationMode = async () => {
         try {
           let isSimulator = false;
           
+          // CRITICAL: Check current route first - if on regular dashboard routes, don't show simulation sidebar
+          const isOnSimulationRoute = location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation');
+          const isOnRegularRoute = location.pathname.startsWith('/dashboard') && !isOnSimulationRoute;
+          
+          // If on regular dashboard route, verify user is NOT in simulation mode
+          // This prevents simulation sidebar from showing for regular users
+          if (isOnRegularRoute) {
+            // Double-check: if user has regular restaurants, they're definitely not in simulation mode
+            if (restaurantOnboardingData?.restaurants && Array.isArray(restaurantOnboardingData.restaurants) && restaurantOnboardingData.restaurants.length > 0) {
+              setIsSimulationMode(false);
+              return;
+            }
+            
+            // If restaurant_simulation is explicitly false, not in simulation mode
+            if (restaurantSimulationData && restaurantSimulationData.restaurant_simulation === false) {
+              setIsSimulationMode(false);
+              return;
+            }
+          }
+          
           // First, try to use cached data from store
+          let simulationData = null;
           if (restaurantSimulationData) {
-            isSimulator = restaurantSimulationData.restaurant_simulation === true;
+            simulationData = restaurantSimulationData;
           } else {
             // If no cached data, make API call
             const simulationResult = await getRestaurantSimulation();
-            isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
+            if (simulationResult?.success && simulationResult?.data) {
+              simulationData = simulationResult.data;
+            }
+          }
+          
+          // CRITICAL: Check restaurant_simulation flag - must be explicitly true
+          if (simulationData && simulationData.restaurant_simulation === true) {
+            // Additional validation: Check if user actually has simulation restaurants
+            // This prevents showing simulation sidebar if flag is true but user has no simulation restaurants
+            let hasSimulationRestaurants = false;
+            
+            // Check cached simulation onboarding status
+            if (simulationOnboardingStatus && simulationOnboardingStatus.restaurants) {
+              hasSimulationRestaurants = Array.isArray(simulationOnboardingStatus.restaurants) && 
+                                        simulationOnboardingStatus.restaurants.length > 0;
+            } else {
+              // If no cached data, make API call to verify
+              try {
+                const onboardingResult = await getSimulationOnboardingStatus();
+                if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+                  hasSimulationRestaurants = Array.isArray(onboardingResult.data.restaurants) && 
+                                            onboardingResult.data.restaurants.length > 0;
+                }
+              } catch (error) {
+                console.warn('⚠️ [Wrapper] Could not verify simulation restaurants:', error);
+                // If API fails, only trust the flag if we're on a simulation route
+                hasSimulationRestaurants = isOnSimulationRoute;
+              }
+            }
+            
+            // Only set simulation mode if BOTH conditions are met:
+            // 1. restaurant_simulation === true
+            // 2. User has simulation restaurants OR is on simulation route
+            isSimulator = hasSimulationRestaurants || isOnSimulationRoute;
+          } else {
+            // If restaurant_simulation is false, null, or undefined, definitely not a simulator
+            isSimulator = false;
           }
           
           // If user is a simulator, show simulation sidebar
@@ -60,12 +119,13 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           sessionStorage.setItem('simulationModeLastCheck', Date.now().toString());
         } catch (error) {
           console.error('❌ [Wrapper] Error checking simulation mode:', error);
+          // On error, default to false (regular user)
           setIsSimulationMode(false);
         }
       };
-  
+
       checkSimulationMode();
-    }, [restaurantSimulationData, getRestaurantSimulation]); // Use cached data from store
+    }, [restaurantSimulationData, simulationOnboardingStatus, restaurantOnboardingData, getRestaurantSimulation, getSimulationOnboardingStatus, location.pathname]); // Added location.pathname and restaurantOnboardingData to dependencies
   
     // Simulation Dashboard menu (only shown when in simulation mode)
     const simulationMenu = [

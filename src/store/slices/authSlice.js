@@ -130,23 +130,26 @@ const createAuthSlice = (set, get) => {
         // CRITICAL: Call BOTH APIs immediately after login for ALL users
         // This ensures we have restaurant data from both sources before any redirects happen
         // We need to check both APIs to determine if user has restaurants in either one
+        // ORDER: 1. simulation-onboarding API FIRST, 2. restaurants-onboarding API SECOND
         try {
-          // Call restaurants-onboarding API first
-          const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
-          
-          // CRITICAL: Call simulation-onboarding API for ALL users (not just simulators)
+          // STEP 1: Call simulation-onboarding API FIRST (GET /simulation/simulation-onboarding/)
           // This is needed to check if user has simulation restaurants
           // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
           try {
             const simulationOnboardingResult = await get().getSimulationOnboardingStatus();
             // Result is cached in store, no need to do anything with it here
+            console.log('✅ [authSlice] Simulation onboarding API called successfully');
           } catch (simError) {
             // If simulation API fails (e.g., user doesn't have access), continue
             // This is expected for non-simulation users, so we don't log it as an error
-            console.log('Simulation onboarding check skipped (user may not have simulation access)');
+            console.log('ℹ️ [authSlice] Simulation onboarding check skipped (user may not have simulation access)');
           }
+          
+          // STEP 2: Call restaurants-onboarding API SECOND (GET /restaurant_v2/restaurants-onboarding/)
+          const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
+          console.log('✅ [authSlice] Restaurant onboarding API called successfully');
         } catch (onboardingError) {
-          console.error('Failed to check onboarding status after login:', onboardingError);
+          console.error('❌ [authSlice] Failed to check onboarding status after login:', onboardingError);
           // Don't fail login if onboarding check fails
         }
         
