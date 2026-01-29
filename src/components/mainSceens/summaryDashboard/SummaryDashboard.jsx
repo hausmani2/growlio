@@ -684,7 +684,8 @@ const SummaryDashboard = () => {
         </div>
 
       {/* Enhanced Flash Message for Sales Budget */}
-      {shouldShowPopup && (
+      {/* COMMENTED OUT: Update My Day popup disabled */}
+      {/* {shouldShowPopup && (
         <Modal
           title="Update My Day"
           open={shouldShowPopup}
@@ -730,7 +731,7 @@ const SummaryDashboard = () => {
           </div>
           </div>
         </Modal>
-      )}
+      )} */}
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {calendarDateRange && calendarDateRange.length === 2 ? (

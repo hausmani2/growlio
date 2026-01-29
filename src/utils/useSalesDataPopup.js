@@ -6,25 +6,31 @@ const useSalesDataPopup = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if popup should be shown today
+  // COMMENTED OUT: Update My Day API calls disabled
   const checkPopupStatus = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/authentication/sales-data-popup/');
-      setShouldShowPopup(response.data.should_show);
+      // COMMENTED OUT: API call disabled
+      // const response = await api.get('/authentication/sales-data-popup/');
+      // setShouldShowPopup(response.data.should_show);
+      
+      // Always set to false to prevent popup from showing
+      setShouldShowPopup(false);
     } catch (err) {
       console.error('Error checking popup status:', err);
-      // Default to showing popup if there's an error
-      setShouldShowPopup(true);
+      // Default to not showing popup
+      setShouldShowPopup(false);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Mark popup as shown today
+  // COMMENTED OUT: Update My Day API calls disabled
   const markPopupAsShown = async () => {
     try {
-      
-      await api.post('/authentication/sales-data-popup/');
+      // COMMENTED OUT: API call disabled
+      // await api.post('/authentication/sales-data-popup/');
       
       setShouldShowPopup(false);
     } catch (err) {
@@ -35,9 +41,14 @@ const useSalesDataPopup = () => {
   };
 
   // Check popup status when component mounts
+  // COMMENTED OUT: Update My Day popup check disabled
   useEffect(() => {
+    // COMMENTED OUT: API call disabled
+    // checkPopupStatus();
     
-    checkPopupStatus();
+    // Always set to false to prevent popup
+    setShouldShowPopup(false);
+    setIsLoading(false);
   }, []);
 
   return {
