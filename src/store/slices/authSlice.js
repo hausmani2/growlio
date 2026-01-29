@@ -291,6 +291,36 @@ const createAuthSlice = (set, get) => {
           sessionStorage.setItem('token', access);
           sessionStorage.setItem('user', JSON.stringify(userData));
           
+          // Clear any old chat conversation ID on new registration
+          sessionStorage.removeItem('chat_conversation_id');
+          
+          // Clear simulation-related caches on new registration to ensure fresh API calls
+          sessionStorage.removeItem('isSimulationMode');
+          sessionStorage.removeItem('simulationModeLastCheck');
+          sessionStorage.removeItem('appSimulationMode');
+          sessionStorage.removeItem('appSimulationModeLastCheck');
+          sessionStorage.removeItem('headerSimulationMode');
+          sessionStorage.removeItem('headerSimulationModeLastCheck');
+          sessionStorage.removeItem('simulationCheckCongratulations');
+          sessionStorage.removeItem('simulationCheckCongratulationsLastCheck');
+          sessionStorage.removeItem('simulationCheckCongratulationsComplete');
+          sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
+          sessionStorage.removeItem('restaurantSimulationLastCheckTime');
+          sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+          sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+          
+          // Clear restaurant simulation data from store on registration
+          set(() => ({
+            restaurantSimulationData: null,
+            restaurantSimulationDataTimestamp: null
+          }));
+          
+          // Clear simulation onboarding status from store on registration
+          const currentState = get();
+          if (currentState.clearSimulationState) {
+            currentState.clearSimulationState();
+          }
+          
           // Dispatch custom event to notify other tabs/windows in same origin
           window.dispatchEvent(new Event('auth-storage-change'));
           
@@ -305,6 +335,37 @@ const createAuthSlice = (set, get) => {
             loading: false, 
             error: null 
           }));
+          
+          // CRITICAL: Call BOTH APIs immediately after registration for NEW users
+          // This ensures we have restaurant data from both sources before any redirects happen
+          // We need to check both APIs to determine if user has restaurants in either one
+          // ORDER: 1. simulation-onboarding API FIRST, 2. restaurants-onboarding API SECOND
+          // NOTE: These API calls run in the background and don't block the return
+          // The loading state is already set to false above, so the button won't be stuck
+          try {
+            // STEP 1: Call simulation-onboarding API FIRST (GET /simulation/simulation-onboarding/)
+            // This is needed to check if user has simulation restaurants
+            // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
+            try {
+              const simulationOnboardingResult = await get().getSimulationOnboardingStatus();
+              // Result is cached in store, no need to do anything with it here
+              console.log('✅ [authSlice] Simulation onboarding API called successfully after registration');
+            } catch (simError) {
+              // If simulation API fails (e.g., user doesn't have access), continue
+              // This is expected for non-simulation users, so we don't log it as an error
+              console.log('ℹ️ [authSlice] Simulation onboarding check skipped after registration (user may not have simulation access)');
+            }
+            
+            // STEP 2: Call restaurants-onboarding API SECOND (GET /restaurant_v2/restaurants-onboarding/)
+            const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
+            console.log('✅ [authSlice] Restaurant onboarding API called successfully after registration');
+          } catch (onboardingError) {
+            console.error('❌ [authSlice] Failed to check onboarding status after registration:', onboardingError);
+            // Don't fail registration if onboarding check fails
+          }
+          
+          // CRITICAL: Ensure loading is false before returning (in case API calls set it to true)
+          set(() => ({ loading: false }));
           
           return { success: true, data: response.data, needsLogin: false, token: access };
         } else {
@@ -553,23 +614,104 @@ const createAuthSlice = (set, get) => {
         
         // Check if the response status is 200 (success)
         if (response.status === 200 || response.status === 201) {
-          set(() => ({ loading: false, error: null }));
+          // Update restaurant simulation data in store with fresh data from response
+          const now = Date.now();
+          set(() => ({ 
+            loading: false, 
+            error: null,
+            restaurantSimulationData: response.data,
+            restaurantSimulationDataTimestamp: now
+          }));
           
-          // Automatically call restaurants-onboarding API after successful POST
-          try {
-            // Clear sessionStorage flags to ensure the call goes through
-            sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
-            sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
+          // CRITICAL: If restaurant_simulation is set to true, call simulation-onboarding API to get restaurant ID
+          // This is essential for the onboarding process to work correctly
+          if (response.data?.restaurant_simulation === true || payload?.restaurant_simulation === true) {
+            console.log('🔄 [authSlice] User selected simulation mode - calling simulation-onboarding API to get restaurant ID...');
             
-            // Use forceRefresh to bypass cache and get fresh data
-            const onboardingResult = await get().getRestaurantOnboarding(true);
-            if (onboardingResult.success) {
-            } else {
-              console.warn("⚠️ [authSlice] Failed to fetch restaurant onboarding data after simulation update:", onboardingResult.error);
+            try {
+              // CRITICAL: Clear ALL sessionStorage flags and cache to ensure fresh API call
+              sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+              sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+              
+              // Also clear the cached data in the store to force a fresh API call
+              const simulationState = get();
+              if (simulationState.clearSimulationState) {
+                simulationState.clearSimulationState();
+              }
+              
+              // Small delay to ensure sessionStorage is cleared
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              // Call GET /simulation/simulation-onboarding/ to get the restaurant ID
+              // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
+              // CRITICAL: Use forceRefresh=true to bypass cache and ensure fresh API call
+              console.log('📞 [authSlice] Calling GET /simulation/simulation-onboarding/ with forceRefresh=true...');
+              const simulationOnboardingResult = await get().getSimulationOnboardingStatus(true);
+              
+              console.log('📥 [authSlice] Simulation onboarding API response:', simulationOnboardingResult);
+              
+              if (simulationOnboardingResult?.success && simulationOnboardingResult?.data) {
+                // Extract restaurant ID from response
+                const restaurants = simulationOnboardingResult.data.restaurants || [];
+                console.log('🏪 [authSlice] Found simulation restaurants:', restaurants.length);
+                
+                if (restaurants.length > 0) {
+                  // Get the most recent restaurant (last in array) or first one
+                  const restaurant = restaurants[restaurants.length - 1] || restaurants[0];
+                  const restaurantId = restaurant.simulation_restaurant_id;
+                  
+                  console.log('🆔 [authSlice] Extracted simulation restaurant ID:', restaurantId);
+                  
+                  if (restaurantId) {
+                    // Store simulation restaurant ID in localStorage for onboarding process
+                    localStorage.setItem('simulation_restaurant_id', restaurantId.toString());
+                    console.log('✅ [authSlice] Simulation restaurant ID stored in localStorage:', restaurantId);
+                  } else {
+                    console.warn('⚠️ [authSlice] Restaurant found but no simulation_restaurant_id in response');
+                  }
+                } else {
+                  console.log('ℹ️ [authSlice] No simulation restaurants found yet (user may need to complete onboarding)');
+                  console.log('ℹ️ [authSlice] This is expected for new users - they will create a restaurant during onboarding');
+                }
+              } else {
+                console.warn("⚠️ [authSlice] Failed to fetch simulation onboarding data after simulation update:", simulationOnboardingResult?.error);
+              }
+            } catch (simulationError) {
+              console.error("❌ [authSlice] Error fetching simulation onboarding after simulation update:", simulationError);
+              console.error("❌ [authSlice] Error details:", {
+                message: simulationError.message,
+                response: simulationError.response,
+                status: simulationError.response?.status,
+                data: simulationError.response?.data
+              });
+              // Don't fail the main request if simulation onboarding fetch fails
+              // User might not have a simulation restaurant yet, which is OK
             }
-          } catch (onboardingError) {
-            console.error("❌ [authSlice] Error fetching restaurant onboarding after simulation update:", onboardingError);
-            // Don't fail the main request if onboarding fetch fails
+          }
+          
+          // Also call restaurants-onboarding API if restaurant_simulation is false (regular user)
+          if (response.data?.restaurant_simulation === false || payload?.restaurant_simulation === false) {
+            try {
+              // Clear sessionStorage flags to ensure the call goes through
+              sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
+              sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
+              
+              // Use forceRefresh to bypass cache and get fresh data
+              const onboardingResult = await get().getRestaurantOnboarding(true);
+              if (onboardingResult.success) {
+                // Extract restaurant ID if available
+                const restaurantId = onboardingResult.restaurantId || onboardingResult.data?.restaurant_id || onboardingResult.data?.restaurants?.[0]?.restaurant_id;
+                if (restaurantId) {
+                  localStorage.setItem('restaurant_id', restaurantId.toString());
+                  console.log('✅ [authSlice] Regular restaurant ID stored:', restaurantId);
+                }
+              } else {
+                console.warn("⚠️ [authSlice] Failed to fetch restaurant onboarding data after simulation update:", onboardingResult.error);
+              }
+            } catch (onboardingError) {
+              console.error("❌ [authSlice] Error fetching restaurant onboarding after simulation update:", onboardingError);
+              // Don't fail the main request if onboarding fetch fails
+            }
           }
           
           return { success: true, data: response.data };
@@ -723,7 +865,71 @@ const createAuthSlice = (set, get) => {
           set(() => ({ restaurantId: restaurantId.toString() }));
         }
         
-        return { success: true, data: restaurantData, restaurantId };
+        // Log the data structure for debugging
+        console.log('📊 [authSlice] Restaurant onboarding data structure:', {
+          hasRestaurants: !!restaurantData?.restaurants,
+          restaurantsCount: restaurantData?.restaurants?.length || 0,
+          restaurants: restaurantData?.restaurants,
+          restaurantId,
+          onboardingComplete: restaurantData?.restaurants?.[0]?.onboarding_complete
+        });
+        
+        // CRITICAL: After successful GET /restaurant_v2/restaurants-onboarding/, 
+        // also call GET /simulation/simulation-onboarding/ to check if user is a simulator
+        // This helps determine if user should use simulation APIs or regular APIs
+        let simulationOnboardingResult = null;
+        let isSimulator = false;
+        
+        try {
+          // Clear sessionStorage flags to ensure fresh data
+          sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+          sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+          
+          // Call GET /simulation/simulation-onboarding/ to check if user is a simulator
+          // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
+          simulationOnboardingResult = await get().getSimulationOnboardingStatus();
+          
+          if (simulationOnboardingResult?.success && simulationOnboardingResult?.data) {
+            // Check if user has simulation restaurants
+            const simulationRestaurants = simulationOnboardingResult.data.restaurants || [];
+            isSimulator = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
+            
+            if (isSimulator) {
+              console.log('✅ [authSlice] User is a simulator - has simulation restaurants');
+              
+              // Extract simulation restaurant ID if available
+              if (simulationRestaurants.length > 0) {
+                const restaurant = simulationRestaurants[simulationRestaurants.length - 1] || simulationRestaurants[0];
+                const simulationRestaurantId = restaurant.simulation_restaurant_id;
+                
+                if (simulationRestaurantId) {
+                  localStorage.setItem('simulation_restaurant_id', simulationRestaurantId.toString());
+                  console.log('✅ [authSlice] Simulation restaurant ID stored:', simulationRestaurantId);
+                }
+              }
+            } else {
+              console.log('ℹ️ [authSlice] User is a regular user - no simulation restaurants found');
+            }
+          } else {
+            console.log('ℹ️ [authSlice] Could not determine simulation status:', simulationOnboardingResult?.error);
+          }
+        } catch (simulationError) {
+          console.warn('⚠️ [authSlice] Error checking simulation onboarding status:', simulationError);
+          // Don't fail the main request if simulation check fails
+          // User might not have access to simulation APIs, which is fine for regular users
+        }
+        
+        // Return result with both regular and simulation data
+        // CRITICAL: Ensure restaurants array is included in the return value for easier access
+        return { 
+          success: true, 
+          data: restaurantData, 
+          restaurantId,
+          isSimulator,
+          simulationOnboardingStatus: simulationOnboardingResult?.data || null,
+          // Explicitly include restaurants array for easier access
+          restaurants: restaurantData?.restaurants || []
+        };
       } catch (error) {
         console.error('❌ [authSlice] API call failed:', error);
         const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant onboarding';

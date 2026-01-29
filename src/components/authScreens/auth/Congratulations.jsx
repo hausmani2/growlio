@@ -59,8 +59,46 @@ const Congratulations = () => {
                 navigate('/login');
                 return;
             }
-             // FIRST: Check if user is a simulation user with complete onboarding
-             try {
+            
+            // CRITICAL: FIRST check if user has regular restaurant with completed onboarding
+            // This prevents users with completed onboarding from seeing the congratulations page
+            try {
+                const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
+                const restaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+                
+                // Use cached data if available, otherwise call API
+                let restaurantResult = null;
+                if (restaurantOnboardingData) {
+                    restaurantResult = { success: true, data: restaurantOnboardingData };
+                } else {
+                    restaurantResult = await getRestaurantOnboarding();
+                }
+                
+                if (restaurantResult?.success && restaurantResult?.data) {
+                    const restaurants = restaurantResult.data.restaurants || [];
+                    
+                    // Check if user has a restaurant with completed onboarding
+                    const completeRestaurant = restaurants.find(
+                        (r) => r.onboarding_complete === true
+                    );
+                    
+                    if (completeRestaurant) {
+                        // Restaurant onboarding is complete, redirect to dashboard immediately
+                        const restaurantId = completeRestaurant.restaurant_id;
+                        localStorage.setItem('restaurant_id', restaurantId.toString());
+                        console.log('✅ [Congratulations] User has completed onboarding, redirecting to dashboard');
+                        navigate('/dashboard/report-card', { replace: true });
+                        setIsChecking(false);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking restaurant onboarding status:', error);
+                // Continue with other checks if this fails
+            }
+            
+            // SECOND: Check if user is a simulation user with complete onboarding
+            try {
                 const simulationResult = await getRestaurantSimulation();
                 const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
                 
@@ -116,11 +154,13 @@ const Congratulations = () => {
                 }
             }
 
-            // Check onboarding completion
+            // Check onboarding completion using the store function (fallback check)
             try {
                 const result = await checkOnboardingCompletion();
                 if (result.success && result.isComplete) {
-                    navigate('/dashboard/report-card');
+                    navigate('/dashboard/report-card', { replace: true });
+                    setIsChecking(false);
+                    return;
                 }
             } catch (error) {
                 console.error('Error checking onboarding status:', error);

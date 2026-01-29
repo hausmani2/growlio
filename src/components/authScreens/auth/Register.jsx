@@ -133,6 +133,9 @@ const Register = () => {
       const result = await register(form);
       
       if (result.success) {
+        // CRITICAL: Clear loading state BEFORE navigation to prevent stuck loading
+        setIsSubmitting(false);
+        
         if (result.needsLogin) {
           // No token received - user needs to login
           message.success('Registration successful! Please login to continue.');
@@ -143,15 +146,18 @@ const Register = () => {
           // Token received - user is automatically authenticated
           message.success('Registration successful! Welcome to Growlio!');
           // Navigate to onboarding after successful registration with token
+          // Small delay to ensure state is cleared
           setTimeout(() => {
             navigate('/congratulations');
-          }, 1500);
+          }, 100);
         }
       }
     } catch (err) {
       // Error is already handled in the store
       console.error('Registration error:', err);
+      setIsSubmitting(false);
     } finally {
+      // Ensure loading is always cleared
       setIsSubmitting(false);
     }
   };

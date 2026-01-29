@@ -136,20 +136,6 @@ const SalesDataWrapper = () => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
-  const addRow = () => {
-    setRows((prev) => [
-      ...prev,
-      { 
-        id: Date.now(), 
-        month: "January", 
-        year: String(new Date().getFullYear()), 
-        sales: "", 
-        expenses: "",
-        laborCost: "",
-        cogs: "",
-      },
-    ]);
-  };
 
   const handleSave = async () => {
     // Validate rows - all fields are optional, but at least one field must be filled per row
@@ -243,6 +229,8 @@ const SalesDataWrapper = () => {
                   className="w-full"
                   size="middle"
                   style={{ height: '40px' }}
+                  readOnly
+                  disabled
                 />
                 <Input
                   value={r.year}
@@ -250,6 +238,8 @@ const SalesDataWrapper = () => {
                   className="w-full"
                   placeholder="2024"
                   style={{ height: '40px' }}
+                  readOnly
+                  disabled
                 />
                 <Input
                   value={formatMoney(r.sales)}
@@ -289,13 +279,6 @@ const SalesDataWrapper = () => {
             ))}
           </div>
 
-          <button
-            onClick={addRow}
-            className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50"
-          >
-            <PlusOutlined />
-            Add Sales & Labor Data
-          </button>
         </div>
       </div>
 

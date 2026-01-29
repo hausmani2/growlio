@@ -122,7 +122,7 @@ const ProfitabilityScore = () => {
                             </p>
                             
                             <p>
-                                And if gathering your real numbers feels overwhelming, we can help. Reach out to us. We offer consulting support that can walk you through pulling your data, setting up simple tracking, and finally getting a clear picture of your profitability.
+                                And if gathering your real numbers feels overwhelming, we can help. Reach out to us. We offer consulting support that can walk you through pulling your data, setting up simple tracking, and finally getting a clear picture of your profitability. Email us at <a className="text-blue-500" href="mailto:consulting@growlio.ai">consulting@growlio.ai </a>  for more information.
                             </p>
                             
                             <p>

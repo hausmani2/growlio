@@ -108,14 +108,28 @@ const Login = () => {
         const simulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
         const restaurantOnboardingData = useStore.getState().restaurantOnboardingData;
         
-        // CRITICAL: Use cached data from login() function instead of making new API calls
-        // This ensures we use the data from the initial API calls that happened first
+        // CRITICAL: Wait for login() API calls to complete, then check onboarding status
+        // The login function calls both APIs asynchronously, so we need to wait for them
         try {
-          // Wait a brief moment to ensure login() API calls have completed
-          // This is a safety measure in case the login function's async calls haven't finished
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Wait for API calls to complete (with timeout)
+          let attempts = 0;
+          const maxAttempts = 20; // Wait up to 2 seconds (20 * 100ms)
           
-          // Get fresh state after the brief wait
+          while (attempts < maxAttempts) {
+            const currentSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
+            const currentRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+            
+            // If we have both data sets, proceed
+            if (currentRestaurantOnboardingData !== null && currentRestaurantOnboardingData !== undefined) {
+              break;
+            }
+            
+            // Wait 100ms before checking again
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+          }
+          
+          // Get fresh state after waiting
           const currentSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
           const currentRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
           
@@ -124,8 +138,8 @@ const Login = () => {
           if (currentSimulationOnboardingStatus) {
             simulationOnboardingResult = { success: true, data: currentSimulationOnboardingStatus };
           } else {
-            // Fallback: if data not available, call API (shouldn't happen if login worked correctly)
-            console.warn('⚠️ [Login] Simulation onboarding data not found in cache, calling API');
+            // Fallback: if data not available, call API
+            console.log('ℹ️ [Login] Simulation onboarding data not found in cache, calling API');
             const getSimulationOnboardingStatus = useStore.getState().getSimulationOnboardingStatus;
             simulationOnboardingResult = await getSimulationOnboardingStatus();
           }
@@ -140,16 +154,25 @@ const Login = () => {
           if (currentRestaurantOnboardingData) {
             restaurantResult = { success: true, data: currentRestaurantOnboardingData };
           } else {
-            // Fallback: if data not available, call API (shouldn't happen if login worked correctly)
-            console.warn('⚠️ [Login] Restaurant onboarding data not found in cache, calling API');
+            // Fallback: if data not available, call API
+            console.log('ℹ️ [Login] Restaurant onboarding data not found in cache, calling API');
             const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
             restaurantResult = await getRestaurantOnboarding();
           }
           
+          // CRITICAL: Check the actual data structure from API response
+          // The API returns: { restaurants: [...], user: {...}, message: "..." }
           const regularRestaurants = restaurantResult?.success && restaurantResult?.data?.restaurants 
-            ? restaurantResult.data.restaurants 
+            ? (Array.isArray(restaurantResult.data.restaurants) ? restaurantResult.data.restaurants : [])
             : [];
           const hasRegularRestaurant = regularRestaurants.length > 0;
+          
+          console.log('📊 [Login] Onboarding check results:', {
+            hasSimulationRestaurant,
+            hasRegularRestaurant,
+            regularRestaurantsCount: regularRestaurants.length,
+            simulationRestaurantsCount: simulationRestaurants.length
+          });
           
           // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
           if (!hasSimulationRestaurant && !hasRegularRestaurant) {
@@ -186,13 +209,21 @@ const Login = () => {
           
           // If user has regular restaurant (but no simulation restaurant), handle regular flow
           if (hasRegularRestaurant) {
+            console.log('🏪 [Login] User has regular restaurant, checking completion status...');
+            console.log('📋 [Login] Restaurants data:', regularRestaurants);
+            
+            // Find restaurant with completed onboarding
             const completeRestaurant = regularRestaurants.find(
               (r) => r.onboarding_complete === true
             );
             
+            console.log('✅ [Login] Complete restaurant found:', completeRestaurant);
+            
             if (completeRestaurant) {
               // Restaurant onboarding is complete, redirect to dashboard
-              localStorage.setItem('restaurant_id', completeRestaurant.restaurant_id.toString());
+              const restaurantId = completeRestaurant.restaurant_id;
+              localStorage.setItem('restaurant_id', restaurantId.toString());
+              console.log('✅ [Login] Redirecting to dashboard with restaurant_id:', restaurantId);
               message.success('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
                 navigate('/dashboard/report-card', { replace: true });
@@ -201,6 +232,7 @@ const Login = () => {
             }
             
             // User has restaurant but onboarding not complete
+            console.log('ℹ️ [Login] Restaurant exists but onboarding not complete');
             message.success('Welcome back! Continuing your setup...');
             setTimeout(() => {
               navigate('/onboarding/score', { replace: true });

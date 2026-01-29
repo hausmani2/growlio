@@ -344,31 +344,87 @@ const SimulationOnboarding = () => {
       const result = await submitSimulationOnboarding(payload);
       
       if (result.success) {
-        // Get restaurant ID from response (already stored in localStorage by the API function)
-        let finalRestaurantId = result.data?.restaurant_id || restaurantId;
+        console.log('✅ [SimulationOnboarding] Onboarding submission successful:', result);
         
-        // Fallback: If not in response, check status to get restaurant ID
-        if (!finalRestaurantId) {
+        // Get restaurant ID from response (already stored in localStorage by the API function)
+        let finalRestaurantId = result.restaurantId || result.data?.restaurant_id || restaurantId;
+        
+        // Check if onboarding is complete (from the GET API call made in submitSimulationOnboarding)
+        const isOnboardingComplete = result.isOnboardingComplete === true;
+        const onboardingStatus = result.onboardingStatus;
+        
+        console.log('📊 [SimulationOnboarding] Onboarding status:', {
+          isOnboardingComplete,
+          restaurantId: finalRestaurantId,
+          hasOnboardingStatus: !!onboardingStatus
+        });
+        
+        // If onboarding status was fetched, use it
+        if (onboardingStatus && !finalRestaurantId) {
+          const restaurants = onboardingStatus.restaurants || [];
+          const restaurant = restaurants[restaurants.length - 1] || restaurants[0];
+          
+          if (restaurant && restaurant.simulation_restaurant_id) {
+            finalRestaurantId = restaurant.simulation_restaurant_id;
+            localStorage.setItem('simulation_restaurant_id', finalRestaurantId.toString());
+          }
+        }
+        
+        // Fallback: If still no restaurant ID and onboarding status not fetched, try to get it
+        if (!finalRestaurantId && !onboardingStatus) {
           try {
-            const statusResult = await getSimulationOnboardingStatus();
+            console.log('🔄 [SimulationOnboarding] Fallback: Fetching onboarding status...');
+            const statusResult = await getSimulationOnboardingStatus(true); // Force refresh
             if (statusResult.success && statusResult.data) {
               const restaurants = statusResult.data.restaurants || [];
-              // Get the most recent restaurant (last in array or first)
               const restaurant = restaurants[restaurants.length - 1] || restaurants[0];
               
               if (restaurant && restaurant.simulation_restaurant_id) {
                 finalRestaurantId = restaurant.simulation_restaurant_id;
                 localStorage.setItem('simulation_restaurant_id', finalRestaurantId.toString());
               }
+              
+              // Check if onboarding is complete
+              const completeRestaurant = restaurants.find(
+                (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+              );
+              
+              if (completeRestaurant) {
+                console.log('✅ [SimulationOnboarding] Onboarding is complete, navigating to dashboard');
+                // CRITICAL: Clear loading state BEFORE navigation
+                setIsSubmitting(false);
+                message.success('Onboarding completed successfully!');
+                setTimeout(() => {
+                  navigate('/simulation/dashboard', { replace: true });
+                }, 100);
+                return;
+              }
             }
           } catch (error) {
-            console.error('Error checking simulation status:', error);
+            console.error('❌ [SimulationOnboarding] Error checking simulation status:', error);
           }
         }
-
-        message.success('Onboarding data saved successfully!');
-        // Always navigate to simulation dashboard after successful submission
-        navigate('/simulation/dashboard', { replace: true });
+        
+        // CRITICAL: Clear loading state BEFORE navigation to prevent stuck loading
+        setIsSubmitting(false);
+        
+        // Navigate based on onboarding completion status
+        if (isOnboardingComplete) {
+          console.log('✅ [SimulationOnboarding] Onboarding complete, navigating to dashboard');
+          message.success('Onboarding completed successfully!');
+          // Small delay before navigation to ensure state is cleared
+          setTimeout(() => {
+            navigate('/simulation/dashboard', { replace: true });
+          }, 100);
+        } else {
+          console.log('ℹ️ [SimulationOnboarding] Onboarding not complete yet, but data saved');
+          message.success('Onboarding data saved successfully!');
+          // If onboarding is not complete, stay on the page or navigate to next step
+          // For now, navigate to dashboard anyway (the route guard will handle it)
+          setTimeout(() => {
+            navigate('/simulation/dashboard', { replace: true });
+          }, 100);
+        }
         return;
       }
     } catch (error) {

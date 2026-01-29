@@ -114,18 +114,27 @@ const RootRedirect = () => {
         
         // If user has regular restaurant (but no simulation restaurant), handle regular flow
         if (hasRegularRestaurant) {
+          console.log('🏪 [App] User has regular restaurant, checking completion status...');
+          console.log('📋 [App] Restaurants data:', regularRestaurants);
+          
+          // Find restaurant with completed onboarding
           const completeRestaurant = regularRestaurants.find(
             (r) => r.onboarding_complete === true
           );
           
+          console.log('✅ [App] Complete restaurant found:', completeRestaurant);
+          
           if (completeRestaurant) {
             // Restaurant onboarding is complete, redirect to dashboard
-            localStorage.setItem('restaurant_id', completeRestaurant.restaurant_id.toString());
+            const restaurantId = completeRestaurant.restaurant_id;
+            localStorage.setItem('restaurant_id', restaurantId.toString());
+            console.log('✅ [App] Redirecting to dashboard with restaurant_id:', restaurantId);
             navigate('/dashboard/report-card', { replace: true });
             return;
           }
           
           // User has restaurant but onboarding not complete
+          console.log('ℹ️ [App] Restaurant exists but onboarding not complete');
           navigate('/onboarding/score', { replace: true });
           return;
         }

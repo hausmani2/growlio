@@ -699,6 +699,10 @@ const ProtectedRoutes = () => {
           
           // Then check onboarding status
           await checkOnboardingStatus();
+          
+          // CRITICAL: Always clear loading state after all API calls complete
+          setIsLoading(false);
+          console.log('✅ [ProtectedRoutes] All API calls completed, loading cleared');
         } catch (error) {
           console.error('Error fetching data:', error);
           setIsLoading(false);
@@ -771,6 +775,42 @@ const ProtectedRoutes = () => {
     }
   }, [location.pathname, isAuthenticated, isCheckingSimulationForDashboard, restaurantSimulationData, simulationOnboardingStatus, getRestaurantSimulation, getSimulationOnboardingStatus, navigate]);
 
+  // CRITICAL: All hooks must be declared BEFORE any early returns
+  // Calculate derived values needed for hooks
+  const hasRestaurantData = restaurantData !== null && restaurantData !== undefined;
+  const hasCachedRestaurantData = !!sessionStorage.getItem('cachedRestaurantData');
+  const isDashboardPathCheck = location.pathname.startsWith('/dashboard');
+  
+  // Hook 1: Clear loading flags when data is available
+  useEffect(() => {
+    if (hasRestaurantData && (restaurantCheckLoading || isLoading)) {
+      // Data is available, but loading flags are still set - clear them
+      console.log('ℹ️ [ProtectedRoutes] Restaurant data available but loading flags still set, clearing...');
+      setRestaurantCheckLoading(false);
+      setIsLoading(false);
+    }
+    
+    // Also clear if we have sales data but salesInformationLoading is still true
+    if (salesInformationData && salesInformationLoading) {
+      console.log('ℹ️ [ProtectedRoutes] Sales data available but loading flag still set, clearing...');
+      // Note: salesInformationLoading is managed by the store, but we can check if it's stuck
+      // The store should handle this, but this is a safety check
+    }
+  }, [hasRestaurantData, restaurantCheckLoading, isLoading, salesInformationData, salesInformationLoading]);
+  
+  // Hook 2: Safety timeout to clear loading if stuck for more than 10 seconds
+  useEffect(() => {
+    if (isLoading || restaurantCheckLoading || salesInformationLoading) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ [ProtectedRoutes] Loading state stuck for 10+ seconds, clearing...');
+        setIsLoading(false);
+        setRestaurantCheckLoading(false);
+      }, 10000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading, restaurantCheckLoading, salesInformationLoading]);
+
   // Early returns must come AFTER all hooks
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
@@ -779,9 +819,33 @@ const ProtectedRoutes = () => {
 
   // Show loading spinner while checking onboarding, sales data, or restaurant status
   // BUT: Don't show loading if we have cached restaurant data (prevents flashing)
-  const hasCachedRestaurantData = !!sessionStorage.getItem('cachedRestaurantData');
-  const isDashboardPathCheck = location.pathname.startsWith('/dashboard');
-  const shouldShowLoading = (isLoading || salesInformationLoading || (restaurantCheckLoading && !hasCachedRestaurantData) || (isCheckingSimulationForDashboard && isDashboardPathCheck));
+  // Note: hasCachedRestaurantData, isDashboardPathCheck, and hasRestaurantData are already calculated above
+  
+  const hasRestaurants = hasRestaurant(restaurantData);
+  
+  // Only show loading if:
+  // 1. We're actually loading AND don't have data yet
+  // 2. OR we're on a route that requires data and don't have it
+  const shouldShowLoading = (
+    (isLoading && !hasRestaurantData) || 
+    (salesInformationLoading && !salesInformationData) || 
+    (restaurantCheckLoading && !hasRestaurantData && !hasCachedRestaurantData) || 
+    (isCheckingSimulationForDashboard && isDashboardPathCheck && !hasRestaurantData)
+  );
+  
+  // Debug logging to help identify stuck loading states
+  if (shouldShowLoading) {
+    console.log('🔄 [ProtectedRoutes] Showing loading spinner:', {
+      isLoading,
+      hasRestaurantData,
+      salesInformationLoading,
+      salesInformationData: !!salesInformationData,
+      restaurantCheckLoading,
+      hasCachedRestaurantData,
+      isCheckingSimulationForDashboard,
+      isDashboardPathCheck
+    });
+  }
   
   if (shouldShowLoading) {
     return <LoadingSpinner message="Checking your setup..." />;
@@ -844,17 +908,8 @@ const ProtectedRoutes = () => {
 
   // CRITICAL: Show loading while checking restaurant status for onboarding-related routes
   // This prevents showing wrong route while data is loading
-  if (restaurantCheckLoading && (isOnboardingPath || isDashboardPath || isReportCardPath)) {
-    // Only show loading if we haven't checked yet and we're on a route that depends on restaurant status
-    const hasChecked = sessionStorage.getItem('hasCheckedRestaurant') === 'true';
-    if (!hasChecked) {
-      return <LoadingSpinner message="Checking your setup..." />;
-    }
-  }
-
-  // Show loading while checking restaurant status (only if we're on onboarding-related routes)
-  // This prevents showing wrong route while data is loading
-  if (restaurantCheckLoading && (isOnboardingPath || isDashboardPath || isReportCardPath)) {
+  // BUT: If we have restaurant data, don't show loading even if flag is set
+  if (restaurantCheckLoading && !hasRestaurantData && (isOnboardingPath || isDashboardPath || isReportCardPath)) {
     // Only show loading if we haven't checked yet and we're on a route that depends on restaurant status
     const hasChecked = sessionStorage.getItem('hasCheckedRestaurant') === 'true';
     if (!hasChecked) {

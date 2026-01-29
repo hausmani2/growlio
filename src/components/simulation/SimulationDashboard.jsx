@@ -45,7 +45,17 @@ const SimulationDashboard = () => {
       }
       
       // Always check onboarding status to verify completion
-      const statusResult = await getSimulationOnboardingStatus();
+      // CRITICAL: Use forceRefresh=true to bypass cache and get fresh data
+      // This ensures we get the latest onboarding status after POST
+      console.log('🔄 [SimulationDashboard] Checking onboarding status with forceRefresh=true...');
+      
+      // Clear sessionStorage flags to ensure fresh API call
+      sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+      sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+      
+      const statusResult = await getSimulationOnboardingStatus(true); // Force refresh
+      
+      console.log('📥 [SimulationDashboard] Onboarding status result:', statusResult);
       
       if (statusResult.success && statusResult.data?.restaurants?.length > 0) {
         const restaurant = statusResult.data.restaurants[statusResult.data.restaurants.length - 1] || statusResult.data.restaurants[0];
@@ -53,17 +63,28 @@ const SimulationDashboard = () => {
         restaurantName = restaurant.simulation_restaurant_name;
         onboardingComplete = restaurant.simulation_onboarding_complete === true;
         
+        console.log('🏪 [SimulationDashboard] Restaurant data:', {
+          id,
+          restaurantName,
+          onboardingComplete,
+          simulation_onboarding_complete: restaurant.simulation_onboarding_complete
+        });
+        
         setRestaurantId(id);
         localStorage.setItem('simulation_restaurant_id', id);
         
         // If onboarding is not complete or name is null, redirect to onboarding
         if (restaurantName === null || onboardingComplete === false) {
+          console.warn('⚠️ [SimulationDashboard] Onboarding not complete, redirecting to onboarding');
           message.warning('Please complete onboarding before accessing the dashboard.');
           navigate('/onboarding/simulation', { replace: true });
           return;
         }
+        
+        console.log('✅ [SimulationDashboard] Onboarding complete, allowing dashboard access');
       } else {
         // No restaurant found, redirect to onboarding
+        console.warn('⚠️ [SimulationDashboard] No restaurant found, redirecting to onboarding');
         message.warning('Please complete onboarding before accessing the dashboard.');
         navigate('/onboarding/simulation', { replace: true });
         return;

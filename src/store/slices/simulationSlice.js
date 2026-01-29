@@ -16,53 +16,17 @@ const createSimulationSlice = (set, get) => ({
   simulationDashboardError: null,
   
   // Get simulation onboarding status
-  getSimulationOnboardingStatus: async () => {
-    // CRITICAL: Check if user is in simulation mode before calling simulation API
-    // First check cached data from store to avoid unnecessary API calls
+  getSimulationOnboardingStatus: async (forceRefresh = false) => {
+    // CRITICAL: This API should be called for ALL users (new and existing) to check onboarding status
+    // We don't block the API call based on simulation mode - we call it and handle errors gracefully
+    // This is essential for new users who haven't set their simulation preference yet
+    
     const currentState = get();
-    let simulationCheck = null;
-    
-    // Check if we have cached restaurant simulation data
-    if (currentState.restaurantSimulationData) {
-      const now = Date.now();
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-      const timeSinceCache = currentState.restaurantSimulationDataTimestamp 
-        ? now - currentState.restaurantSimulationDataTimestamp 
-        : Infinity;
-      
-      if (timeSinceCache < CACHE_DURATION) {
-        // Use cached data
-        simulationCheck = {
-          success: true,
-          data: currentState.restaurantSimulationData
-        };
-      }
-    }
-    
-    // If no cached data, call API (which will use its own cache)
-    if (!simulationCheck) {
-      try {
-        const { getRestaurantSimulation } = get();
-        simulationCheck = await getRestaurantSimulation();
-      } catch (error) {
-        console.error('❌ [simulationSlice] Error checking simulation status:', error);
-        set({ 
-          simulationOnboardingLoading: false, 
-          simulationOnboardingError: 'Failed to verify simulation mode' 
-        });
-        return { success: false, error: 'Failed to verify simulation mode' };
-      }
-    }
-    
-    // CRITICAL: Allow calling API even if user is not in simulation mode
-    // This is needed for new users to check if they have simulation restaurants
-    // We'll try to call the API regardless, and handle errors gracefully
-    
-    // Check if we have cached data that's still fresh
     const now = Date.now();
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
     
-    if (currentState.simulationOnboardingStatus && currentState.simulationOnboardingStatusTimestamp) {
+    // Check if we have cached data that's still fresh (unless forceRefresh is true)
+    if (!forceRefresh && currentState.simulationOnboardingStatus && currentState.simulationOnboardingStatusTimestamp) {
       const timeSinceCache = now - currentState.simulationOnboardingStatusTimestamp;
       if (timeSinceCache < CACHE_DURATION) {
         // Return cached data
@@ -73,12 +37,13 @@ const createSimulationSlice = (set, get) => ({
       }
     }
     
-    // GLOBAL GUARD: Check sessionStorage to prevent multiple concurrent calls
+    // GLOBAL GUARD: Check sessionStorage to prevent multiple concurrent calls (unless forceRefresh)
+    // If forceRefresh is true, we still respect the throttling but allow the call to proceed
     const hasCheckedGlobally = sessionStorage.getItem('hasCheckedSimulationOnboardingGlobal');
     const lastCheckTime = sessionStorage.getItem('simulationOnboardingLastCheckTime');
     
-    // If we've checked in the last 2 seconds, return cached data if available
-    if (hasCheckedGlobally === 'true' && lastCheckTime) {
+    // If we've checked in the last 2 seconds and NOT forcing refresh, return cached data if available
+    if (!forceRefresh && hasCheckedGlobally === 'true' && lastCheckTime) {
       const timeSinceCheck = now - parseInt(lastCheckTime);
       if (timeSinceCheck < 2000) {
         // Too soon to check again - return cached data if available
@@ -98,8 +63,14 @@ const createSimulationSlice = (set, get) => ({
     
     set({ simulationOnboardingLoading: true, simulationOnboardingError: null });
     
+    // CRITICAL: Call the API directly without checking simulation mode first
+    // This allows new users to check their onboarding status
+    // We'll handle errors gracefully if user doesn't have access
     try {
+      console.log('📞 [simulationSlice] Calling GET /simulation/simulation-onboarding/ (forceRefresh:', forceRefresh, ')');
       const response = await apiGet('/simulation/simulation-onboarding/');
+      
+      console.log('📥 [simulationSlice] Simulation onboarding API response:', response.data);
       
       // Cache the result
       set({
@@ -124,11 +95,14 @@ const createSimulationSlice = (set, get) => ({
                           error.message || 
                           'Failed to fetch simulation onboarding status';
       
-      // CRITICAL: If user is not in simulation mode, return success with empty array
-      // This allows the login flow to check both APIs without errors
-      const isSimulator = simulationCheck?.success && simulationCheck?.data?.restaurant_simulation === true;
-      if (!isSimulator && (error.response?.status === 403 || error.response?.status === 401 || errorMessage.includes('simulation') || errorMessage.includes('not available'))) {
-        // User is not in simulation mode, return empty result (not an error)
+      // CRITICAL: For new users or users not in simulation mode, return success with empty array
+      // This allows the login/registration flow to check both APIs without errors
+      // Handle 403, 401, or any simulation-related errors gracefully
+      if (error.response?.status === 403 || error.response?.status === 401 || 
+          errorMessage.includes('simulation') || errorMessage.includes('not available') ||
+          errorMessage.includes('permission') || errorMessage.includes('forbidden')) {
+        // User is not in simulation mode or doesn't have access yet, return empty result (not an error)
+        // This is expected for new users who haven't selected simulation mode yet
         set({
           simulationOnboardingStatus: { restaurants: [] },
           simulationOnboardingStatusTimestamp: Date.now(),
@@ -140,6 +114,7 @@ const createSimulationSlice = (set, get) => ({
         sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
         sessionStorage.removeItem('simulationOnboardingLastCheckTime');
         
+        console.log('ℹ️ [simulationSlice] User not in simulation mode or new user - returning empty restaurants array');
         return { success: true, data: { restaurants: [] } };
       }
       
@@ -404,10 +379,65 @@ const createSimulationSlice = (set, get) => ({
     try {
       const response = await apiPost('/simulation/onboarding/', payload);
       
+      
       // Extract restaurant_id from response if available
       const restaurantId = response.data?.restaurant_id;
       if (restaurantId) {
         localStorage.setItem('simulation_restaurant_id', restaurantId.toString());
+      }
+      
+      // CRITICAL: After successful POST, call GET /simulation/simulation-onboarding/ to check onboarding status
+      // This ensures we have the latest onboarding status before navigating
+      
+      let onboardingStatus = null;
+      let isOnboardingComplete = false;
+      
+      try {
+        // Clear sessionStorage flags to ensure fresh API call
+        sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
+        sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+        
+        // Also clear cached data in store to force fresh fetch
+        set({
+          simulationOnboardingStatus: null,
+          simulationOnboardingStatusTimestamp: null
+        });
+        
+        // CRITICAL: Add a small delay (300ms) after POST to ensure backend has processed the data
+        // This prevents race conditions where GET is called before POST data is fully saved
+        // Reduced from 500ms to 300ms to improve user experience
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Call GET /simulation/simulation-onboarding/ with forceRefresh=true
+        const statusResult = await get().getSimulationOnboardingStatus(true);
+        
+        
+        if (statusResult?.success && statusResult?.data) {
+          onboardingStatus = statusResult.data;
+          
+          // Check if onboarding is complete
+          const restaurants = onboardingStatus.restaurants || [];
+          const completeRestaurant = restaurants.find(
+            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+          );
+          
+          isOnboardingComplete = !!completeRestaurant;
+          
+          if (isOnboardingComplete) {
+            console.log('✅ [simulationSlice] Simulation onboarding is COMPLETE');
+            // Store the complete restaurant ID if not already stored
+            if (completeRestaurant.simulation_restaurant_id) {
+              localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
+            }
+          } else {
+            console.log('ℹ️ [simulationSlice] Simulation onboarding is NOT complete yet');
+          }
+        } else {
+          console.warn('⚠️ [simulationSlice] Failed to fetch onboarding status:', statusResult?.error);
+        }
+      } catch (statusError) {
+        console.error('❌ [simulationSlice] Error fetching onboarding status after POST:', statusError);
+        // Don't fail the main request if status check fails
       }
       
       set({
@@ -417,7 +447,14 @@ const createSimulationSlice = (set, get) => ({
       
       message.success('Onboarding data saved successfully');
       
-      return { success: true, data: response.data };
+      // Return result with onboarding status for navigation logic
+      return { 
+        success: true, 
+        data: response.data,
+        restaurantId: restaurantId,
+        onboardingStatus: onboardingStatus,
+        isOnboardingComplete: isOnboardingComplete
+      };
     } catch (error) {
       const errorMessage = error?.response?.data?.message || 
                           error?.response?.data?.error || 
