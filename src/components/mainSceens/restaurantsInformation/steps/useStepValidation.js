@@ -80,19 +80,27 @@ const useStepValidation = () => {
             
         }
 
-        if (!data.avg_hourly_rate || isNaN(data.avg_hourly_rate) || parseFloat(data.avg_hourly_rate) <= 0) {
+        // Improved validation for avg_hourly_rate - handle empty strings, whitespace, and convert to number
+        const hourlyRateValue = data.avg_hourly_rate?.toString().trim() || '';
+        const hourlyRateNum = hourlyRateValue ? parseFloat(hourlyRateValue) : NaN;
+        
+        if (!hourlyRateValue || hourlyRateValue === '' || isNaN(hourlyRateNum) || hourlyRateNum <= 0) {
             errors.avg_hourly_rate = "Please enter a valid hourly rate";
             
         } else {
             
         }
 
-        if (!data.labor_record_method) {
-            errors.labor_record_method = "Labor record method is required";
-            
-        } else {
-            
+        // Make labor_record_method optional since the UI is hidden/not required
+        // Only validate if it's explicitly provided
+        if (data.labor_record_method !== undefined && data.labor_record_method !== null && data.labor_record_method !== '') {
+            // If provided, it should be a valid value
+            const validMethods = ['daily-hours-costs', 'hours-only', 'cost-only', 'daily_hours_costs'];
+            if (!validMethods.includes(data.labor_record_method)) {
+                errors.labor_record_method = "Please select a valid labor record method";
+            }
         }
+        // If not provided, we'll use a default value in the wrapper or make it optional
 
         
         

@@ -109,18 +109,24 @@ const Login = () => {
         const restaurantOnboardingData = useStore.getState().restaurantOnboardingData;
         
         // CRITICAL: Wait for login() API calls to complete, then check onboarding status
-        // The login function calls both APIs asynchronously, so we need to wait for them
+        // The login function calls both APIs in parallel, so we need to wait for BOTH to complete
         try {
-          // Wait for API calls to complete (with timeout)
+          // Wait for BOTH API calls to complete (with timeout)
+          // CRITICAL: restaurants-onboarding API may complete later than simulation-onboarding
+          // We must wait for BOTH to ensure accurate data
           let attempts = 0;
-          const maxAttempts = 20; // Wait up to 2 seconds (20 * 100ms)
+          const maxAttempts = 50; // Wait up to 5 seconds (50 * 100ms) - increased for slower API
           
           while (attempts < maxAttempts) {
             const currentSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
             const currentRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
             
-            // If we have both data sets, proceed
-            if (currentRestaurantOnboardingData !== null && currentRestaurantOnboardingData !== undefined) {
+            // Check if we have BOTH data sets (or at least one is confirmed null/empty)
+            const hasSimulationData = currentSimulationOnboardingStatus !== null && currentSimulationOnboardingStatus !== undefined;
+            const hasRegularData = currentRestaurantOnboardingData !== null && currentRestaurantOnboardingData !== undefined;
+            
+            // If we have both data sets (even if empty), proceed
+            if (hasSimulationData && hasRegularData) {
               break;
             }
             
@@ -129,9 +135,37 @@ const Login = () => {
             attempts++;
           }
           
+          // Final check - warn if we timed out
+          const finalSimulationData = useStore.getState().simulationOnboardingStatus;
+          const finalRegularData = useStore.getState().restaurantOnboardingData;
+          const hasSimulationData = finalSimulationData !== null && finalSimulationData !== undefined;
+          const hasRegularData = finalRegularData !== null && finalRegularData !== undefined;
+          
+          if (!hasSimulationData || !hasRegularData) {
+            console.warn('⚠️ [Login] Timeout waiting for APIs:', {
+              hasSimulationData,
+              hasRegularData,
+              attempts: maxAttempts,
+              message: 'Proceeding with available data, but results may be incomplete'
+            });
+          }
+          
           // Get fresh state after waiting
           const currentSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
           const currentRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+          
+          // Final verification - check if we actually have the data
+          const finalHasSimulation = currentSimulationOnboardingStatus !== null && currentSimulationOnboardingStatus !== undefined;
+          const finalHasRegular = currentRestaurantOnboardingData !== null && currentRestaurantOnboardingData !== undefined;
+          
+          // Warn if we're missing data
+          if (!finalHasSimulation || !finalHasRegular) {
+            console.warn('⚠️ [Login] Missing API data after wait:', {
+              missingSimulation: !finalHasSimulation,
+              missingRegular: !finalHasRegular,
+              note: 'This may cause incorrect onboarding status detection'
+            });
+          }
           
           // Use cached simulation onboarding data (from login function)
           let simulationOnboardingResult = null;
@@ -139,13 +173,12 @@ const Login = () => {
             simulationOnboardingResult = { success: true, data: currentSimulationOnboardingStatus };
           } else {
             // Fallback: if data not available, call API
-            console.log('ℹ️ [Login] Simulation onboarding data not found in cache, calling API');
             const getSimulationOnboardingStatus = useStore.getState().getSimulationOnboardingStatus;
             simulationOnboardingResult = await getSimulationOnboardingStatus();
           }
           
           const simulationRestaurants = simulationOnboardingResult?.success && simulationOnboardingResult?.data?.restaurants 
-            ? simulationOnboardingResult.data.restaurants 
+            ? (Array.isArray(simulationOnboardingResult.data.restaurants) ? simulationOnboardingResult.data.restaurants : [])
             : [];
           const hasSimulationRestaurant = simulationRestaurants.length > 0;
           
@@ -155,7 +188,6 @@ const Login = () => {
             restaurantResult = { success: true, data: currentRestaurantOnboardingData };
           } else {
             // Fallback: if data not available, call API
-            console.log('ℹ️ [Login] Restaurant onboarding data not found in cache, calling API');
             const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
             restaurantResult = await getRestaurantOnboarding();
           }
@@ -167,13 +199,6 @@ const Login = () => {
             : [];
           const hasRegularRestaurant = regularRestaurants.length > 0;
           
-          console.log('📊 [Login] Onboarding check results:', {
-            hasSimulationRestaurant,
-            hasRegularRestaurant,
-            regularRestaurantsCount: regularRestaurants.length,
-            simulationRestaurantsCount: simulationRestaurants.length
-          });
-          
           // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
           if (!hasSimulationRestaurant && !hasRegularRestaurant) {
             message.success('Welcome to Growlio! Let\'s get you set up.');
@@ -183,47 +208,17 @@ const Login = () => {
             return;
           }
           
-          // If user has simulation restaurant, handle simulation flow
-          if (hasSimulationRestaurant) {
-            const completeSimulationRestaurant = simulationRestaurants.find(
-              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-            );
-            
-            if (completeSimulationRestaurant) {
-              // Simulation onboarding is complete, redirect to simulation dashboard
-              localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
-              message.success('Welcome back! Redirecting to simulation dashboard...');
-              setTimeout(() => {
-                navigate('/simulation/dashboard', { replace: true });
-              }, 500);
-              return;
-            }
-            
-            // Simulation restaurant exists but not complete
-            message.success('Welcome to Growlio! Let\'s complete your setup.');
-            setTimeout(() => {
-              navigate('/onboarding/simulation', { replace: true });
-            }, 500);
-            return;
-          }
-          
-          // If user has regular restaurant (but no simulation restaurant), handle regular flow
-          if (hasRegularRestaurant) {
-            console.log('🏪 [Login] User has regular restaurant, checking completion status...');
-            console.log('📋 [Login] Restaurants data:', regularRestaurants);
-            
+          // CRITICAL: If both APIs have restaurants, navigate to dashboard/report-card (treat as regular user)
+          if (hasRegularRestaurant && hasSimulationRestaurant) {
             // Find restaurant with completed onboarding
             const completeRestaurant = regularRestaurants.find(
               (r) => r.onboarding_complete === true
             );
             
-            console.log('✅ [Login] Complete restaurant found:', completeRestaurant);
-            
             if (completeRestaurant) {
               // Restaurant onboarding is complete, redirect to dashboard
               const restaurantId = completeRestaurant.restaurant_id;
               localStorage.setItem('restaurant_id', restaurantId.toString());
-              console.log('✅ [Login] Redirecting to dashboard with restaurant_id:', restaurantId);
               message.success('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
                 navigate('/dashboard/report-card', { replace: true });
@@ -232,7 +227,65 @@ const Login = () => {
             }
             
             // User has restaurant but onboarding not complete
-            console.log('ℹ️ [Login] Restaurant exists but onboarding not complete');
+            message.success('Welcome back! Continuing your setup...');
+            setTimeout(() => {
+              navigate('/onboarding/score', { replace: true });
+            }, 500);
+            return;
+          }
+          
+          // If user has ONLY simulation restaurant (no regular restaurant), handle simulation flow
+          if (hasSimulationRestaurant && !hasRegularRestaurant) {
+            // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+            if (simulationRestaurants.length > 0) {
+              const completeSimulationRestaurant = simulationRestaurants.find(
+                (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+              );
+              
+              if (completeSimulationRestaurant) {
+                // Simulation onboarding is complete, redirect to simulation dashboard
+                localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
+                message.success('Welcome back! Redirecting to simulation dashboard...');
+                setTimeout(() => {
+                  navigate('/simulation/dashboard', { replace: true });
+                }, 500);
+                return;
+              }
+              
+              // Simulation restaurant exists but not complete
+              message.success('Welcome to Growlio! Let\'s complete your setup.');
+              setTimeout(() => {
+                navigate('/onboarding/simulation', { replace: true });
+              }, 500);
+              return;
+            }
+            // If simulation onboarding API has no restaurants, redirect to onboarding
+            message.success('Welcome to Growlio! Let\'s complete your setup.');
+            setTimeout(() => {
+              navigate('/onboarding/simulation', { replace: true });
+            }, 500);
+            return;
+          }
+          
+          // If user has ONLY regular restaurant (no simulation restaurant), handle regular flow
+          if (hasRegularRestaurant && !hasSimulationRestaurant) {
+            // Find restaurant with completed onboarding
+            const completeRestaurant = regularRestaurants.find(
+              (r) => r.onboarding_complete === true
+            );
+            
+            if (completeRestaurant) {
+              // Restaurant onboarding is complete, redirect to dashboard
+              const restaurantId = completeRestaurant.restaurant_id;
+              localStorage.setItem('restaurant_id', restaurantId.toString());
+              message.success('Welcome back! Redirecting to dashboard...');
+              setTimeout(() => {
+                navigate('/dashboard/report-card', { replace: true });
+              }, 500);
+              return;
+            }
+            
+            // User has restaurant but onboarding not complete
             message.success('Welcome back! Continuing your setup...');
             setTimeout(() => {
               navigate('/onboarding/score', { replace: true });

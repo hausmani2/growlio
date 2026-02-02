@@ -166,17 +166,11 @@ const OnboardingWrapper = () => {
          simulationCheckRef.current = true;
  
          const checkSimulationRestaurant = async () => {
-             console.log('🔄 [OnboardingWrapper] Checking for simulation restaurant...');
-             
              try {
                  const result = await getSimulationOnboardingStatus();
                  
-                 console.log('✅ [OnboardingWrapper] Simulation status result:', result);
-                 
                  if (result.success && result.data) {
                      const restaurants = result.data.restaurants || [];
-                     
-                     console.log('📋 [OnboardingWrapper] Found simulation restaurants:', restaurants);
                      
                      if (restaurants.length > 0) {
                          // Get the most recent restaurant
@@ -184,11 +178,6 @@ const OnboardingWrapper = () => {
                          const restaurantId = restaurant.simulation_restaurant_id;
                          const restaurantName = restaurant.simulation_restaurant_name;
                          const onboardingComplete = restaurant.simulation_onboarding_complete;
-                         
-                         console.log('🏪 [OnboardingWrapper] Simulation restaurant found:', restaurant);
-                         console.log('🆔 [OnboardingWrapper] Restaurant ID:', restaurantId);
-                         console.log('📝 [OnboardingWrapper] Restaurant Name:', restaurantName);
-                         console.log('✅ [OnboardingWrapper] Onboarding Complete:', onboardingComplete);
                          
                          if (restaurantId) {
                              // Store restaurant ID
@@ -198,19 +187,36 @@ const OnboardingWrapper = () => {
                              // 1. restaurant_name is not null
                              // 2. simulation_onboarding_complete is true
                              if (restaurantName !== null && onboardingComplete === true) {
-                                 console.log('🔄 [OnboardingWrapper] Restaurant is complete, redirecting to simulation dashboard...');
-                                 message.info('Simulation restaurant found. Redirecting to dashboard...');
-                                 navigate('/simulation/dashboard', { replace: true });
-                                 return;
-                             } else {
-                                 console.log('ℹ️ [OnboardingWrapper] Restaurant exists but onboarding not complete or name is null');
-                                 console.log('   - Restaurant Name:', restaurantName);
-                                 console.log('   - Onboarding Complete:', onboardingComplete);
-                                 console.log('   - User can continue with onboarding...');
+                                 // Check if user has both regular and simulation restaurants
+                                 try {
+                                     const restaurantResult = await getRestaurantOnboarding();
+                                     const regularRestaurants = restaurantResult?.success && restaurantResult?.data?.restaurants 
+                                       ? restaurantResult.data.restaurants 
+                                       : [];
+                                     const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
+                                     const hasSimulationRestaurantsCheck = Array.isArray(restaurants) && restaurants.length > 0;
+                                     
+                                     // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
+                                     if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
+                                         message.info('Restaurant found. Redirecting to dashboard...');
+                                         navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+                                     } else if (hasSimulationRestaurantsCheck) {
+                                         // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+                                         message.info('Simulation restaurant found. Redirecting to dashboard...');
+                                         navigate('/simulation/dashboard', { replace: true });
+                                     }
+                                     return;
+                                 } catch (error) {
+                                     console.error('Error checking regular restaurants:', error);
+                                     // If check fails, still redirect to simulation dashboard if simulation has restaurants
+                                     if (restaurants.length > 0) {
+                                         message.info('Simulation restaurant found. Redirecting to dashboard...');
+                                         navigate('/simulation/dashboard', { replace: true });
+                                     }
+                                     return;
+                                 }
                              }
                          }
-                     } else {
-                         console.log('ℹ️ [OnboardingWrapper] No simulation restaurant found');
                      }
                  } else {
                      console.warn('⚠️ [OnboardingWrapper] Failed to check simulation status:', result.error);

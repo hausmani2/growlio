@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import useStore from '../store/store';
 import LoadingSpinner from '../components/layout/LoadingSpinner';
 import { isImpersonating } from '../utils/tokenManager';
+import useOnboardingStatus from '../hooks/useOnboardingStatus';
 import {
   hasRestaurant,
   hasOneMonthSalesInfo,
@@ -22,6 +23,16 @@ const ProtectedRoutes = () => {
   const redirectTimeoutRef = useRef(null); // Track redirect timeout for cleanup
   const [isCheckingSimulationForDashboard, setIsCheckingSimulationForDashboard] = useState(false);
   const hasCheckedSimulationRef = useRef(false);
+  
+  // Get onboarding status to determine user mode
+  // CRITICAL: This hook provides the decision logic for users with both restaurants
+  const { 
+    hasRegularRestaurants, 
+    hasSimulationRestaurants,
+    activateSimulationMode,
+    refreshOnboardingStatus
+  } = useOnboardingStatus();
+  
 
   // Get store values - using individual selectors to prevent unnecessary re-renders
   // All hooks must be called in the same order on every render
@@ -561,7 +572,17 @@ const ProtectedRoutes = () => {
           const cachedRestaurantId = sessionStorage.getItem('simulation_restaurant_id');
           if (cachedRestaurantId) {
             setIsSimulationUserComplete(true);
-            navigate('/simulation/dashboard', { replace: true });
+            // Check if user has both regular and simulation restaurants
+            const regularRestaurants = restaurantData?.restaurants || restaurantOnboardingData?.restaurants || [];
+            const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
+            const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
+            const hasSimulationRestaurantsCheck = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
+            // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
+            if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
+              navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+            } else {
+              navigate('/simulation/dashboard', { replace: true });
+            }
             return;
           }
         }
@@ -578,19 +599,31 @@ const ProtectedRoutes = () => {
           
           if (isSimulator) {
             const onboardingResult = await getSimulationOnboardingStatus();
-            if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+            // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+            if (onboardingResult?.success && onboardingResult?.data?.restaurants && onboardingResult.data.restaurants.length > 0) {
               const restaurants = onboardingResult.data.restaurants;
               const completeRestaurant = restaurants.find(
                 (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
               );
               
               if (completeRestaurant) {
+                // Check if user has both regular and simulation restaurants
+                const regularRestaurants = restaurantData?.restaurants || restaurantOnboardingData?.restaurants || [];
+                const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
+                const hasSimulationRestaurantsCheck = Array.isArray(restaurants) && restaurants.length > 0;
+                
                 setIsSimulationUserComplete(true);
                 localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
                 // Cache the result
                 sessionStorage.setItem(`${cacheKey}Complete`, 'true');
                 sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
-                navigate('/simulation/dashboard', { replace: true });
+                // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
+                if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
+                  navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+                } else if (hasSimulationRestaurantsCheck) {
+                  // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+                  navigate('/simulation/dashboard', { replace: true });
+                }
                 return;
               }
             }
@@ -680,7 +713,6 @@ const ProtectedRoutes = () => {
         try {
           // CRITICAL: Wait for initial onboarding APIs to complete first
           await waitForInitialAPIs();
-          console.log('✅ [ProtectedRoutes] Initial onboarding APIs completed, proceeding with other API calls');
           
           // Only fetch sales information if we don't have it
           if (needsSalesFetch) {
@@ -702,7 +734,6 @@ const ProtectedRoutes = () => {
           
           // CRITICAL: Always clear loading state after all API calls complete
           setIsLoading(false);
-          console.log('✅ [ProtectedRoutes] All API calls completed, loading cleared');
         } catch (error) {
           console.error('Error fetching data:', error);
           setIsLoading(false);
@@ -748,17 +779,30 @@ const ProtectedRoutes = () => {
               onboardingResult = await getSimulationOnboardingStatus();
             }
             
-            if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+            // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+            if (onboardingResult?.success && onboardingResult?.data?.restaurants && onboardingResult.data.restaurants.length > 0) {
               const restaurants = onboardingResult.data.restaurants;
               const completeRestaurant = restaurants.find(
                 (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
               );
               
               if (completeRestaurant) {
+                // Check if user has both regular and simulation restaurants
+                // Check regular restaurants from restaurantData or restaurantOnboardingData
+                const regularRestaurants = restaurantData?.restaurants || restaurantOnboardingData?.restaurants || [];
+                const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
+                const hasSimulationRestaurantsCheck = Array.isArray(restaurants) && restaurants.length > 0;
+                
                 // Simulation onboarding is complete, redirect to simulation dashboard
                 localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
                 setIsCheckingSimulationForDashboard(false);
-                navigate('/simulation/dashboard', { replace: true });
+                // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
+                if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
+                  navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+                } else if (hasSimulationRestaurantsCheck) {
+                  // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+                  navigate('/simulation/dashboard', { replace: true });
+                }
                 return;
               }
             }
@@ -785,14 +829,12 @@ const ProtectedRoutes = () => {
   useEffect(() => {
     if (hasRestaurantData && (restaurantCheckLoading || isLoading)) {
       // Data is available, but loading flags are still set - clear them
-      console.log('ℹ️ [ProtectedRoutes] Restaurant data available but loading flags still set, clearing...');
       setRestaurantCheckLoading(false);
       setIsLoading(false);
     }
     
     // Also clear if we have sales data but salesInformationLoading is still true
     if (salesInformationData && salesInformationLoading) {
-      console.log('ℹ️ [ProtectedRoutes] Sales data available but loading flag still set, clearing...');
       // Note: salesInformationLoading is managed by the store, but we can check if it's stuck
       // The store should handle this, but this is a safety check
     }
@@ -832,20 +874,6 @@ const ProtectedRoutes = () => {
     (restaurantCheckLoading && !hasRestaurantData && !hasCachedRestaurantData) || 
     (isCheckingSimulationForDashboard && isDashboardPathCheck && !hasRestaurantData)
   );
-  
-  // Debug logging to help identify stuck loading states
-  if (shouldShowLoading) {
-    console.log('🔄 [ProtectedRoutes] Showing loading spinner:', {
-      isLoading,
-      hasRestaurantData,
-      salesInformationLoading,
-      salesInformationData: !!salesInformationData,
-      restaurantCheckLoading,
-      hasCachedRestaurantData,
-      isCheckingSimulationForDashboard,
-      isDashboardPathCheck
-    });
-  }
   
   if (shouldShowLoading) {
     return <LoadingSpinner message="Checking your setup..." />;
@@ -921,16 +949,26 @@ const ProtectedRoutes = () => {
   // CRITICAL: Allow ALL dashboard routes when sales data is complete
   // This prevents redirects when reloading any dashboard page
   if (salesDataComplete) {
-    // CRITICAL: Check simulation status first before allowing dashboard
+    // CRITICAL: Only redirect to simulation dashboard if user is simulation-only (no regular restaurants)
+    // If user has BOTH restaurants, they should be able to access regular dashboard routes
+    // Per requirement: "If both exist → treat user as regular"
     if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
-      // User is in simulation mode, check if they should be redirected
-      if (simulationOnboardingStatus?.restaurants) {
-        const completeRestaurant = simulationOnboardingStatus.restaurants.find(
-          (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-        );
-        if (completeRestaurant) {
-          return <Navigate to="/simulation/dashboard" replace />;
+      // Only redirect if user is simulation-only (no regular restaurants)
+      if (!hasRegularRestaurants && hasSimulationRestaurants) {
+        // User is simulation-only, check if they should be redirected
+        // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+        const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
+        if (Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0) {
+          const completeRestaurant = simulationRestaurants.find(
+            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+          );
+          if (completeRestaurant) {
+            // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+            return <Navigate to="/simulation/dashboard" replace />;
+          }
         }
+      } else if (hasRegularRestaurants && hasSimulationRestaurants) {
+        // User has both restaurants - allow regular dashboard access (per requirement)
       }
     }
     
@@ -947,16 +985,26 @@ const ProtectedRoutes = () => {
   // CRITICAL: Allow ALL dashboard routes when One Month Sales Info is complete
   // This prevents redirects when reloading any dashboard page
   if (oneMonthSalesInfoComplete) {
-    // CRITICAL: Check simulation status first before allowing dashboard
+    // CRITICAL: Only redirect to simulation dashboard if user is simulation-only (no regular restaurants)
+    // If user has BOTH restaurants, they should be able to access regular dashboard routes
+    // Per requirement: "If both exist → treat user as regular"
     if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
-      // User is in simulation mode, check if they should be redirected
-      if (simulationOnboardingStatus?.restaurants) {
-        const completeRestaurant = simulationOnboardingStatus.restaurants.find(
-          (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-        );
-        if (completeRestaurant) {
-          return <Navigate to="/simulation/dashboard" replace />;
+      // Only redirect if user is simulation-only (no regular restaurants)
+      if (!hasRegularRestaurants && hasSimulationRestaurants) {
+        // User is simulation-only, check if they should be redirected
+        // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+        const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
+        if (Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0) {
+          const completeRestaurant = simulationRestaurants.find(
+            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+          );
+          if (completeRestaurant) {
+            // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+            return <Navigate to="/simulation/dashboard" replace />;
+          }
         }
+      } else if (hasRegularRestaurants && hasSimulationRestaurants) {
+        // User has both restaurants - allow regular dashboard access (per requirement)
       }
     }
     
@@ -976,6 +1024,19 @@ const ProtectedRoutes = () => {
   // Block /onboarding page, allow score/profitability
   // CRITICAL: Always allow simulation routes FIRST - they handle their own redirect logic
   if (isSimulationPath) {
+    // If user is trying to access simulation/dashboard, check if simulation onboarding API has restaurants
+    if (location.pathname === '/simulation/dashboard') {
+      const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
+      const hasSimulationRestaurantsCheck = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
+      
+      // CRITICAL: Only allow access to simulation/dashboard if simulation onboarding API has restaurants
+      // Allow explicit navigation even if both restaurants exist (user clicked button to go to simulation)
+      // The redirect to dashboard/report-card only happens during automatic redirects (after login)
+      if (!hasSimulationRestaurantsCheck) {
+        // Simulation onboarding API has no restaurants, redirect to simulation onboarding
+        return <Navigate to="/onboarding/simulation" replace />;
+      }
+    }
     return <Outlet />;
   }
   

@@ -100,15 +100,19 @@ const LaborInformationWrapperContent = () => {
             }
 
             // Step 2: Prepare data for API
+            // Trim and parse avg_hourly_rate to ensure it's a valid number
+            const hourlyRateValue = laborData.avg_hourly_rate?.toString().trim() || '';
+            const hourlyRateNum = hourlyRateValue ? parseFloat(hourlyRateValue) : 0;
             
             const stepData = {
                 labour_goal: laborData.labour_goal,
                 danger:"0",
                 needs_attention:"0",
-                avg_hourly_rate: parseFloat(laborData.avg_hourly_rate) || 0,
-                labor_record_method: laborData.labor_record_method,
+                avg_hourly_rate: hourlyRateNum,
+                // Set default labor_record_method if not provided (since UI is hidden)
+                labor_record_method: laborData.labor_record_method || 'daily-hours-costs',
                 daily_ticket_count: true, // Always set to true (Yes) in payload by default
-                forward_previous_week_rate: false // Always set to true by default
+                forward_previous_week_rate: false // Always set to false by default
             };
 
             // Step 3: Call API through Zustand store with success callback

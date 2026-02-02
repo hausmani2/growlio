@@ -136,9 +136,21 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             className={`w-full h-11 rounded-lg text-sm pl-6 ${
                                 errors.avg_hourly_rate ? 'border-red-500' : 'border-gray-300'
                             }`}
-                            value={data.avg_hourly_rate}
-                            onChange={(e) => updateData('avg_hourly_rate', e.target.value)}
+                            value={data.avg_hourly_rate || ''}
+                            onChange={(e) => {
+                                const value = e.target.value.trim();
+                                updateData('avg_hourly_rate', value);
+                            }}
+                            onBlur={(e) => {
+                                // Ensure value is properly formatted on blur
+                                const value = e.target.value.trim();
+                                if (value && !isNaN(parseFloat(value)) && parseFloat(value) > 0) {
+                                    updateData('avg_hourly_rate', value);
+                                }
+                            }}
                             status={errors.avg_hourly_rate ? 'error' : ''}
+                            min="0"
+                            step="0.01"
                         />
                         {data.avg_hourly_rate && (
                             <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">

@@ -127,27 +127,43 @@ const createAuthSlice = (set, get) => {
           error: null 
         }));
         
-        // CRITICAL: Call BOTH APIs immediately after login for ALL users
+        // CRITICAL: Call BOTH APIs in PARALLEL immediately after login for ALL users
         // This ensures we have restaurant data from both sources before any redirects happen
         // We need to check both APIs to determine if user has restaurants in either one
-        // ORDER: 1. simulation-onboarding API FIRST, 2. restaurants-onboarding API SECOND
+        // Both APIs are called in parallel for better performance
         try {
-          // STEP 1: Call simulation-onboarding API FIRST (GET /simulation/simulation-onboarding/)
-          // This is needed to check if user has simulation restaurants
-          // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
-          try {
-            const simulationOnboardingResult = await get().getSimulationOnboardingStatus();
-            // Result is cached in store, no need to do anything with it here
-            console.log('✅ [authSlice] Simulation onboarding API called successfully');
-          } catch (simError) {
-            // If simulation API fails (e.g., user doesn't have access), continue
-            // This is expected for non-simulation users, so we don't log it as an error
-            console.log('ℹ️ [authSlice] Simulation onboarding check skipped (user may not have simulation access)');
+          // Call both APIs in parallel using Promise.allSettled to handle errors gracefully
+          const [simulationResult, restaurantResult] = await Promise.allSettled([
+            get().getSimulationOnboardingStatus().catch(err => {
+              // If simulation API fails (e.g., user doesn't have access), return empty result
+              // This is expected for non-simulation users, so we don't log it as an error
+              return { success: true, data: { restaurants: [] } };
+            }),
+            get().getRestaurantOnboarding(true),
+          ]);
+          
+          // Log results with detailed information
+          if (simulationResult.status === 'fulfilled') {
+            // Simulation API completed successfully
+          } else {
+            console.warn('⚠️ [authSlice] Simulation onboarding API rejected:', simulationResult.reason);
           }
           
-          // STEP 2: Call restaurants-onboarding API SECOND (GET /restaurant_v2/restaurants-onboarding/)
-          const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
-          console.log('✅ [authSlice] Restaurant onboarding API called successfully');
+          if (restaurantResult.status === 'fulfilled') {
+            const regResult = restaurantResult.value;
+            const regData = regResult?.data;
+            
+            // If success is false, log why
+            if (!regResult?.success) {
+              console.error('❌ [authSlice] Restaurant API returned success: false:', {
+                error: regResult?.error,
+                data: regData,
+                result: regResult
+              });
+            }
+          } else {
+            console.warn('⚠️ [authSlice] Restaurant onboarding API rejected:', restaurantResult.reason);
+          }
         } catch (onboardingError) {
           console.error('❌ [authSlice] Failed to check onboarding status after login:', onboardingError);
           // Don't fail login if onboarding check fails
@@ -336,29 +352,35 @@ const createAuthSlice = (set, get) => {
             error: null 
           }));
           
-          // CRITICAL: Call BOTH APIs immediately after registration for NEW users
+          // CRITICAL: Call BOTH APIs in PARALLEL immediately after registration for NEW users
           // This ensures we have restaurant data from both sources before any redirects happen
           // We need to check both APIs to determine if user has restaurants in either one
-          // ORDER: 1. simulation-onboarding API FIRST, 2. restaurants-onboarding API SECOND
+          // Both APIs are called in parallel for better performance
           // NOTE: These API calls run in the background and don't block the return
           // The loading state is already set to false above, so the button won't be stuck
           try {
-            // STEP 1: Call simulation-onboarding API FIRST (GET /simulation/simulation-onboarding/)
-            // This is needed to check if user has simulation restaurants
-            // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
-            try {
-              const simulationOnboardingResult = await get().getSimulationOnboardingStatus();
-              // Result is cached in store, no need to do anything with it here
-              console.log('✅ [authSlice] Simulation onboarding API called successfully after registration');
-            } catch (simError) {
-              // If simulation API fails (e.g., user doesn't have access), continue
-              // This is expected for non-simulation users, so we don't log it as an error
-              console.log('ℹ️ [authSlice] Simulation onboarding check skipped after registration (user may not have simulation access)');
+            // Call both APIs in parallel using Promise.allSettled to handle errors gracefully
+            const [simulationResult, restaurantResult] = await Promise.allSettled([
+              get().getSimulationOnboardingStatus().catch(err => {
+                // If simulation API fails (e.g., user doesn't have access), return empty result
+                // This is expected for non-simulation users, so we don't log it as an error
+                return { success: true, data: { restaurants: [] } };
+              }),
+              get().getRestaurantOnboarding(true),
+            ]);
+            
+            // Log results with detailed information
+            if (simulationResult.status === 'fulfilled') {
+              // Simulation API completed successfully
+            } else {
+              console.warn('⚠️ [authSlice] Simulation onboarding API rejected after registration:', simulationResult.reason);
             }
             
-            // STEP 2: Call restaurants-onboarding API SECOND (GET /restaurant_v2/restaurants-onboarding/)
-            const restaurantOnboardingResult = await get().getRestaurantOnboarding(true);
-            console.log('✅ [authSlice] Restaurant onboarding API called successfully after registration');
+            if (restaurantResult.status === 'fulfilled') {
+              // Restaurant API completed successfully
+            } else {
+              console.warn('⚠️ [authSlice] Restaurant onboarding API rejected after registration:', restaurantResult.reason);
+            }
           } catch (onboardingError) {
             console.error('❌ [authSlice] Failed to check onboarding status after registration:', onboardingError);
             // Don't fail registration if onboarding check fails
@@ -626,8 +648,6 @@ const createAuthSlice = (set, get) => {
           // CRITICAL: If restaurant_simulation is set to true, call simulation-onboarding API to get restaurant ID
           // This is essential for the onboarding process to work correctly
           if (response.data?.restaurant_simulation === true || payload?.restaurant_simulation === true) {
-            console.log('🔄 [authSlice] User selected simulation mode - calling simulation-onboarding API to get restaurant ID...');
-            
             try {
               // CRITICAL: Clear ALL sessionStorage flags and cache to ensure fresh API call
               sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
@@ -645,45 +665,29 @@ const createAuthSlice = (set, get) => {
               // Call GET /simulation/simulation-onboarding/ to get the restaurant ID
               // getSimulationOnboardingStatus is from simulationSlice, accessible via get()
               // CRITICAL: Use forceRefresh=true to bypass cache and ensure fresh API call
-              console.log('📞 [authSlice] Calling GET /simulation/simulation-onboarding/ with forceRefresh=true...');
               const simulationOnboardingResult = await get().getSimulationOnboardingStatus(true);
-              
-              console.log('📥 [authSlice] Simulation onboarding API response:', simulationOnboardingResult);
               
               if (simulationOnboardingResult?.success && simulationOnboardingResult?.data) {
                 // Extract restaurant ID from response
                 const restaurants = simulationOnboardingResult.data.restaurants || [];
-                console.log('🏪 [authSlice] Found simulation restaurants:', restaurants.length);
                 
                 if (restaurants.length > 0) {
                   // Get the most recent restaurant (last in array) or first one
                   const restaurant = restaurants[restaurants.length - 1] || restaurants[0];
                   const restaurantId = restaurant.simulation_restaurant_id;
                   
-                  console.log('🆔 [authSlice] Extracted simulation restaurant ID:', restaurantId);
-                  
                   if (restaurantId) {
                     // Store simulation restaurant ID in localStorage for onboarding process
                     localStorage.setItem('simulation_restaurant_id', restaurantId.toString());
-                    console.log('✅ [authSlice] Simulation restaurant ID stored in localStorage:', restaurantId);
                   } else {
                     console.warn('⚠️ [authSlice] Restaurant found but no simulation_restaurant_id in response');
                   }
-                } else {
-                  console.log('ℹ️ [authSlice] No simulation restaurants found yet (user may need to complete onboarding)');
-                  console.log('ℹ️ [authSlice] This is expected for new users - they will create a restaurant during onboarding');
                 }
               } else {
                 console.warn("⚠️ [authSlice] Failed to fetch simulation onboarding data after simulation update:", simulationOnboardingResult?.error);
               }
             } catch (simulationError) {
               console.error("❌ [authSlice] Error fetching simulation onboarding after simulation update:", simulationError);
-              console.error("❌ [authSlice] Error details:", {
-                message: simulationError.message,
-                response: simulationError.response,
-                status: simulationError.response?.status,
-                data: simulationError.response?.data
-              });
               // Don't fail the main request if simulation onboarding fetch fails
               // User might not have a simulation restaurant yet, which is OK
             }
@@ -703,7 +707,6 @@ const createAuthSlice = (set, get) => {
                 const restaurantId = onboardingResult.restaurantId || onboardingResult.data?.restaurant_id || onboardingResult.data?.restaurants?.[0]?.restaurant_id;
                 if (restaurantId) {
                   localStorage.setItem('restaurant_id', restaurantId.toString());
-                  console.log('✅ [authSlice] Regular restaurant ID stored:', restaurantId);
                 }
               } else {
                 console.warn("⚠️ [authSlice] Failed to fetch restaurant onboarding data after simulation update:", onboardingResult.error);
@@ -729,44 +732,10 @@ const createAuthSlice = (set, get) => {
 
     // Get restaurant ID from restaurant-onboarding endpoint
     getRestaurantOnboarding: async (forceRefresh = false) => {
-      // CRITICAL: Check if user is in simulation mode - if true, don't call non-simulation API
-      // Use cached data from store to avoid unnecessary API calls
-      const authState = get();
-      let simulationCheck = null;
-      
-      if (authState.restaurantSimulationData) {
-        const now = Date.now();
-        const CACHE_DURATION = 5 * 60 * 1000;
-        const timeSinceCache = authState.restaurantSimulationDataTimestamp 
-          ? now - authState.restaurantSimulationDataTimestamp 
-          : Infinity;
-        
-        if (timeSinceCache < CACHE_DURATION) {
-          simulationCheck = {
-            success: true,
-            data: authState.restaurantSimulationData
-          };
-        }
-      }
-      
-      if (!simulationCheck) {
-        try {
-          simulationCheck = await get().getRestaurantSimulation();
-        } catch (error) {
-          console.error('❌ [authSlice] Error checking simulation status:', error);
-          // Continue with API call if check fails
-        }
-      }
-      
-      if (simulationCheck?.success && simulationCheck?.data?.restaurant_simulation === true) {
-        // User is in simulation mode, don't call non-simulation API
-        set(() => ({ loading: false, error: null }));
-        return { 
-          success: false, 
-          error: 'User is in simulation mode. Non-simulation APIs are not available.',
-          data: null
-        };
-      }
+      // CRITICAL: We should ALWAYS call this API, even if user has simulation mode enabled
+      // Users can have BOTH regular and simulation restaurants
+      // The decision logic in useOnboardingStatus will determine which UI to show
+      // This API should be called for ALL users to check if they have regular restaurants
       
       const now = Date.now();
       const CACHE_DURATION = 5000; // 5 seconds cache
@@ -843,6 +812,8 @@ const createAuthSlice = (set, get) => {
         // Otherwise, try response.data.data as fallback
         else if (response.data?.data) {
           restaurantData = response.data.data;
+        } else {
+          console.warn('⚠️ [authSlice] Unexpected API response structure:', response.data);
         }
         
         // IMPORTANT: Even if restaurants array is empty, we still need to return the data
@@ -865,15 +836,6 @@ const createAuthSlice = (set, get) => {
           set(() => ({ restaurantId: restaurantId.toString() }));
         }
         
-        // Log the data structure for debugging
-        console.log('📊 [authSlice] Restaurant onboarding data structure:', {
-          hasRestaurants: !!restaurantData?.restaurants,
-          restaurantsCount: restaurantData?.restaurants?.length || 0,
-          restaurants: restaurantData?.restaurants,
-          restaurantId,
-          onboardingComplete: restaurantData?.restaurants?.[0]?.onboarding_complete
-        });
-        
         // CRITICAL: After successful GET /restaurant_v2/restaurants-onboarding/, 
         // also call GET /simulation/simulation-onboarding/ to check if user is a simulator
         // This helps determine if user should use simulation APIs or regular APIs
@@ -895,8 +857,6 @@ const createAuthSlice = (set, get) => {
             isSimulator = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
             
             if (isSimulator) {
-              console.log('✅ [authSlice] User is a simulator - has simulation restaurants');
-              
               // Extract simulation restaurant ID if available
               if (simulationRestaurants.length > 0) {
                 const restaurant = simulationRestaurants[simulationRestaurants.length - 1] || simulationRestaurants[0];
@@ -904,14 +864,9 @@ const createAuthSlice = (set, get) => {
                 
                 if (simulationRestaurantId) {
                   localStorage.setItem('simulation_restaurant_id', simulationRestaurantId.toString());
-                  console.log('✅ [authSlice] Simulation restaurant ID stored:', simulationRestaurantId);
                 }
               }
-            } else {
-              console.log('ℹ️ [authSlice] User is a regular user - no simulation restaurants found');
             }
-          } else {
-            console.log('ℹ️ [authSlice] Could not determine simulation status:', simulationOnboardingResult?.error);
           }
         } catch (simulationError) {
           console.warn('⚠️ [authSlice] Error checking simulation onboarding status:', simulationError);
@@ -932,6 +887,14 @@ const createAuthSlice = (set, get) => {
         };
       } catch (error) {
         console.error('❌ [authSlice] API call failed:', error);
+        console.error('❌ [authSlice] Error details:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: error.config
+        });
         const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant onboarding';
         set(() => ({ loading: false, error: errorMessage }));
         // Don't clear the global flag on error - we still checked

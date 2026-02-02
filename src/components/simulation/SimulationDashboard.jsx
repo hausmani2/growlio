@@ -81,10 +81,13 @@ const SimulationDashboard = () => {
           return;
         }
         
+        // Allow access to simulation dashboard if simulation onboarding is complete
+        // The route guard in ProtectedRoutes.jsx handles the case where simulation onboarding API has no restaurants
+        // If user explicitly navigates to /simulation/dashboard, they should be allowed to access it
         console.log('✅ [SimulationDashboard] Onboarding complete, allowing dashboard access');
       } else {
-        // No restaurant found, redirect to onboarding
-        console.warn('⚠️ [SimulationDashboard] No restaurant found, redirecting to onboarding');
+        // No restaurant found in simulation onboarding API, redirect to onboarding
+        console.warn('⚠️ [SimulationDashboard] No restaurant found in simulation onboarding API, redirecting to onboarding');
         message.warning('Please complete onboarding before accessing the dashboard.');
         navigate('/onboarding/simulation', { replace: true });
         return;

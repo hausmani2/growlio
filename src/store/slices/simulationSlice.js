@@ -67,10 +67,7 @@ const createSimulationSlice = (set, get) => ({
     // This allows new users to check their onboarding status
     // We'll handle errors gracefully if user doesn't have access
     try {
-      console.log('📞 [simulationSlice] Calling GET /simulation/simulation-onboarding/ (forceRefresh:', forceRefresh, ')');
       const response = await apiGet('/simulation/simulation-onboarding/');
-      
-      console.log('📥 [simulationSlice] Simulation onboarding API response:', response.data);
       
       // Cache the result
       set({
@@ -114,7 +111,6 @@ const createSimulationSlice = (set, get) => ({
         sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
         sessionStorage.removeItem('simulationOnboardingLastCheckTime');
         
-        console.log('ℹ️ [simulationSlice] User not in simulation mode or new user - returning empty restaurants array');
         return { success: true, data: { restaurants: [] } };
       }
       
@@ -424,13 +420,10 @@ const createSimulationSlice = (set, get) => ({
           isOnboardingComplete = !!completeRestaurant;
           
           if (isOnboardingComplete) {
-            console.log('✅ [simulationSlice] Simulation onboarding is COMPLETE');
             // Store the complete restaurant ID if not already stored
             if (completeRestaurant.simulation_restaurant_id) {
               localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
             }
-          } else {
-            console.log('ℹ️ [simulationSlice] Simulation onboarding is NOT complete yet');
           }
         } else {
           console.warn('⚠️ [simulationSlice] Failed to fetch onboarding status:', statusResult?.error);

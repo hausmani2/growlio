@@ -104,16 +104,44 @@ const Congratulations = () => {
                 
                 if (isSimulator) {
                     const onboardingResult = await getSimulationOnboardingStatus();
-                    if (onboardingResult?.success && onboardingResult?.data?.restaurants) {
+                    // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+                    if (onboardingResult?.success && onboardingResult?.data?.restaurants && onboardingResult.data.restaurants.length > 0) {
                         const restaurants = onboardingResult.data.restaurants;
                         const completeRestaurant = restaurants.find(
                             (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
                         );
                         
                         if (completeRestaurant) {
-                            // Simulation onboarding is complete, redirect to simulation dashboard
+                            // Check if user has both regular and simulation restaurants
+                            const getRestaurantOnboarding = useStore.getState().getRestaurantOnboarding;
+                            const restaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+                            
+                            let regularRestaurants = [];
+                            if (restaurantOnboardingData?.restaurants) {
+                                regularRestaurants = restaurantOnboardingData.restaurants;
+                            } else {
+                                try {
+                                    const restaurantResult = await getRestaurantOnboarding();
+                                    if (restaurantResult?.success && restaurantResult?.data?.restaurants) {
+                                        regularRestaurants = restaurantResult.data.restaurants;
+                                    }
+                                } catch (error) {
+                                    console.error('Error checking regular restaurants:', error);
+                                }
+                            }
+                            
+                            const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
+                            const hasSimulationRestaurantsCheck = Array.isArray(restaurants) && restaurants.length > 0;
+                            
                             localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
-                            navigate('/simulation/dashboard', { replace: true });
+                            
+                            // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
+                            if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
+                                navigate('/dashboard/report-card', { replace: true });
+                            } else if (hasSimulationRestaurantsCheck) {
+                                // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+                                navigate('/simulation/dashboard', { replace: true });
+                            }
                             setIsChecking(false);
                             return;
                         }

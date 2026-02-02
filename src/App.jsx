@@ -94,47 +94,66 @@ const RootRedirect = () => {
           return;
         }
         
-        // If user has simulation restaurant, handle simulation flow
-        if (hasSimulationRestaurant) {
-          const completeSimulationRestaurant = simulationRestaurants.find(
-            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-          );
-          
-          if (completeSimulationRestaurant) {
-            // Simulation onboarding is complete, redirect to simulation dashboard
-            localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
-            navigate('/simulation/dashboard', { replace: true });
-            return;
-          }
-          
-          // Simulation restaurant exists but not complete, redirect to simulation onboarding
-          navigate('/onboarding/simulation', { replace: true });
-          return;
-        }
-        
-        // If user has regular restaurant (but no simulation restaurant), handle regular flow
-        if (hasRegularRestaurant) {
-          console.log('🏪 [App] User has regular restaurant, checking completion status...');
-          console.log('📋 [App] Restaurants data:', regularRestaurants);
-          
+        // CRITICAL: If both APIs have restaurants, navigate to dashboard/report-card (treat as regular user)
+        if (hasRegularRestaurant && hasSimulationRestaurant) {
           // Find restaurant with completed onboarding
           const completeRestaurant = regularRestaurants.find(
             (r) => r.onboarding_complete === true
           );
           
-          console.log('✅ [App] Complete restaurant found:', completeRestaurant);
-          
           if (completeRestaurant) {
             // Restaurant onboarding is complete, redirect to dashboard
             const restaurantId = completeRestaurant.restaurant_id;
             localStorage.setItem('restaurant_id', restaurantId.toString());
-            console.log('✅ [App] Redirecting to dashboard with restaurant_id:', restaurantId);
             navigate('/dashboard/report-card', { replace: true });
             return;
           }
           
           // User has restaurant but onboarding not complete
-          console.log('ℹ️ [App] Restaurant exists but onboarding not complete');
+          navigate('/onboarding/score', { replace: true });
+          return;
+        }
+        
+        // If user has ONLY simulation restaurant (no regular restaurant), handle simulation flow
+        if (hasSimulationRestaurant && !hasRegularRestaurant) {
+          // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
+          if (simulationRestaurants.length > 0) {
+            const completeSimulationRestaurant = simulationRestaurants.find(
+              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+            );
+            
+            if (completeSimulationRestaurant) {
+              // Simulation onboarding is complete, redirect to simulation dashboard
+              localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
+              navigate('/simulation/dashboard', { replace: true });
+              return;
+            }
+            
+            // Simulation restaurant exists but not complete, redirect to simulation onboarding
+            navigate('/onboarding/simulation', { replace: true });
+            return;
+          }
+          // If simulation onboarding API has no restaurants, redirect to onboarding
+          navigate('/onboarding/simulation', { replace: true });
+          return;
+        }
+        
+        // If user has ONLY regular restaurant (no simulation restaurant), handle regular flow
+        if (hasRegularRestaurant && !hasSimulationRestaurant) {
+          // Find restaurant with completed onboarding
+          const completeRestaurant = regularRestaurants.find(
+            (r) => r.onboarding_complete === true
+          );
+          
+          if (completeRestaurant) {
+            // Restaurant onboarding is complete, redirect to dashboard
+            const restaurantId = completeRestaurant.restaurant_id;
+            localStorage.setItem('restaurant_id', restaurantId.toString());
+            navigate('/dashboard/report-card', { replace: true });
+            return;
+          }
+          
+          // User has restaurant but onboarding not complete
           navigate('/onboarding/score', { replace: true });
           return;
         }
