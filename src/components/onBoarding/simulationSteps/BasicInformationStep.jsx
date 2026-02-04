@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Input, Select, message } from 'antd';
+import PlaceSearchInput from '../../common/PlaceSearchInput';
+import { parseAddressComponents } from '../../../utils/parseAddressComponents';
 
 const { Option } = Select;
 
@@ -8,13 +10,56 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
   const [restaurantName, setRestaurantName] = useState(data?.restaurantName || '');
   const [restaurantType, setRestaurantType] = useState(data?.restaurantType || '');
   const [menuType, setMenuType] = useState(data?.menuType || '');
-  const [isFranchise, setIsFranchise] = useState(data?.isFranchise || false);
+  const [isFranchise, setIsFranchise] = useState(data?.isFranchise !== undefined ? data.isFranchise : true); // Always default to true (mandatory)
   const [city, setCity] = useState(data?.locationAddress?.city || '');
   const [state, setState] = useState(data?.locationAddress?.state || '');
   const [fullAddress, setFullAddress] = useState(data?.locationAddress?.fullAddress || '');
   const [address2, setAddress2] = useState(data?.locationAddress?.address2 || '');
   const [zipCode, setZipCode] = useState(data?.locationAddress?.zipCode || '');
   const [sqft, setSqft] = useState(data?.locationAddress?.sqft || '');
+  const [latitude, setLatitude] = useState(data?.locationAddress?.latitude || null);
+  const [longitude, setLongitude] = useState(data?.locationAddress?.longitude || null);
+
+  // Get Google Maps API key from environment variables
+  const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+  // Handle address selection from Google Places
+  const handleAddressSelect = (formattedAddress, lat, lng, details) => {
+    // Update full address with formatted address
+    setFullAddress(formattedAddress);
+    
+    // Update latitude and longitude if available
+    if (lat !== null && lng !== null) {
+      setLatitude(lat);
+      setLongitude(lng);
+    }
+    
+    // Parse and auto-fill address components if available
+    if (details && details.address_components) {
+      const parsed = parseAddressComponents(details.address_components);
+      
+      // Update city
+      if (parsed.city) {
+        setCity(parsed.city);
+        if (errors.city) {
+          setErrors(prev => ({ ...prev, city: '' }));
+        }
+      }
+      
+      // Update state (use short_name which is the state code like "TX", "CA")
+      if (parsed.state) {
+        setState(parsed.state);
+        if (errors.state) {
+          setErrors(prev => ({ ...prev, state: '' }));
+        }
+      }
+      
+      // Update zip code
+      if (parsed.zipCode) {
+        setZipCode(parsed.zipCode);
+      }
+    }
+  };
 
   useEffect(() => {
     updateData({
@@ -28,11 +73,13 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
         fullAddress,
         address2,
         zipCode,
-        sqft
+        sqft,
+        latitude,
+        longitude
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantName, restaurantType, menuType, isFranchise, city, state, fullAddress, address2, zipCode, sqft]);
+  }, [restaurantName, restaurantType, menuType, isFranchise, city, state, fullAddress, address2, zipCode, sqft, latitude, longitude]);
 
   // Validation function that can be called from parent
   // Use useCallback to ensure the function reference is stable and uses latest values
@@ -175,12 +222,37 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
           </p>
           <div className="space-y-3">
             <div>
-              <Input
-                placeholder="Address Line 1 (Optional)"
-                value={fullAddress}
-                onChange={(e) => setFullAddress(e.target.value)}
-                className="h-11"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address Line 1 (Optional)
+              </label>
+              {GOOGLE_MAPS_API_KEY ? (
+                <PlaceSearchInput
+                  apiKey={GOOGLE_MAPS_API_KEY}
+                  placeholder="Search for an address or type manually..."
+                  value={fullAddress}
+                  onChange={(value) => setFullAddress(value)}
+                  onSelect={handleAddressSelect}
+                  countryRestriction="us" // Restrict to US for simulation onboarding
+                  className="w-full"
+                />
+              ) : (
+                <Input
+                  placeholder="Address Line 1 (Optional)"
+                  value={fullAddress}
+                  onChange={(e) => setFullAddress(e.target.value)}
+                  className="h-11"
+                />
+              )}
+              {!GOOGLE_MAPS_API_KEY && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Note: Add VITE_GOOGLE_MAPS_API_KEY to your .env file to enable address autocomplete
+                </p>
+              )}
+              {GOOGLE_MAPS_API_KEY && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Tip: You can search for an address or type it manually. If autocomplete doesn't work, check that Places API is enabled in your Google Cloud Console.
+                </p>
+              )}
             </div>
             <div>
               <Input
@@ -300,9 +372,13 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
                   type="checkbox"
                   checked={isFranchise}
                   onChange={(e) => setIsFranchise(e.target.checked)}
-                  className="h-4 w-4"
+                  disabled={true} // Always checked, cannot be unchecked
+                  className="h-4 w-4 cursor-not-allowed opacity-75"
                 />
-                <span className="text-sm text-gray-700">Is this a franchise location?</span>
+                <span className="text-sm text-gray-700">
+                  Is this a franchise location? <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 ml-2">(Required)</span>
+                </span>
               </label>
             </div>
           </div>

@@ -283,6 +283,38 @@ const createSalesInformationSlice = (set, get) => ({
                 throw new Error('Restaurant ID is required');
             }
             
+            // Check onboarding status before making API call
+            // Only allow API call if restaurant has completed onboarding setup
+            const restaurantOnboardingData = currentState.restaurantOnboardingData;
+            let isOnboardingComplete = false;
+            
+            if (restaurantOnboardingData?.restaurants && Array.isArray(restaurantOnboardingData.restaurants)) {
+                // Check if any restaurant has completed onboarding
+                const restaurant = restaurantOnboardingData.restaurants.find(r => 
+                    r.restaurant_id === parseInt(restaurantId) || 
+                    r.id === parseInt(restaurantId)
+                ) || restaurantOnboardingData.restaurants[0];
+                
+                isOnboardingComplete = restaurant?.onboarding_complete === true;
+            } else {
+                // Fallback: check the isOnBoardingCompleted flag in store
+                isOnboardingComplete = currentState.isOnBoardingCompleted === true;
+            }
+            
+            // If onboarding is not complete, prevent API call
+            if (!isOnboardingComplete) {
+                const errorMessage = 'Please complete onboarding setup before accessing sales information summary.';
+                set(() => ({ 
+                    salesInformationSummaryLoading: false, 
+                    salesInformationSummaryError: errorMessage
+                }));
+                
+                return { 
+                    success: false, 
+                    error: errorMessage 
+                };
+            }
+            
             // Use provided dates or calculate previous month's start and end dates
             let startDateStr, endDateStr;
             

@@ -13,7 +13,7 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 const LaborInformationWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
 
@@ -119,15 +119,16 @@ const LaborInformationWrapperContent = () => {
             const result = await submitStepData("Labor Information", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
 
-                // Step 4: Handle navigation based on mode
-                if (isUpdateMode) {
-                    // In update mode, stay on the same page or go to dashboard
+                // Step 4: Always navigate to next step after saving
+                if (isUpdateMode && isOnBoardingCompleted) {
+                    // In update mode AND onboarding is complete: show success and navigate
                     message.success("Labor information updated successfully!");
                 } else {
-                    // In onboarding mode, navigate to next step
+                    // In onboarding mode OR new user in update mode: show success and navigate
                     message.success("Labor information saved successfully!");
-                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
+                // Always navigate to next step (COGS/Food Cost Details)
+                navigateToNextStep(true); // Skip completion check since we just saved successfully
             });
 
             // Step 4: Handle success

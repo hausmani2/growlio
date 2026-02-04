@@ -311,7 +311,17 @@ const SimulationOnboarding = () => {
               state: formData.basicinformation?.locationAddress?.state || '',
               zip_code: formData.basicinformation?.locationAddress?.zipCode || '',
               sqft: formData.basicinformation?.locationAddress?.sqft || '',
-              is_franchise: formData.basicinformation?.isFranchise || false
+              is_franchise: formData.basicinformation?.isFranchise || false,
+              ...(formData.basicinformation?.locationAddress?.latitude !== null && 
+                  formData.basicinformation?.locationAddress?.latitude !== undefined && 
+                  !isNaN(parseFloat(formData.basicinformation?.locationAddress?.latitude)) && {
+                latitude: parseFloat(formData.basicinformation?.locationAddress?.latitude)
+              }),
+              ...(formData.basicinformation?.locationAddress?.longitude !== null && 
+                  formData.basicinformation?.locationAddress?.longitude !== undefined && 
+                  !isNaN(parseFloat(formData.basicinformation?.locationAddress?.longitude)) && {
+                longitude: parseFloat(formData.basicinformation?.locationAddress?.longitude)
+              })
             }]
           }
         },

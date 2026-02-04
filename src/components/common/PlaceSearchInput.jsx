@@ -239,8 +239,11 @@ const PlaceSearchInput = ({
 
             {/* Error Message */}
             {error && (
-                <div className="mt-1 text-xs text-red-500">
-                    {error}
+                <div className="mt-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    <p className="font-medium">⚠️ {error}</p>
+                    <p className="mt-1 text-amber-700">
+                        You can still type the address manually. The autocomplete feature requires a valid Google Maps API key with Places API enabled.
+                    </p>
                 </div>
             )}
 

@@ -12,7 +12,7 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 const FoodCostWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateFoodCostDetails, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
     
@@ -111,15 +111,18 @@ const FoodCostWrapperContent = () => {
                     // Restaurant ID is available if needed
                 }
                 
-                // Step 5: Handle navigation based on mode
-                if (isUpdateMode) {
-                    // In update mode, stay on the same page or go to dashboard
+                // Step 5: Always navigate to Third-Party Delivery after saving
+                if (isUpdateMode && isOnBoardingCompleted) {
+                    // In update mode AND onboarding is complete: show success and navigate
                     message.success("Food cost details updated successfully!");
                 } else {
-                    // In onboarding mode, navigate to next step
+                    // In onboarding mode OR new user in update mode: show success and navigate
                     message.success("Food cost details saved successfully!");
-                    navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }
+                // Always navigate to Third-Party Delivery (not Expenses)
+                setTimeout(() => {
+                    navigate('/dashboard/third-party-delivery');
+                }, 300); // Small delay to show success message
             });
             
             // Step 6: Handle success

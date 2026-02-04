@@ -44,7 +44,7 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Labor Information</h2>
         <p className="text-gray-600">
-          Enter the average hourly rate for all staff roles.
+        What is your estimated average hourly labor rate across all positions?  Not sure? Ask LIO, your Growlio AI assistant.
         </p>
       </div>
 

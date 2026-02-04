@@ -18,6 +18,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
     onboardingError: error,
     clearError,
     completeOnboardingData,
+    isOnBoardingCompleted,
   } = useStore();
 
   const { validationErrors, clearFieldError, validateStep } = useStepValidation();
@@ -150,7 +151,16 @@ const ThirdPartyDeliveryWrapperContent = () => {
     }
 
     const result = await submitStepData("Sales Channels", stepData, () => {
-      message.success("Third-party delivery updated successfully!");
+      // Always show success message
+      if (isUpdateMode && isOnBoardingCompleted) {
+        message.success("Third-party delivery updated successfully!");
+      } else {
+        message.success("Third-party delivery saved successfully!");
+      }
+      // Navigate to Budget screen after saving
+      setTimeout(() => {
+        navigate('/dashboard/budget');
+      }, 300); // Small delay to show success message
     });
 
     if (!result.success) {
@@ -198,10 +208,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
           </button>
           <button
             className="px-10 py-2.5 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600"
-            onClick={async () => {
-              const ok = await handleSave();
-              if (ok) navigateToNextStep(true);
-            }}
+            onClick={handleSave}
             disabled={loading}
           >
             Next

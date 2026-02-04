@@ -14,7 +14,7 @@ import PrimaryButton from "../../../../buttons/Buttons";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
 
@@ -293,13 +293,16 @@ const ExpenseWrapperContent = () => {
                 if (responseData && responseData.restaurant_id) {
                 }
 
-                if (isUpdateMode) {
-                    // Update mode: show success message and stay on current page
+                // Expenses is the last onboarding step, so always navigate to Sales Data after saving
+                if (isUpdateMode && isOnBoardingCompleted) {
+                    // Update mode AND onboarding is complete: show success message and navigate to Sales Data
                     message.success("Expense information updated successfully!");
                 } else {
-                    // Onboarding mode: navigate to next step
-                    await navigateToNextStep(true); // Skip completion check since we just saved successfully
+                    // Onboarding mode OR new user in update mode: navigate to next step (Sales Data)
+                    message.success("Expense information saved successfully!");
                 }
+                // Always navigate to Sales Data since Expenses is the last onboarding step
+                await navigateToNextStep(true); // Skip completion check since we just saved successfully
             });
 
             if (!result.success) {

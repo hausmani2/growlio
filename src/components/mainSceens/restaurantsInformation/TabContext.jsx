@@ -21,7 +21,8 @@ export const TabProvider = ({ children }) => {
         ensureAllStepsInitialized,
         loadExistingOnboardingData,
         checkOnboardingCompletion,
-        onboardingLoading: loading
+        onboardingLoading: loading,
+        isOnBoardingCompleted
     } = useStore();
     const { loadStepData, saveCurrentStepData } = useStepNavigation();
 
@@ -298,19 +299,14 @@ export const TabProvider = ({ children }) => {
 
                 const tab = tabs.find(t => t.id === nextTabId);
                 if (tab) {
-                    if (isUpdateMode) {
-                        // In update mode, stay on the same page - don't navigate
-                        // Scroll to top when switching tabs in update mode
+                    // Always navigate to the next step after saving
+                    // Use dashboard path for update mode, onboarding path for onboarding mode
+                    const targetPath = isUpdateMode ? `/dashboard/${tab.path}` : `/onboarding/${tab.path}`;
+                    navigate(targetPath);
+                    // Scroll to top after navigation
+                    setTimeout(() => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else {
-                        // In onboarding mode, navigate to onboarding path
-                        const targetPath = `/onboarding/${tab.path}`;
-                        navigate(targetPath);
-                        // Scroll to top after navigation
-                        setTimeout(() => {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }, 100);
-                    }
+                    }, 100);
                 } else {
                     console.error(`❌ Tab not found for id: ${nextTabId}`);
                 }

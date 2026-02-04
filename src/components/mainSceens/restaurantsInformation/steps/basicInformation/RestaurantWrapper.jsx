@@ -23,7 +23,8 @@ const RestaurantWrapperContent = () => {
         clearError, 
         completeOnboardingData,
         getTempFormData,
-        updateTempFormData
+        updateTempFormData,
+        isOnBoardingCompleted
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
@@ -262,20 +263,18 @@ const RestaurantWrapperContent = () => {
                 const { markStepCompleted } = useStore.getState();
                 markStepCompleted("Basic Information");
                 
-                // Step 4: Handle navigation based on mode
-                if (isUpdateMode) {
-                    // In update mode, stay on the same page or go to dashboard
+                // Step 4: Always navigate to next step after saving
+                if (isUpdateMode && isOnBoardingCompleted) {
+                    // In update mode AND onboarding is complete: show success and navigate
                     message.success("Basic information updated successfully!");
                 } else {
-                    // In onboarding mode, navigate to next step
+                    // In onboarding mode OR new user in update mode: show success and navigate
                     message.success("Basic information saved successfully!");
-                    
-                    // Add a small delay to ensure state is updated before navigation
-                    setTimeout(() => {
-                        
-                        navigateToNextStep(true); // Skip completion check since we just saved successfully
-                    }, 200); // Increased delay to ensure state update
                 }
+                // Always navigate to next step (Operating Information/Sales Channels)
+                setTimeout(() => {
+                    navigateToNextStep(true); // Skip completion check since we just saved successfully
+                }, 200); // Small delay to ensure state update
             });
             
             // Step 4: Handle success
