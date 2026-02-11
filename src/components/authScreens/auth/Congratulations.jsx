@@ -86,7 +86,6 @@ const Congratulations = () => {
                         // Restaurant onboarding is complete, redirect to dashboard immediately
                         const restaurantId = completeRestaurant.restaurant_id;
                         localStorage.setItem('restaurant_id', restaurantId.toString());
-                        console.log('✅ [Congratulations] User has completed onboarding, redirecting to dashboard');
                         navigate('/dashboard/report-card', { replace: true });
                         setIsChecking(false);
                         return;

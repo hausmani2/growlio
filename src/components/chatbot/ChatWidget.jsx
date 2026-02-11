@@ -12,7 +12,7 @@ import chatIcon from '../../assets/lio.png';
  */
 const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
   const navigate = useNavigate();
-  const { selectedConversationId: storeConversationId, setSelectedConversationId } = useStore();
+  const { selectedConversationId: storeConversationId, setSelectedConversationId, isOnBoardingCompleted } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -378,20 +378,23 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                navigate('/dashboard/chat');
-                setIsOpen(false);
-              }}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              aria-label="Open full screen chat"
-              title="Open full screen chat"
-            >
-              <FiMaximize2 className="w-5 h-5" />
-            </button>
+            {/* Only show maximize button if onboarding is complete */}
+            {isOnBoardingCompleted && (
+              <button
+                onClick={() => {
+                  navigate('/dashboard/chat');
+                  setIsOpen(false);
+                }}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                aria-label="Open full screen chat"
+                title="Open full screen chat"
+              >
+                <FiMaximize2 className="w-5 h-5" />
+              </button>
+            )}
             <button
               onClick={() => setIsOpen(false)}
-              className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors" 
               aria-label="Close chat"
             >
               <FiX className="w-5 h-5" />

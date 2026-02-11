@@ -139,6 +139,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack }) => {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Expenses</h2>
         <p className="text-gray-600">
           Manage your restaurant expenses. Toggle each expense as active/inactive, set as percentage or value, and choose monthly or weekly.
+          By default, all expenses are turned on and expense amounts are estimates and may not reflect current costs.
         </p>
       </div>
 

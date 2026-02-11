@@ -356,6 +356,10 @@ const ProtectedRoutes = () => {
         ONBOARDING_ROUTES.CONGRATULATIONS,
         '/onboarding/simulation', // Allow simulation onboarding
         '/simulation/dashboard', // Allow simulation dashboard
+        '/simulation/basic-information', // Allow simulation update paths
+        '/simulation/sales-channels-operating-days',
+        '/simulation/labor-information',
+        '/simulation/expenses',
       ];
       
       // If user is on an allowed path, NEVER redirect - allow access immediately
@@ -368,7 +372,15 @@ const ProtectedRoutes = () => {
     }
 
      // CRITICAL: Always allow simulation routes - they handle their own logic
-     if (location.pathname === '/onboarding/simulation' || location.pathname === '/simulation/dashboard') {
+     const simulationRoutes = [
+       '/onboarding/simulation',
+       '/simulation/dashboard',
+       '/simulation/basic-information',
+       '/simulation/sales-channels-operating-days',
+       '/simulation/labor-information',
+       '/simulation/expenses'
+     ];
+     if (simulationRoutes.includes(location.pathname)) {
       hasRedirectedRef.current = false;
       sessionStorage.setItem('lastProcessedPath', location.pathname);
       sessionStorage.removeItem('lastRedirectRoute');
@@ -393,6 +405,10 @@ const ProtectedRoutes = () => {
       ONBOARDING_ROUTES.CONGRATULATIONS,
       '/onboarding/simulation', // Allow simulation onboarding path
       '/simulation/dashboard', // Allow simulation dashboard path
+      '/simulation/basic-information', // Allow simulation update paths
+      '/simulation/sales-channels-operating-days',
+      '/simulation/labor-information',
+      '/simulation/expenses',
     ];
     
     // Track the last path we processed to prevent duplicate redirects
@@ -901,7 +917,12 @@ const ProtectedRoutes = () => {
   const isReportCardPath = location.pathname === ONBOARDING_ROUTES.REPORT_CARD;
   const isCongratulationsPath = location.pathname === ONBOARDING_ROUTES.CONGRATULATIONS; // '/congratulations'
   // CRITICAL: Always allow simulation routes - they handle their own redirect logic
-  const isSimulationPath = location.pathname === '/onboarding/simulation' || location.pathname === '/simulation/dashboard';
+  const isSimulationPath = location.pathname === '/onboarding/simulation' || 
+                           location.pathname === '/simulation/dashboard' ||
+                           location.pathname === '/simulation/basic-information' ||
+                           location.pathname === '/simulation/sales-channels-operating-days' ||
+                           location.pathname === '/simulation/labor-information' ||
+                           location.pathname === '/simulation/expenses';
   const isDashboardPath = location.pathname.startsWith('/dashboard');
   const isSuperAdminPath = location.pathname.startsWith('/superadmin');
   const isProfilePath = location.pathname === '/dashboard/profile';
@@ -1024,19 +1045,23 @@ const ProtectedRoutes = () => {
   // Block /onboarding page, allow score/profitability
   // CRITICAL: Always allow simulation routes FIRST - they handle their own redirect logic
   if (isSimulationPath) {
-    // If user is trying to access simulation/dashboard, check if simulation onboarding API has restaurants
-    if (location.pathname === '/simulation/dashboard') {
-      const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
-      const hasSimulationRestaurantsCheck = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
-      
-      // CRITICAL: Only allow access to simulation/dashboard if simulation onboarding API has restaurants
-      // Allow explicit navigation even if both restaurants exist (user clicked button to go to simulation)
-      // The redirect to dashboard/report-card only happens during automatic redirects (after login)
-      if (!hasSimulationRestaurantsCheck) {
-        // Simulation onboarding API has no restaurants, redirect to simulation onboarding
-        return <Navigate to="/onboarding/simulation" replace />;
-      }
+    // Check if user has simulation restaurants for simulation routes
+    const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
+    const hasSimulationRestaurantsCheck = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
+    
+    // For simulation/dashboard and update paths, require simulation restaurants
+    const requiresSimulationRestaurant = location.pathname === '/simulation/dashboard' ||
+                                         location.pathname === '/simulation/basic-information' ||
+                                         location.pathname === '/simulation/sales-channels-operating-days' ||
+                                         location.pathname === '/simulation/labor-information' ||
+                                         location.pathname === '/simulation/expenses';
+    
+    if (requiresSimulationRestaurant && !hasSimulationRestaurantsCheck) {
+      // Simulation onboarding API has no restaurants, redirect to simulation onboarding
+      return <Navigate to="/onboarding/simulation" replace />;
     }
+    
+    // Allow access to all simulation routes
     return <Outlet />;
   }
   

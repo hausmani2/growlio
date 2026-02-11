@@ -114,7 +114,7 @@ export const DEFAULT_EXPENSES = [
   {
     category: 'Labor',
     is_value_type: true,
-    name: 'Franchise Owner',
+    name: 'Owner Compensation',
     amount: 2000,
     fixed_expense_type: 'MONTHLY',
     is_active: true

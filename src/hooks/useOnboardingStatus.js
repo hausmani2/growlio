@@ -56,31 +56,6 @@ const useOnboardingStatus = () => {
     const canAccessTraining = hasCompletedRegularOnboarding || hasSimulationAccess;
     
     // Comprehensive logging for debugging
-    console.log('📊 [useOnboardingStatus] Onboarding status check:', {
-      hasRegularRestaurants,
-      hasSimulationRestaurants,
-      regularRestaurantsCount: regularRestaurants.length,
-      simulationRestaurantsCount: simulationRestaurants.length,
-      hasCompletedRegularOnboarding,
-      hasCompletedSimulationOnboarding,
-      isRegularUser,
-      isSimulationUser,
-      hasSimulationAccess,
-      canAccessTraining,
-      regularRestaurantsData: regularRestaurants.length > 0 ? regularRestaurants.map(r => ({
-        id: r.restaurant_id,
-        name: r.restaurant_name,
-        onboarding_complete: r.onboarding_complete
-      })) : [],
-      simulationRestaurantsData: simulationRestaurants.length > 0 ? simulationRestaurants.map(r => ({
-        id: r.simulation_restaurant_id,
-        name: r.simulation_restaurant_name,
-        simulation_onboarding_complete: r.simulation_onboarding_complete
-      })) : [],
-      restaurantOnboardingDataExists: !!restaurantOnboardingData,
-      simulationOnboardingStatusExists: !!simulationOnboardingStatus,
-      restaurantSimulationData: restaurantSimulationData
-    });
     
     return {
       // Raw data

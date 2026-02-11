@@ -115,6 +115,34 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         label: 'Simulation Dashboard',
         onClick: () => navigate('/simulation/dashboard'),
       },
+      // Only show simulation setup menu if user has simulation restaurants
+      ...(hasSimulationRestaurants ? [{
+        key: 'simulation-setup',
+        icon: <UserOutlined />,
+        label: 'Simulation Setup',
+        children: [
+          {
+            key: 'simulation-basic-information',
+            label: 'Basic Information',
+            onClick: () => navigate('/simulation/basic-information'),
+          },
+          {
+            key: 'simulation-sales-channels-operating-days',
+            label: 'Sales Channels & Operating Days',
+            onClick: () => navigate('/simulation/sales-channels-operating-days'),
+          },
+          {
+            key: 'simulation-labor-information',
+            label: 'Labor Information',
+            onClick: () => navigate('/simulation/labor-information'),
+          },
+          {
+            key: 'simulation-expenses',
+            label: 'Expenses',
+            onClick: () => navigate('/simulation/expenses'),
+          },
+        ],
+      }] : []),
     ];
   
 

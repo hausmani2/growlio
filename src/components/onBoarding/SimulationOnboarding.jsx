@@ -29,7 +29,7 @@ const SimulationOnboarding = () => {
       restaurantName: '',
       restaurantType: '',
       menuType: '',
-      isFranchise: false,
+      isFranchise: true, // Default to true (mandatory for simulation)
       locationAddress: {
         city: '',
         state: '',

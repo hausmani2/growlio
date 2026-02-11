@@ -10,10 +10,66 @@ const createSimulationSlice = (set, get) => ({
   simulationOnboardingLoading: false,
   simulationOnboardingError: null,
   
+  // Simulation onboarding data (full data for update mode)
+  simulationOnboardingData: null,
+  simulationOnboardingDataTimestamp: null,
+  simulationOnboardingDataLoading: false,
+  simulationOnboardingDataError: null,
+  
   // Simulation dashboard data
   simulationDashboardData: null,
   simulationDashboardLoading: false,
   simulationDashboardError: null,
+  
+  // Get simulation onboarding data (full data for update mode)
+  // Similar to GET /restaurant_v2/onboarding/ for regular onboarding
+  getSimulationOnboardingData: async (forceRefresh = false) => {
+    const currentState = get();
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    
+    // Check if we have cached data that's still fresh (unless forceRefresh is true)
+    if (!forceRefresh && currentState.simulationOnboardingData && currentState.simulationOnboardingDataTimestamp) {
+      const timeSinceCache = now - currentState.simulationOnboardingDataTimestamp;
+      if (timeSinceCache < CACHE_DURATION) {
+        // Return cached data
+        return { 
+          success: true, 
+          data: currentState.simulationOnboardingData
+        };
+      }
+    }
+    
+    set({ simulationOnboardingDataLoading: true, simulationOnboardingDataError: null });
+    
+    try {
+      const response = await apiGet('/simulation/onboarding/');
+      
+      // Cache the result
+      set({
+        simulationOnboardingData: response.data,
+        simulationOnboardingDataTimestamp: now,
+        simulationOnboardingDataLoading: false,
+        simulationOnboardingDataError: null
+      });
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('❌ [simulationSlice] Failed to fetch simulation onboarding data:', error);
+      
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error || 
+                          error.message || 
+                          'Failed to fetch simulation onboarding data';
+      
+      set({
+        simulationOnboardingDataLoading: false,
+        simulationOnboardingDataError: errorMessage
+      });
+      
+      return { success: false, error: errorMessage };
+    }
+  },
   
   // Get simulation onboarding status
   getSimulationOnboardingStatus: async (forceRefresh = false) => {
@@ -472,6 +528,10 @@ const createSimulationSlice = (set, get) => ({
       simulationOnboardingStatusTimestamp: null,
       simulationOnboardingLoading: false,
       simulationOnboardingError: null,
+      simulationOnboardingData: null,
+      simulationOnboardingDataTimestamp: null,
+      simulationOnboardingDataLoading: false,
+      simulationOnboardingDataError: null,
       simulationDashboardData: null,
       simulationDashboardLoading: false,
       simulationDashboardError: null

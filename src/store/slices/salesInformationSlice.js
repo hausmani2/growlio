@@ -283,37 +283,8 @@ const createSalesInformationSlice = (set, get) => ({
                 throw new Error('Restaurant ID is required');
             }
             
-            // Check onboarding status before making API call
-            // Only allow API call if restaurant has completed onboarding setup
-            const restaurantOnboardingData = currentState.restaurantOnboardingData;
-            let isOnboardingComplete = false;
-            
-            if (restaurantOnboardingData?.restaurants && Array.isArray(restaurantOnboardingData.restaurants)) {
-                // Check if any restaurant has completed onboarding
-                const restaurant = restaurantOnboardingData.restaurants.find(r => 
-                    r.restaurant_id === parseInt(restaurantId) || 
-                    r.id === parseInt(restaurantId)
-                ) || restaurantOnboardingData.restaurants[0];
-                
-                isOnboardingComplete = restaurant?.onboarding_complete === true;
-            } else {
-                // Fallback: check the isOnBoardingCompleted flag in store
-                isOnboardingComplete = currentState.isOnBoardingCompleted === true;
-            }
-            
-            // If onboarding is not complete, prevent API call
-            if (!isOnboardingComplete) {
-                const errorMessage = 'Please complete onboarding setup before accessing sales information summary.';
-                set(() => ({ 
-                    salesInformationSummaryLoading: false, 
-                    salesInformationSummaryError: errorMessage
-                }));
-                
-                return { 
-                    success: false, 
-                    error: errorMessage 
-                };
-            }
+            // Note: Removed onboarding check - let the API call proceed and backend will handle validation
+            // The backend will return appropriate errors if data is not ready
             
             // Use provided dates or calculate previous month's start and end dates
             let startDateStr, endDateStr;
@@ -358,7 +329,11 @@ const createSalesInformationSlice = (set, get) => ({
                 end_date: endDateStr
             });
             
-            const response = await apiGet(`/restaurant_v2/sales-information/summary/?${params.toString()}`);
+            const apiUrl = `/restaurant_v2/sales-information/summary/?${params.toString()}`;
+            
+            
+            const response = await apiGet(apiUrl);
+            
             
             set(() => ({ 
                 salesInformationSummaryLoading: false, 
@@ -372,7 +347,14 @@ const createSalesInformationSlice = (set, get) => ({
                 data: response.data 
             };
         } catch (error) {
-            console.error('❌ Error fetching sales information summary:', error);
+            console.error('❌ [getSalesInformationSummary] Error fetching sales information summary:', error);
+            console.error('❌ [getSalesInformationSummary] Error details:', {
+                message: error.message,
+                response: error.response,
+                status: error.response?.status,
+                data: error.response?.data,
+                config: error.config
+            });
             
             let errorMessage = 'Failed to fetch sales information summary. Please try again.';
             

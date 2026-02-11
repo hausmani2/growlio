@@ -14,6 +14,7 @@ import Congratulations from './components/authScreens/auth/Congratulations';
 import ForgotPassword from './components/authScreens/auth/ForgotPassword';
 import SimulationOnboarding from './components/onBoarding/SimulationOnboarding';
 import SimulationDashboard from './components/simulation/SimulationDashboard';
+import SimulationRestaurantInfo from './components/simulation/SimulationRestaurantInfo';
 import ResetPassword from './components/authScreens/auth/ResetPassword';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
@@ -327,6 +328,10 @@ function App() {
           <Route path="/onboarding/setup" element={<OnboardingWrapper />} />
           <Route path="/onboarding/simulation" element={<SimulationOnboarding />} />
           <Route path="/simulation/dashboard" element={<Wrapper showSidebar={true} children={<SimulationDashboard />} />} />
+          <Route path="/simulation/basic-information" element={<Wrapper showSidebar={true} children={<SimulationRestaurantInfo />} />} />
+          <Route path="/simulation/sales-channels-operating-days" element={<Wrapper showSidebar={true} children={<SimulationRestaurantInfo />} />} />
+          <Route path="/simulation/labor-information" element={<Wrapper showSidebar={true} children={<SimulationRestaurantInfo />} />} />
+          <Route path="/simulation/expenses" element={<Wrapper showSidebar={true} children={<SimulationRestaurantInfo />} />} />
           <Route path="/onboarding/score" element={<ProfitabilityScore />} />
           <Route path="/onboarding/profitability" element={<ProfitabilityWizard />} />
           <Route path="/onboarding/basic-information" element={<RestaurantInfo />} />
