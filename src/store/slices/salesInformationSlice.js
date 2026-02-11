@@ -275,41 +275,30 @@ const createSalesInformationSlice = (set, get) => ({
         }));
         
         try {
-            // Get restaurant_id from store or localStorage
+            // Get restaurant_id and restaurant data from store
             const currentState = get();
             const restaurantId = currentState.restaurantId || localStorage.getItem('restaurant_id');
-            
-            if (!restaurantId) {
-                const errorMsg = 'Restaurant ID is required. Please complete onboarding first.';
-                set(() => ({ 
-                    salesInformationSummaryLoading: false, 
-                    salesInformationSummaryError: errorMsg 
-                }));
-                return { 
-                    success: false, 
-                    error: errorMsg 
-                };
-            }
-            
-            // CRITICAL: Check if onboarding is complete before calling this API
-            // This API requires onboarding to be completed first
-            const isOnBoardingCompleted = currentState.isOnBoardingCompleted;
             const restaurantOnboardingData = currentState.restaurantOnboardingData;
             
-            // Check onboarding completion status
-            let onboardingComplete = false;
-            if (isOnBoardingCompleted) {
-                onboardingComplete = true;
-            } else if (restaurantOnboardingData?.restaurants) {
-                // Check if any restaurant has onboarding_complete === true
+            // CRITICAL: Check if restaurant exists
+            // This API should only be called when a restaurant exists
+            let hasRestaurant = false;
+            
+            if (restaurantOnboardingData?.restaurants) {
                 const restaurants = Array.isArray(restaurantOnboardingData.restaurants) 
                     ? restaurantOnboardingData.restaurants 
                     : [];
-                onboardingComplete = restaurants.some(r => r.onboarding_complete === true);
+                
+                // Check if any restaurant exists
+                hasRestaurant = restaurants.length > 0;
+            } else if (restaurantId) {
+                // Fallback: if restaurant_id exists, assume restaurant exists
+                hasRestaurant = true;
             }
             
-            if (!onboardingComplete) {
-                const errorMsg = 'Please complete onboarding before accessing sales information summary.';
+            // If no restaurant exists, block the API call
+            if (!hasRestaurant || !restaurantId) {
+                const errorMsg = 'No restaurant found. Please complete onboarding first.';
                 set(() => ({ 
                     salesInformationSummaryLoading: false, 
                     salesInformationSummaryError: errorMsg 

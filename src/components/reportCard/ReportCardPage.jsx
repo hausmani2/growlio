@@ -71,8 +71,19 @@ const ReportCardPage = () => {
   const onboardingProgress = cachedOnboardingProgress || fetchedOnboardingProgress;
 
   // Fetch sales information summary when date range changes
+  // CRITICAL: Only call this API when restaurant exists
   const fetchSummaryData = async (startDate, endDate) => {
     try {
+      // Check if restaurant exists before making API call
+      const restaurants = restaurantOnboardingData?.restaurants || [];
+      const hasRestaurant = Array.isArray(restaurants) && restaurants.length > 0;
+      const restaurantId = localStorage.getItem('restaurant_id');
+      
+      if (!hasRestaurant || !restaurantId) {
+        console.warn('⚠️ [ReportCardPage] Cannot fetch sales summary: No restaurant found');
+        return;
+      }
+      
       await getSalesInformationSummary(startDate, endDate);
     } catch (error) {
       console.error("Error fetching sales summary:", error);
@@ -83,6 +94,17 @@ const ReportCardPage = () => {
   // Fetch sales information summary and onboarding data on mount
   useEffect(() => {
     const fetchData = async () => {
+      // CRITICAL: Only fetch sales information summary if restaurant exists
+      const restaurants = restaurantOnboardingData?.restaurants || [];
+      const hasRestaurant = Array.isArray(restaurants) && restaurants.length > 0;
+      const restaurantId = localStorage.getItem('restaurant_id');
+      
+      if (!hasRestaurant || !restaurantId) {
+        // No restaurant - don't fetch sales summary
+        hasFetchedRef.current = true;
+        return;
+      }
+      
       // Fetch sales information summary with initial date range
       if (!hasFetchedRef.current) {
         if (!summaryData && !salesInformationSummaryLoading) {
