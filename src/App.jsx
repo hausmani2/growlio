@@ -4,6 +4,7 @@ import { message } from 'antd';
 import useStore from './store/store';
 import { GuidanceProvider } from './contexts/GuidanceContext';
 import LoadingSpinner from './components/layout/LoadingSpinner';
+import useOnboardingStatus from './hooks/useOnboardingStatus';
 
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
@@ -186,70 +187,53 @@ function App() {
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const token = useStore((state) => state.token);
 
-  const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
-  const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+  // Use the same onboarding status hook as Wrapper.jsx for consistency
+  const { 
+    isRegularUser, 
+    isSimulationUser,
+    hasRegularRestaurants,
+    hasSimulationRestaurants
+  } = useOnboardingStatus();
   
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   
-  // Check if user is in simulation mode - only on login/authentication change
+  // Check if user is in simulation mode - use same logic as Wrapper.jsx
+  // CRITICAL: According to requirements:
+  // - If only regular restaurant exists → normal flow (show chat widget)
+  // - If only simulation restaurant exists → simulation-only UI (hide chat widget)
+  // - If both exist → treat user as regular (show chat widget)
+  // - If neither exists → keep existing behavior (new user)
   useEffect(() => {
     if (!isAuthenticated) {
       setIsSimulationMode(false);
-      // Clear cache on logout
-      sessionStorage.removeItem('appSimulationMode');
-      sessionStorage.removeItem('appSimulationModeLastCheck');
       return;
     }
     
-    // Check cache first to avoid unnecessary API calls
-    const cacheKey = 'appSimulationMode';
-    const lastCheckTime = sessionStorage.getItem(`${cacheKey}LastCheck`);
-    const now = Date.now();
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+    let shouldShowSimulationMode = false;
     
-    // If we have cached data and it's still fresh, use it
-    if (lastCheckTime && (now - parseInt(lastCheckTime)) < CACHE_DURATION) {
-      const cachedMode = sessionStorage.getItem(cacheKey);
-      if (cachedMode !== null) {
-        setIsSimulationMode(cachedMode === 'true');
-        return;
-      }
+    // CRITICAL: Decision logic per requirements
+    // "If both exist → treat user as regular" - This means ALWAYS show regular mode (show chat widget)
+    // If user has BOTH regular and simulation restaurants → ALWAYS show regular mode
+    if (hasRegularRestaurants && hasSimulationRestaurants) {
+      shouldShowSimulationMode = false;
+    }
+    // If user is simulation-only (no regular restaurants)
+    // Hide chat widget (simulation mode)
+    else if (isSimulationUser && !hasRegularRestaurants) {
+      shouldShowSimulationMode = true;
+    }
+    // If user has only regular restaurants
+    // Show chat widget (regular mode)
+    else if (isRegularUser && !hasSimulationRestaurants) {
+      shouldShowSimulationMode = false;
+    }
+    // Default: don't show simulation mode (treat as regular, show chat widget)
+    else {
+      shouldShowSimulationMode = false;
     }
     
-    const checkSimulationMode = async () => {
-      try {
-        // Check restaurant simulation status
-        const simulationResult = await getRestaurantSimulation();
-        const isSimulator = simulationResult?.success && simulationResult?.data?.restaurant_simulation === true;
-        
-        if (isSimulator) {
-          // Check simulation onboarding status
-          const onboardingResult = await getSimulationOnboardingStatus();
-          const restaurants = onboardingResult?.data?.restaurants || [];
-          const isOnboardingComplete = onboardingResult?.success && 
-                                     restaurants.some((r) => r.simulation_onboarding_complete === true);
-          
-          // Only set simulation mode if onboarding is complete
-          const simulationMode = isOnboardingComplete;
-          setIsSimulationMode(simulationMode);
-          
-          // Cache the result
-          sessionStorage.setItem(cacheKey, simulationMode.toString());
-          sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
-        } else {
-          setIsSimulationMode(false);
-          // Cache the result
-          sessionStorage.setItem(cacheKey, 'false');
-          sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
-        }
-      } catch (error) {
-        console.error('❌ [App] Error checking simulation mode:', error);
-        setIsSimulationMode(false);
-      }
-    };
-    
-    checkSimulationMode();
-  }, [isAuthenticated, getRestaurantSimulation, getSimulationOnboardingStatus]);
+    setIsSimulationMode(shouldShowSimulationMode);
+  }, [isAuthenticated, isRegularUser, isSimulationUser, hasRegularRestaurants, hasSimulationRestaurants]);
   
   // Configure Ant Design message
   useEffect(() => {
