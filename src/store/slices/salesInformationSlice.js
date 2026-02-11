@@ -280,11 +280,45 @@ const createSalesInformationSlice = (set, get) => ({
             const restaurantId = currentState.restaurantId || localStorage.getItem('restaurant_id');
             
             if (!restaurantId) {
-                throw new Error('Restaurant ID is required');
+                const errorMsg = 'Restaurant ID is required. Please complete onboarding first.';
+                set(() => ({ 
+                    salesInformationSummaryLoading: false, 
+                    salesInformationSummaryError: errorMsg 
+                }));
+                return { 
+                    success: false, 
+                    error: errorMsg 
+                };
             }
             
-            // Note: Removed onboarding check - let the API call proceed and backend will handle validation
-            // The backend will return appropriate errors if data is not ready
+            // CRITICAL: Check if onboarding is complete before calling this API
+            // This API requires onboarding to be completed first
+            const isOnBoardingCompleted = currentState.isOnBoardingCompleted;
+            const restaurantOnboardingData = currentState.restaurantOnboardingData;
+            
+            // Check onboarding completion status
+            let onboardingComplete = false;
+            if (isOnBoardingCompleted) {
+                onboardingComplete = true;
+            } else if (restaurantOnboardingData?.restaurants) {
+                // Check if any restaurant has onboarding_complete === true
+                const restaurants = Array.isArray(restaurantOnboardingData.restaurants) 
+                    ? restaurantOnboardingData.restaurants 
+                    : [];
+                onboardingComplete = restaurants.some(r => r.onboarding_complete === true);
+            }
+            
+            if (!onboardingComplete) {
+                const errorMsg = 'Please complete onboarding before accessing sales information summary.';
+                set(() => ({ 
+                    salesInformationSummaryLoading: false, 
+                    salesInformationSummaryError: errorMsg 
+                }));
+                return { 
+                    success: false, 
+                    error: errorMsg 
+                };
+            }
             
             // Use provided dates or calculate previous month's start and end dates
             let startDateStr, endDateStr;
