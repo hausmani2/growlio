@@ -23,6 +23,20 @@ const SalesDays = ({ data, updateData, errors = {} }) => {
         updateData('selectedDays', updatedSelectedDays);
     };
 
+    // Check if all days are selected (open)
+    const allDaysSelected = days.every(day => data.selectedDays[day.name] === true);
+
+    // Handle select all / deselect all
+    const handleSelectAll = () => {
+        const updatedSelectedDays = {};
+        days.forEach(day => {
+            // If all are selected, deselect all (close all)
+            // If not all are selected, select all (open all)
+            updatedSelectedDays[day.name] = !allDaysSelected;
+        });
+        updateData('selectedDays', updatedSelectedDays);
+    };
+
     const tooltips = useTooltips('onboarding-sales');
 
     return (
@@ -35,10 +49,19 @@ const SalesDays = ({ data, updateData, errors = {} }) => {
 
             {/* Form Fields */}
             <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Operating Days <span className="text-red-500">*</span>
-                    <TooltipIcon text={tooltips['restaurant_days']} />
-                </label>
+                <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-gray-700">
+                        Operating Days <span className="text-red-500">*</span>
+                        <TooltipIcon text={tooltips['restaurant_days']} />
+                    </label>
+                    <button
+                        type="button"
+                        onClick={handleSelectAll}
+                        className="px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 hover:border-orange-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                    >
+                        {allDaysSelected ? 'Deselect All' : 'Select All'}
+                    </button>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {days.map((day, index) => {

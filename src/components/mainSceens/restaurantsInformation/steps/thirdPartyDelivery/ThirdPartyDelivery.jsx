@@ -35,7 +35,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
     return allProviderOptions.filter((option) => !selectedProviders.includes(option.value));
   };
 
-  // Ensure at least one provider row exists (matches onboarding screenshot behavior)
+  // Ensure at least one provider row exists
   useEffect(() => {
     const currentProviders = data?.providers || [];
     if (currentProviders.length > 0) return;
@@ -63,11 +63,8 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
   // Delete a provider
   const deleteProvider = (providerId) => {
     const currentProviders = data?.providers || [];
-    if (currentProviders.length <= 1) return;
-    updateData(
-      "providers",
-      currentProviders.filter((provider) => provider.id !== providerId)
-    );
+    const updatedProviders = currentProviders.filter((provider) => provider.id !== providerId);
+    updateData("providers", updatedProviders);
   };
 
   // Update a specific provider
@@ -87,21 +84,17 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-      <div className="text-sm font-bold text-orange-600">Third- party Delivery Information</div>
-      <div className="text-xs text-gray-600 mt-1">
-        Add your Third-party delivery services below.
+      <div className="mb-4">
+        <div className="text-sm font-bold text-orange-600">Third- party Delivery Information</div>
+        <div className="text-xs text-gray-600 mt-1">
+          Add your Third-party delivery services below.
+        </div>
       </div>
 
       <div className="mt-5">
         <div className="text-xs font-semibold text-gray-700 mb-3">
           Third-Party Provider Details
         </div>
-
-        {errors.providers && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <span className="text-red-600 text-sm">{errors.providers}</span>
-          </div>
-        )}
 
         <div className="space-y-3">
           {(data?.providers || []).map((provider, index) => {
@@ -123,7 +116,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
                       htmlFor={`providerName-${provider.id}`}
                       className="block text-xs font-semibold text-gray-700 mb-2"
                     >
-                      Provider Name<span className="text-red-500">*</span>
+                      Provider Name
                     </label>
                     <Select
                       id={`providerName-${provider.id}`}
@@ -132,7 +125,6 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
                       value={providerName || undefined}
                       onChange={(value) => updateProvider(provider.id, "providerName", value)}
                       options={getAvailableProviderOptions(provider.id)}
-                      status={errors[`provider_${index}_name`] ? "error" : ""}
                     />
                   </div>
 
@@ -141,7 +133,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
                       htmlFor={`providerFee-${provider.id}`}
                       className="block text-xs font-semibold text-gray-700 mb-2"
                     >
-                      Provider Fee<span className="text-red-500">*</span>
+                      Provider Fee
                     </label>
                     <Select
                       id={`providerFee-${provider.id}`}
@@ -150,22 +142,19 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
                       value={providerFee || undefined}
                       onChange={(value) => updateProvider(provider.id, "providerFee", value)}
                       options={percentageOptions}
-                      status={errors[`provider_${index}_fee`] ? "error" : ""}
                     />
                   </div>
                 </div>
 
-                {(data?.providers || []).length > 1 && (
-                  <div className="flex justify-end pt-3">
-                    <button
-                      type="button"
-                      onClick={() => deleteProvider(provider.id)}
-                      className="text-red-500 hover:text-red-700 text-xs font-semibold px-3 py-1 rounded hover:bg-red-50 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                <div className="flex justify-end pt-3">
+                  <button
+                    type="button"
+                    onClick={() => deleteProvider(provider.id)}
+                    className="text-red-500 hover:text-red-700 text-xs font-semibold px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                  >
+                    Delete Provider
+                  </button>
+                </div>
               </div>
             );
           })}

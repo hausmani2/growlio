@@ -578,25 +578,31 @@ const Dashboard = () => {
 
     const fetchRestaurantGoals = async () => {
       try {
-        // Check if we already have goals data loaded
-        if (restaurantGoals) {
-          return; // Data already loaded, skip API call
-        }
         
         const restaurantId = await ensureRestaurantId();
         
         if (!restaurantId) {
+          console.warn('⚠️ No restaurant ID available, cannot fetch goals');
           return;
         }
         
+        // Always fetch fresh data on page load/reload
+        // Don't skip if data exists - we want fresh data on reload
         const result = await getRestaurentGoal(restaurantId);
-        if (result === null) {
+        
+        if (result) {
+          if (result.restaurant_days && Array.isArray(result.restaurant_days)) {
+          } else {
+          }
+        } else {
+          console.warn('⚠️ Restaurant goals API returned null');
         }
       } catch (error) {
-        console.error('Restaurant goals error:', error.message);
+        console.error('❌ Restaurant goals error:', error.message);
         
         if (error.message.includes('Restaurant ID is required') || 
             error.message.includes('Restaurant goals not found')) {
+          console.warn('⚠️ Restaurant goals not available:', error.message);
         }
       }
     };

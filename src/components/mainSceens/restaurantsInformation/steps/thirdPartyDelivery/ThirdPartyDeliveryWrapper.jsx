@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { message } from "antd";
 import { TabProvider } from "../../TabContext";
 import useStore from "../../../../../store/store";
@@ -19,6 +19,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
     clearError,
     completeOnboardingData,
     isOnBoardingCompleted,
+    loadExistingOnboardingData,
   } = useStore();
 
   const { validationErrors, clearFieldError, validateStep } = useStepValidation();
@@ -28,9 +29,29 @@ const ThirdPartyDeliveryWrapperContent = () => {
   const isUpdateMode = !location.pathname.includes("/onboarding");
 
   const [thirdPartyData, setThirdPartyData] = useState({
-    third_party: false,
+    third_party: true, // Always enabled on this screen
     providers: [],
   });
+
+  // Load existing onboarding data when opening "Your Setup" menu item
+  const hasLoadedRef = useRef(false);
+  useEffect(() => {
+    const loadData = async () => {
+      if (isUpdateMode && !hasLoadedRef.current) {
+        hasLoadedRef.current = true;
+        try {
+          // Call GET API to fetch onboarding data (force refresh to get latest data)
+          await loadExistingOnboardingData(true);
+        } catch (error) {
+          console.error('Error loading onboarding data:', error);
+          hasLoadedRef.current = false; // Allow retry on error
+        }
+      }
+    };
+    
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUpdateMode]);
 
   // Get selectedDays from Sales Channels data
   const getSelectedDays = () => {
@@ -99,7 +120,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
       }
 
       setThirdPartyData({
-        // In this dedicated screen, treat it as enabled when user is managing providers
+        // Always set to true on this dedicated screen
         third_party: true,
         providers: processedProviders,
       });
@@ -136,19 +157,24 @@ const ThirdPartyDeliveryWrapperContent = () => {
       return false;
     }
 
+    // Always include providers key, even if empty array
     const stepData = {
-      third_party: thirdPartyData.third_party,
+      third_party: true, // Always true on this screen
+      providers: [], // Always send providers array, even if empty
     };
 
-    if (thirdPartyData.third_party && thirdPartyData.providers) {
+    // Only include providers that have both name and fee filled
+    if (thirdPartyData.providers && thirdPartyData.providers.length > 0) {
       const providersForAPI = thirdPartyData.providers
         .filter((p) => p.providerName && p.providerFee)
         .map((p) => ({
           provider_name: p.providerName,
           provider_fee: parseInt(p.providerFee, 10),
         }));
-      if (providersForAPI.length > 0) stepData.providers = providersForAPI;
+      // Update providers array with valid providers, or keep empty array if none are valid
+      stepData.providers = providersForAPI.length > 0 ? providersForAPI : [];
     }
+    // If no providers exist, stepData.providers remains as empty array []
 
     const result = await submitStepData("Sales Channels", stepData, () => {
       // Always show success message

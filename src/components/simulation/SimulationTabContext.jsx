@@ -393,8 +393,14 @@ export const SimulationTabProvider = ({ children }) => {
             
             if (result.success) {
                 message.success('Data saved successfully!');
-                // Refresh data
+                // Refresh both data and status to prevent route guard redirects
                 await getSimulationOnboardingData(true);
+                // Also refresh the onboarding status to keep route guard in sync
+                // This prevents redirects when the guard checks status after save
+                const storeState = useStore.getState();
+                if (storeState?.getSimulationOnboardingStatus) {
+                    await storeState.getSimulationOnboardingStatus(true);
+                }
                 return true;
             } else {
                 message.error(result.error || 'Failed to save data');

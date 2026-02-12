@@ -88,9 +88,26 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
   const toggleDay = (day) => {
     setSelectedDays(prev => {
       const prevArray = Array.isArray(prev) ? prev : [];
-      const newDays = prevArray.includes(day)
-        ? prevArray.filter(d => d !== day)
-        : [...prevArray, day];
+      // Normalize day values for comparison (handle both 'mon' and 'monday' formats)
+      const normalizeDay = (d) => {
+        const dayMap = {
+          'monday': 'mon',
+          'tuesday': 'tue',
+          'wednesday': 'wed',
+          'thursday': 'thu',
+          'friday': 'fri',
+          'saturday': 'sat',
+          'sunday': 'sun'
+        };
+        return dayMap[d] || d;
+      };
+      
+      const normalizedDay = normalizeDay(day);
+      const normalizedPrev = prevArray.map(normalizeDay);
+      
+      const newDays = normalizedPrev.includes(normalizedDay)
+        ? prevArray.filter(d => normalizeDay(d) !== normalizedDay)
+        : [...prevArray, day]; // Keep original format when adding
       
       // Clear error when days are selected
       if (newDays.length > 0 && errors.operatingDays) {
@@ -172,26 +189,43 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
 
         <div className="space-y-3">
           {DAYS_OF_WEEK.map(day => {
-            const isSelected = Array.isArray(selectedDays) && selectedDays.includes(day.value);
+            // Normalize day values for comparison (handle both 'mon' and 'monday' formats)
+            const normalizeDay = (d) => {
+              const dayMap = {
+                'monday': 'mon',
+                'tuesday': 'tue',
+                'wednesday': 'wed',
+                'thursday': 'thu',
+                'friday': 'fri',
+                'saturday': 'sat',
+                'sunday': 'sun'
+              };
+              return dayMap[d] || d;
+            };
+            
+            const normalizedDayValue = normalizeDay(day.value);
+            const normalizedSelectedDays = Array.isArray(selectedDays) 
+              ? selectedDays.map(normalizeDay)
+              : [];
+            const isSelected = normalizedSelectedDays.includes(normalizedDayValue);
+            
             return (
               <div
                 key={day.value}
-                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                className={`border-2 rounded-lg p-4 transition-all ${
                   isSelected
                     ? 'border-orange-500 bg-orange-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
-                onClick={() => toggleDay(day.value)}
               >
                 <Checkbox
                   checked={isSelected}
-                  onChange={(e) => {
-                    e.stopPropagation();
+                  onChange={() => {
                     toggleDay(day.value);
                   }}
-                  className="text-base"
+                  className="text-base cursor-pointer"
                 >
-                  <span className="ml-2 font-medium">{day.label}</span>
+                  <span className="ml-2 font-medium cursor-pointer">{day.label}</span>
                 </Checkbox>
               </div>
             );

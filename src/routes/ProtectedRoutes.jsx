@@ -1056,8 +1056,19 @@ const ProtectedRoutes = () => {
                                          location.pathname === '/simulation/labor-information' ||
                                          location.pathname === '/simulation/expenses';
     
-    if (requiresSimulationRestaurant && !hasSimulationRestaurantsCheck) {
+    // Check if user has a simulation restaurant ID in localStorage (for update mode)
+    // This prevents redirects when saving data in update mode
+    const simulationRestaurantId = localStorage.getItem('simulation_restaurant_id');
+    const isUpdateMode = simulationRestaurantId && (
+      location.pathname === '/simulation/basic-information' ||
+      location.pathname === '/simulation/sales-channels-operating-days' ||
+      location.pathname === '/simulation/labor-information' ||
+      location.pathname === '/simulation/expenses'
+    );
+    
+    if (requiresSimulationRestaurant && !hasSimulationRestaurantsCheck && !isUpdateMode) {
       // Simulation onboarding API has no restaurants, redirect to simulation onboarding
+      // BUT: Don't redirect if we're in update mode (have restaurant ID)
       return <Navigate to="/onboarding/simulation" replace />;
     }
     

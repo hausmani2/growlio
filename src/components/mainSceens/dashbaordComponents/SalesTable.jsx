@@ -115,43 +115,65 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Function to check if a day should be closed based on restaurant goals
   const shouldDayBeClosed = (dayName) => {
-    if (!restaurantGoals || !restaurantGoals.restaurant_days) {
+    if (!restaurantGoals || !restaurantGoals.restaurant_days || !Array.isArray(restaurantGoals.restaurant_days)) {
       return false; // Default to open if no goals data
     }
 
+    // Normalize day names for case-insensitive comparison
     // dayjs format('dddd') returns full day names like "Sunday", "Monday"
     // restaurant_days array contains capitalized day names like "Sunday", "Monday"
-    // So we can compare directly without additional formatting
+    // Make comparison case-insensitive to handle any format differences
+    const normalizedDayName = dayName ? dayName.trim() : '';
+    const normalizedRestaurantDays = restaurantGoals.restaurant_days.map(day => 
+      day ? day.trim() : ''
+    );
 
-    // Check if this day is IN the restaurant_days array
+    // Check if this day is IN the restaurant_days array (case-insensitive)
     // If it's in the array, it means the restaurant is CLOSED on that day
     // If it's NOT in the array, it means the restaurant is OPEN on that day
-    return restaurantGoals.restaurant_days.includes(dayName);
+    const isClosed = normalizedRestaurantDays.some(closedDay => 
+      closedDay.toLowerCase() === normalizedDayName.toLowerCase()
+    );
+    
+    
+    return isClosed;
   };
 
-  // Function to fetch restaurant goals if not already available
+  // Function to fetch restaurant goals - always fetch on component mount
   const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
-    // Prevent multiple calls
+    // Always fetch on component mount to ensure fresh data
+    // Reset ref when component unmounts to allow fresh fetch on remount
     if (hasFetchedGoalsRef.current) {
-      return;
+      // Only skip if we already fetched in this session
+      // But still allow fetch if restaurant_days is missing
+      const needsFetch = !restaurantGoals || !restaurantGoals.restaurant_days || !Array.isArray(restaurantGoals.restaurant_days);
+      if (!needsFetch) {
+        return;
+      }
     }
     
     try {
-      if (!restaurantGoals) {
-        hasFetchedGoalsRef.current = true;
-        await getRestaurentGoal();
+      hasFetchedGoalsRef.current = true;
+      const goalsData = await getRestaurentGoal();
+      
+      if (goalsData) {
+        if (goalsData.restaurant_days && Array.isArray(goalsData.restaurant_days)) {
+        } else {
+        }
       } else {
-        hasFetchedGoalsRef.current = true;
+        console.warn('⚠️ Restaurant goals API returned null');
       }
     } catch (error) {
-      console.error('Error fetching restaurant goals:', error);
+      console.error('❌ Error fetching restaurant goals:', error);
       hasFetchedGoalsRef.current = false; // Allow retry on error
     }
   };
 
-  // Fetch restaurant goals on component mount
+  // Fetch restaurant goals on component mount - always fetch on page load
   useEffect(() => {
+    // Reset ref on mount to ensure fresh fetch
+    hasFetchedGoalsRef.current = false;
     fetchRestaurantGoals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -506,9 +528,71 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         return;
       }
 
+      // Calculate week_start as Sunday of the week (API requires Sunday)
+      const getWeekStartSunday = (date) => {
+        if (!date) return null;
+        const dateObj = dayjs.isDayjs(date) ? date : dayjs(date);
+        return dateObj.startOf('week').format('YYYY-MM-DD'); // startOf('week') returns Sunday
+      };
+      
+      const weekStartDate = weekDays.length > 0 
+        ? weekDays[0].date 
+        : selectedDate 
+          ? selectedDate 
+          : selectedYear && selectedMonth 
+            ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`)
+            : null;
+      
+      const weekStartSunday = getWeekStartSunday(weekStartDate);
+      
+      // Sort daily data by date and ensure it starts from Sunday
+      const sortedDailyData = [...currentWeekData.dailyData]
+        .sort((a, b) => {
+          const dateA = dayjs.isDayjs(a.date) ? a.date : dayjs(a.date);
+          const dateB = dayjs.isDayjs(b.date) ? b.date : dayjs(b.date);
+          return dateA.diff(dateB);
+        })
+        .filter(day => {
+          // Only include days that belong to this week (Sunday to Saturday)
+          const dayDate = dayjs.isDayjs(day.date) ? day.date : dayjs(day.date);
+          const weekStart = dayjs(weekStartSunday).startOf('week');
+          const weekEnd = dayjs(weekStartSunday).endOf('week');
+          // Use diff() to check if date is within week range
+          return dayDate.diff(weekStart) >= 0 && dayDate.diff(weekEnd) <= 0;
+        });
+      
+      // Ensure we have exactly 7 days starting from Sunday
+      const weekStartDateObj = dayjs(weekStartSunday);
+      const completeDailyData = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDate = weekStartDateObj.add(i, 'day');
+        const existingDay = sortedDailyData.find(d => {
+          const dayDate = dayjs.isDayjs(d.date) ? d.date : dayjs(d.date);
+          return dayDate.format('YYYY-MM-DD') === targetDate.format('YYYY-MM-DD');
+        });
+        
+        if (existingDay) {
+          completeDailyData.push(existingDay);
+        } else {
+          // Create a default day entry for missing days
+          const dayName = targetDate.format('dddd');
+          completeDailyData.push({
+            date: targetDate,
+            dayName: dayName,
+            budgetedSales: 0,
+            actualSalesInStore: 0,
+            actualSalesAppOnline: 0,
+            actualSalesOnline: 0,
+            dailyTickets: 0,
+            averageDailyTicket: 0,
+            restaurant_open: shouldDayBeClosed(dayName) ? 0 : 1
+          });
+        }
+      }
+      
       // Create the transformed data for API
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
+        week_start: weekStartSunday,
         section: "Sales Performance",
         section_data: {
           weekly: {
@@ -527,7 +611,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               return acc;
             }, {})
           },
-          daily: currentWeekData.dailyData.map(day => {
+          daily: completeDailyData.map(day => {
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
@@ -902,10 +986,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     });
   };
 
-  const showEditWeeklyModal = (weekData) => {
+  const showEditWeeklyModal = async (weekData) => {
     // Get week start date from weekData or selectedDate
     const weekStartDate = weekData?.startDate || 
                          (weekDays.length > 0 ? weekDays[0].date : selectedDate);
+    
+    // Ensure restaurant goals are fetched before opening modal
+    // This ensures restaurant_days from API are available when generating daily data
+    await fetchRestaurantGoals();
     
     // Check week status and show warning if needed
     checkWeekStatusAndShowWarning(weekStartDate, () => {
@@ -1103,9 +1191,73 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         averageDailyTicket: weeklyTotals.averageDailyTicket
       };
 
+      // Calculate week_start as Sunday of the week (API requires Sunday)
+      const getWeekStartSunday = (date) => {
+        if (!date) return null;
+        const dateObj = dayjs.isDayjs(date) ? date : dayjs(date);
+        return dateObj.startOf('week').format('YYYY-MM-DD'); // startOf('week') returns Sunday
+      };
+      
+      const weekStartDate = weekDays.length > 0 
+        ? weekDays[0].date 
+        : selectedDate 
+          ? selectedDate 
+          : selectedYear && selectedMonth 
+            ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`)
+            : null;
+      
+      // Calculate the Sunday of the week for week_start
+      const weekStartSunday = getWeekStartSunday(weekStartDate);
+      
+      // Sort daily data by date and ensure it starts from Sunday
+      // Filter and sort to ensure we have exactly 7 days starting from Sunday
+      const sortedDailyData = [...weekData.dailyData]
+        .sort((a, b) => {
+          const dateA = dayjs.isDayjs(a.date) ? a.date : dayjs(a.date);
+          const dateB = dayjs.isDayjs(b.date) ? b.date : dayjs(b.date);
+          return dateA.diff(dateB);
+        })
+        .filter(day => {
+          // Only include days that belong to this week (Sunday to Saturday)
+          const dayDate = dayjs.isDayjs(day.date) ? day.date : dayjs(day.date);
+          const weekStart = dayjs(weekStartSunday).startOf('week');
+          const weekEnd = dayjs(weekStartSunday).endOf('week');
+          // Use diff() to check if date is within week range
+          return dayDate.diff(weekStart) >= 0 && dayDate.diff(weekEnd) <= 0;
+        });
+      
+      // If we don't have 7 days starting from Sunday, generate missing days
+      const weekStartDateObj = dayjs(weekStartSunday);
+      const completeDailyData = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDate = weekStartDateObj.add(i, 'day');
+        const existingDay = sortedDailyData.find(d => {
+          const dayDate = dayjs.isDayjs(d.date) ? d.date : dayjs(d.date);
+          return dayDate.format('YYYY-MM-DD') === targetDate.format('YYYY-MM-DD');
+        });
+        
+        if (existingDay) {
+          completeDailyData.push(existingDay);
+        } else {
+          // Create a default day entry for missing days
+          const dayName = targetDate.format('dddd');
+          completeDailyData.push({
+            date: targetDate,
+            dayName: dayName,
+            budgetedSales: 0,
+            actualSalesInStore: 0,
+            actualSalesAppOnline: 0,
+            actualSalesOnline: 0,
+            dailyTickets: 0,
+            averageDailyTicket: 0,
+            restaurant_open: shouldDayBeClosed(dayName) ? 0 : 1
+          });
+        }
+      }
+      
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
-        week_start: weekDays.length > 0 ? weekDays[0].date.format('YYYY-MM-DD') : selectedDate ? selectedDate.format('YYYY-MM-DD') : selectedYear && selectedMonth ? dayjs(`${selectedYear}-${selectedMonth.toString().padStart(2, '0')}-01`).format('YYYY-MM-DD') : null,
+        week_start: weekStartSunday,
         section: "Sales Performance",
         section_data: {
           weekly: {
@@ -1124,7 +1276,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               return acc;
             }, {})
           },
-          daily: weekData.dailyData.map(day => {
+          daily: completeDailyData.map(day => {
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
@@ -1247,10 +1399,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
 
   // Generate 7 days of data starting from a given date
+  // Always starts from Sunday of the week (API requires week_start to be Sunday)
   const generateDailyData = (startDate) => {
+    // Ensure we always start from Sunday of the week
+    const weekStartSunday = dayjs(startDate).startOf('week'); // startOf('week') returns Sunday
+    
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const currentDate = dayjs(startDate).add(i, 'day');
+      const currentDate = weekStartSunday.add(i, 'day');
       const dayName = currentDate.format('dddd');
 
       // Check restaurant goals to determine if this day should be closed
@@ -1297,6 +1453,41 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         // Dynamic provider fields will be added here
       }
     });
+
+    // Regenerate daily data when restaurant goals become available
+    // This ensures restaurant_days from the API are applied correctly
+    useEffect(() => {
+      if (isModalVisible && restaurantGoals && restaurantGoals.restaurant_days) {
+        // Regenerate daily data with restaurant goals applied
+        const newDailyData = generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate);
+        
+        // Merge with existing data to preserve user inputs
+        const mergedDailyData = newDailyData.map(newDay => {
+          const existingDay = weekFormData.dailyData.find(d => 
+            d.date?.format('YYYY-MM-DD') === newDay.date.format('YYYY-MM-DD')
+          );
+          
+          if (existingDay) {
+            // Keep existing data but update restaurant_open if it was auto-set
+            return {
+              ...existingDay,
+              // Only update restaurant_open if it matches the auto-closed status
+              // This preserves manual toggles but applies API restaurant_days for new days
+              restaurant_open: existingDay.restaurant_open !== undefined 
+                ? existingDay.restaurant_open 
+                : newDay.restaurant_open
+            };
+          }
+          
+          return newDay;
+        });
+        
+        setWeekFormData(prev => ({
+          ...prev,
+          dailyData: mergedDailyData
+        }));
+      }
+    }, [isModalVisible, restaurantGoals?.restaurant_days]);
 
     // Flag to prevent showing the message multiple times
     const [hasShownRestaurantDaysMessage, setHasShownRestaurantDaysMessage] = useState(false);
@@ -2709,11 +2900,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         }
         open={showWeekWarningModal}
         onCancel={handleWeekWarningCancel}
-        footer={weekWarningData?.isFutureWeek ? [
-          <Button key="cancel" onClick={handleWeekWarningCancel}>
-            Cancel
-          </Button>
-        ] : [
+        footer={[
           <Button key="cancel" onClick={handleWeekWarningCancel}>
             Cancel
           </Button>,
@@ -2744,14 +2931,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             {weekWarningData.isFutureWeek ? (
               <>
                 <Title level={4} className="mb-4">
-                  Cannot Enter Future Week Data
+                  {`${pendingActionType === 'edit' ? 'Editing' : 'Adding'} Data to Future Week`}
                 </Title>
                 
-                <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
-                  <Text strong className="text-red-700 mb-2 block">
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                  <Text strong className="text-blue-700 mb-2 block">
                     Week Information:
                   </Text>
-                  <div className="text-sm text-red-600 space-y-1">
+                  <div className="text-sm text-blue-600 space-y-1">
                     <p>• Selected week: <strong>{weekWarningData.weekStart} - {weekWarningData.weekEnd}</strong></p>
                     {weekWarningData.currentWeekStart && weekWarningData.currentWeekEnd && (
                       <p>• Current week: <strong>{weekWarningData.currentWeekStart} - {weekWarningData.currentWeekEnd}</strong></p>
@@ -2760,18 +2947,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   </div>
                 </div>
                 
-                <div className="bg-red-50 p-4 rounded-lg mb-4">
-                  <Text strong className="text-red-700 mb-2 block">
-                    Important Notice:
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <Text strong className="text-blue-700 mb-2 block">
+                    Future Week Notice:
                   </Text>
-                  <div className="text-base text-red-600 font-medium">
-                    <p>You cannot enter the Future data only in this component closeout your days</p>
+                  <div className="text-sm text-blue-600 space-y-1">
+                    <p>• You are {pendingActionType === 'edit' ? 'editing' : 'adding'} data to a future week</p>
+                    <p>• This is typically used for planning and forecasting budgets</p>
+                    <p>• Make sure you have the correct week selected</p>
+                    <p>• You can enter budget values for future weeks to plan ahead</p>
                   </div>
                 </div>
                 
                 <div className="text-sm text-gray-600">
+                  <p className="mb-2">
+                    <strong>Proceed:</strong> Continue {pendingActionType === 'edit' ? 'editing' : 'adding'} data to this future week
+                  </p>
                   <p>
-                    <strong>Cancel:</strong> Close this dialog and select the current week or a past week
+                    <strong>Cancel:</strong> Close this dialog and select a different week
                   </p>
                 </div>
               </>

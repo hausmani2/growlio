@@ -703,7 +703,7 @@ const createOnBoardingSlice = (set, get) => ({
     },
     
     // Load existing onboarding data from API and populate forms
-    loadExistingOnboardingData: async () => {
+    loadExistingOnboardingData: async (forceRefresh = false) => {
         const state = get();
         
         // Prevent multiple concurrent calls - if already loading, return the existing promise
@@ -732,18 +732,21 @@ const createOnBoardingSlice = (set, get) => ({
         }
         
         // Check if we already have complete data loaded (prevent unnecessary calls)
-        const hasCompleteData = state.completeOnboardingData?.restaurant_id && 
-            Object.values(state.completeOnboardingData).some(step => 
-                step && typeof step === 'object' && step.status === true
-            );
-        
-        if (hasCompleteData) {
-            // Data already loaded, return it without making API call
-            return {
-                success: true,
-                data: state.completeOnboardingData,
-                message: 'Data already loaded'
-            };
+        // Skip this check if forceRefresh is true to always fetch fresh data
+        if (!forceRefresh) {
+            const hasCompleteData = state.completeOnboardingData?.restaurant_id && 
+                Object.values(state.completeOnboardingData).some(step => 
+                    step && typeof step === 'object' && step.status === true
+                );
+            
+            if (hasCompleteData) {
+                // Data already loaded, return it without making API call
+                return {
+                    success: true,
+                    data: state.completeOnboardingData,
+                    message: 'Data already loaded'
+                };
+            }
         }
         
         set(() => ({ onboardingLoading: true, onboardingError: null }));
@@ -1717,6 +1720,8 @@ const createOnBoardingSlice = (set, get) => ({
         }
         
         // Check if we already have goals data loaded for this restaurant
+        // IMPORTANT: Always check if restaurant_days exists and is valid
+        // If restaurant_days is missing or invalid, always fetch fresh data
         if (state.restaurantGoals) {
             // Verify it's for the correct restaurant
             let finalRestaurantId = restaurantId;
@@ -1724,9 +1729,17 @@ const createOnBoardingSlice = (set, get) => ({
                 finalRestaurantId = state.completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id');
             }
             
-            // If we have data and restaurant ID matches (or we don't have a specific ID to check), return cached data
-            if (!restaurantId || !finalRestaurantId || state.restaurantGoals.restaurant_id === finalRestaurantId) {
+            // Check if restaurant_days exists and is valid
+            const hasValidRestaurantDays = state.restaurantGoals.restaurant_days && 
+                                         Array.isArray(state.restaurantGoals.restaurant_days);
+            
+            // If we have valid data with restaurant_days and restaurant ID matches, return cached data
+            if (hasValidRestaurantDays && (!restaurantId || !finalRestaurantId || state.restaurantGoals.restaurant_id === finalRestaurantId)) {
                 return state.restaurantGoals;
+            }
+            
+            // If we have goals data but restaurant_days is missing or invalid, fetch fresh data
+            if (!hasValidRestaurantDays) {
             }
         }
         
@@ -1752,14 +1765,16 @@ const createOnBoardingSlice = (set, get) => ({
                 return null;
             }
 
-            const response = await apiGet(`/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`);
+            const url = `/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`;
+            const response = await apiGet(url);
+            
             
             set(() => ({
                 restaurantGoalsLoading: false,
                 restaurantGoalsError: null,
                 restaurantGoals: response.data
             }));
-
+            
             return response.data;
         } catch (error) {
             console.error('❌ Error fetching restaurant goals:', error);
@@ -1782,8 +1797,6 @@ const createOnBoardingSlice = (set, get) => ({
                 restaurantGoals: null
             }));
             
-            // Don't throw the error to prevent infinite loops in components
-            console.warn('⚠️ Restaurant goals fetch failed:', errorMessage);
             return null;
         }
     },

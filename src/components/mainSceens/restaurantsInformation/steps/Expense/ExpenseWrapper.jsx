@@ -42,8 +42,8 @@ const ExpenseWrapperContent = () => {
                 
                 hasLoadedRef.current = true;
                 try {
-                    // Load onboarding data which includes Expense information
-                    await loadExistingOnboardingData();
+                    // Load onboarding data which includes Expense information (force refresh to get latest data)
+                    await loadExistingOnboardingData(true);
                 } catch (error) {
                     console.error('Error loading expense data:', error);
                     hasLoadedRef.current = false; // Allow retry on error

@@ -4,8 +4,9 @@ import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker, Modal } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useStore from '../../../store/store';
+import useRestaurantGoals from '../../../hooks/useRestaurantGoals';
 import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
@@ -20,6 +21,7 @@ const { Title } = Typography;
 
 const SummaryDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Use local state for calendar to prevent infinite loops
   const [calendarDateRange, setCalendarDateRange] = useState([]);
@@ -101,11 +103,12 @@ const SummaryDashboard = () => {
     getWeeklyAverageData
   } = useStore();
 
-  // Restaurant goals functionality
-  const { getRestaurentGoal } = useStore();
-
-  // Auth functionality for restaurant ID
-  const { ensureRestaurantId } = useStore();
+  // Restaurant goals functionality - using custom hook for professional handling
+  const { fetchGoals, refreshGoals } = useRestaurantGoals({
+    autoFetch: true,
+    refreshOnMount: false,
+    componentName: 'SummaryDashboard'
+  });
 
   // Enhanced data validation function with better logging
   const hasValidData = useCallback(() => {
@@ -458,18 +461,28 @@ const SummaryDashboard = () => {
     
     const initializeDashboard = async () => {
       try {
-        await ensureRestaurantId();
-        await getRestaurentGoal();
+        // Fetch goals using the custom hook
+        await fetchGoals();
         setIsInitialized(true);
-        
-
       } catch (error) {
-        console.error('Error initializing dashboard:', error);
+        console.error('❌ Error initializing dashboard:', error);
+        setIsInitialized(true); // Still set initialized to allow UI to render
       }
     };
 
     initializeDashboard();
-  }, [ensureRestaurantId, getRestaurentGoal]);
+  }, [isInitialized, fetchGoals]);
+
+  // Fetch restaurant goals when navigating to budget page
+  useEffect(() => {
+    const isBudgetPage = location.pathname === '/dashboard/budget';
+    
+    if (isBudgetPage) {
+      console.log('📊 Budget page accessed - fetching restaurant goals...');
+      // Refresh goals when budget page is accessed
+      refreshGoals();
+    }
+  }, [location.pathname, refreshGoals]);
 
   // Fetch data when date range changes (but not on initial load)
   useEffect(() => {

@@ -259,6 +259,38 @@ const createDashboardSlice = (set, get) => {
             return goalsData?.delivery_days || [];
         },
 
+        // Get restaurant days (OPEN days)
+        // IMPORTANT: restaurant_days contains the days when restaurant is OPEN
+        // If restaurant_days is empty [], it means ALL days are CLOSED
+        // If restaurant_days has days like ["Sunday", "Monday"], those are OPEN days
+        getRestaurantDays: () => {
+            const { goalsData } = get();
+            return goalsData?.restaurant_days || [];
+        },
+
+        // Check if a specific day is OPEN based on restaurant_days
+        // Returns true if day is OPEN, false if CLOSED
+        isRestaurantDayOpen: (dayName) => {
+            const { goalsData } = get();
+            if (!goalsData || !goalsData.restaurant_days || !Array.isArray(goalsData.restaurant_days)) {
+                // If no data, default to all days closed (empty array means all closed)
+                return false;
+            }
+
+            // Normalize day names for case-insensitive comparison
+            const normalizedDayName = dayName ? dayName.trim() : '';
+            const normalizedRestaurantDays = goalsData.restaurant_days.map(day => 
+                day ? day.trim() : ''
+            );
+
+            // Check if this day is IN the restaurant_days array (case-insensitive)
+            // If it's in the array, it means the restaurant is OPEN on that day
+            // If it's NOT in the array (or array is empty), it means the restaurant is CLOSED on that day
+            return normalizedRestaurantDays.some(openDay => 
+                openDay.toLowerCase() === normalizedDayName.toLowerCase()
+            );
+        },
+
         // Get sales performance data
         getSalesPerformance: () => {
             const { dashboardData } = get();

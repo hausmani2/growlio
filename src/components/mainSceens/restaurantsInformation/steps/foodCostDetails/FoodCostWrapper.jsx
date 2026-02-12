@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { message } from "antd";
 import FoodCostDetails from "./FoodCostDetails";
 import { TabProvider } from "../../TabContext";
@@ -12,7 +12,7 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 const FoodCostWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted, loadExistingOnboardingData } = useStore();
     const { validationErrors, clearFieldError, validateFoodCostDetails, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
     
@@ -23,6 +23,26 @@ const FoodCostWrapperContent = () => {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
+    // Load existing onboarding data when opening "Your Setup" menu item
+    const hasLoadedRef = useRef(false);
+    useEffect(() => {
+        const loadData = async () => {
+            if (isUpdateMode && !hasLoadedRef.current) {
+                hasLoadedRef.current = true;
+                try {
+                    // Call GET API to fetch onboarding data (force refresh to get latest data)
+                    await loadExistingOnboardingData(true);
+                } catch (error) {
+                    console.error('Error loading onboarding data:', error);
+                    hasLoadedRef.current = false; // Allow retry on error
+                }
+            }
+        };
+        
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateMode]);
     
     // State for Food Cost Details
     const [foodCostData, setFoodCostData] = useState({

@@ -82,41 +82,90 @@ const SalesDataModal = ({
 
   // Add ref to track if week has been initially confirmed (to prevent showing modal again during save)
   const weekInitiallyConfirmedRef = useRef(false);
+  
+  // Track the last week start date to detect week changes
+  const lastWeekStartDateRef = useRef(null);
 
-  // Function to check if a day should be closed based on restaurant goals
-  const shouldDayBeClosed = (dayName) => {
-    if (!restaurantGoals || !restaurantGoals.restaurant_days) {
-      return false; // Default to open if no goals data
+  // Function to check if a day is OPEN based on restaurant goals
+  // IMPORTANT: restaurant_days from API contains OPEN days (not closed days)
+  // If restaurant_days is empty [], it means ALL days are CLOSED
+  // If restaurant_days has days like ["Sunday", "Monday"], those are OPEN days
+  const isDayOpen = (dayName) => {
+    // Get the latest restaurant goals from the store to ensure we have the most up-to-date data
+    const currentState = useStore.getState();
+    const currentRestaurantGoals = currentState.restaurantGoals || restaurantGoals;
+    
+    if (!currentRestaurantGoals || !currentRestaurantGoals.restaurant_days) {
+      // If no goals data or restaurant_days is missing, default to all days CLOSED
+      // Empty array means all days are closed
+      console.log(`⚠️ No restaurant_days data for "${dayName}", defaulting to CLOSED`);
+      return false;
     }
 
+    // Check if restaurant_days is an array
+    if (!Array.isArray(currentRestaurantGoals.restaurant_days)) {
+      console.warn('⚠️ restaurant_days is not an array:', currentRestaurantGoals.restaurant_days);
+      return false;
+    }
+
+    // If restaurant_days is empty array [], all days are CLOSED
+    if (currentRestaurantGoals.restaurant_days.length === 0) {
+      console.log(`📅 restaurant_days is empty [], "${dayName}" is CLOSED`);
+      return false;
+    }
+
+    // Normalize day names for case-insensitive comparison
     // dayjs format('dddd') returns full day names like "Sunday", "Monday"
     // restaurant_days array contains capitalized day names like "Sunday", "Monday"
-    // So we can compare directly without additional formatting
+    // Make comparison case-insensitive to handle any format differences
+    const normalizedDayName = dayName ? dayName.trim() : '';
+    const normalizedRestaurantDays = currentRestaurantGoals.restaurant_days.map(day => 
+      day ? day.trim() : ''
+    );
 
-    // Check if this day is IN the restaurant_days array
-    // If it's in the array, it means the restaurant is CLOSED on that day
-    // If it's NOT in the array, it means the restaurant is OPEN on that day
-    return restaurantGoals.restaurant_days.includes(dayName);
+    // Check if this day is IN the restaurant_days array (case-insensitive)
+    // If it's in the array, it means the restaurant is OPEN on that day
+    // If it's NOT in the array, it means the restaurant is CLOSED on that day
+    const isOpen = normalizedRestaurantDays.some(openDay => 
+      openDay.toLowerCase() === normalizedDayName.toLowerCase()
+    );
+    
+    console.log(`🔍 Checking "${dayName}": ${isOpen ? 'OPEN' : 'CLOSED'} (restaurant_days: [${currentRestaurantGoals.restaurant_days.join(', ')}])`);
+    
+    return isOpen;
+  };
+
+  // Function to check if a day should be closed (for backward compatibility)
+  const shouldDayBeClosed = (dayName) => {
+    // A day is closed if it's NOT open
+    return !isDayOpen(dayName);
   };
 
   // Function to fetch restaurant goals if not already available
   const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
-    // Prevent multiple calls
-    if (hasFetchedGoalsRef.current) {
-      return;
-    }
-
+    // Always try to fetch to ensure we have the latest data
     try {
-      if (!restaurantGoals) {
-        hasFetchedGoalsRef.current = true;
-        await getRestaurentGoal();
+      // Always fetch fresh data
+      hasFetchedGoalsRef.current = true;
+      console.log('🔄 Fetching restaurant goals from API...');
+      const goalsData = await getRestaurentGoal();
+      
+      if (goalsData) {
+        console.log('✅ Restaurant goals fetched:', goalsData);
+        if (goalsData.restaurant_days && Array.isArray(goalsData.restaurant_days)) {
+          console.log('📅 Restaurant OPEN days from goals API:', goalsData.restaurant_days);
+        } else {
+          console.warn('⚠️ restaurant_days is missing or not an array:', goalsData.restaurant_days);
+        }
       } else {
-        hasFetchedGoalsRef.current = true;
+        console.warn('⚠️ Restaurant goals API returned null or undefined');
       }
+      return goalsData;
     } catch (error) {
-      console.error('Error fetching restaurant goals:', error);
+      console.error('❌ Error fetching restaurant goals:', error);
       hasFetchedGoalsRef.current = false; // Allow retry on error
+      return null;
     }
   };
 
@@ -155,7 +204,6 @@ const SalesDataModal = ({
     }
   };
 
-
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
@@ -166,6 +214,14 @@ const SalesDataModal = ({
       const weekStartDate = selectedWeekData.startDate;
       const status = CalendarHelpers.getWeekStatus(weekStartDate);
       setWeekStatus(status);
+
+      // Reset week confirmation when the week changes (for editing different weeks)
+      // This ensures the warning modal shows for future/past weeks even when editing
+      if (lastWeekStartDateRef.current !== weekStartDate) {
+        weekInitiallyConfirmedRef.current = false;
+        setWeekConfirmed(false);
+        lastWeekStartDateRef.current = weekStartDate;
+      }
 
       // If it's not the current week and week hasn't been initially confirmed, show confirmation modal
       // Don't show if week was already confirmed (prevents showing during save operations)
@@ -184,8 +240,33 @@ const SalesDataModal = ({
       // Proceed with initialization if week is confirmed or it's current week
       // (This prevents re-initialization during save operations)
       if (weekInitiallyConfirmedRef.current || status.isCurrentWeek) {
-        // Fetch average hourly rate first, then initialize form data
+        // Fetch restaurant goals first (if not already loaded), then average hourly rate, then initialize form data
         const initializeModal = async () => {
+          // Always fetch restaurant goals to ensure we have the latest restaurant_days
+          // This is important so restaurant_days can be used to set open/closed status for all days
+          console.log('🔄 Initializing modal - fetching restaurant goals...');
+          const goalsData = await fetchRestaurantGoals();
+          
+          // Wait a bit for Zustand state to update if needed
+          // The store updates asynchronously, so we need to wait for it
+          let attempts = 0;
+          const maxAttempts = 30; // 3 seconds max wait (increased from 2 seconds)
+          while (attempts < maxAttempts) {
+            // Use useStore.getState() to get current state
+            const currentState = useStore.getState();
+            if (currentState.restaurantGoals && currentState.restaurantGoals.restaurant_days && Array.isArray(currentState.restaurantGoals.restaurant_days)) {
+              console.log('✅ Restaurant goals state updated:', currentState.restaurantGoals.restaurant_days);
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.warn('⚠️ Timeout waiting for restaurant goals state update. Current state:', useStore.getState().restaurantGoals);
+            // Even if timeout, try to proceed with whatever state we have
+          }
+          
           await fetchAverageHourlyRate();
           initializeFormData();
         };
@@ -285,6 +366,7 @@ const SalesDataModal = ({
       setShowEditWeeklyRateWarningModal(false);
       setSelectedLaborRateChoice(null);
       weekInitiallyConfirmedRef.current = false; // Reset week confirmation so it can show again for new week
+      lastWeekStartDateRef.current = null; // Reset last week start date when modal closes
     }
   }, [visible]);
 
@@ -301,12 +383,64 @@ const SalesDataModal = ({
     const currentProviders = getProviders();
 
     // Check if we have existing daily data to use
+    // IMPORTANT: Show ALL 7 days, but set restaurant_open based on goals API
     let dailyData;
     if (selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0) {
-      // Use existing data
-      dailyData = selectedWeekData.dailyData;
+      // Generate all 7 days (both open and closed)
+      const generatedDays = generateDailyData(startDate, currentProviders);
+      
+      // Merge existing data with generated days
+      // This ensures we have all 7 days, with restaurant_open set from goals API
+      dailyData = generatedDays.map(generatedDay => {
+        const existingDay = selectedWeekData.dailyData.find(d => {
+          const existingDate = d.date ? (dayjs.isDayjs(d.date) ? d.date : dayjs(d.date)) : null;
+          return existingDate && existingDate.format('YYYY-MM-DD') === generatedDay.date.format('YYYY-MM-DD');
+        });
+        
+        if (existingDay) {
+          // Use existing data but ensure date is a dayjs object
+          // IMPORTANT: Check BOTH goals API (whole application) AND weekly API response (week-specific)
+          // A day is CLOSED if:
+          // 1. Goals API says it's closed (not in restaurant_days), OR
+          // 2. Weekly API response says it's closed (restaurant_open: false)
+          // A day is OPEN only if BOTH say it's open
+          const dayName = generatedDay.dayName;
+          const shouldBeOpenFromGoalsAPI = isDayOpen(dayName);
+          
+          // Check weekly API response for this specific day
+          // If restaurant_open is explicitly false in weekly data, the day is closed for this week
+          let shouldBeOpenFromWeeklyAPI = true; // Default to open if not specified
+          if (existingDay.restaurant_open !== undefined && existingDay.restaurant_open !== null) {
+            const weeklyValue = existingDay.restaurant_open;
+            if (typeof weeklyValue === 'boolean') {
+              shouldBeOpenFromWeeklyAPI = weeklyValue;
+            } else if (typeof weeklyValue === 'string') {
+              shouldBeOpenFromWeeklyAPI = weeklyValue.toLowerCase() === 'true' || weeklyValue === '1';
+            } else if (typeof weeklyValue === 'number') {
+              shouldBeOpenFromWeeklyAPI = weeklyValue !== 0;
+            } else {
+              shouldBeOpenFromWeeklyAPI = !!weeklyValue;
+            }
+          }
+          
+          // Day is OPEN only if BOTH goals API and weekly API say it's open
+          // Day is CLOSED if EITHER goals API or weekly API says it's closed
+          const finalRestaurantOpen = (shouldBeOpenFromGoalsAPI && shouldBeOpenFromWeeklyAPI) ? 1 : 0;
+          
+          
+          return {
+            ...existingDay,
+            date: dayjs.isDayjs(existingDay.date) ? existingDay.date : dayjs(existingDay.date),
+            // Use combined logic: closed if either goals API or weekly API says closed
+            restaurant_open: finalRestaurantOpen
+          };
+        }
+        
+        // If no existing data for this day, use generated day (which includes all days with goals API status)
+        return generatedDay;
+      });
     } else {
-      // Generate new data
+      // Generate new data - this will include ALL 7 days with restaurant_open set from goals API
       dailyData = generateDailyData(startDate, currentProviders);
     }
 
@@ -351,15 +485,20 @@ const SalesDataModal = ({
     });
   };
 
-  // Generate 7 days of data starting from a given date
+  // Generate ALL 7 days of data starting from a given date
+  // IMPORTANT: restaurant_days from API contains OPEN days (not closed days)
+  // Show ALL days but set restaurant_open based on goals API
   const generateDailyData = (startDate, currentProviders) => {
     const days = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
       const dayName = currentDate.format('dddd');
 
-      // Check restaurant goals to determine if this day should be closed
-      const shouldBeClosed = shouldDayBeClosed(dayName);
+      // Check restaurant goals to determine if this day is OPEN
+      // restaurant_days contains days that are OPEN (not closed)
+      const isOpen = isDayOpen(dayName);
+      
+      // Include ALL days (both open and closed) - don't skip any days
 
       const dayData = {
         key: `day-${currentDate.format('YYYY-MM-DD')}`,
@@ -371,33 +510,12 @@ const SalesDataModal = ({
         dailyTickets: 0,
         averageDailyTicket: 0,
         restaurant_open: (() => {
-          // If we have existing data, use it and convert if needed
-          if (selectedWeekData?.dailyData && selectedWeekData.dailyData.length > 0) {
-            const existingDay = selectedWeekData.dailyData.find(d =>
-              d.date?.format('YYYY-MM-DD') === currentDate.format('YYYY-MM-DD')
-            );
-            if (existingDay?.restaurant_open !== undefined) {
-              const value = existingDay.restaurant_open;
-
-              // Handle both boolean and integer values
-              if (typeof value === 'boolean') {
-                return value ? 1 : 0;
-              }
-              // Handle null, undefined, or falsy values
-              if (value === null || value === undefined || value === false) {
-                return 0;
-              }
-              // Handle string values
-              if (typeof value === 'string') {
-                return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
-              }
-              // Handle numeric values
-              return value !== 0 ? 1 : 0;
-            }
-          }
-
-          // Use restaurant goals to determine if this day should be closed
-          return shouldBeClosed ? 0 : 1; // 0 for closed, 1 for open
+          // IMPORTANT: Always use goals API to determine open/closed status
+          // The goals API is the source of truth for which days are open/closed
+          // Don't use existing restaurant_open value - always check the API
+          // This ensures the modal always reflects the current restaurant_days from the API
+          // restaurant_days contains OPEN days, so if day is in array, it's open (1), otherwise closed (0)
+          return isOpen ? 1 : 0;
         })()
       };
 
@@ -647,13 +765,75 @@ const SalesDataModal = ({
       }
 
       const startDate = dayjs(selectedWeekData.startDate);
-
+      
+      // Calculate week_start as Sunday of the week (API requires Sunday)
+      const weekStartSunday = startDate.startOf('week').format('YYYY-MM-DD'); // startOf('week') returns Sunday
 
       const currentProviders = getProviders();
+      
+      // Sort daily data by date and ensure it starts from Sunday
+      const sortedDailyData = [...formData.dailyData]
+        .sort((a, b) => {
+          const dateA = dayjs.isDayjs(a.date) ? a.date : dayjs(a.date);
+          const dateB = dayjs.isDayjs(b.date) ? b.date : dayjs(b.date);
+          return dateA.diff(dateB);
+        })
+        .filter(day => {
+          // Only include days that belong to this week (Sunday to Saturday)
+          const dayDate = dayjs.isDayjs(day.date) ? day.date : dayjs(day.date);
+          const weekStart = dayjs(weekStartSunday).startOf('week');
+          const weekEnd = dayjs(weekStartSunday).endOf('week');
+          return dayDate.diff(weekStart) >= 0 && dayDate.diff(weekEnd) <= 0;
+        });
+      
+      // Ensure we have all OPEN days for the week (not all 7 days, only open days)
+      // When saving, we need to include all 7 days, but mark closed days as closed
+      const weekStartDateObj = dayjs(weekStartSunday);
+      const completeDailyData = [];
+      for (let i = 0; i < 7; i++) {
+        const targetDate = weekStartDateObj.add(i, 'day');
+        const dayName = targetDate.format('dddd');
+        const isOpen = isDayOpen(dayName);
+        
+        const existingDay = sortedDailyData.find(d => {
+          const dayDate = dayjs.isDayjs(d.date) ? d.date : dayjs(d.date);
+          return dayDate.format('YYYY-MM-DD') === targetDate.format('YYYY-MM-DD');
+        });
+        
+        if (existingDay) {
+          // Use existing data
+          completeDailyData.push(existingDay);
+        } else if (isOpen) {
+          // Only create entries for open days (closed days won't be in the modal)
+          completeDailyData.push({
+            date: targetDate,
+            dayName: dayName,
+            budgetedSales: 0,
+            actualSalesInStore: 0,
+            actualSalesAppOnline: 0,
+            dailyTickets: 0,
+            averageDailyTicket: 0,
+            restaurant_open: 1 // All days in modal are open
+          });
+        } else {
+          // For closed days, create entry with restaurant_open = 0
+          // This ensures we save all 7 days to API, but closed days are marked as closed
+          completeDailyData.push({
+            date: targetDate,
+            dayName: dayName,
+            budgetedSales: 0,
+            actualSalesInStore: 0,
+            actualSalesAppOnline: 0,
+            dailyTickets: 0,
+            averageDailyTicket: 0,
+            restaurant_open: 0 // Closed days
+          });
+        }
+      }
 
       // Transform data to API format with proper null checks
       const transformedData = {
-        week_start: startDate.format('YYYY-MM-DD'),
+        week_start: weekStartSunday,
         section: "Sales Performance",
         section_data: {
           weekly: {
@@ -671,7 +851,7 @@ const SalesDataModal = ({
               return acc;
             }, {})
           },
-          daily: formData.dailyData.map(day => {
+          daily: completeDailyData.map(day => {
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
@@ -934,6 +1114,7 @@ const SalesDataModal = ({
       width="90vw"
       style={{ maxWidth: '1200px' }}
       destroyOnHidden
+      maskClosable={false}
     >
       {(isSubmitting || storeLoading) && (
         <div className="absolute inset-0 bg-white bg-opacity-75 z-50 flex items-center justify-center rounded-lg">
@@ -1806,9 +1987,9 @@ const SalesDataModal = ({
               ) : (
                 <>
                   <p>• You are adding sales data to a future week</p>
-                  <p>• This is typically used for planning and forecasting</p>
+                  <p>• This is typically used for planning and forecasting budgets</p>
+                  <p>• You can enter budget values for future weeks to plan ahead</p>
                   <p>• Make sure you have the correct week selected</p>
-                  <p>• Consider if this data should be added to the current week instead</p>
                 </>
               )}
             </div>

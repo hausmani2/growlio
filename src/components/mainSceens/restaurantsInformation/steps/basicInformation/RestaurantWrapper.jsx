@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { message } from "antd";
 import RestaurantInformation from "./RestaurantInformation";
 import AddressInformation from "./AddressInformation";
@@ -24,7 +24,8 @@ const RestaurantWrapperContent = () => {
         completeOnboardingData,
         getTempFormData,
         updateTempFormData,
-        isOnBoardingCompleted
+        isOnBoardingCompleted,
+        loadExistingOnboardingData
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
@@ -36,6 +37,26 @@ const RestaurantWrapperContent = () => {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
+    // Load existing onboarding data when opening "Your Setup" menu item
+    const hasLoadedRef = useRef(false);
+    useEffect(() => {
+        const loadData = async () => {
+            if (isUpdateMode && !hasLoadedRef.current) {
+                hasLoadedRef.current = true;
+                try {
+                    // Call GET API to fetch onboarding data (force refresh to get latest data)
+                    await loadExistingOnboardingData(true);
+                } catch (error) {
+                    console.error('Error loading onboarding data:', error);
+                    hasLoadedRef.current = false; // Allow retry on error
+                }
+            }
+        };
+        
+        loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isUpdateMode]);
     
     // Get temporary form data from store
     const tempFormData = getTempFormData("Basic Information");

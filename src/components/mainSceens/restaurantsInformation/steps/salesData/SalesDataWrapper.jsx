@@ -82,8 +82,8 @@ const SalesDataWrapper = () => {
       
       hasLoadedRef.current = true;
       try {
-        // Load onboarding data which includes Sales Information
-        await loadExistingOnboardingData();
+        // Load onboarding data which includes Sales Information (force refresh to get latest data)
+        await loadExistingOnboardingData(true);
         
         // Get updated state from store after loading
         const currentState = useStore.getState();

@@ -22,6 +22,7 @@ import {
   EditOutlined
 } from '@ant-design/icons';
 import useStore from '../../../store/store';
+import useRestaurantGoals from '../../../hooks/useRestaurantGoals';
 
 // Custom plugin to draw labels inside pie chart slices without extra deps
 const SliceLabelsPlugin = {
@@ -81,6 +82,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const fetchBudgetAllocationSummary = useStore((s) => s.fetchBudgetAllocationSummary);
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
+  
+  // Restaurant goals functionality - using custom hook for professional handling
+  // This ensures goals API is called when budget dashboard mounts
+  useRestaurantGoals({
+    autoFetch: true,
+    refreshOnMount: true, // Always fetch fresh data when budget dashboard mounts
+    componentName: 'BudgetDashboard'
+  });
 
   // Calculate week range from startDate and endDate props
   useEffect(() => {

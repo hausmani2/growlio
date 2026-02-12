@@ -207,68 +207,9 @@ const useStepValidation = () => {
         
 
         // Validate third party providers if third-party sales is enabled
+        // Allow saving with empty providers array - no validation required
         if (data.third_party) {
-            
-            
-            if (data.providers && data.providers.length > 0) {
-                let hasValidProvider = false;
-                let hasPartialProvider = false;
-                
-                data.providers.forEach((provider, index) => {
-                    
-                    
-                    // Check if this provider has any data entered (partial or complete)
-                    const hasName = provider.providerName?.trim();
-                    const hasFee = provider.providerFee && provider.providerFee !== '';
-                    
-                    // If provider has any data, validate both fields
-                    if (hasName || hasFee) {
-                        hasPartialProvider = true;
-                        
-                        if (!hasName) {
-                            errors[`provider_${index}_name`] = "Provider name is required";
-
-                        } else {
-                            
-                        }
-                        
-                        if (!hasFee) {
-                            errors[`provider_${index}_fee`] = "Provider fee is required";
-                            
-                        } else if (isNaN(provider.providerFee) || parseInt(provider.providerFee) < 1 || parseInt(provider.providerFee) > 50) {
-                            errors[`provider_${index}_fee`] = "Provider fee must be between 1% and 50%";
-                            
-                        } else {
-                            
-                        }
-                        
-                        // Check if this provider has complete data
-                        if (hasName && hasFee && !isNaN(provider.providerFee) && parseInt(provider.providerFee) >= 1 && parseInt(provider.providerFee) <= 50) {
-                            hasValidProvider = true;
-                            
-                        } else {
-                            
-                        }
-                    } else {
-                        
-                    }
-                });
-                
-                // If there are partial providers but no complete ones, show a general error
-                if (hasPartialProvider && !hasValidProvider) {
-                    errors.providers = "Please add at least one third-party provider with complete information";
-                    
-                } else if (!hasPartialProvider) {
-                    // If no providers have any data at all, show a different error
-                    errors.providers = "Please add at least one third-party provider";
-                    
-                } else {
-                    
-                }
-            } else {
-                errors.providers = "Please add at least one third-party provider";
-                
-            }
+            // No validation - allow saving with empty array
         } else {
             
         }
