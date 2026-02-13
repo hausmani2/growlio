@@ -887,31 +887,26 @@ const createOnBoardingSlice = (set, get) => ({
             };
             
             // Handle array format response
+            // API can return: [[{step: "...", data: {...}}, ...]] or [{step: "...", data: {...}}, ...]
             let stepsData = [];
-           
             
             if (Array.isArray(apiData)) {
-                // If it's a nested array, flatten it
-                if (apiData.length > 0 && Array.isArray(apiData[0])) {
-                    stepsData = apiData[0];
-                } else {
-                    stepsData = apiData;
-                    
+                // Recursively flatten nested arrays until we get to the actual step objects
+                let flattened = apiData;
+                // Keep flattening while the first element is still an array
+                while (flattened.length > 0 && Array.isArray(flattened[0])) {
+                    flattened = flattened[0];
                 }
-                
-                // Additional check for double-nested arrays (like [[{...}]])
-                if (stepsData.length > 0 && Array.isArray(stepsData[0])) {
-                    stepsData = stepsData[0];
-                    
-                }
-            } else {
-                // Handle object format (fallback)
-                stepsData = Object.entries(apiData).map(([step, data]) => ({
-                    step,
-                    status: data.status,
-                    data: data.data
-                }));
-                
+                stepsData = flattened;
+            } else if (apiData && typeof apiData === 'object') {
+                // Handle object format (fallback) - convert to array format
+                stepsData = Object.entries(apiData)
+                    .filter(([key]) => key !== 'restaurant_id')
+                    .map(([step, data]) => ({
+                        step,
+                        status: data?.status || false,
+                        data: data?.data || data
+                    }));
             }
             
             // Process each step from the API response
@@ -971,9 +966,33 @@ const createOnBoardingSlice = (set, get) => ({
                     };
                 } else if (stepName === "Third Party" && data) {
                     // Handle Third Party data mapping
+                    // API can return data as either:
+                    // 1. Array of providers: [{provider_name: "...", provider_fee: "..."}]
+                    // 2. Object with providers array: {third_party: true, providers: [...]}
+                    let providers = [];
+                    let thirdParty = false;
+                    
+                    if (Array.isArray(data)) {
+                        // Data is directly an array of providers
+                        providers = data;
+                        thirdParty = data.length > 0;
+                    } else if (data.providers && Array.isArray(data.providers)) {
+                        // Data is an object with providers array
+                        providers = data.providers;
+                        thirdParty = data.third_party !== undefined ? data.third_party : (providers.length > 0);
+                    } else if (data.third_party !== undefined) {
+                        // Data has third_party flag but no providers array
+                        thirdParty = data.third_party;
+                        providers = [];
+                    } else {
+                        // Default: check if data has any provider-like structure
+                        thirdParty = false;
+                        providers = [];
+                    }
+                    
                     processedData = {
-                        third_party: data.third_party !== undefined ? data.third_party : false,
-                        providers: data.providers || []
+                        third_party: thirdParty,
+                        providers: providers
                     };
                 } else if (stepName === "Expense" && data) {
                     // Handle Expenses data mapping

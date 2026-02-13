@@ -105,11 +105,31 @@ const ThirdPartyDeliveryWrapperContent = () => {
     if (thirdPartyInfoData && thirdPartyInfoData.data) {
       const data = thirdPartyInfoData.data;
       let processedProviders = [];
-      if (data.providers && Array.isArray(data.providers)) {
+      
+      // Handle case where data is directly an array of providers
+      if (Array.isArray(data)) {
+        processedProviders = data.map((provider, index) => {
+          let providerFee = provider.provider_fee || provider.providerFee || "";
+          if (providerFee && !isNaN(providerFee)) {
+            // Handle decimal values like "2.0" by parsing as float first, then converting to int string
+            const feeValue = parseFloat(providerFee);
+            providerFee = isNaN(feeValue) ? "" : Math.round(feeValue).toString();
+          }
+          return {
+            id: provider.id || Date.now() + index + Math.random(),
+            providerName: provider.provider_name || provider.providerName || "",
+            providerFee: providerFee,
+          };
+        });
+      } 
+      // Handle case where data is an object with providers array (backward compatibility)
+      else if (data.providers && Array.isArray(data.providers)) {
         processedProviders = data.providers.map((provider, index) => {
           let providerFee = provider.provider_fee || provider.providerFee || "";
           if (providerFee && !isNaN(providerFee)) {
-            providerFee = parseInt(providerFee, 10).toString();
+            // Handle decimal values like "2.0" by parsing as float first, then converting to int string
+            const feeValue = parseFloat(providerFee);
+            providerFee = isNaN(feeValue) ? "" : Math.round(feeValue).toString();
           }
           return {
             id: provider.id || Date.now() + index + Math.random(),
@@ -120,7 +140,9 @@ const ThirdPartyDeliveryWrapperContent = () => {
       }
 
       setThirdPartyData({
-        third_party: data.third_party !== undefined ? data.third_party : (processedProviders.length > 0),
+        third_party: (Array.isArray(data) ? data.length > 0 : data.third_party !== undefined) 
+          ? (Array.isArray(data) ? true : data.third_party) 
+          : (processedProviders.length > 0),
         providers: processedProviders,
       });
     }

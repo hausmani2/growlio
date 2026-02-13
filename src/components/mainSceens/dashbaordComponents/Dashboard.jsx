@@ -203,52 +203,14 @@ const Dashboard = () => {
       
       // Step 2: Selected week has no data - check for 3 previous weeks data
       // Only proceed if we confirmed there's no data for this week
+      // NOTE: Weekly Average Data modal is disabled for Close Out Your Day(s) page
       if (isNoDataResponse) {
         setDashboardData(null);
         setDashboardMessage(data.message || "No weekly dashboard found");
         
-        // Only check if we haven't shown the modal for this date range
-        if (weeklyAverageModalShown.current !== dateRangeKey) {
-          try {
-            const weeklyAverageResponse = await checkWeeklyAverageData(null, startDate, endDate);
-            
-            // Check if API response indicates no previous week data found
-            // API response format: {"status":false,"message":"No previous week data found."}
-            const noPreviousData = weeklyAverageResponse && 
-                                  weeklyAverageResponse.status === false && 
-                                  weeklyAverageResponse.message === "No previous week data found.";
-            
-            if (noPreviousData) {
-              // Show message when no previous week data is found
-              message.info({
-                content: weeklyAverageResponse.message || 'No previous week data found. You can manually enter your sales data.',
-                duration: 4,
-              });
-              weeklyAverageModalShown.current = dateRangeKey;
-              return;
-            }
-            
-            // Check if API response indicates 3 weeks data is available
-            // API response format: {"status":true,"message":"Found 3 previous week(s) of data."}
-            const hasThreeWeeks = weeklyAverageResponse && 
-                                 weeklyAverageResponse.status === true && 
-                                 weeklyAverageResponse.message === "Found 3 previous week(s) of data.";
-            
-            // Only show modal if 3 previous weeks data exists
-            if (hasThreeWeeks) {
-              weeklyAverageModalShown.current = dateRangeKey;
-              setWeeklyAveragePopupData(weeklyAverageResponse);
-              setIsWeeklyAverageDataPopupVisible(true);
-            } else {
-              // No 3 previous weeks data - don't show modal, just proceed normally
-              weeklyAverageModalShown.current = dateRangeKey;
-            }
-          } catch (weeklyError) {
-            // Silently fail - don't block user flow if weekly average check fails
-            console.error('Weekly average check failed:', weeklyError);
-            weeklyAverageModalShown.current = dateRangeKey;
-          }
-        }
+        // Weekly average modal is disabled for Close Out Your Day(s) page
+        // Users should manually enter data instead
+        weeklyAverageModalShown.current = dateRangeKey;
       } else {
         // If response format is unexpected, set data anyway and proceed
         setDashboardData(data);

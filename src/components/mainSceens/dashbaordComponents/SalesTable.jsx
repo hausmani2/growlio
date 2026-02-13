@@ -949,8 +949,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     
     const weekStatus = CalendarHelpers.getWeekStatus(weekStartDate);
     
-    // If it's not the current week, show warning modal
-    if (!weekStatus.isCurrentWeek) {
+    // Block future weeks on Close Out Your Day(s) page - users cannot add data to future days
+    if (weekStatus.isFutureWeek) {
+      message.error('Cannot add data to future weeks. Please select a current or past week.');
+      return;
+    }
+    
+    // If it's not the current week (but is past week), show warning modal
+    if (!weekStatus.isCurrentWeek && weekStatus.isPastWeek) {
       setWeekWarningData({
         isPastWeek: weekStatus.isPastWeek,
         isFutureWeek: weekStatus.isFutureWeek,
@@ -2911,7 +2917,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             icon={<CalendarOutlined />}
             style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
           >
-            Yes, Proceed
+            {weekWarningData?.isFutureWeek ? 'Yes to process' : 'Yes, Proceed'}
           </Button>
         ]}
         width={600}
