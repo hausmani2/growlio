@@ -56,7 +56,12 @@ const createOnBoardingSlice = (set, get) => ({
             data: {
                 in_store: true,
                 online: false,
-                from_app: false,
+                from_app: false
+            }
+        },
+        "Third Party": {
+            status: false,
+            data: {
                 third_party: false,
                 providers: []
             }
@@ -121,8 +126,13 @@ const createOnBoardingSlice = (set, get) => ({
             salesData: {
                 in_store: true,
                 online: false,
-                from_app: false,
-                third_party: false
+                from_app: false
+            }
+        },
+        "Third Party": {
+            thirdPartyData: {
+                third_party: false,
+                providers: []
             }
         },
         "Expense": {
@@ -238,8 +248,19 @@ const createOnBoardingSlice = (set, get) => ({
                 apiData = {
                     in_store: salesData.in_store !== undefined ? salesData.in_store : true,
                     online: salesData.online || false,
-                    from_app: salesData.from_app || false,
-                    third_party: salesData.third_party || false
+                    from_app: salesData.from_app || false
+                };
+                break;
+            }
+            case "Third Party": {
+                const { thirdPartyData } = tempData;
+                // Check if there are any valid providers
+                const validProviders = thirdPartyData.providers?.filter((p) => p.provider_name && p.provider_fee) || [];
+                const hasProviders = validProviders.length > 0;
+                
+                apiData = {
+                    third_party: hasProviders,
+                    providers: validProviders
                 };
                 break;
             }
@@ -353,7 +374,21 @@ const createOnBoardingSlice = (set, get) => ({
                     salesData: {
                         in_store: savedData.in_store !== undefined ? savedData.in_store : true,
                         online: savedData.online || false,
-                        from_app: savedData.from_app || false,
+                        from_app: savedData.from_app || false
+                    }
+                };
+                
+                set((state) => ({
+                    tempFormData: {
+                        ...state.tempFormData,
+                        [stepName]: tempData
+                    }
+                }));
+                break;
+            }
+            case "Third Party": {
+                const tempData = {
+                    thirdPartyData: {
                         third_party: savedData.third_party || false,
                         providers: savedData.providers || []
                     }
@@ -519,7 +554,7 @@ const createOnBoardingSlice = (set, get) => ({
             }
             
             // Add other steps with status: false if they're not the active step
-            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Expense", "Sales Information"];
+            const otherSteps = ["Labor Information", "Food Cost Details", "Sales Channels", "Third Party", "Expense", "Sales Information"];
             otherSteps.forEach(step => {
                 if (step !== stepName) {
                     payload[step] = {
@@ -828,7 +863,12 @@ const createOnBoardingSlice = (set, get) => ({
                     data: {
                         in_store: true,
                         online: false,
-                        from_app: false,
+                        from_app: false
+                    }
+                },
+                "Third Party": {
+                    status: false,
+                    data: {
                         third_party: false,
                         providers: []
                     }
@@ -922,14 +962,18 @@ const createOnBoardingSlice = (set, get) => ({
                         in_store: data.in_store !== undefined ? data.in_store : true,
                         online: data.online !== undefined ? data.online : false,
                         from_app: data.from_app !== undefined ? data.from_app : false,
-                        third_party: data.third_party !== undefined ? data.third_party : false,
-                        providers: data.providers || [],
                         restaurant_days: data.restaurant_days || [],
                         pos_system: data.pos_system || '',
                         pos_system_other: data.pos_system_other || '',
                         separate_online_ordering: data.separate_online_ordering !== undefined ? data.separate_online_ordering : false,
                         pos_for_employee_hours: data.pos_for_employee_hours !== undefined ? data.pos_for_employee_hours : false,
                         third_party_orders_to_pos: data.third_party_orders_to_pos !== undefined ? data.third_party_orders_to_pos : false
+                    };
+                } else if (stepName === "Third Party" && data) {
+                    // Handle Third Party data mapping
+                    processedData = {
+                        third_party: data.third_party !== undefined ? data.third_party : false,
+                        providers: data.providers || []
                     };
                 } else if (stepName === "Expense" && data) {
                     // Handle Expenses data mapping
@@ -971,7 +1015,7 @@ const createOnBoardingSlice = (set, get) => ({
             }));
             
             // Return information about completed and incomplete steps
-            const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
+            const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Third Party", "Expense"];
             const completedSteps = steps.filter(stepName => 
                 updatedOnboardingData[stepName]?.status === true
             );
@@ -1290,7 +1334,7 @@ const createOnBoardingSlice = (set, get) => ({
         const currentData = state.completeOnboardingData;
         
         // Check if all required steps exist in the data structure
-        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Third Party", "Expense"];
         let needsUpdate = false;
         
         const updatedData = { ...currentData };
@@ -1352,7 +1396,14 @@ const createOnBoardingSlice = (set, get) => ({
                             data: {
                                 in_store: true,
                                 online: false,
-                                from_app: false,
+                                from_app: false
+                            }
+                        };
+                        break;
+                    case "Third Party":
+                        updatedData[stepName] = {
+                            status: false,
+                            data: {
                                 third_party: false,
                                 providers: []
                             }
@@ -1568,7 +1619,7 @@ const createOnBoardingSlice = (set, get) => ({
         const state = get();
         const data = state.completeOnboardingData;
         
-        const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const steps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Third Party", "Expense"];
         const stepStatus = {};
         
         steps.forEach(stepName => {
@@ -1599,7 +1650,7 @@ const createOnBoardingSlice = (set, get) => ({
         const state = get();
         const data = state.completeOnboardingData;
         
-        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Expense"];
+        const requiredSteps = ["Basic Information", "Labor Information", "Food Cost Details", "Sales Channels", "Third Party", "Expense"];
         const completedSteps = requiredSteps.filter(stepName => 
             data[stepName] && data[stepName].status === true
         );

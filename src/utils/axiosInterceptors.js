@@ -252,3 +252,137 @@ export { API_TIMEOUT };
 
 // Optionally, export the raw instance for custom use
 export default api;
+
+/**
+ * SSE (Server-Sent Events) utility for streaming chatbot responses
+ * Handles the format: data: {"conversation_id": "..."}, data: {"chunk": "..."}, etc.
+ */
+export const streamChatbotMessage = async (url, payload, callbacks = {}) => {
+  const {
+    onConversationId,
+    onStatus,
+    onChunk,
+    onComplete,
+    onError,
+  } = callbacks;
+
+  try {
+    // Get token for authorization
+    const isImpersonating = sessionStorage.getItem('impersonated_user');
+    const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
+    const mainToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const token = mainToken;
+
+    const baseURL = import.meta.env.VITE_ROOT_URL;
+    const fullUrl = `${baseURL}${url}`;
+
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      // Keep the last incomplete line in buffer
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        // Skip empty lines
+        if (!line.trim()) continue;
+        
+        if (line.startsWith('data: ')) {
+          try {
+            const jsonStr = line.slice(6).trim(); // Remove 'data: ' prefix and trim
+            if (!jsonStr) continue; // Skip if no JSON content
+            
+            const data = JSON.parse(jsonStr);
+
+            // Handle conversation_id
+            if (data.conversation_id && onConversationId) {
+              onConversationId(data.conversation_id);
+            }
+
+            // Handle status
+            if (data.status && onStatus) {
+              onStatus(data.status);
+            }
+
+            // Handle chunk (can be empty string, so check !== undefined)
+            if (data.chunk !== undefined && onChunk) {
+              onChunk(data.chunk);
+            }
+
+            // Handle complete
+            if (data.complete === true && onComplete) {
+              onComplete(data.metrics || {});
+            }
+          } catch (e) {
+            // Skip invalid JSON lines (but log in development)
+            if (import.meta.env.DEV) {
+              console.warn('Failed to parse SSE data:', line, e);
+            }
+          }
+        }
+      }
+    }
+
+    // Process any remaining buffer
+    if (buffer.trim()) {
+      const lines = buffer.split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        if (line.startsWith('data: ')) {
+          try {
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            
+            const data = JSON.parse(jsonStr);
+            
+            if (data.conversation_id && onConversationId) {
+              onConversationId(data.conversation_id);
+            }
+            if (data.status && onStatus) {
+              onStatus(data.status);
+            }
+            if (data.chunk !== undefined && onChunk) {
+              onChunk(data.chunk);
+            }
+            if (data.complete === true && onComplete) {
+              onComplete(data.metrics || {});
+            }
+          } catch (e) {
+            if (import.meta.env.DEV) {
+              console.warn('Failed to parse remaining SSE data:', line, e);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('SSE Stream Error:', error);
+    if (onError) {
+      onError(error);
+    } else {
+      throw error;
+    }
+  }
+};

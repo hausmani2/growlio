@@ -35,20 +35,6 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
     return allProviderOptions.filter((option) => !selectedProviders.includes(option.value));
   };
 
-  // Ensure at least one provider row exists
-  useEffect(() => {
-    const currentProviders = data?.providers || [];
-    if (currentProviders.length > 0) return;
-    updateData("providers", [
-      {
-        id: Date.now() + Math.random(),
-        providerName: "",
-        providerFee: "",
-      },
-    ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Add a new provider
   const addProvider = () => {
     const currentProviders = data?.providers || [];
@@ -161,7 +147,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
 
           <div className="flex justify-start">
             <PrimaryButton
-              title="Add Another Provider"
+              title={(data?.providers || []).length === 0 ? "Add Provider" : "Add Another Provider"}
               className="bg-gray-200 text-black h-10 rounded-lg text-xs font-semibold w-full sm:w-auto"
               onClick={addProvider}
             />

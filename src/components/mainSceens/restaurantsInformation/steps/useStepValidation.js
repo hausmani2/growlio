@@ -184,7 +184,7 @@ const useStepValidation = () => {
         const errors = {};
 
         // At least one sales channel must be selected
-        if (!data.in_store && !data.online && !data.from_app && !data.third_party) {
+        if (!data.in_store && !data.online && !data.from_app) {
             errors.sales_channels = "Please select at least one sales channel";
             
         } else {
@@ -204,18 +204,39 @@ const useStepValidation = () => {
                 
             }
         }
-        
 
-        // Validate third party providers if third-party sales is enabled
-        // Allow saving with empty providers array - no validation required
+        
+        
+        return errors;
+    }, []);
+
+    // Third Party Validation
+    const validateThirdParty = useCallback((data) => {
+        const errors = {};
+
+        // If third_party is true, validate that providers exist and are valid
         if (data.third_party) {
-            // No validation - allow saving with empty array
-        } else {
-            
+            if (!data.providers || !Array.isArray(data.providers) || data.providers.length === 0) {
+                // Allow empty providers - no validation required
+            } else {
+                // Validate each provider if they exist
+                data.providers.forEach((provider, index) => {
+                    if (provider.provider_name || provider.providerName) {
+                        // If provider has a name, it must also have a fee
+                        if (!provider.provider_fee && !provider.providerFee) {
+                            errors[`provider_${index}_fee`] = "Provider fee is required when provider name is provided";
+                        }
+                    }
+                    if (provider.provider_fee || provider.providerFee) {
+                        // If provider has a fee, it must also have a name
+                        if (!provider.provider_name && !provider.providerName) {
+                            errors[`provider_${index}_name`] = "Provider name is required when provider fee is provided";
+                        }
+                    }
+                });
+            }
         }
 
-        
-        
         return errors;
     }, []);
 
@@ -370,6 +391,9 @@ const useStepValidation = () => {
             case 'Sales Channels':
                 errors = validateSalesChannels(data);
                 break;
+            case 'Third Party':
+                errors = validateThirdParty(data);
+                break;
             case 'Expense':
                 errors = validateExpense(data);
                 break;
@@ -379,7 +403,7 @@ const useStepValidation = () => {
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
-    }, [validateBasicInformation, validateLabourInformation, validateFoodCostDetails, validateSalesChannels, validateExpense]);
+    }, [validateBasicInformation, validateLabourInformation, validateFoodCostDetails, validateSalesChannels, validateThirdParty, validateExpense]);
 
     // Validate all steps
     const validateAllSteps = useCallback((allData) => {
@@ -410,6 +434,7 @@ const useStepValidation = () => {
         validateLabourInformation,
         validateFoodCostDetails,
         validateSalesChannels,
+        validateThirdParty,
         validateExpense,
         validateStep,
         validateAllSteps,

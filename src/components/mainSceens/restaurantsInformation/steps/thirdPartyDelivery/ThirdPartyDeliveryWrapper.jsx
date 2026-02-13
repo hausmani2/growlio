@@ -101,9 +101,9 @@ const ThirdPartyDeliveryWrapperContent = () => {
   }, []);
 
   useEffect(() => {
-    const salesChannelsInfoData = completeOnboardingData["Sales Channels"];
-    if (salesChannelsInfoData && salesChannelsInfoData.data) {
-      const data = salesChannelsInfoData.data;
+    const thirdPartyInfoData = completeOnboardingData["Third Party"];
+    if (thirdPartyInfoData && thirdPartyInfoData.data) {
+      const data = thirdPartyInfoData.data;
       let processedProviders = [];
       if (data.providers && Array.isArray(data.providers)) {
         processedProviders = data.providers.map((provider, index) => {
@@ -120,8 +120,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
       }
 
       setThirdPartyData({
-        // Always set to true on this dedicated screen
-        third_party: true,
+        third_party: data.third_party !== undefined ? data.third_party : (processedProviders.length > 0),
         providers: processedProviders,
       });
     }
@@ -141,15 +140,15 @@ const ThirdPartyDeliveryWrapperContent = () => {
   };
 
   const handleSave = async () => {
-    const selectedDays = getSelectedDays();
-    const isValid = validateStep("Sales Channels", {
-      third_party: thirdPartyData.third_party,
+    // Check if there are any valid providers (with both name and fee)
+    const validProviders = thirdPartyData.providers?.filter((p) => p.providerName && p.providerFee) || [];
+    const hasProviders = validProviders.length > 0;
+    
+    // If no providers, we still need to validate (but allow empty providers)
+    const isValid = hasProviders ? validateStep("Third Party", {
+      third_party: true,
       providers: thirdPartyData.providers,
-      in_store: true,
-      online: false,
-      from_app: false,
-      selectedDays: selectedDays,
-    });
+    }) : true; // Allow saving with no providers
 
     if (!isValid) {
       const firstError = Object.values(validationErrors)[0];
@@ -157,26 +156,23 @@ const ThirdPartyDeliveryWrapperContent = () => {
       return false;
     }
 
-    // Always include providers key, even if empty array
+    // Prepare step data
     const stepData = {
-      third_party: true, // Always true on this screen
-      providers: [], // Always send providers array, even if empty
+      third_party: hasProviders, // Set to false if no providers, true if providers exist
+      providers: [], // Always send providers array
     };
 
     // Only include providers that have both name and fee filled
-    if (thirdPartyData.providers && thirdPartyData.providers.length > 0) {
-      const providersForAPI = thirdPartyData.providers
-        .filter((p) => p.providerName && p.providerFee)
-        .map((p) => ({
-          provider_name: p.providerName,
-          provider_fee: parseInt(p.providerFee, 10),
-        }));
-      // Update providers array with valid providers, or keep empty array if none are valid
-      stepData.providers = providersForAPI.length > 0 ? providersForAPI : [];
+    if (hasProviders) {
+      const providersForAPI = validProviders.map((p) => ({
+        provider_name: p.providerName,
+        provider_fee: parseInt(p.providerFee, 10),
+      }));
+      stepData.providers = providersForAPI;
     }
-    // If no providers exist, stepData.providers remains as empty array []
+    // If no providers exist, stepData.providers remains as empty array [] and third_party is false
 
-    const result = await submitStepData("Sales Channels", stepData, () => {
+    const result = await submitStepData("Third Party", stepData, () => {
       // Always show success message
       if (isUpdateMode && isOnBoardingCompleted) {
         message.success("Third-party delivery updated successfully!");

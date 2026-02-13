@@ -3,7 +3,7 @@ import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2 } from 're
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
 import MessageBubble from './MessageBubble';
-import { apiPost, apiGet } from '../../utils/axiosInterceptors';
+import { apiGet, streamChatbotMessage } from '../../utils/axiosInterceptors';
 import chatIcon from '../../assets/lio.png';
 
 /**
@@ -229,18 +229,17 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
   };
 
   /**
-   * Send message to the backend API
+   * Send message to the backend API using SSE streaming
    */
   const sendMessage = async (messageText) => {
     if (!messageText.trim()) return;
 
-    // Add user message to chat immediately
+    // Prepare user message
     const userMessage = {
       text: messageText,
       isUser: true,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
     
@@ -249,68 +248,167 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
       inputRef.current.style.height = '44px';
     }
 
-    try {
-      // Prepare request payload
-      // For new conversations, conversation_id should be empty string
-      // Only use conversationId if it's explicitly set (not null, not empty string)
-      const conversationIdToUse = (conversationId && conversationId !== '') ? String(conversationId) : '';
-    
-      const payload = {
-        question: messageText,
-        conversation_id: conversationIdToUse,
-      };
+    // Prepare request payload
+    const conversationIdToUse = (conversationId && conversationId !== '') ? String(conversationId) : '';
+    const payload = {
+      question: messageText,
+      conversation_id: conversationIdToUse,
+    };
 
-      // Call the API
-      const response = await apiPost('/chatbot/send_message/', payload);
+    // Initialize bot message for streaming with typing effect
+    let fullMessageText = ''; // Complete message from server
+    let displayedText = ''; // Text currently displayed (for typing effect)
+    let typingQueue = ''; // Queue of characters waiting to be displayed
+    let typingTimeout = null;
 
-      // Extract response data
-      const botResponse = response.data?.answer || response.data?.response || 'I apologize, but I could not process your request at this time.';
-      
-      // Update conversation ID if provided in response (only for new conversations)
-      const newConversationId = response.data?.conversation_id || 
-                                 response.data?.thread_id || 
-                                 response.data?.id;
-      if (newConversationId && (!conversationId || conversationId === '')) {
-        // Only set conversation ID if we didn't have one before (new conversation)
-        setConversationId(newConversationId);
-        setSelectedConversationId(newConversationId); // Update store
-        // Refresh conversations list to include the new conversation
-        fetchConversations();
-      } else if (newConversationId && conversationId && newConversationId !== conversationId) {
-        // If conversation ID changed, update it
-        setConversationId(newConversationId);
-        setSelectedConversationId(newConversationId);
+    // Typing speed: milliseconds per character (adjust for desired speed)
+    // Lower = faster, Higher = slower (ChatGPT-like: ~20-50ms per character)
+    const TYPING_SPEED = 30;
+
+    // Function to process typing queue
+    const processTypingQueue = () => {
+      if (typingQueue.length === 0) {
+        typingTimeout = null;
+        return;
       }
 
-      // Add bot response after a short delay for better UX
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            text: botResponse,
+      // Take next character(s) from queue
+      const charsToAdd = typingQueue.substring(0, 1);
+      typingQueue = typingQueue.substring(1);
+      displayedText += charsToAdd;
+
+      // Update UI
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        if (lastIndex >= 0) {
+          updated[lastIndex] = {
+            text: displayedText,
             isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-        setIsLoading(false);
-      }, 500);
+            timestamp: updated[lastIndex]?.timestamp || new Date(),
+          };
+        }
+        return updated;
+      });
+
+      // Continue processing if there's more in queue
+      if (typingQueue.length > 0) {
+        typingTimeout = setTimeout(processTypingQueue, TYPING_SPEED);
+      } else {
+        typingTimeout = null;
+      }
+    };
+
+    // Function to add text to typing queue
+    const addToTypingQueue = (newText) => {
+      typingQueue += newText;
+      // Start processing if not already running
+      if (!typingTimeout) {
+        typingTimeout = setTimeout(processTypingQueue, TYPING_SPEED);
+      }
+    };
+
+    // Add placeholder bot message
+    setMessages((prev) => {
+      const updated = [...prev, userMessage, {
+        text: '',
+        isUser: false,
+        timestamp: new Date(),
+      }];
+      return updated;
+    });
+
+    try {
+      await streamChatbotMessage('/chatbot/send_message/', payload, {
+        onConversationId: (newConversationId) => {
+          // Update conversation ID if provided (only for new conversations)
+          if (newConversationId && (!conversationId || conversationId === '')) {
+            setConversationId(newConversationId);
+            setSelectedConversationId(newConversationId);
+            fetchConversations();
+          } else if (newConversationId && conversationId && newConversationId !== conversationId) {
+            setConversationId(newConversationId);
+            setSelectedConversationId(newConversationId);
+          }
+        },
+        onStatus: (status) => {
+          // Handle status updates (e.g., "thinking")
+          if (status === 'thinking') {
+            setIsLoading(true);
+          }
+        },
+        onChunk: (chunk) => {
+          // Append chunk to full message
+          fullMessageText += chunk;
+          // Add to typing queue for gradual display
+          addToTypingQueue(chunk);
+        },
+        onComplete: (metrics) => {
+          // Ensure all remaining text is displayed
+          if (typingTimeout) {
+            clearTimeout(typingTimeout);
+          }
+          // Display any remaining queued text immediately
+          if (typingQueue.length > 0 || displayedText !== fullMessageText) {
+            displayedText = fullMessageText;
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastIndex = updated.length - 1;
+              if (lastIndex >= 0) {
+                updated[lastIndex] = {
+                  text: fullMessageText,
+                  isUser: false,
+                  timestamp: updated[lastIndex]?.timestamp || new Date(),
+                };
+              }
+              return updated;
+            });
+          }
+          setIsLoading(false);
+        },
+        onError: (error) => {
+          console.error('Chat API Error:', error);
+          setIsLoading(false);
+          
+          // Clear typing timeout if active
+          if (typingTimeout) {
+            clearTimeout(typingTimeout);
+            typingTimeout = null;
+          }
+          
+          // Replace placeholder with error message
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            if (lastIndex >= 0) {
+              updated[lastIndex] = {
+                text: error.response?.data?.message || 
+                      error.message || 
+                      'Sorry, I encountered an error. Please try again later.',
+                isUser: false,
+                timestamp: new Date(),
+              };
+            }
+            return updated;
+          });
+        },
+      });
     } catch (error) {
       console.error('Chat API Error:', error);
+      setIsLoading(false);
       
-      // Show error message to user
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            text: error.response?.data?.message || 
-                  error.message || 
-                  'Sorry, I encountered an error. Please try again later.',
-            isUser: false,
-            timestamp: new Date(),
-          },
-        ]);
-        setIsLoading(false);
-      }, 500);
+      // Replace placeholder with error message
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[botMessageIndex] = {
+          text: error.response?.data?.message || 
+                error.message || 
+                'Sorry, I encountered an error. Please try again later.',
+          isUser: false,
+          timestamp: new Date(),
+        };
+        return updated;
+      });
     }
   };
 
