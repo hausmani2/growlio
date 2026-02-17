@@ -5,7 +5,7 @@ import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, formatExpenseForAPI, calculateMon
 
 const { Option } = Select;
 
-const ExpensesStep = ({ data, updateData, onNext, onBack }) => {
+const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false }) => {
   // Initialize with default expenses if no data provided, or merge with existing data
   const [expenses, setExpenses] = useState(() => {
     if (data && Array.isArray(data) && data.length > 0) {
@@ -13,6 +13,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack }) => {
     }
     return DEFAULT_EXPENSES;
   });
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalForm, setModalForm] = useState({
     category: '',
@@ -22,6 +23,67 @@ const ExpensesStep = ({ data, updateData, onNext, onBack }) => {
     fixed_expense_type: 'MONTHLY',
     is_active: true
   });
+
+  // Initialize expenses from data prop when it changes
+  useEffect(() => {
+    if (data && Array.isArray(data) && data.length > 0 && !hasInitialized) {
+      setExpenses(data);
+      setHasInitialized(true);
+    } else if (!hasInitialized && (!data || !Array.isArray(data) || data.length === 0)) {
+      setHasInitialized(true);
+    }
+  }, [data, hasInitialized]);
+
+  // Handle franchise logic: add/remove royalty and brand fields based on franchise status
+  useEffect(() => {
+    if (!hasInitialized) return;
+    
+    setExpenses(prev => {
+      const lower = (s) => String(s || "").toLowerCase();
+      
+      // Find existing royalty and brand fields to preserve their data
+      const existingRoyalty = prev.find((e) => lower(e.name).includes("royalty"));
+      const existingBrand = prev.find(
+        (e) => lower(e.name).includes("brand") || lower(e.name).includes("ad fund")
+      );
+
+      let updated = [...prev];
+
+      if (isFranchise) {
+        // If franchise is true, ensure royalty and brand fields exist
+        // Preserve existing data if it exists, otherwise create new fields
+        if (!existingRoyalty) {
+          updated.push({
+            category: 'Royalty + Ad Fund',
+            name: 'Royalty',
+            is_value_type: false, // Royalty is typically a percentage
+            amount: 0,
+            fixed_expense_type: 'MONTHLY',
+            is_active: true
+          });
+        }
+        if (!existingBrand) {
+          updated.push({
+            category: 'Royalty + Ad Fund',
+            name: 'Brand/Ad Fund',
+            is_value_type: false, // Brand/Ad Fund is typically a percentage
+            amount: 0,
+            fixed_expense_type: 'MONTHLY',
+            is_active: true
+          });
+        }
+      } else {
+        // If not franchise, remove royalty and brand fields
+        updated = updated.filter(
+          (e) => !lower(e.name).includes("royalty") && 
+                 !lower(e.name).includes("brand") && 
+                 !lower(e.name).includes("ad fund")
+        );
+      }
+
+      return updated;
+    });
+  }, [isFranchise, hasInitialized]);
 
   useEffect(() => {
     updateData(expenses);

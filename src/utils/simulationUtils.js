@@ -74,7 +74,8 @@ export const EXPENSE_CATEGORIES = [
   'Repairs and Maintenance',
   'Meals and Entertainment',
   'Legal & Acct',
-  'Payroll & Acct'
+  'Payroll & Acct',
+  'Royalty + Ad Fund'
 ];
 
 /**

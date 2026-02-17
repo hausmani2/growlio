@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import { formatCurrency, formatNumber } from '../../utils/formatUtils';
+import ChatWidget from '../chatbot/ChatWidget';
 
 const { Option } = Select;
 
@@ -505,6 +506,9 @@ const SimulationDashboard = () => {
           </div>
         </Modal>
       </div>
+      
+      {/* Chat Widget for Simulation */}
+      <ChatWidget botName="Growlio Assistant" />
     </div>
   );
 };

@@ -372,12 +372,10 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
                   type="checkbox"
                   checked={isFranchise}
                   onChange={(e) => setIsFranchise(e.target.checked)}
-                  disabled={true} // Always checked, cannot be unchecked
-                  className="h-4 w-4 cursor-not-allowed opacity-75"
+                  className="h-4 w-4 opacity-75"
                 />
                 <span className="text-sm text-gray-700">
-                  Is this a franchise location? <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 ml-2">(Required)</span>
+                  Is this a franchise location?
                 </span>
               </label>
             </div>

@@ -555,7 +555,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   }
 
   return (
-    <div className="space-y-6">     
+    <div className="">     
 
       {/* Summary Cards */}
       {/* <Row gutter={[16, 16]}> */}

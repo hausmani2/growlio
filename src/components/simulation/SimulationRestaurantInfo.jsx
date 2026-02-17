@@ -6,6 +6,7 @@ import { SimulationTabProvider } from "./SimulationTabContext";
 import { useSimulationTabHook } from "./hooks/useSimulationTabHook";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
+import ChatWidget from "../chatbot/ChatWidget";
 
 const SimulationRestaurantContent = () => {
     const navigate = useNavigate();
@@ -48,6 +49,9 @@ const SimulationRestaurantContent = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Chat Widget for Simulation */}
+            <ChatWidget botName="Growlio Assistant" />
         </div>
     );
 };

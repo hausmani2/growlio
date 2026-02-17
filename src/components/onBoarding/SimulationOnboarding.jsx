@@ -9,6 +9,7 @@ import LaborInformationStep from './simulationSteps/LaborInformationStep';
 import ExpensesStep from './simulationSteps/ExpensesStep';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
 import Header from '../layout/Header';
+import ChatWidget from '../chatbot/ChatWidget';
 
 const STEPS = [
   { id: 'basic-information', title: 'Basic Information', component: BasicInformationStep },
@@ -601,6 +602,7 @@ const SimulationOnboarding = () => {
               onBack={handleBack}
               isLastStep={currentStep === STEPS.length - 1}
               validateStep={validateStepRef}
+              isFranchise={formData.basicinformation?.isFranchise || false}
             />
           )}
         </div>
@@ -624,6 +626,9 @@ const SimulationOnboarding = () => {
           </button>
         </div>
       </div>
+      
+      {/* Chat Widget for Simulation */}
+      <ChatWidget botName="Growlio Assistant" />
     </div>
   );
 };

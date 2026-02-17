@@ -508,6 +508,7 @@ export const SimulationTabProvider = ({ children }) => {
                             updateData={(data) => updateFormData('expenses', data)}
                             onNext={() => {}}
                             onBack={() => handleTabClick(2)}
+                            isFranchise={formData.basicinformation?.isFranchise || false}
                         />
                         <div className="mt-4 flex justify-end">
                             <button
