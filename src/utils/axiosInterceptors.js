@@ -145,13 +145,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Check if user is on login page
+    const currentPath = window.location.pathname;
+    const isOnLoginPage = currentPath === '/login' || currentPath === '/admin/login';
+    
+    // Check if this is an authentication endpoint (actual login attempt)
+    const isAuthEndpoint = error.config?.url && (
+      error.config.url.includes('/authentication/login/') ||
+      error.config.url.includes('/authentication/superadmin-login/') ||
+      error.config.url.includes('/authentication/register/') ||
+      error.config.url.includes('/authentication/forgot-password/') ||
+      error.config.url.includes('/authentication/reset-password/')
+    );
+    
+    // Suppress error messages when on login page UNLESS it's from an actual login attempt
+    // This prevents showing errors from initialization API calls that fail when user is on login page
+    const shouldSuppressError = isOnLoginPage && !isAuthEndpoint;
+    
     // Handle timeout errors
     if (error.code === 'ECONNABORTED' || error.message === 'timeout of ' + API_TIMEOUT + 'ms exceeded' || error.message.includes('timeout')) {
       const timeoutSeconds = Math.round(API_TIMEOUT / 1000);
-      message.error({
-        content: `Request timed out after ${timeoutSeconds} seconds. Please check your connection and try again.`,
-        duration: 5,
-      });
+      if (!shouldSuppressError) {
+        message.error({
+          content: `Request timed out after ${timeoutSeconds} seconds. Please check your connection and try again.`,
+          duration: 5,
+        });
+      }
       console.error(`⏱️ API Timeout: Request exceeded ${timeoutSeconds}s limit`, error.config?.url);
       return Promise.reject(error);
     }
@@ -174,33 +193,56 @@ api.interceptors.response.use(
             }
           } catch {}
           // Otherwise, clear and redirect to login
-          clearStoreAndRedirectToLogin();
+          // Don't show error message if already on login page (prevents showing stale 401 errors)
+          if (!shouldSuppressError) {
+            clearStoreAndRedirectToLogin();
+          } else {
+            // Silently clear store without redirecting (already on login page)
+            const store = useStore.getState();
+            if (store.clearPersistedState) {
+              store.clearPersistedState();
+            }
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.removeItem('token');
+            sessionStorage.removeItem('user');
+          }
           break;
         case 403:
           // Forbidden
-          message.error('Access forbidden. You do not have permission to perform this action.');
+          if (!shouldSuppressError) {
+            message.error('Access forbidden. You do not have permission to perform this action.');
+          }
           console.error('Access forbidden');
           break;
         case 404:
           // Not found
-          message.error('Resource not found. Please check the URL and try again.');
+          if (!shouldSuppressError) {
+            message.error('Resource not found. Please check the URL and try again.');
+          }
           console.error('Resource not found');
           break;
         case 408:
           // Request Timeout
-          message.error('Request timeout. The server took too long to respond. Please try again.');
+          if (!shouldSuppressError) {
+            message.error('Request timeout. The server took too long to respond. Please try again.');
+          }
           console.error('Request timeout');
           break;
         case 500:
           // Server error
-          message.error('Server error occurred. Please try again later.');
+          if (!shouldSuppressError) {
+            message.error('Server error occurred. Please try again later.');
+          }
           console.error('Server error occurred');
           break;
         case 502:
         case 503:
         case 504:
           // Server unavailable errors
-          message.error('Server is temporarily unavailable. Please try again later.');
+          if (!shouldSuppressError) {
+            message.error('Server is temporarily unavailable. Please try again later.');
+          }
           console.error('Server unavailable:', error.response.status);
           break;
         default:
@@ -209,12 +251,15 @@ api.interceptors.response.use(
       }
     } else if (error.request) {
       // Network error - request was made but no response received
-      message.error('Network error. Please check your internet connection and try again.');
+      // Only show network error if not on login page (prevents showing errors from initialization)
+      if (!shouldSuppressError) {
+        message.error('Network error. Please check your internet connection and try again.');
+      }
       console.error('Network error - no response received', error.request);
     } else {
       // Other error (configuration error, etc.)
       console.error('Error:', error.message);
-      if (error.message) {
+      if (error.message && !shouldSuppressError) {
         message.error(`An error occurred: ${error.message}`);
       }
     }

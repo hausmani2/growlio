@@ -36,6 +36,18 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  // Clear error when component mounts to prevent stale errors from showing
+  useEffect(() => {
+    // Clear any existing error state when component mounts
+    // This prevents showing errors from previous failed API calls or initialization
+    try {
+      clearError();
+    } catch (error) {
+      // Silently handle errors during initialization
+      console.warn('Error clearing error state on mount:', error);
+    }
+  }, [clearError]);
+
   // Clear error when component unmounts or form changes
   useEffect(() => {
     return () => {
@@ -309,6 +321,7 @@ const Login = () => {
       }
     } catch (err) {
       // Error is already handled in the store
+      // The store's login function sets the error state appropriately
       console.error('Login error:', err);
     } finally {
       // Ensure both loading states are reset
