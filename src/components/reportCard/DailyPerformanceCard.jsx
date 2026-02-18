@@ -28,7 +28,7 @@ const getScoreColor = (score) => {
 };
 
 // Daily Gauge Component
-const DailyGauge = ({ score, day, date, profitLoss }) => {
+const DailyGauge = ({ score, day, date, profitLoss, isFuture = false }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const color = getScoreColor(s);
   const profitLossValue = Number(profitLoss) || 0;
@@ -38,7 +38,7 @@ const DailyGauge = ({ score, day, date, profitLoss }) => {
   const data = useMemo(() => [{ name: "score", value: s, fill: color }], [s, color]);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className={`flex flex-col items-center ${isFuture ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="relative" style={{ width: 120, height: 120 }}>
         <RadialBarChart
           width={120}
@@ -60,24 +60,31 @@ const DailyGauge = ({ score, day, date, profitLoss }) => {
         
         {/* Score number in center */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-2xl font-extrabold text-gray-900 tabular-nums">
-            {Math.round(s)}
+          <div className={`text-2xl font-extrabold tabular-nums ${isFuture ? 'text-gray-400' : 'text-gray-900'}`}>
+            {isFuture ? '-' : Math.round(s)}
           </div>
         </div>
       </div>
       
       {/* Day and date */}
-      <div className="mt-2 text-sm font-medium text-gray-700 text-center">
+      <div className={`mt-2 text-sm font-medium text-center ${isFuture ? 'text-gray-400' : 'text-gray-700'}`}>
         {day}
       </div>
-      <div className="text-xs text-gray-500 text-center">
+      <div className={`text-xs text-center ${isFuture ? 'text-gray-300' : 'text-gray-500'}`}>
         {date}
       </div>
       
       {/* Profit/Loss */}
-      <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
-        {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(profitLossValue))}
-      </div>
+      {!isFuture && (
+        <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
+          {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(profitLossValue))}
+        </div>
+      )}
+      {isFuture && (
+        <div className="mt-1 text-xs text-gray-400 font-medium">
+          Future
+        </div>
+      )}
     </div>
   );
 };
@@ -151,8 +158,12 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       return [];
     }
 
+    const today = dayjs().startOf('day');
+
     return dailyPerformanceData.map((item) => {
       const dateObj = dayjs(item.date);
+      const isFuture = dateObj.isAfter(today);
+      
       // Convert full day name to short format (e.g., "Monday" -> "Mon")
       let dayName = item.day || dateObj.format('ddd');
       if (dayName && dayName.length > 3) {
@@ -175,6 +186,8 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         day: dayName,
         date: dateFormatted,
         profitLoss: item.profit_loss || 0,
+        isFuture: isFuture,
+        dateObj: dateObj
       };
     });
   }, [dailyPerformanceData]);
@@ -251,7 +264,12 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       {/* Last 7 Days Section */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <h2 className="text-2xl font-bold text-orange-600">Last 7 Days</h2>
+          <h2 className="text-2xl font-bold text-orange-600">
+            {dateRange[0] && dateRange[1] 
+              ? `Week of ${dateRange[0].format('MMM DD')} - ${dateRange[1].format('MMM DD, YYYY')}`
+              : 'Last 7 Days'
+            }
+          </h2>
           <DatePicker
             picker="week"
             value={weekPickerValue}
@@ -303,6 +321,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
                 day={day.day}
                 date={day.date}
                 profitLoss={day.profitLoss}
+                isFuture={day.isFuture}
               />
             ))}
           </div>

@@ -78,7 +78,7 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                     </label>
                     <Select 
                         id="franchise" 
-                        placeholder="No" 
+                        placeholder="Yes" 
                         className={`w-full h-11 rounded-lg text-sm ${
                             errors.isFranchise ? 'border-red-500' : ''
                         }`}
@@ -86,8 +86,8 @@ const AddressType = ({ data, updateData, errors = {}, loading = false, onSaveAnd
                         onChange={(value) => updateData('isFranchise', value)}
                         status={errors.isFranchise ? 'error' : ''}
                     >
-                        <Select.Option value="1">No</Select.Option>
-                        <Select.Option value="2">Yes</Select.Option>
+                        <Select.Option value="1">Yes</Select.Option>
+                        <Select.Option value="2">No</Select.Option>
                     </Select>
                     {errors.isFranchise && (
                         <span className="text-red-500 text-xs mt-1">{errors.isFranchise}</span>

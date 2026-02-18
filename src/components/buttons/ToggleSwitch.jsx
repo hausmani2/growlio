@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '' }) => {
+const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '', disabled = false }) => {
     const sizeClasses = {
         small: 'w-[28px] h-[28px]',
         default: 'w-[36px] h-[24px]',
@@ -21,8 +21,8 @@ const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '' }) => {
 
     return (
         <div
-            onClick={() => setIsOn(!isOn)}
-            className={`cursor-pointer ${sizeClasses[size]} rounded-[8px] flex items-center transition-colors duration-300 shadow-md ${isOn ? 'bg-orange-600' : 'bg-gray-200'} ${className}`}
+            onClick={() => !disabled && setIsOn(!isOn)}
+            className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${sizeClasses[size]} rounded-[8px] flex items-center transition-colors duration-300 shadow-md ${isOn ? 'bg-orange-600' : 'bg-gray-200'} ${className}`}
             style={{ boxShadow: '0 8px 16px 0 rgba(0,0,0,0.10)' }}
         >
             <div

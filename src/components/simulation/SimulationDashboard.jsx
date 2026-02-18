@@ -16,20 +16,25 @@ const SimulationDashboard = () => {
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
     added_customer_per_day: 5,
-    current_customer_per_day: 2,
+    days: 0,
+    profit_loss: 0,
     average_ticket_per_customer: 20
   });
-  
   const {
     simulationDashboardData,
     simulationDashboardLoading,
     simulationDashboardError,
     createSimulationDashboard,
     getSimulationOnboardingStatus,
-    getSimulationDashboard
+    getSimulationDashboard,
+    fetchRestaurantId,
+    getDays,
+    daysLoading,
+    daysError
   } = useStore();
 
   const [restaurantId, setRestaurantId] = useState(null);
+  const [period, setPeriod] = useState('monthly'); // daily, weekly, monthly, annually
 
   // Load restaurant ID and dashboard data on mount
   // Also check if onboarding is complete - redirect if not
@@ -39,10 +44,20 @@ const SimulationDashboard = () => {
       let restaurantName = null;
       let onboardingComplete = false;
       
-      const storedId = localStorage.getItem('simulation_restaurant_id');
-      if (storedId) {
-        id = parseInt(storedId);
+      // Get restaurant ID from store (logged-in user's restaurant)
+      const storeRestaurantId = await fetchRestaurantId();
+      if (storeRestaurantId) {
+        id = parseInt(storeRestaurantId);
         setRestaurantId(id);
+      }
+      
+      // Fallback to simulation_restaurant_id if store doesn't have it
+      if (!id) {
+        const storedId = localStorage.getItem('simulation_restaurant_id');
+        if (storedId) {
+          id = parseInt(storedId);
+          setRestaurantId(id);
+        }
       }
       
       // Always check onboarding status to verify completion
@@ -93,7 +108,23 @@ const SimulationDashboard = () => {
       }
     };
     loadData();
-  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate]);
+  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, fetchRestaurantId]);
+
+  // Fetch days when modal opens or month/year changes
+  useEffect(() => {
+    const fetchDaysData = async () => {
+      if (!isModalVisible || !restaurantId) return;
+      
+      const result = await getDays(dashboardParams.year, dashboardParams.month, restaurantId);
+      if (result.success && result.data && result.data.working_days_count !== undefined) {
+        setDashboardParams(prev => ({ ...prev, days: result.data.working_days_count }));
+      } else if (result.error) {
+        message.error(result.error);
+      }
+    };
+
+    fetchDaysData();
+  }, [isModalVisible, dashboardParams.year, dashboardParams.month, restaurantId, getDays]);
 
   const showModal = () => {
     setIsModalVisible(true);
@@ -114,8 +145,10 @@ const SimulationDashboard = () => {
       year: dashboardParams.year,
       month: dashboardParams.month,
       added_customer_per_day: dashboardParams.added_customer_per_day,
-      current_customer_per_day: dashboardParams.current_customer_per_day,
-      average_ticket_per_customer: dashboardParams.average_ticket_per_customer
+      days: dashboardParams.days,
+      profit_loss: dashboardParams.profit_loss,
+      average_ticket_per_customer: dashboardParams.average_ticket_per_customer,
+      period: period
     };
 
     try {
@@ -172,21 +205,35 @@ const SimulationDashboard = () => {
               Forecast your restaurant's financial performance
             </p>
           </div>
-          <Button
-            type="primary"
-            icon={<CalendarOutlined />}
-            onClick={showModal}
-            size="large"
-            className="bg-orange-500 hover:bg-orange-600 border-orange-500"
-          >
-            Generate Forecast
-          </Button>
+          <div className="flex items-center gap-4">
+            <div>
+              <Select
+                value={period}
+                onChange={(value) => setPeriod(value)}
+                className="w-40 h-11"
+              >
+                <Option value="daily">Daily</Option>
+                <Option value="weekly">Weekly</Option>
+                <Option value="monthly">Monthly</Option>
+                <Option value="annually">Annually</Option>
+              </Select>
+            </div>
+            <Button
+              type="primary"
+              icon={<CalendarOutlined />}
+              onClick={showModal}
+              size="large"
+              className="bg-orange-500 hover:bg-orange-600 border-orange-500"
+            >
+              Generate Forecast
+            </Button>
+          </div>
         </div>
 
         {dashboardData ? (
           <>
             {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
               <Card className="shadow-md">
                 <div className="flex items-center justify-between">
                   <div>
@@ -230,25 +277,6 @@ const SimulationDashboard = () => {
               <Card className="shadow-md">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Cash on Hand</p>
-                    <p className={`text-2xl font-bold ${
-                      dashboardData.cash_on_hand >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(dashboardData.cash_on_hand)}
-                    </p>
-                  </div>
-                  <DollarOutlined className={`text-3xl ${
-                    dashboardData.cash_on_hand >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`} />
-                </div>
-              </Card>
-            </div>
-
-            {/* Customer & Sales Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
                     <p className="text-sm text-gray-600 mb-1">Number of Customers</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {formatNumber(dashboardData.no_of_customer)}
@@ -258,85 +286,19 @@ const SimulationDashboard = () => {
                 </div>
               </Card>
 
-              <Card className="shadow-md">
+              <Card className="shadow-md bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Work Days in Month</p>
-                    <p className="text-2xl font-bold text-gray-700">
-                      {dashboardData.work_days_in_month}
+                    <p className="text-sm text-gray-700 mb-1 font-medium">Need to Achieve Goals Sales</p>
+                    <p className="text-2xl font-bold text-orange-700">
+                      {period === 'daily' && formatCurrency(dashboardData.avg_daily_sales_needed)}
+                      {period === 'weekly' && formatCurrency(dashboardData.avg_weekly_sales_needed)}
+                      {period === 'monthly' && formatCurrency(dashboardData.avg_monthly_sales_needed)}
+                      {period === 'annually' && formatCurrency((dashboardData.avg_monthly_sales_needed || 0) * 12)}
                     </p>
                   </div>
-                  <CalendarOutlined className="text-3xl text-gray-500" />
+                  <DollarOutlined className="text-3xl text-orange-500" />
                 </div>
-              </Card>
-
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Average Ticket</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {formatCurrency(dashboardData.average_ticket_per_customer)}
-                    </p>
-                  </div>
-                  <DollarOutlined className="text-3xl text-purple-500" />
-                </div>
-              </Card>
-            </div>
-
-            {/* Daily Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="shadow-md">
-                <p className="text-sm text-gray-600 mb-1">Daily Expenses</p>
-                <p className="text-xl font-semibold text-gray-800">
-                  {formatCurrency(dashboardData.daily_expenses)}
-                </p>
-              </Card>
-
-              <Card className="shadow-md">
-                <p className="text-sm text-gray-600 mb-1">Daily COGS</p>
-                <p className="text-xl font-semibold text-gray-800">
-                  {formatCurrency(dashboardData.daily_cogs)}
-                </p>
-              </Card>
-
-              <Card className="shadow-md">
-                <p className="text-sm text-gray-600 mb-1">Daily Profit/Loss</p>
-                <p className={`text-xl font-semibold ${
-                  dashboardData.daily_profit_loss >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(dashboardData.daily_profit_loss)}
-                </p>
-              </Card>
-
-              <Card className="shadow-md">
-                <p className="text-sm text-gray-600 mb-1">Avg Daily Sales Needed</p>
-                <p className="text-xl font-semibold text-orange-600">
-                  {formatCurrency(dashboardData.avg_daily_sales_needed)}
-                </p>
-              </Card>
-            </div>
-
-            {/* Sales Targets */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <Card className="shadow-md bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                <p className="text-sm text-gray-700 mb-1 font-medium">Weekly Sales Needed</p>
-                <p className="text-2xl font-bold text-orange-700">
-                  {formatCurrency(dashboardData.avg_weekly_sales_needed)}
-                </p>
-              </Card>
-
-              <Card className="shadow-md bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                <p className="text-sm text-gray-700 mb-1 font-medium">Monthly Sales Needed</p>
-                <p className="text-2xl font-bold text-orange-700">
-                  {formatCurrency(dashboardData.avg_monthly_sales_needed)}
-                </p>
-              </Card>
-
-              <Card className="shadow-md bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                <p className="text-sm text-gray-700 mb-1 font-medium">Current Monthly Income</p>
-                <p className="text-2xl font-bold text-blue-700">
-                  {formatCurrency(dashboardData.total_income)}
-                </p>
               </Card>
             </div>
 
@@ -455,13 +417,30 @@ const SimulationDashboard = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Added Customers Per Day <span className="text-red-500">*</span>
+                Days <span className="text-red-500">*</span>
+              </label>
+              <InputNumber
+                value={dashboardParams.days}
+                onChange={(value) => setDashboardParams(prev => ({ ...prev, days: value || 0 }))}
+                min={0}
+                className="w-full"
+                placeholder="Enter number of days"
+                disabled={daysLoading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Number of working days in the selected month
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Customers Per Day <span className="text-red-500">*</span>
               </label>
               <InputNumber
                 value={dashboardParams.added_customer_per_day}
                 onChange={(value) => setDashboardParams(prev => ({ ...prev, added_customer_per_day: value || 0 }))}
                 min={0}
-                className="w-full h-11"
+                className="w-full"
                 placeholder="Enter number of new customers per day"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -471,17 +450,19 @@ const SimulationDashboard = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Current Customers Per Day <span className="text-red-500">*</span>
+                Profit/Loss <span className="text-red-500">*</span>
               </label>
               <InputNumber
-                value={dashboardParams.current_customer_per_day}
-                onChange={(value) => setDashboardParams(prev => ({ ...prev, current_customer_per_day: value || 0 }))}
-                min={0}
-                className="w-full h-11"
-                placeholder="Enter current customers per day"
+                value={dashboardParams.profit_loss}
+                onChange={(value) => setDashboardParams(prev => ({ ...prev, profit_loss: value || 0 }))}
+                step={0.01}
+                precision={2}
+                prefix="$"
+                className="w-full"
+                placeholder="Enter profit/loss amount"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Current number of customers you serve per day
+                Expected profit or loss for the month (negative values indicate loss)
               </p>
             </div>
 
@@ -496,7 +477,7 @@ const SimulationDashboard = () => {
                 step={0.01}
                 precision={2}
                 prefix="$"
-                className="w-full h-11"
+                className="w-full"
                 placeholder="Enter average ticket amount"
               />
               <p className="text-xs text-gray-500 mt-1">

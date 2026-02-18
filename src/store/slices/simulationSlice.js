@@ -21,6 +21,11 @@ const createSimulationSlice = (set, get) => ({
   simulationDashboardLoading: false,
   simulationDashboardError: null,
   
+  // Days data
+  daysData: null,
+  daysLoading: false,
+  daysError: null,
+  
   // Get simulation onboarding data (full data for update mode)
   // Similar to GET /restaurant_v2/onboarding/ for regular onboarding
   getSimulationOnboardingData: async (forceRefresh = false) => {
@@ -521,6 +526,46 @@ const createSimulationSlice = (set, get) => ({
     }
   },
   
+  // Get days for a specific month and year
+  getDays: async (year, month, restaurantId) => {
+    if (!year || !month || !restaurantId) {
+      const errorMsg = 'Year, month, and restaurant ID are required to fetch days';
+      set({
+        daysLoading: false,
+        daysError: errorMsg
+      });
+      return { success: false, error: errorMsg };
+    }
+    
+    set({ daysLoading: true, daysError: null });
+    
+    try {
+      const response = await apiGet(`/simulation/working-days/?year=${year}&month=${month}&restaurant_id=${restaurantId}`);
+      
+      set({
+        daysData: response.data,
+        daysLoading: false,
+        daysError: null
+      });
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error || 
+                          error.message || 
+                          'Failed to fetch days';
+      
+      console.error('❌ [simulationSlice] Error fetching days:', error);
+      
+      set({
+        daysLoading: false,
+        daysError: errorMessage
+      });
+      
+      return { success: false, error: errorMessage };
+    }
+  },
+  
   // Clear simulation state
   clearSimulationState: () => {
     set({
@@ -534,7 +579,10 @@ const createSimulationSlice = (set, get) => ({
       simulationOnboardingDataError: null,
       simulationDashboardData: null,
       simulationDashboardLoading: false,
-      simulationDashboardError: null
+      simulationDashboardError: null,
+      daysData: null,
+      daysLoading: false,
+      daysError: null
     });
     
     // Clear sessionStorage cache

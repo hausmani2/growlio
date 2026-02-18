@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Select } from "antd";
+import { Select, Modal } from "antd";
 import PrimaryButton from "../../../../buttons/Buttons";
 
 const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
@@ -46,11 +46,23 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
     updateData("providers", [...currentProviders, newProvider]);
   };
 
-  // Delete a provider
+  // Delete a provider with confirmation
   const deleteProvider = (providerId) => {
     const currentProviders = data?.providers || [];
-    const updatedProviders = currentProviders.filter((provider) => provider.id !== providerId);
-    updateData("providers", updatedProviders);
+    const providerToDelete = currentProviders.find((provider) => provider.id === providerId);
+    const providerName = providerToDelete?.providerName || providerToDelete?.provider_name || "this provider";
+    
+    Modal.confirm({
+      title: "Delete Provider",
+      content: `Are you sure you want to delete ${providerName}?`,
+      okText: "Yes, Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: () => {
+        const updatedProviders = currentProviders.filter((provider) => provider.id !== providerId);
+        updateData("providers", updatedProviders);
+      },
+    });
   };
 
   // Update a specific provider

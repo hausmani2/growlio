@@ -508,6 +508,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return record.restaurant_open === 0;
   };
 
+  // Check if a date is in the future (after today)
+  const isFutureDate = (date) => {
+    if (!date) return false;
+    try {
+      const recordDate = dayjs.isDayjs(date) ? date : dayjs(date);
+      if (!recordDate.isValid()) return false;
+      
+      const today = dayjs().startOf('day');
+      const recordDateStart = recordDate.startOf('day');
+      
+      // Return true if date is after today (tomorrow or later)
+      return recordDateStart.isAfter(today);
+    } catch (error) {
+      console.error('Error checking future date:', error, date);
+      return false;
+    }
+  };
+
   // Handle toggle changes in the main table
   const handleMainTableToggleChange = async (dayIndex, field, value, record) => {
     try {
@@ -1657,6 +1675,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     };
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
+      // Block all future dates (tomorrow and beyond)
+      if (isFutureDate(record.date) && field !== 'restaurant_open') {
+        message.warning(`Cannot add data for ${record.dayName} - This date is in the future. Only current date and past dates can be edited.`);
+        return;
+      }
+
       // Allow changes to restaurant_open field even when day is closed
       if (isDayClosed(record) && field !== 'restaurant_open') {
         message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
@@ -2013,21 +2037,29 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   dataIndex: 'restaurant_open',
                   key: 'restaurant_open',
                   width: 100,
-                  render: (value, record, index) => (
-                    <div className="flex items-center gap-2" data-guidance="close-your-days">
-                      <ToggleSwitch
-                        isOn={value === 1}
-                        setIsOn={(isOn) => {
-                          const newValue = isOn ? 1 : 0;
-                          handleDailyDataChange(index, 'restaurant_open', newValue, record);
-                        }}
-                        size="small"
-                      />
-                      <span className="text-xs text-gray-600">
-                        {value === 1 ? 'Open' : 'Closed'}
-                      </span>
-                    </div>
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    return (
+                      <div className="flex items-center gap-2" data-guidance="close-your-days">
+                        <ToggleSwitch
+                          isOn={value === 1}
+                          setIsOn={(isOn) => {
+                            if (isFuture) {
+                              message.warning(`Cannot change restaurant status for ${record.dayName} - This date is in the future.`);
+                              return;
+                            }
+                            const newValue = isOn ? 1 : 0;
+                            handleDailyDataChange(index, 'restaurant_open', newValue, record);
+                          }}
+                          size="small"
+                          disabled={isFuture}
+                        />
+                        <span className="text-xs text-gray-600">
+                          {value === 1 ? 'Open' : 'Closed'}
+                        </span>
+                      </div>
+                    );
+                  }
                 },
                 {
                   title: 'Budgeted Sales',
@@ -2054,60 +2086,78 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   dataIndex: 'actualSalesInStore',
                   key: 'actualSalesInStore',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
-                      placeholder="0.00"
-                      className="w-full"
-                      disabled={isDayClosed(record)}
-                      style={{
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                      }}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = isDayClosed(record) || isFuture;
+                    return (
+                      <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                        }}
+                      />
+                    );
+                  }
                 }] : []),
                 ...(salesChannelsConfig.from_app ? [{
                   title: 'Actual Sales - App/Online',
                   dataIndex: 'actualSalesAppOnline',
                   key: 'actualSalesAppOnline',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
-                      placeholder="0.00"
-                      className="w-full"
-                      disabled={isDayClosed(record)}
-                      style={{
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                      }}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = isDayClosed(record) || isFuture;
+                    return (
+                      <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                        }}
+                      />
+                    );
+                  }
                 }] : []),
                 ...(salesChannelsConfig.online ? [{
                   title: 'Actual Sales - Online',
                   dataIndex: 'actualSalesOnline',
                   key: 'actualSalesOnline',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'actualSalesOnline', parseFloat(e.target.value) || 0, record)}
-                      placeholder="0.00"
-                      className="w-full"
-                      disabled={isDayClosed(record)}
-                      style={{
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                      }}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = isDayClosed(record) || isFuture;
+                    return (
+                      <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesOnline', parseFloat(e.target.value) || 0, record)}
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                        }}
+                      />
+                    );
+                  }
                 }] : []),
                 // Dynamic Provider Columns
                 ...providers.map(provider => ({
@@ -2115,20 +2165,26 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                   key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type='number'
-                      value={value}
-                      onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
-                      placeholder="0.00"
-                      className="w-full"
-                      disabled={isDayClosed(record)}
-                      style={{
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                      }}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = isDayClosed(record) || isFuture;
+                    return (
+                      <Input
+                        type='number'
+                        value={value}
+                        onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                        }}
+                      />
+                    );
+                  }
                 })),
                 {
                   title: 'Net Sales - Actual',
@@ -2171,33 +2227,37 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   dataIndex: 'dailyTickets',
                   key: 'dailyTickets',
                   width: 150,
-                  render: (value, record, index) => (
-                    <div>
-                      <Input
-                        type='number'
-                        value={value}
-                        onChange={(e) => handleDailyTicketsChange(e.target.value, (value) => handleDailyDataChange(index, 'dailyTickets', value, record))}
-                        onBlur={(e) => {
-                          const wholeNumber = ensureWholeNumberTickets(e.target.value);
-                          if (wholeNumber !== parseFloat(e.target.value)) {
-                            handleDailyDataChange(index, 'dailyTickets', wholeNumber, record);
-                          }
-                        }}
-                        placeholder="0"
-                        step="1"
-                        min="0"
-                        pattern="[0-9]*"
-                        className="w-full"
-                        disabled={isDayClosed(record)}
-                        style={{
-                          opacity: isDayClosed(record) ? 0.5 : 1,
-                          cursor: isDayClosed(record) ? 'not-allowed' : 'text'
-                        }}
-                      />
-
-
-                    </div>
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = isDayClosed(record) || isFuture;
+                    return (
+                      <div>
+                        <Input
+                          type='number'
+                          value={value}
+                          onChange={(e) => handleDailyTicketsChange(e.target.value, (value) => handleDailyDataChange(index, 'dailyTickets', value, record))}
+                          onBlur={(e) => {
+                            const wholeNumber = ensureWholeNumberTickets(e.target.value);
+                            if (wholeNumber !== parseFloat(e.target.value)) {
+                              handleDailyDataChange(index, 'dailyTickets', wholeNumber, record);
+                            }
+                          }}
+                          placeholder="0"
+                          step="1"
+                          min="0"
+                          pattern="[0-9]*"
+                          className="w-full"
+                          disabled={isDisabled}
+                          readOnly={isFuture}
+                          style={{
+                            opacity: isDisabled ? 0.5 : 1,
+                            cursor: isDisabled ? 'not-allowed' : 'text',
+                            backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                          }}
+                        />
+                      </div>
+                    );
+                  }
                 },
                 {
                   title: 'Actual Sales Budget (%)',
