@@ -368,7 +368,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column - Over */}
-          <div className="space-y-3">
+          <div className="">
             {keyFindings.over.length > 0 ? (
               keyFindings.over.map((finding, idx) => (
                 <FindingItem
@@ -384,7 +384,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
           </div>
 
           {/* Right Column - Under */}
-          <div className="space-y-3">
+          <div className="">
             {keyFindings.under.length > 0 ? (
               keyFindings.under.map((finding, idx) => (
                 <FindingItem
