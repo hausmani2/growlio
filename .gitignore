@@ -1,7 +1,18 @@
 # dependencies
 node_modules/
-.DS_Store
+
+# build output
+dist/
+
+# environment
 .env
-package-lock.json
+
+# system files
+.DS_Store
+
+# IDE
 .vscode
+
+# other
+package-lock.json
 .md
