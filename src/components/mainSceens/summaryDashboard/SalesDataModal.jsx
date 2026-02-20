@@ -98,7 +98,6 @@ const SalesDataModal = ({
     if (!currentRestaurantGoals || !currentRestaurantGoals.restaurant_days) {
       // If no goals data or restaurant_days is missing, default to all days CLOSED
       // Empty array means all days are closed
-      console.log(`⚠️ No restaurant_days data for "${dayName}", defaulting to CLOSED`);
       return false;
     }
 
@@ -110,7 +109,6 @@ const SalesDataModal = ({
 
     // If restaurant_days is empty array [], all days are CLOSED
     if (currentRestaurantGoals.restaurant_days.length === 0) {
-      console.log(`📅 restaurant_days is empty [], "${dayName}" is CLOSED`);
       return false;
     }
 
@@ -129,9 +127,7 @@ const SalesDataModal = ({
     const isOpen = normalizedRestaurantDays.some(openDay => 
       openDay.toLowerCase() === normalizedDayName.toLowerCase()
     );
-    
-    console.log(`🔍 Checking "${dayName}": ${isOpen ? 'OPEN' : 'CLOSED'} (restaurant_days: [${currentRestaurantGoals.restaurant_days.join(', ')}])`);
-    
+        
     return isOpen;
   };
 
@@ -148,13 +144,10 @@ const SalesDataModal = ({
     try {
       // Always fetch fresh data
       hasFetchedGoalsRef.current = true;
-      console.log('🔄 Fetching restaurant goals from API...');
       const goalsData = await getRestaurentGoal();
       
       if (goalsData) {
-        console.log('✅ Restaurant goals fetched:', goalsData);
         if (goalsData.restaurant_days && Array.isArray(goalsData.restaurant_days)) {
-          console.log('📅 Restaurant OPEN days from goals API:', goalsData.restaurant_days);
         } else {
           console.warn('⚠️ restaurant_days is missing or not an array:', goalsData.restaurant_days);
         }
@@ -244,7 +237,6 @@ const SalesDataModal = ({
         const initializeModal = async () => {
           // Always fetch restaurant goals to ensure we have the latest restaurant_days
           // This is important so restaurant_days can be used to set open/closed status for all days
-          console.log('🔄 Initializing modal - fetching restaurant goals...');
           const goalsData = await fetchRestaurantGoals();
           
           // Wait a bit for Zustand state to update if needed
@@ -255,7 +247,6 @@ const SalesDataModal = ({
             // Use useStore.getState() to get current state
             const currentState = useStore.getState();
             if (currentState.restaurantGoals && currentState.restaurantGoals.restaurant_days && Array.isArray(currentState.restaurantGoals.restaurant_days)) {
-              console.log('✅ Restaurant goals state updated:', currentState.restaurantGoals.restaurant_days);
               break;
             }
             await new Promise(resolve => setTimeout(resolve, 100));

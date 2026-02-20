@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
-import { CalendarOutlined, FlagOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { CalendarOutlined, FlagOutlined, CheckOutlined } from "@ant-design/icons";
 import { DatePicker, Spin, Empty, Alert } from "antd";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -28,7 +28,7 @@ const getScoreColor = (score) => {
 };
 
 // Daily Gauge Component
-const DailyGauge = ({ score, day, date, profitLoss, isFuture = false }) => {
+const DailyGauge = ({ score, day, date, profitLoss }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const color = getScoreColor(s);
   const profitLossValue = Number(profitLoss) || 0;
@@ -38,7 +38,7 @@ const DailyGauge = ({ score, day, date, profitLoss, isFuture = false }) => {
   const data = useMemo(() => [{ name: "score", value: s, fill: color }], [s, color]);
 
   return (
-    <div className={`flex flex-col items-center ${isFuture ? 'opacity-50 pointer-events-none' : ''}`}>
+    <div className="flex flex-col items-center">
       <div className="relative" style={{ width: 120, height: 120 }}>
         <RadialBarChart
           width={120}
@@ -60,46 +60,42 @@ const DailyGauge = ({ score, day, date, profitLoss, isFuture = false }) => {
         
         {/* Score number in center */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className={`text-2xl font-extrabold tabular-nums ${isFuture ? 'text-gray-400' : 'text-gray-900'}`}>
-            {isFuture ? '-' : Math.round(s)}
+          <div className="text-2xl font-extrabold tabular-nums text-gray-900">
+            {Math.round(s)}
           </div>
         </div>
       </div>
       
       {/* Day and date */}
-      <div className={`mt-2 text-sm font-medium text-center ${isFuture ? 'text-gray-400' : 'text-gray-700'}`}>
+      <div className="mt-2 text-sm font-medium text-center text-gray-700">
         {day}
       </div>
-      <div className={`text-xs text-center ${isFuture ? 'text-gray-300' : 'text-gray-500'}`}>
+      <div className="text-xs text-center text-gray-500">
         {date}
       </div>
       
       {/* Profit/Loss */}
-      {!isFuture && (
-        <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
-          {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(profitLossValue))}
-        </div>
-      )}
-      {isFuture && (
-        <div className="mt-1 text-xs text-gray-400 font-medium">
-          Future
-        </div>
-      )}
+      <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
+        {isNegative ? "-" : ""}{formatCompactCurrency(Math.abs(profitLossValue))}
+      </div>
     </div>
   );
 };
 
 // Key Finding Item Component
-const FindingItem = ({ text, type = "success" }) => {
+const FindingItem = ({ text, type = "success", onClick }) => {
   const iconClass = 
     type === "error" ? "text-red-600" :
     type === "warning" ? "text-yellow-500" :
     "text-green-600";
   
-  const Icon = type === "success" ? CheckCircleOutlined : FlagOutlined;
+  const Icon = type === "success" ? CheckOutlined : FlagOutlined;
 
   return (
-    <div className="flex items-start gap-2">
+    <div 
+      className={`flex items-start gap-2 ${onClick ? 'cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <Icon className={`${iconClass} text-lg flex-shrink-0 mt-0.5`} />
       <span className="text-sm text-gray-700">{text}</span>
     </div>
@@ -112,7 +108,8 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     getDailyPerformanceData, 
     dailyPerformanceData, 
     dailyPerformanceLoading, 
-    dailyPerformanceError 
+    dailyPerformanceError,
+    setPendingChatMessage
   } = useStore();
 
   // Week picker state - initialize with current week
@@ -158,11 +155,8 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       return [];
     }
 
-    const today = dayjs().startOf('day');
-
     return dailyPerformanceData.map((item) => {
       const dateObj = dayjs(item.date);
-      const isFuture = dateObj.isAfter(today);
       
       // Convert full day name to short format (e.g., "Monday" -> "Mon")
       let dayName = item.day || dateObj.format('ddd');
@@ -186,70 +180,111 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         day: dayName,
         date: dateFormatted,
         profitLoss: item.profit_loss || 0,
-        isFuture: isFuture,
         dateObj: dateObj
       };
     });
   }, [dailyPerformanceData]);
 
-  // Generate key findings from data (placeholder - can be enhanced with actual logic)
+  // Generate key findings from data - over on left, under on right
   const keyFindings = useMemo(() => {
     if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) {
-      return { issues: [], successes: [] };
+      return { over: [], under: [] };
     }
 
-    const issues = [];
-    const successes = [];
+    const over = [];
+    const under = [];
 
     // Analyze data and generate findings
     dailyPerformanceData.forEach((item) => {
-      let dayName = item.day || dayjs(item.date).format('ddd');
-      // Convert full day name to short format if needed
-      if (dayName && dayName.length > 3) {
+      // Use full day name (Sunday, Monday, etc.)
+      let dayName = item.day || dayjs(item.date).format('dddd');
+      // Ensure we have full day name
+      if (dayName && dayName.length <= 3) {
         const dayMap = {
-          'Monday': 'Mon',
-          'Tuesday': 'Tue',
-          'Wednesday': 'Wed',
-          'Thursday': 'Thu',
-          'Friday': 'Fri',
-          'Saturday': 'Sat',
-          'Sunday': 'Sun'
+          'Mon': 'Monday',
+          'Tue': 'Tuesday',
+          'Wed': 'Wednesday',
+          'Thu': 'Thursday',
+          'Fri': 'Friday',
+          'Sat': 'Saturday',
+          'Sun': 'Sunday'
         };
-        dayName = dayMap[dayName] || dayjs(item.date).format('ddd');
+        dayName = dayMap[dayName] || dayjs(item.date).format('dddd');
       }
       
-      const score = item.main_score || 0;
-      const profitLoss = item.profit_loss || 0;
-      
-      // Low score issues
-      if (score < 60) {
-        issues.push({ 
-          text: `${dayName} score below 60%`, 
-          type: "error" 
+      // Check COGS status
+      if (item.cogs_status === 'over_goal' && item.cogs_difference) {
+        over.push({
+          text: `${dayName} Cogs over ${Math.round(Math.abs(item.cogs_difference))}%`,
+          type: "error",
+          item: item
         });
-      } else if (score < 70) {
-        issues.push({ 
-          text: `${dayName} score below 70%`, 
-          type: "warning" 
+      } else if (item.cogs_status === 'under_goal' && item.cogs_difference) {
+        under.push({
+          text: `${dayName} Cogs under ${Math.round(Math.abs(item.cogs_difference))}%`,
+          type: "success",
+          item: item
         });
       }
 
-      // Profit/Loss analysis
-      if (profitLoss < 0) {
-        issues.push({ 
-          text: `${dayName} had negative profit`, 
-          type: "error" 
+      // Check Labour status
+      if (item.labour_status === 'over_goal' && item.labour_difference) {
+        over.push({
+          text: `${dayName} Labor over ${Math.round(Math.abs(item.labour_difference))}%`,
+          type: "error",
+          item: item
         });
-      } else if (profitLoss > 0 && score >= 70) {
-        successes.push({ 
-          text: `${dayName} achieved good performance`, 
-          type: "success" 
+      } else if (item.labour_status === 'under_goal' && item.labour_difference) {
+        under.push({
+          text: `${dayName} Labor under ${Math.round(Math.abs(item.labour_difference))}%`,
+          type: "success",
+          item: item
+        });
+      }
+
+      // Check Expense status
+      if (item.expense_status === 'over_goal' && item.expense_difference) {
+        over.push({
+          text: `${dayName} Expenses over ${Math.round(Math.abs(item.expense_difference))}%`,
+          type: "error",
+          item: item
+        });
+      } else if (item.expense_status === 'under_goal' && item.expense_difference) {
+        under.push({
+          text: `${dayName} Expenses under ${Math.round(Math.abs(item.expense_difference))}%`,
+          type: "success",
+          item: item
         });
       }
     });
 
-    return { issues, successes };
+    return { over, under };
   }, [dailyPerformanceData]);
+
+  // Handle clicking on a finding - send summary to chat
+  const handleFindingClick = useCallback((finding) => {
+    if (!finding.item || !finding.item.summary) {
+      return;
+    }
+
+    // Extract summary - it might be an object with 'user' property or a string
+    const summaryData = finding.item.summary;
+    const summaryText = typeof summaryData === 'string' 
+      ? summaryData 
+      : (summaryData?.user || JSON.stringify(summaryData));
+    
+    if (!summaryText) {
+      return;
+    }
+
+    const findingText = finding.text;
+    
+    // Create a prompt that includes the summary and asks about the specific finding
+    const prompt = `${summaryText}\n\nBased on this performance data, can you provide insights and suggestions regarding: ${findingText}?`;
+    
+    // Send to chat widget
+    setPendingChatMessage(prompt);
+  }, [setPendingChatMessage]);
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -321,7 +356,6 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
                 day={day.day}
                 date={day.date}
                 profitLoss={day.profitLoss}
-                isFuture={day.isFuture}
               />
             ))}
           </div>
@@ -333,26 +367,36 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         <h2 className="text-2xl font-bold text-orange-600 mb-6">Key Findings</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column - Issues */}
+          {/* Left Column - Over */}
           <div className="space-y-3">
-            {keyFindings.issues.map((finding, idx) => (
-              <FindingItem
-                key={idx}
-                text={finding.text}
-                type={finding.type}
-              />
-            ))}
+            {keyFindings.over.length > 0 ? (
+              keyFindings.over.map((finding, idx) => (
+                <FindingItem
+                  key={idx}
+                  text={finding.text}
+                  type={finding.type}
+                  onClick={() => handleFindingClick(finding)}
+                />
+              ))
+            ) : (
+              <div className="text-sm text-gray-400 italic">No over-goal items</div>
+            )}
           </div>
 
-          {/* Right Column - Successes */}
+          {/* Right Column - Under */}
           <div className="space-y-3">
-            {keyFindings.successes.map((finding, idx) => (
-              <FindingItem
-                key={idx}
-                text={finding.text}
-                type={finding.type}
-              />
-            ))}
+            {keyFindings.under.length > 0 ? (
+              keyFindings.under.map((finding, idx) => (
+                <FindingItem
+                  key={idx}
+                  text={finding.text}
+                  type={finding.type}
+                  onClick={() => handleFindingClick(finding)}
+                />
+              ))
+            ) : (
+              <div className="text-sm text-gray-400 italic">No under-goal items</div>
+            )}
           </div>
         </div>
       </div>

@@ -43,6 +43,10 @@ const createChatSlice = (set, get) => {
     // Always start with null to ensure new conversations don't have an ID
     selectedConversationId: initialConversationId,
     
+    // Pending message to be sent to chat widget
+    pendingChatMessage: null,
+    shouldOpenChat: false,
+    
     // Actions
     setSelectedConversationId: (conversationId) => {
       setStoredConversationId(conversationId);
@@ -53,6 +57,22 @@ const createChatSlice = (set, get) => {
     clearSelectedConversation: () => {
       setStoredConversationId(null);
       set({ selectedConversationId: null });
+    },
+    
+    // Set pending message to send to chat widget
+    setPendingChatMessage: (message) => {
+      set({ 
+        pendingChatMessage: message,
+        shouldOpenChat: true 
+      });
+    },
+    
+    // Clear pending message after it's been sent
+    clearPendingChatMessage: () => {
+      set({ 
+        pendingChatMessage: null,
+        shouldOpenChat: false 
+      });
     },
   };
 };

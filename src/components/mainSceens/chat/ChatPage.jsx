@@ -79,27 +79,42 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Initialize: Clear any existing conversation ID on mount to start fresh
+  // Initialize: Check for existing conversation ID from widget or store
   useEffect(() => {
-    // Clear conversation ID on mount to ensure new conversations start fresh
-    // User must explicitly select a conversation from the sidebar
-    setSelectedConversationIdLocal(null);
-    setSelectedConversationId(null);
-    sessionStorage.removeItem('chat_conversation_id');
-    
-    // Initialize with welcome message
-    setMessages([
-      {
-        text: "Hello! I'm here to help you. How can I assist you today?",
-        isUser: false,
-        timestamp: new Date(),
-      },
-    ]);
-    
-    // Fetch conversations list (but don't auto-load any)
+    // Fetch conversations list first
     fetchConversations();
+    
+    // Check if there's a conversation ID in the store (from widget)
+    // If so, load that conversation instead of starting fresh
+    if (storeConversationId) {
+      // Load the conversation from the widget
+      loadConversationHistory(storeConversationId);
+    } else {
+      // No existing conversation, start fresh
+      setSelectedConversationIdLocal(null);
+      setSelectedConversationId(null);
+      sessionStorage.removeItem('chat_conversation_id');
+      
+      // Initialize with welcome message
+      setMessages([
+        {
+          text: "Hello! I'm here to help you. How can I assist you today?",
+          isUser: false,
+          timestamp: new Date(),
+        },
+      ]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Watch for storeConversationId changes (e.g., when navigating from widget)
+  useEffect(() => {
+    // If storeConversationId is set and we don't have a selected conversation, load it
+    if (storeConversationId && !selectedConversationId && !isLoadingHistory) {
+      loadConversationHistory(storeConversationId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeConversationId]);
 
   /**
    * Fetch all conversations for the logged-in user

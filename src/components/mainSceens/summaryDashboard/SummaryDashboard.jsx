@@ -479,7 +479,6 @@ const SummaryDashboard = () => {
     const isBudgetPage = location.pathname === '/dashboard/budget';
     
     if (isBudgetPage) {
-      console.log('📊 Budget page accessed - fetching restaurant goals...');
       // Refresh goals when budget page is accessed
       refreshGoals();
     }

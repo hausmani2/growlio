@@ -12,7 +12,14 @@ import chatIcon from '../../assets/lio.png';
  */
 const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
   const navigate = useNavigate();
-  const { selectedConversationId: storeConversationId, setSelectedConversationId, isOnBoardingCompleted } = useStore();
+  const { 
+    selectedConversationId: storeConversationId, 
+    setSelectedConversationId, 
+    isOnBoardingCompleted,
+    pendingChatMessage,
+    shouldOpenChat,
+    clearPendingChatMessage
+  } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -116,6 +123,28 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeConversationId, isOpen]);
+
+  // Handle pending chat messages from other components
+  useEffect(() => {
+    if (shouldOpenChat && pendingChatMessage) {
+      // Open the chat widget if it's not already open
+      if (!isOpen) {
+        setIsOpen(true);
+      }
+      
+      // Wait a bit for the chat to open and ensure sendMessage is available, then send the message
+      const timer = setTimeout(() => {
+        if (pendingChatMessage && !isLoading) {
+          // Use a small delay to ensure the component is fully ready
+          sendMessage(pendingChatMessage);
+          clearPendingChatMessage();
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldOpenChat, pendingChatMessage]);
 
   /**
    * Fetch all conversations for the logged-in user
@@ -480,6 +509,10 @@ const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
             {isOnBoardingCompleted && (
               <button
                 onClick={() => {
+                  // Ensure current conversation ID is saved to store before navigating
+                  if (conversationId) {
+                    setSelectedConversationId(conversationId);
+                  }
                   navigate('/dashboard/chat');
                   setIsOpen(false);
                 }}

@@ -44,24 +44,20 @@ const useRestaurantGoals = ({
   const fetchGoals = useCallback(async (forceRefresh = false) => {
     // Prevent duplicate concurrent calls
     if (isFetchingRef.current) {
-      console.log(`[${componentName}] Goals API call already in progress, skipping...`);
       return restaurantGoals;
     }
 
     // Skip if we already have data and not forcing refresh
     if (!forceRefresh && !refreshOnMount && hasFetchedRef.current && restaurantGoals) {
-      console.log(`[${componentName}] Using existing restaurant goals data`);
       return restaurantGoals;
     }
 
     try {
       isFetchingRef.current = true;
-      console.log(`[${componentName}] 🔄 Fetching restaurant goals from API...`);
 
       // Ensure restaurant ID is available
       const restaurantId = await ensureRestaurantId();
       if (!restaurantId) {
-        console.warn(`[${componentName}] ⚠️ No restaurant ID available, cannot fetch goals`);
         return null;
       }
 
@@ -69,11 +65,8 @@ const useRestaurantGoals = ({
       const goalsData = await getRestaurentGoal(restaurantId);
 
       if (goalsData) {
-        console.log(`[${componentName}] ✅ Restaurant goals fetched successfully`);
         if (goalsData.restaurant_days && Array.isArray(goalsData.restaurant_days)) {
-          console.log(`[${componentName}] 📅 Restaurant OPEN days:`, goalsData.restaurant_days);
         } else {
-          console.warn(`[${componentName}] ⚠️ restaurant_days is missing or not an array:`, goalsData.restaurant_days);
         }
         hasFetchedRef.current = true;
         return goalsData;
