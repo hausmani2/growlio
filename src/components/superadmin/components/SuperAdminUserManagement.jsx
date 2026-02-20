@@ -26,6 +26,7 @@ const EditableNameCell = ({ initialValue, userId, onSave }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    if (!value.trim()) return;
     setLoading(true);
     try {
       await onSave(userId, value);
@@ -35,21 +36,36 @@ const EditableNameCell = ({ initialValue, userId, onSave }) => {
   };
 
   return (
-    <Space.Compact style={{ width: '100%' }}>
-      <Input 
-        value={value} 
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Enter full name"
-      />
-      <Button 
-        type="primary" 
-        onClick={handleSave}
-        loading={loading}
-        disabled={!value.trim()}
-      >
-        Save
-      </Button>
-    </Space.Compact>
+    <div className="w-full min-w-[150px]">
+      <div className="flex flex-col sm:flex-row gap-2 w-full">
+        <Input 
+          value={value} 
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Enter full name"
+          size="small"
+          className="flex-1 min-w-[120px]"
+          onPressEnter={handleSave}
+          style={{ 
+            fontSize: '14px',
+            minWidth: '120px'
+          }}
+        />
+        <Button 
+          type="primary" 
+          onClick={handleSave}
+          loading={loading}
+          disabled={!value.trim()}
+          size="small"
+          className="flex-shrink-0 whitespace-nowrap"
+          style={{ 
+            minWidth: '60px',
+            fontSize: '12px'
+          }}
+        >
+          Save
+        </Button>
+      </div>
+    </div>
   );
 };
 
@@ -318,8 +334,13 @@ const SuperAdminUserManagement = () => {
       title: 'Full Name',
       dataIndex: 'full_name',
       key: 'full_name',
+      width: 220,
+      minWidth: 200,
+      ellipsis: false,
       render: (text, record) => (
-        <EditableNameCell initialValue={text} userId={record.id} onSave={handleNameSave} />
+        <div className="w-full min-w-[180px] max-w-[300px]">
+          <EditableNameCell initialValue={text} userId={record.id} onSave={handleNameSave} />
+        </div>
       )
     },
     {
@@ -391,15 +412,6 @@ const SuperAdminUserManagement = () => {
           );
         }
       }
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      render: (_, record) => (
-        <div className="flex items-center space-x-2">
-          {getStatusTag(record)}
-        </div>
-      )
     },
     {
       title: 'Actions',
@@ -576,7 +588,7 @@ const SuperAdminUserManagement = () => {
               `${range[0]}-${range[1]} of ${total} users`,
           }}
           onChange={handleTableChange}
-          scroll={{ x: 1000 }}
+          scroll={{ x: 'max-content' }}
           className="modern-table"
         />
       </Card>
