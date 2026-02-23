@@ -599,12 +599,11 @@ const SalesDataModal = ({
 
   // Handle input blur for budgeted sales - show success message only when done editing
   const handleBudgetedSalesBlur = (dayIndex, value, record) => {
-    // Don't show success message for future dates
-    if (isFutureDate(record.date)) {
-      return;
-    }
+    // Show success message for all dates (including future dates for budget planning)
     if (value > 0 && !isDayClosed(record)) {
-      message.success(`Budgeted sales of $${value} added for ${record.dayName}`);
+      const isFuture = isFutureDate(record.date);
+      const dateLabel = isFuture ? ` (Future Budget)` : '';
+      message.success(`Budgeted sales of $${value} added for ${record.dayName}${dateLabel}`);
     }
   };
 
@@ -1041,15 +1040,18 @@ const SalesDataModal = ({
     }
   };
 
-  // Handle input change - only allow current date and past dates
+  // Handle input change - allow budget data for future dates, but block actual sales for future dates
   const handleInputChange = (dayIndex, field, value, record) => {
-    // Block all future dates (tomorrow and beyond)
-    if (isFutureDate(record.date) && field !== 'restaurant_open') {
-      message.warning(`Cannot add data for ${record.dayName} - This date is in the future. Only current date and past dates can be edited.`);
+    const isFuture = isFutureDate(record.date);
+    
+    // Allow budgetedSales for future dates (budget planning)
+    // Block actual sales fields for future dates (only allow past/current dates for actual sales)
+    if (isFuture && field !== 'restaurant_open' && field !== 'budgetedSales') {
+      message.warning(`Cannot add actual sales data for ${record.dayName} - This date is in the future. Only budget data can be entered for future dates.`);
       return;
     }
     
-    // Allow data entry for current date and past dates only
+    // Allow data entry
     handleDailyDataChange(dayIndex, field, value);
   };
 
@@ -1469,14 +1471,10 @@ const SalesDataModal = ({
                         <ToggleSwitch
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
-                            if (isFuture) {
-                              message.warning(`Cannot change restaurant status for ${record.dayName} - This date is in the future.`);
-                              return;
-                            }
+                            // Allow restaurant_open toggle for future dates (needed for budget planning)
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
                           }}
                           size="large"
-                          disabled={isFuture}
                         />
                         <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
                           {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
@@ -1491,7 +1489,7 @@ const SalesDataModal = ({
                   key: 'budgetedSales',
                   width: 140,
                   render: (value, record, index) => {
-                    const isFuture = isFutureDate(record.date);
+                    // Allow budgetedSales for future dates (budget planning)
                     return (
                       <Input
                         type="number"
@@ -1500,13 +1498,7 @@ const SalesDataModal = ({
                         onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
-                        disabled={isFuture}
-                        readOnly={isFuture}
-                        style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
-                        }}
+                        prefix="$"
                       />
                     );
                   }
@@ -1560,14 +1552,10 @@ const SalesDataModal = ({
                         <ToggleSwitch
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
-                            if (isFuture) {
-                              message.warning(`Cannot change restaurant status for ${record.dayName} - This date is in the future.`);
-                              return;
-                            }
+                            // Allow restaurant_open toggle for future dates (needed for budget planning)
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
                           }}
                           size="large"
-                          disabled={isFuture}
                         />
                         <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
                           {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
@@ -1582,7 +1570,7 @@ const SalesDataModal = ({
                   key: 'budgetedSales',
                   width: 140,
                   render: (value, record, index) => {
-                    const isFuture = isFutureDate(record.date);
+                    // Allow budgetedSales for future dates (budget planning)
                     return (
                       <Input
                         type="number"
@@ -1591,13 +1579,7 @@ const SalesDataModal = ({
                         onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
-                        disabled={isFuture}
-                        readOnly={isFuture}
-                        style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
-                        }}
+                        prefix="$"
                       />
                     );
                   }
