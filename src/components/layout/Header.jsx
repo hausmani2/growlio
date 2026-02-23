@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
-import { Dropdown, Menu } from 'antd';
+import { Dropdown, Menu, Modal, Button, message } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
 
 const getInitials = (name = '') => {
@@ -23,8 +23,12 @@ const Header = ({ onMenuClick }) => {
     const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
     const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+    const updateRestaurantSimulation = useStore((state) => state.updateRestaurantSimulation);
+    const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
     
     const [isSimulationMode, setIsSimulationMode] = useState(false);
+    const [showRestaurantModal, setShowRestaurantModal] = useState(false);
+    const [isSwitching, setIsSwitching] = useState(false);
     
     // Check if user is in simulation mode - use cached data from store first
     // CRITICAL: Must verify BOTH restaurant_simulation flag AND that user has simulation restaurants
@@ -129,6 +133,54 @@ const Header = ({ onMenuClick }) => {
         // logout() function now handles redirect internally
     };
 
+    const handleSwitchToRestaurant = async () => {
+        setIsSwitching(true);
+        try {
+            // Call the API to set restaurant_simulation to false
+            // This will automatically call restaurants-onboarding API in the store
+            const result = await updateRestaurantSimulation({ restaurant_simulation: false });
+            
+            if (result && result.success !== false) {
+                // Wait a bit for the store to update
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Check restaurants-onboarding response
+                const restaurantResult = await getRestaurantOnboarding(true);
+                
+                // Check simulation-onboarding response
+                const simulationResult = await getSimulationOnboardingStatus(true);
+                
+                // Navigate based on the responses
+                if (restaurantResult?.success && restaurantResult?.restaurants && Array.isArray(restaurantResult.restaurants) && restaurantResult.restaurants.length > 0) {
+                    // User has regular restaurants, navigate to dashboard
+                    const restaurantId = restaurantResult.restaurantId || restaurantResult.restaurants[0]?.restaurant_id;
+                    if (restaurantId) {
+                        localStorage.setItem('restaurant_id', restaurantId.toString());
+                    }
+                    message.success('Switched to Restaurant Dashboard');
+                    navigate('/dashboard');
+                } else if (simulationResult?.success && simulationResult?.data?.restaurants && Array.isArray(simulationResult.data.restaurants) && simulationResult.data.restaurants.length > 0) {
+                    // User only has simulation restaurants
+                    message.warning('No regular restaurants found. Please complete restaurant onboarding first.');
+                    navigate('/onboarding');
+                } else {
+                    // No restaurants found, redirect to onboarding
+                    message.info('Please complete restaurant onboarding');
+                    navigate('/onboarding');
+                }
+                
+                setShowRestaurantModal(false);
+            } else {
+                message.error(result?.error || 'Failed to switch to restaurant dashboard');
+            }
+        } catch (error) {
+            console.error('Error switching to restaurant dashboard:', error);
+            message.error('An error occurred while switching to restaurant dashboard');
+        } finally {
+            setIsSwitching(false);
+        }
+    };
+
     const menuItems = [
         
             ...(isSimulationMode ? [] : [{
@@ -153,6 +205,15 @@ const Header = ({ onMenuClick }) => {
         }
     ];
 
+    // Check if user has regular restaurants
+    const hasRegularRestaurants = restaurantOnboardingData?.restaurants && 
+        Array.isArray(restaurantOnboardingData.restaurants) && 
+        restaurantOnboardingData.restaurants.length > 0;
+    
+    // Only show button if user is in simulation mode AND has no regular restaurants
+    // Regular users who can also simulate should NOT see this button
+    const shouldShowRestaurantButton = isSimulationMode && !hasRegularRestaurants;
+
     return (
         <header className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white border-b border-gray-200 shadow-sm">
             {/* Left side - Hamburger menu and logo */}
@@ -170,6 +231,18 @@ const Header = ({ onMenuClick }) => {
                 <div className="flex items-center">
                     <img src={growlioLogo} alt="Growlio Logo" className="w-32 mx-auto" />
                 </div>
+                
+                {/* I Own A Restaurant Dashboard Button - Only for simulation users WITHOUT regular restaurants */}
+                {shouldShowRestaurantButton && (
+                    <Button
+                        type="primary"
+                        onClick={() => setShowRestaurantModal(true)}
+                        className="bg-orange-600 hover:bg-orange-700 border-0 shadow-md hover:shadow-lg transition-all duration-200 ml-2"
+                        size="small"
+                    >
+                        I Own A Restaurant Dashboard
+                    </Button>
+                )}
             </div>
 
             {/* Right side - User Info */}
@@ -196,6 +269,38 @@ const Header = ({ onMenuClick }) => {
                     </div>
                 </Dropdown>
             </div>
+            
+            {/* Switch to Restaurant Dashboard Modal */}
+            <Modal
+                title="Switch to Restaurant Dashboard"
+                open={showRestaurantModal}
+                onCancel={() => setShowRestaurantModal(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setShowRestaurantModal(false)}>
+                        No
+                    </Button>,
+                    <Button 
+                        key="confirm" 
+                        type="primary" 
+                        onClick={handleSwitchToRestaurant}
+                        loading={isSwitching}
+                        className="bg-orange-600 hover:bg-orange-700"
+                    >
+                        Yes
+                    </Button>
+                ]}
+                closable={!isSwitching}
+                maskClosable={!isSwitching}
+            >
+                <div className="py-4">
+                    <p className="text-base text-gray-700 mb-4">
+                        Are you sure you want to switch to the Restaurant Dashboard?
+                    </p>
+                    <p className="text-sm text-gray-500">
+                        This will switch your account from simulation mode to regular restaurant mode.
+                    </p>
+                </div>
+            </Modal>
         </header>
     );
 };
