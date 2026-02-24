@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Checkbox, Select, Button } from 'antd';
+import { Checkbox, Input, Select, Button } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 
-const { Option } = Select;
+// Default 3 providers with 28% fee
+const DEFAULT_PROVIDERS = [
+  { name: "Door Dash", fee: "28", enabled: true },
+  { name: "Uber Eats", fee: "28", enabled: true },
+  { name: "Grubhub", fee: "28", enabled: true },
+];
 
-// Provider name options
+// Provider name options for adding new providers
 const PROVIDER_OPTIONS = [
   { value: "Door Dash", label: "Door Dash" },
   { value: "Skip The Dishes", label: "Skip The Dishes" },
@@ -14,41 +20,77 @@ const PROVIDER_OPTIONS = [
   { value: "Other", label: "Other" },
 ];
 
-// Percentage options from 1 to 50
-const PERCENTAGE_OPTIONS = Array.from({ length: 50 }, (_, index) => {
-  const percentage = index + 1;
-  return {
-    value: percentage.toString(),
-    label: `${percentage}%`,
-  };
-});
-
 const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
   const [inStore, setInStore] = useState(data?.inStore ?? true);
   const [online, setOnline] = useState(data?.online ?? false);
   const [fromApp, setFromApp] = useState(data?.fromApp ?? false);
-  const [usesThirdPartyDelivery, setUsesThirdPartyDelivery] = useState(data?.usesThirdPartyDelivery ?? false);
+  
+  // Initialize third party providers - show all 3 by default with 28% fee
   const [thirdPartyProviders, setThirdPartyProviders] = useState(() => {
-    // Initialize from data or create empty array
-    if (data?.thirdPartyProviders && Array.isArray(data.thirdPartyProviders)) {
-      return data.thirdPartyProviders;
+    // If data exists, use it
+    if (data?.thirdPartyProviders && Array.isArray(data.thirdPartyProviders) && data.thirdPartyProviders.length > 0) {
+      // Ensure we have all 3 default providers, merge with existing data
+      const existingProviders = data.thirdPartyProviders.map(p => ({
+        id: p.id || Date.now() + Math.random(),
+        providerName: p.providerName || p.provider_name || '',
+        providerFee: p.providerFee || p.provider_fee || '28',
+        enabled: p.enabled !== undefined ? p.enabled : true
+      }));
+      
+      // Add any missing default providers
+      const defaultNames = DEFAULT_PROVIDERS.map(p => p.name);
+      const missingProviders = DEFAULT_PROVIDERS
+        .filter(p => !existingProviders.some(ep => ep.providerName === p.name))
+        .map(p => ({
+          id: Date.now() + Math.random(),
+          providerName: p.name,
+          providerFee: p.fee,
+          enabled: p.enabled
+        }));
+      
+      // Return existing providers + missing default providers (don't limit to 3, allow more)
+      return [...existingProviders, ...missingProviders];
     }
+    
     // If third_party_info exists, convert it to providers array
     if (data?.thirdPartyInfo && typeof data.thirdPartyInfo === 'object') {
-      return Object.entries(data.thirdPartyInfo).map(([name, fee], index) => ({
+      const providersFromInfo = Object.entries(data.thirdPartyInfo).map(([name, fee], index) => ({
         id: Date.now() + index,
         providerName: name,
-        providerFee: fee.toString()
+        providerFee: fee.toString(),
+        enabled: true
       }));
+      
+      // Merge with default providers
+      const defaultNames = DEFAULT_PROVIDERS.map(p => p.name);
+      const missingProviders = DEFAULT_PROVIDERS
+        .filter(p => !providersFromInfo.some(ep => ep.providerName === p.name))
+        .map(p => ({
+          id: Date.now() + Math.random() + 100,
+          providerName: p.name,
+          providerFee: p.fee,
+          enabled: p.enabled
+        }));
+      
+      // Return providers from info + missing default providers (don't limit to 3, allow more)
+      return [...providersFromInfo, ...missingProviders];
     }
-    return [];
+    
+    // Default: show all 3 providers with 28% fee
+    return DEFAULT_PROVIDERS.map((p, index) => ({
+      id: Date.now() + index,
+      providerName: p.name,
+      providerFee: p.fee,
+      enabled: p.enabled
+    }));
   });
 
   useEffect(() => {
     // Convert providers array to third_party_info object format
+    // Only include enabled providers
     const thirdPartyInfo = {};
     thirdPartyProviders.forEach(provider => {
-      if (provider.providerName && provider.providerFee) {
+      if (provider.enabled && provider.providerName && provider.providerFee) {
         thirdPartyInfo[provider.providerName] = parseInt(provider.providerFee) || 0;
       }
     });
@@ -57,12 +99,12 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
       inStore,
       online,
       fromApp,
-      usesThirdPartyDelivery,
+      usesThirdPartyDelivery: true, // Always true since we show providers by default
       thirdPartyProviders,
       thirdPartyInfo: Object.keys(thirdPartyInfo).length > 0 ? thirdPartyInfo : undefined
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inStore, online, fromApp, usesThirdPartyDelivery, thirdPartyProviders]);
+  }, [inStore, online, fromApp, thirdPartyProviders]);
 
   return (
     <div className="space-y-6">
@@ -114,45 +156,28 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
         </div>
       </div>
 
-      <div className="border-2 rounded-lg p-4 hover:border-orange-300 transition-colors">
-        <Checkbox
-          checked={usesThirdPartyDelivery}
-          onChange={(e) => {
-            setUsesThirdPartyDelivery(e.target.checked);
-            if (!e.target.checked) {
-              setThirdPartyProviders([]);
-            } else if (thirdPartyProviders.length === 0) {
-              // Add first provider when enabling
-              setThirdPartyProviders([{
-                id: Date.now(),
-                providerName: '',
-                providerFee: ''
-              }]);
-            }
-          }}
-          className="text-base"
-        >
-          <span className="ml-2 font-medium">Third-Party Delivery</span>
-        </Checkbox>
-        <p className="text-sm text-gray-500 ml-6 mt-1">
-          Orders placed through third-party delivery services (optional for simulation)
-        </p>
-      </div>
+      {/* Third-Party Delivery Section */}
+      <div className="mt-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">3rd Party</h3>
+          <p className="text-sm text-gray-600">
+            Orders placed through third-party delivery services
+          </p>
+        </div>
 
-      {/* Third-Party Provider Details */}
-      {usesThirdPartyDelivery && (
-        <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
               Third-Party Provider Details
-            </h3>
+            </h4>
             <p className="text-xs text-gray-500">
-              Add your third-party delivery services and their fee percentages
+              Toggle on/off and edit fee percentage for each provider
             </p>
           </div>
 
           <div className="space-y-3">
             {thirdPartyProviders.map((provider, index) => {
+              const isDefaultProvider = DEFAULT_PROVIDERS.some(dp => dp.name === provider.providerName);
               const availableProviders = PROVIDER_OPTIONS.filter(opt => {
                 // Don't show providers that are already selected in other rows
                 return !thirdPartyProviders.some((p, idx) => 
@@ -169,7 +194,7 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
                     <span className="text-xs font-semibold text-gray-700">
                       Provider {index + 1}
                     </span>
-                    {thirdPartyProviders.length > 1 && (
+                    {!isDefaultProvider && thirdPartyProviders.length > 1 && (
                       <Button
                         type="text"
                         danger
@@ -186,47 +211,75 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Provider Name
-                      </label>
-                      <Select
-                        placeholder="Select Provider"
-                        value={provider.providerName || undefined}
-                        onChange={(value) => {
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <ToggleSwitch
+                        isOn={provider.enabled !== false}
+                        setIsOn={(enabled) => {
                           setThirdPartyProviders(prev =>
                             prev.map(p =>
                               p.id === provider.id
-                                ? { ...p, providerName: value }
+                                ? { ...p, enabled }
                                 : p
                             )
                           );
                         }}
-                        className="w-full h-10"
-                        options={availableProviders}
+                        size="default"
                       />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Fee Percentage
-                      </label>
-                      <Select
-                        placeholder="Select percentage"
-                        value={provider.providerFee || undefined}
-                        onChange={(value) => {
-                          setThirdPartyProviders(prev =>
-                            prev.map(p =>
-                              p.id === provider.id
-                                ? { ...p, providerFee: value }
-                                : p
-                            )
-                          );
-                        }}
-                        className="w-full h-10"
-                        options={PERCENTAGE_OPTIONS}
-                      />
+                      <div className="flex-1">
+                        {isDefaultProvider ? (
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {provider.providerName}
+                          </label>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Provider Name
+                            </label>
+                            <Select
+                              placeholder="Select Provider"
+                              value={provider.providerName || undefined}
+                              onChange={(value) => {
+                                setThirdPartyProviders(prev =>
+                                  prev.map(p =>
+                                    p.id === provider.id
+                                      ? { ...p, providerName: value }
+                                      : p
+                                  )
+                                );
+                              }}
+                              className="w-full h-10"
+                              options={availableProviders}
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={provider.providerFee}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              // Allow empty, 0-100
+                              if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 100)) {
+                                setThirdPartyProviders(prev =>
+                                  prev.map(p =>
+                                    p.id === provider.id
+                                      ? { ...p, providerFee: value }
+                                      : p
+                                  )
+                                );
+                              }
+                            }}
+                            suffix="%"
+                            className="w-24"
+                            disabled={!provider.enabled}
+                            placeholder="28"
+                          />
+                          <span className="text-xs text-gray-500">fee</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -242,7 +295,8 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
                   {
                     id: Date.now() + Math.random(),
                     providerName: '',
-                    providerFee: ''
+                    providerFee: '28',
+                    enabled: true
                   }
                 ]);
               }}
@@ -252,12 +306,6 @@ const SalesChannelsStep = ({ data, updateData, onNext, onBack }) => {
             </Button>
           </div>
         </div>
-      )}
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Third-party provider details are optional for simulation.
-        </p>
       </div>
     </div>
   );

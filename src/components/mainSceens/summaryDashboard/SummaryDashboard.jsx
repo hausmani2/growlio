@@ -122,6 +122,19 @@ const SummaryDashboard = () => {
     return isValid;
   }, [dashboardSummaryData]);
 
+  // Check if budget exists for the selected week
+  const hasBudgetForWeek = useCallback(() => {
+    if (!dashboardSummaryData || !dashboardSummaryData.data || !Array.isArray(dashboardSummaryData.data)) {
+      return false;
+    }
+    
+    // Check if any entry has sales_budget > 0
+    return dashboardSummaryData.data.some(entry => {
+      const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
+      return salesBudget > 0;
+    });
+  }, [dashboardSummaryData]);
+
   // Use refs to prevent infinite loops and duplicate modals
   const [isInitialized, setIsInitialized] = useState(false);
   const lastDateRange = useRef(null);
@@ -756,21 +769,24 @@ const SummaryDashboard = () => {
           </div>
         </Modal>
       )} */}
-       <div className='p-3  bg-white rounded-xl shadow-lg border border-gray-100 mb-5'>
-        <div className='flex items-center justify-between gap-2'>
-          <p className='font-medium text-base text-orange-600'>
-            Watch the video to learn how to use the <span className='text-purple-600'> Budgeted Dashboard</span>
-          </p>
-          <button
-            onClick={() => setIsVideoModalVisible(true)}
-            className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-            title="Watch tutorial video"
-            aria-label="Info about Weekly Budgeted Dashboard"
-          >
-            Watch Video
-          </button>
+      {/* Show tutorial section only when no budget exists for the selected week */}
+      {!hasBudgetForWeek() && !summaryLoading && (
+        <div className='p-3  bg-white rounded-xl shadow-lg border border-gray-100 mb-5'>
+          <div className='flex items-center justify-between gap-2'>
+            <p className='font-medium text-base text-orange-600'>
+            Watch a tutorial on how to create a <span className='text-purple-600'> Budget Dashboard</span>
+            </p>
+            <button
+              onClick={() => setIsVideoModalVisible(true)}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
+              title="Watch tutorial video"
+              aria-label="Info about Weekly Budgeted Dashboard"
+            >
+              Watch Video
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {calendarDateRange && calendarDateRange.length === 2 ? (

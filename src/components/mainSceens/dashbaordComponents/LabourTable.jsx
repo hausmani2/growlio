@@ -597,6 +597,25 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     return days;
   };
 
+  // Check if a date is in the future (after today)
+  // Returns true for tomorrow and beyond, false for today and past dates
+  const isFutureDate = (date) => {
+    if (!date) return false;
+    try {
+      const recordDate = dayjs.isDayjs(date) ? date : dayjs(date);
+      if (!recordDate.isValid()) return false;
+      
+      const today = dayjs().startOf('day');
+      const recordDateStart = recordDate.startOf('day');
+      
+      // Return true if date is after today (tomorrow or later)
+      return recordDateStart.isAfter(today);
+    } catch (error) {
+      console.error('Error checking future date:', error, date);
+      return false;
+    }
+  };
+
   // Weekly Modal Component
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
@@ -688,7 +707,21 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     });
   };
 
-    const handleDailyDataChange = (dayIndex, field, value) => {
+    const handleDailyDataChange = (dayIndex, field, value, record) => {
+      // Block actual labor data for future dates (tomorrow and beyond)
+      // Allow budget data for future dates (budget planning)
+      const actualFields = ['laborHoursActual', 'actualLaborDollars'];
+      if (isFutureDate(record.date) && actualFields.includes(field)) {
+        message.warning(`Cannot add actual labor data for ${record.dayName} - This date is in the future. Only budget data can be entered for future dates.`);
+        return;
+      }
+
+      // Allow changes to restaurant_open field even when day is closed
+      if (record.restaurantOpen === false && field !== 'restaurant_open' && actualFields.includes(field)) {
+        message.warning(`Cannot add actual labor data for ${record.dayName} - Restaurant is closed on this day.`);
+        return;
+      }
+
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
@@ -919,17 +952,27 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   dataIndex: 'laborHoursActual',
                   key: 'laborHoursActual',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                      onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0)}
-                      suffix="hrs"
-                      className="w-full"
-                      disabled={record.restaurantOpen === false}
-                      style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    return (
+                      <Input
+                        type="number"
+                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
+                        onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0, record)}
+                        suffix="hrs"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                          color: record.restaurantOpen === false ? '#999' : undefined
+                        }}
+                      />
+                    );
+                  }
                 }]),
                 // Conditionally show Actual Labor $ based on labor_record_method
                 ...(getLaborRecordMethod() === 'hours-only' ? [] : [{
@@ -937,17 +980,27 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   dataIndex: 'actualLaborDollars',
                   key: 'actualLaborDollars',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                      onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0)}
-                      prefix="$"
-                      className="w-full"
-                      disabled={record.restaurantOpen === false}
-                      style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    return (
+                      <Input
+                        type="number"
+                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
+                        onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0, record)}
+                        prefix="$"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                          color: record.restaurantOpen === false ? '#999' : undefined
+                        }}
+                      />
+                    );
+                  }
                 }]),
                 {
                   title: 'Actual Hourly Rate',

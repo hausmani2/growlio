@@ -459,6 +459,25 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     return days;
   };
 
+  // Check if a date is in the future (after today)
+  // Returns true for tomorrow and beyond, false for today and past dates
+  const isFutureDate = (date) => {
+    if (!date) return false;
+    try {
+      const recordDate = dayjs.isDayjs(date) ? date : dayjs(date);
+      if (!recordDate.isValid()) return false;
+      
+      const today = dayjs().startOf('day');
+      const recordDateStart = recordDate.startOf('day');
+      
+      // Return true if date is after today (tomorrow or later)
+      return recordDateStart.isAfter(today);
+    } catch (error) {
+      console.error('Error checking future date:', error, date);
+      return false;
+    }
+  };
+
   // Weekly Modal Component
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
@@ -502,7 +521,20 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       }
     }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
 
-    const handleDailyDataChange = (dayIndex, field, value) => {
+    const handleDailyDataChange = (dayIndex, field, value, record) => {
+      // Block actual COGS for future dates (tomorrow and beyond)
+      // Allow budget data for future dates (budget planning)
+      if (isFutureDate(record.date) && field === 'actual') {
+        message.warning(`Cannot add actual COGS data for ${record.dayName} - This date is in the future. Only budget data can be entered for future dates.`);
+        return;
+      }
+
+      // Allow changes to restaurant_open field even when day is closed
+      if (record.restaurantOpen === false && field !== 'restaurant_open' && field === 'actual') {
+        message.warning(`Cannot add actual COGS data for ${record.dayName} - Restaurant is closed on this day.`);
+        return;
+      }
+
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
@@ -649,18 +681,28 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   dataIndex: 'actual',
                   key: 'actual',
                   width: 150,
-                  render: (value, record, index) => (
-                    <Input
-                      type="number"
-                      value={record.restaurantOpen === false ? 0 : value}
-                      onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0)}
-                      prefix="$"
-                      placeholder="0.00"
-                      className="w-full"
-                      disabled={record.restaurantOpen === false}
-                      style={record.restaurantOpen === false ? { backgroundColor: '#f5f5f5', color: '#999' } : {}}
-                    />
-                  )
+                  render: (value, record, index) => {
+                    const isFuture = isFutureDate(record.date);
+                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    return (
+                      <Input
+                        type="number"
+                        value={record.restaurantOpen === false ? 0 : value}
+                        onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0, record)}
+                        prefix="$"
+                        placeholder="0.00"
+                        className="w-full"
+                        disabled={isDisabled}
+                        readOnly={isFuture}
+                        style={{
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                          color: record.restaurantOpen === false ? '#999' : undefined
+                        }}
+                      />
+                    );
+                  }
                 }
               ]}
             />

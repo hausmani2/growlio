@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Checkbox, Select, Button, message } from 'antd';
+import { Checkbox, Input, Select, Button, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 
-const { Option } = Select;
+// Default 3 providers with 28% fee
+const DEFAULT_PROVIDERS = [
+  { name: "Door Dash", fee: "28", enabled: true },
+  { name: "Uber Eats", fee: "28", enabled: true },
+  { name: "Grubhub", fee: "28", enabled: true },
+];
 
-// Provider name options (same as regular onboarding)
+// Provider name options for adding new providers
 const PROVIDER_OPTIONS = [
   { value: "Door Dash", label: "Door Dash" },
   { value: "Skip The Dishes", label: "Skip The Dishes" },
@@ -13,15 +19,6 @@ const PROVIDER_OPTIONS = [
   { value: "UberEats", label: "UberEats" },
   { value: "Other", label: "Other" },
 ];
-
-// Percentage options from 1 to 50
-const PERCENTAGE_OPTIONS = Array.from({ length: 50 }, (_, index) => {
-  const percentage = index + 1;
-  return {
-    value: percentage.toString(),
-    label: `${percentage}%`,
-  };
-});
 
 const DAYS_OF_WEEK = [
   { value: 'mon', label: 'Monday' },
@@ -35,22 +32,65 @@ const DAYS_OF_WEEK = [
 
 const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, validateStep }) => {
   const [errors, setErrors] = useState({});
-  // Sales Channels state - third party delivery with multiple providers (same as regular onboarding)
-  const [usesThirdPartyDelivery, setUsesThirdPartyDelivery] = useState(data?.saleschannels?.usesThirdPartyDelivery ?? false);
+  
+  // Initialize third party providers - show all 3 by default with 28% fee
   const [thirdPartyProviders, setThirdPartyProviders] = useState(() => {
-    // Initialize from data or create empty array
-    if (data?.saleschannels?.thirdPartyProviders && Array.isArray(data.saleschannels.thirdPartyProviders)) {
-      return data.saleschannels.thirdPartyProviders;
+    // If data exists, use it
+    if (data?.saleschannels?.thirdPartyProviders && Array.isArray(data.saleschannels.thirdPartyProviders) && data.saleschannels.thirdPartyProviders.length > 0) {
+      // Ensure we have all 3 default providers, merge with existing data
+      const existingProviders = data.saleschannels.thirdPartyProviders.map(p => ({
+        id: p.id || Date.now() + Math.random(),
+        providerName: p.providerName || p.provider_name || '',
+        providerFee: p.providerFee || p.provider_fee || '28',
+        enabled: p.enabled !== undefined ? p.enabled : true
+      }));
+      
+      // Add any missing default providers
+      const defaultNames = DEFAULT_PROVIDERS.map(p => p.name);
+      const missingProviders = DEFAULT_PROVIDERS
+        .filter(p => !existingProviders.some(ep => ep.providerName === p.name))
+        .map(p => ({
+          id: Date.now() + Math.random(),
+          providerName: p.name,
+          providerFee: p.fee,
+          enabled: p.enabled
+        }));
+      
+      // Return existing providers + missing default providers (don't limit to 3, allow more)
+      return [...existingProviders, ...missingProviders];
     }
+    
     // If third_party_info exists, convert it to providers array
     if (data?.saleschannels?.thirdPartyInfo && typeof data.saleschannels.thirdPartyInfo === 'object') {
-      return Object.entries(data.saleschannels.thirdPartyInfo).map(([name, fee], index) => ({
+      const providersFromInfo = Object.entries(data.saleschannels.thirdPartyInfo).map(([name, fee], index) => ({
         id: Date.now() + index,
         providerName: name,
-        providerFee: fee.toString()
+        providerFee: fee.toString(),
+        enabled: true
       }));
+      
+      // Merge with default providers
+      const defaultNames = DEFAULT_PROVIDERS.map(p => p.name);
+      const missingProviders = DEFAULT_PROVIDERS
+        .filter(p => !providersFromInfo.some(ep => ep.providerName === p.name))
+        .map(p => ({
+          id: Date.now() + Math.random() + 100,
+          providerName: p.name,
+          providerFee: p.fee,
+          enabled: p.enabled
+        }));
+      
+      // Return providers from info + missing default providers (don't limit to 3, allow more)
+      return [...providersFromInfo, ...missingProviders];
     }
-    return [];
+    
+    // Default: show all 3 providers with 28% fee
+    return DEFAULT_PROVIDERS.map((p, index) => ({
+      id: Date.now() + index,
+      providerName: p.name,
+      providerFee: p.fee,
+      enabled: p.enabled
+    }));
   });
 
   // Operating Days state
@@ -66,24 +106,25 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
 
   // Update parent data when local state changes
   useEffect(() => {
-    // Convert providers array to third_party_info object format (same as regular onboarding)
+    // Convert providers array to third_party_info object format
+    // Only include enabled providers
     const thirdPartyInfo = {};
     thirdPartyProviders.forEach(provider => {
-      if (provider.providerName && provider.providerFee) {
+      if (provider.enabled && provider.providerName && provider.providerFee) {
         thirdPartyInfo[provider.providerName] = parseInt(provider.providerFee) || 0;
       }
     });
 
     updateData({
       saleschannels: {
-        usesThirdPartyDelivery,
+        usesThirdPartyDelivery: true, // Always true since we show providers by default
         thirdPartyProviders,
         thirdPartyInfo: Object.keys(thirdPartyInfo).length > 0 ? thirdPartyInfo : undefined
       },
       restaurant_operating_days: selectedDays
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usesThirdPartyDelivery, thirdPartyProviders, selectedDays]);
+  }, [thirdPartyProviders, selectedDays]);
 
   const toggleDay = (day) => {
     setSelectedDays(prev => {
@@ -256,146 +297,156 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
           </p>
         </div>
 
-        <div className="space-y-4">
-          <div className="border-2 rounded-lg p-4 hover:border-orange-300 transition-colors">
-            <Checkbox
-              checked={usesThirdPartyDelivery}
-              onChange={(e) => {
-                setUsesThirdPartyDelivery(e.target.checked);
-                if (!e.target.checked) {
-                  setThirdPartyProviders([]);
-                } else if (thirdPartyProviders.length === 0) {
-                  // Add first provider when enabling
-                  setThirdPartyProviders([{
-                    id: Date.now(),
-                    providerName: '',
-                    providerFee: ''
-                  }]);
-                }
-              }}
-              className="text-base"
-            >
-              <span className="ml-2 font-medium">Third-Party Delivery</span>
-            </Checkbox>
-            <p className="text-sm text-gray-500 ml-6 mt-1">
+        {/* Third-Party Delivery Section */}
+        <div className="mt-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">3rd Party</h3>
+            <p className="text-sm text-gray-600">
               Orders placed through third-party delivery services
             </p>
           </div>
 
-          {/* Third-Party Provider Details (same as regular onboarding) */}
-          {usesThirdPartyDelivery && (
-            <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Third-Party Provider Details
-                </h3>
-                <p className="text-xs text-gray-500">
-                  Add your third-party delivery services and their fee percentages
-                </p>
-              </div>
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                Third-Party Provider Details
+              </h4>
+              <p className="text-xs text-gray-500">
+                Toggle on/off and edit fee percentage for each provider
+              </p>
+            </div>
 
-              <div className="space-y-3">
-                {thirdPartyProviders.map((provider, index) => {
-                  const availableProviders = PROVIDER_OPTIONS.filter(opt => {
-                    // Don't show providers that are already selected in other rows
-                    return !thirdPartyProviders.some((p, idx) => 
-                      idx !== index && p.providerName === opt.value
-                    );
-                  });
+            <div className="space-y-3">
+              {thirdPartyProviders.map((provider, index) => {
+                const isDefaultProvider = DEFAULT_PROVIDERS.some(dp => dp.name === provider.providerName);
+                const availableProviders = PROVIDER_OPTIONS.filter(opt => {
+                  // Don't show providers that are already selected in other rows
+                  return !thirdPartyProviders.some((p, idx) => 
+                    idx !== index && p.providerName === opt.value
+                  );
+                });
 
-                  return (
-                    <div
-                      key={provider.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold text-gray-700">
-                          Provider {index + 1}
-                        </span>
-                        {thirdPartyProviders.length > 1 && (
-                          <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => {
-                              setThirdPartyProviders(prev => 
-                                prev.filter(p => p.id !== provider.id)
-                              );
-                            }}
-                            size="small"
-                          >
-                            Delete
-                          </Button>
-                        )}
-                      </div>
+                return (
+                  <div
+                    key={provider.id}
+                    className="bg-white border border-gray-200 rounded-lg p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-semibold text-gray-700">
+                        Provider {index + 1}
+                      </span>
+                      {!isDefaultProvider && thirdPartyProviders.length > 1 && (
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => {
+                            setThirdPartyProviders(prev => 
+                              prev.filter(p => p.id !== provider.id)
+                            );
+                          }}
+                          size="small"
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Provider Name
-                          </label>
-                          <Select
-                            placeholder="Select Provider"
-                            value={provider.providerName || undefined}
-                            onChange={(value) => {
-                              setThirdPartyProviders(prev =>
-                                prev.map(p =>
-                                  p.id === provider.id
-                                    ? { ...p, providerName: value }
-                                    : p
-                                )
-                              );
-                            }}
-                            className="w-full h-10"
-                            options={availableProviders}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Fee Percentage
-                          </label>
-                          <Select
-                            placeholder="Select percentage"
-                            value={provider.providerFee || undefined}
-                            onChange={(value) => {
-                              setThirdPartyProviders(prev =>
-                                prev.map(p =>
-                                  p.id === provider.id
-                                    ? { ...p, providerFee: value }
-                                    : p
-                                )
-                              );
-                            }}
-                            className="w-full h-10"
-                            options={PERCENTAGE_OPTIONS}
-                          />
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 flex-1">
+                        <ToggleSwitch
+                          isOn={provider.enabled !== false}
+                          setIsOn={(enabled) => {
+                            setThirdPartyProviders(prev =>
+                              prev.map(p =>
+                                p.id === provider.id
+                                  ? { ...p, enabled }
+                                  : p
+                              )
+                            );
+                          }}
+                          size="default"
+                        />
+                        <div className="flex-1">
+                          {isDefaultProvider ? (
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {provider.providerName}
+                            </label>
+                          ) : (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Provider Name
+                              </label>
+                              <Select
+                                placeholder="Select Provider"
+                                value={provider.providerName || undefined}
+                                onChange={(value) => {
+                                  setThirdPartyProviders(prev =>
+                                    prev.map(p =>
+                                      p.id === provider.id
+                                        ? { ...p, providerName: value }
+                                        : p
+                                    )
+                                  );
+                                }}
+                                className="w-full h-10"
+                                options={availableProviders}
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={provider.providerFee}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Allow empty, 0-100
+                                if (value === '' || (parseInt(value) >= 0 && parseInt(value) <= 100)) {
+                                  setThirdPartyProviders(prev =>
+                                    prev.map(p =>
+                                      p.id === provider.id
+                                        ? { ...p, providerFee: value }
+                                        : p
+                                    )
+                                  );
+                                }
+                              }}
+                              suffix="%"
+                              className="w-24"
+                              disabled={!provider.enabled}
+                              placeholder="28"
+                            />
+                            <span className="text-xs text-gray-500">fee</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
 
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  onClick={() => {
-                    setThirdPartyProviders(prev => [
-                      ...prev,
-                      {
-                        id: Date.now() + Math.random(),
-                        providerName: '',
-                        providerFee: ''
-                      }
-                    ]);
-                  }}
-                  className="w-full"
-                >
-                  Add Another Provider
-                </Button>
-              </div>
+              <Button
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setThirdPartyProviders(prev => [
+                    ...prev,
+                    {
+                      id: Date.now() + Math.random(),
+                      providerName: '',
+                      providerFee: '28',
+                      enabled: true
+                    }
+                  ]);
+                }}
+                className="w-full"
+              >
+                Add Another Provider
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

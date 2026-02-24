@@ -1675,9 +1675,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     };
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
-      // Block all future dates (tomorrow and beyond)
-      if (isFutureDate(record.date) && field !== 'restaurant_open') {
-        message.warning(`Cannot add data for ${record.dayName} - This date is in the future. Only current date and past dates can be edited.`);
+      // Block all future dates (tomorrow and beyond) - including restaurant_open (close out days)
+      if (isFutureDate(record.date)) {
+        if (field === 'restaurant_open') {
+          message.warning(`Cannot change restaurant status for ${record.dayName} - This date is in the future.`);
+        } else {
+          message.warning(`Cannot add data for ${record.dayName} - This date is in the future. Only current date and past dates can be edited.`);
+        }
         return;
       }
 

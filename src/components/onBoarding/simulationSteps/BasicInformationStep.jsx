@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Input, Select, message } from 'antd';
 import PlaceSearchInput from '../../common/PlaceSearchInput';
 import { parseAddressComponents } from '../../../utils/parseAddressComponents';
+import ToggleSwitch from '../../buttons/ToggleSwitch';
 
 const { Option } = Select;
 
@@ -10,7 +11,7 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
   const [restaurantName, setRestaurantName] = useState(data?.restaurantName || '');
   const [restaurantType, setRestaurantType] = useState(data?.restaurantType || '');
   const [menuType, setMenuType] = useState(data?.menuType || '');
-  const [isFranchise, setIsFranchise] = useState(data?.isFranchise !== undefined ? data.isFranchise : true); // Always default to true (mandatory)
+  const [isFranchise, setIsFranchise] = useState(data?.isFranchise !== undefined ? data.isFranchise : false); // Default to false (No)
   const [city, setCity] = useState(data?.locationAddress?.city || '');
   const [state, setState] = useState(data?.locationAddress?.state || '');
   const [fullAddress, setFullAddress] = useState(data?.locationAddress?.fullAddress || '');
@@ -348,36 +349,71 @@ const BasicInformationStep = ({ data, updateData, onNext, onBack, validateStep }
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Restaurant Type
               </label>
-              <Input
-                placeholder="e.g., Fast Casual, Fine Dining, etc."
-                value={restaurantType}
-                onChange={(e) => setRestaurantType(e.target.value)}
-                className="h-11"
-              />
+              <Select
+                placeholder="Select Restaurant Type"
+                value={restaurantType || undefined}
+                onChange={(value) => setRestaurantType(value)}
+                className="w-full h-11"
+              >
+                <Option value="Buffet">Buffet</Option>
+                <Option value="Café / Coffee Shop">Café / Coffee Shop</Option>
+                <Option value="Fast Casual">Fast Casual</Option>
+                <Option value="Fast Food">Fast Food</Option>
+                <Option value="Fine Dining">Fine Dining</Option>
+                <Option value="Food Truck">Food Truck</Option>
+                <Option value="Full Service">Full Service</Option>
+                <Option value="Ghost Kitchen / Virtual Brand">Ghost Kitchen / Virtual Brand</Option>
+                <Option value="Pop-Up Restaurant">Pop-Up Restaurant</Option>
+              </Select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Menu Type
               </label>
-              <Input
-                placeholder="e.g., Veg & Non-Veg, Vegetarian, etc."
-                value={menuType}
-                onChange={(e) => setMenuType(e.target.value)}
-                className="h-11"
-              />
+              <Select
+                placeholder="Select Menu Type"
+                value={menuType || undefined}
+                onChange={(value) => setMenuType(value)}
+                className="w-full h-11"
+              >
+                <Option value="Pizza">Pizza</Option>
+                <Option value="Burgers">Burgers</Option>
+                <Option value="Sandwiches / Subs">Sandwiches / Subs</Option>
+                <Option value="BBQ / Smokehouse">BBQ / Smokehouse</Option>
+                <Option value="Chicken / Wings">Chicken / Wings</Option>
+                <Option value="Seafood">Seafood</Option>
+                <Option value="Steakhouse / Grill">Steakhouse / Grill</Option>
+                <Option value="Italian">Italian</Option>
+                <Option value="Mexican / Tex-Mex">Mexican / Tex-Mex</Option>
+                <Option value="Asian (Chinese, Japanese, Thai, Korean, etc.)">Asian (Chinese, Japanese, Thai, Korean, etc.)</Option>
+                <Option value="Indian">Indian</Option>
+                <Option value="Mediterranean / Greek">Mediterranean / Greek</Option>
+                <Option value="Middle Eastern">Middle Eastern</Option>
+                <Option value="Vegan / Vegetarian">Vegan / Vegetarian</Option>
+                <Option value="Salad / Healthy Bowls">Salad / Healthy Bowls</Option>
+                <Option value="Breakfast / Brunch">Breakfast / Brunch</Option>
+                <Option value="Bakery / Café">Bakery / Café</Option>
+                <Option value="Ice Cream / Gelato / Dessert">Ice Cream / Gelato / Dessert</Option>
+                <Option value="Deli">Deli</Option>
+                <Option value="American / Diner">American / Diner</Option>
+                <Option value="Latin / Caribbean">Latin / Caribbean</Option>
+                <Option value="Fusion">Fusion</Option>
+              </Select>
             </div>
             <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={isFranchise}
-                  onChange={(e) => setIsFranchise(e.target.checked)}
-                  className="h-4 w-4 opacity-75"
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Is this a franchise
+              </label>
+              <div className="flex items-center gap-3">
+                <ToggleSwitch
+                  isOn={isFranchise}
+                  setIsOn={setIsFranchise}
+                  size="default"
                 />
                 <span className="text-sm text-gray-700">
-                  Is this a franchise location?
+                  {isFranchise ? 'Yes' : 'No'}
                 </span>
-              </label>
+              </div>
             </div>
           </div>
         </div>
