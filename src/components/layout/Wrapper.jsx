@@ -43,7 +43,8 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     isRegularUser, 
     isSimulationUser,
     hasRegularRestaurants,
-    hasSimulationRestaurants
+    hasSimulationRestaurants,
+    hasCompletedRegularOnboarding
   } = useOnboardingStatus();
   
     // Check if user is in simulation mode - use onboarding status hook for decision
@@ -254,7 +255,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Training',
       onClick: () => navigate('/dashboard/training'),
   },
-    ...(canAccessTraining ? [{
+    // Simulation Dashboard - only show if:
+    // 1. User can access training (has completed regular onboarding OR has simulation access), AND
+    // 2. If user is a regular user (has regular restaurants), they must have completed onboarding
+    ...(canAccessTraining && (!hasRegularRestaurants || hasCompletedRegularOnboarding) ? [{
       key: 'simulation-dashboard',
       icon: <FaChartLine />,
       label: 'Simulation Dashboard',

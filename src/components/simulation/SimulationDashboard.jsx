@@ -6,6 +6,7 @@ import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import { formatCurrency, formatNumber } from '../../utils/formatUtils';
 import ChatWidget from '../chatbot/ChatWidget';
+import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 
 const { Option } = Select;
 
@@ -36,10 +37,23 @@ const SimulationDashboard = () => {
   const [restaurantId, setRestaurantId] = useState(null);
   const [period, setPeriod] = useState('monthly'); // daily, weekly, monthly, annually
 
+  // Get onboarding status to check if regular users have completed onboarding
+  const {
+    hasRegularRestaurants,
+    hasCompletedRegularOnboarding
+  } = useOnboardingStatus();
+
   // Load restaurant ID and dashboard data on mount
   // Also check if onboarding is complete - redirect if not
   useEffect(() => {
     const loadData = async () => {
+      // Check if regular user has completed onboarding
+      if (hasRegularRestaurants && !hasCompletedRegularOnboarding) {
+        message.warning('Please complete your onboarding to access Simulation Dashboard.');
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+
       let id = null;
       let restaurantName = null;
       let onboardingComplete = false;
@@ -108,7 +122,7 @@ const SimulationDashboard = () => {
       }
     };
     loadData();
-  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, fetchRestaurantId]);
+  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, fetchRestaurantId, hasRegularRestaurants, hasCompletedRegularOnboarding]);
 
   // Fetch days when modal opens or month/year changes
   useEffect(() => {
