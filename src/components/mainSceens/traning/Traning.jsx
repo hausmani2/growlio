@@ -15,7 +15,6 @@ import { Card, Modal, Button, message, Spin } from 'antd';
 import useOnboardingStatus from '../../../hooks/useOnboardingStatus';
 import useStore from '../../../store/store';
 import { apiGet } from '../../../utils/axiosInterceptors';
-import SimulationDashboard from '../../simulation/SimulationDashboard';
 
 const Training = () => {
   const navigate = useNavigate();
@@ -517,7 +516,6 @@ const Training = () => {
           </button>
         </div>
       </div>
-      <SimulationDashboard/>
 
       {/* Incomplete Onboarding Modal */}
       <Modal

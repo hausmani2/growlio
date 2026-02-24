@@ -248,11 +248,17 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       onClick: () => navigate('/dashboard/support'),
     },
     // Training menu - only show if user can access training
-    ...(canAccessTraining ? [{
+ {
       key: 'training',
       icon: <BookOutlined />,
       label: 'Training',
       onClick: () => navigate('/dashboard/training'),
+  },
+    ...(canAccessTraining ? [{
+      key: 'simulation-dashboard',
+      icon: <FaChartLine />,
+      label: 'Simulation Dashboard',
+      onClick: () => navigate('/simulation/dashboard'),
     }] : []),
     {
       key: 'pricing',
