@@ -25,7 +25,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     cogsBudget: 0,
     cogsActual: 0,
     cogsPercentage: 0,
-    weeklyRemainingCog: 0
+    weeklyRemainingCog: 0,
+    weeklyNetSales: 0,
+    totalCogsPercentage: 0
   });
 
   const [weeklyData, setWeeklyData] = useState([]);
@@ -62,7 +64,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         cogsBudget: 0,
         cogsActual: 0,
         cogsPercentage: 0,
-        weeklyRemainingCog: 0
+        weeklyRemainingCog: 0,
+        weeklyNetSales: 0,
+        totalCogsPercentage: 0
       });
       setDataNotFound(true);
     }
@@ -209,16 +213,25 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       const firstDailyEntry = dashboardData.daily_entries?.[0];
       const weeklyRemainingFromDaily = firstDailyEntry?.["COGS Performance"]?.weekly_remaining_cog;
       
+      // Extract weekly net sales from COGS Performance
+      const weeklyNetSales = formatNumber(cogsPerformance?.weekly_net_sales || 0);
+      
       const weeklyTotals = {
         cogsBudget: formatNumber(cogsPerformance?.cogs_budget || 0),
         cogsActual: formatNumber(cogsPerformance?.cogs_actual || 0),
-        cogsPercentage: 0, // Will be calculated
-        weeklyRemainingCog: formatNumber(weeklyRemainingFromDaily || cogsPerformance?.weekly_remaining_cog || 0)
+        cogsPercentage: 0, // Will be calculated (COGS Actual / COGS Budget)
+        weeklyRemainingCog: formatNumber(weeklyRemainingFromDaily || cogsPerformance?.weekly_remaining_cog || 0),
+        weeklyNetSales: weeklyNetSales,
+        totalCogsPercentage: 0 // Will be calculated (Total COGS Actual / Weekly Net Sales)
       };
 
-      // Calculate percentage
+      // Calculate percentage (COGS Actual / COGS Budget)
       weeklyTotals.cogsPercentage = weeklyTotals.cogsBudget > 0 ? 
         (weeklyTotals.cogsActual / weeklyTotals.cogsBudget) * 100 : 0;
+
+      // Calculate Total COGS Percentage (Total COGS Actual / Weekly Net Sales)
+      weeklyTotals.totalCogsPercentage = weeklyNetSales > 0 ? 
+        (weeklyTotals.cogsActual / weeklyNetSales) * 100 : 0;
 
       // Calculate remaining COGS - COGS Budget - COGS Actual (can be negative)
       weeklyTotals.weeklyRemainingCog = weeklyTotals.cogsBudget - weeklyTotals.cogsActual;
@@ -229,6 +242,13 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         const isRestaurantOpen = entry['Sales Performance']?.restaurant_open !== false && 
                                 entry['Sales Performance']?.restaurant_open !== 0;
         
+        // Extract daily net sales from Sales Performance or COGS Performance
+        const dailyNetSales = formatNumber(
+          entry['Sales Performance']?.daily_net_sales || 
+          entry['COGS Performance']?.daily_net_sales || 
+          0
+        );
+        
         return {
           key: `day-${entry.date}`,
           date: dayjs(entry.date),
@@ -236,6 +256,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           budget: isRestaurantOpen ? (entry['COGS Performance']?.cogs_budget || 0) : 0,
           actual: isRestaurantOpen ? (entry['COGS Performance']?.cogs_actual || 0) : 0,
           weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0,
+          netSales: dailyNetSales,
           restaurantOpen: isRestaurantOpen
         };
       }) || [];
@@ -257,6 +278,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             budget: 0,
             actual: 0,
             weeklyRemainingCog: 0,
+            netSales: 0,
             restaurantOpen: true // Default to open for new days
           };
         });
@@ -283,7 +305,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         cogsBudget: 0,
         cogsActual: 0,
         cogsPercentage: 0,
-        weeklyRemainingCog: 0
+        weeklyRemainingCog: 0,
+        weeklyNetSales: 0,
+        totalCogsPercentage: 0
       });
     }
   };
@@ -345,17 +369,23 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         cogsBudget: 0,
         cogsActual: 0,
         cogsPercentage: 0,
-        weeklyRemainingCog: 0
+        weeklyRemainingCog: 0,
+        weeklyNetSales: 0,
+        totalCogsPercentage: 0
       };
 
       // Calculate final totals for this week
       const totalBudget = weekData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
       const totalActual = weekData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+      const weeklyNetSales = formatNumber(weeklyTotals.weeklyNetSales || 0);
+      
       const finalTotals = {
         cogsBudget: totalBudget,
         cogsActual: totalActual,
         cogsPercentage: totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0,
-        weeklyRemainingCog: totalBudget - totalActual
+        weeklyRemainingCog: totalBudget - totalActual,
+        weeklyNetSales: weeklyNetSales,
+        totalCogsPercentage: weeklyNetSales > 0 ? (totalActual / weeklyNetSales) * 100 : 0
       };
 
       // Transform data to API format - only save the current week's daily data
@@ -453,6 +483,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         dayName: currentDate.format('dddd'),
         budget: 0,
         actual: 0,
+        netSales: 0,
         restaurantOpen: true // Default to open for new days
       });
     }
@@ -480,29 +511,40 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   // Weekly Modal Component
   const WeeklyModal = () => {
+    // Get weekly net sales from dashboard data for initial state
+    const initialWeeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
+      ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
+      : 0;
+    
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
       startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
-      dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
-      // Add weekly totals for the modal
-      weeklyTotals: {
-        cogsBudget: 0,
-        cogsActual: 0,
-        cogsPercentage: 0,
-        weeklyRemainingCog: 0
-      }
+        dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
+        // Add weekly totals for the modal
+        weeklyTotals: {
+          cogsBudget: 0,
+          cogsActual: 0,
+          cogsPercentage: 0,
+          weeklyRemainingCog: 0,
+          weeklyNetSales: initialWeeklyNetSales,
+          totalCogsPercentage: 0
+        }
     });
 
     useEffect(() => {
+      // Get weekly net sales from dashboard data
+      const weeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
+        ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
+        : 0;
+      
       if (editingWeek) {
         // Ensure editingWeek has weeklyTotals property
         const weekDataWithTotals = {
           ...editingWeek,
-          weeklyTotals: editingWeek.weeklyTotals || {
-            cogsBudget: 0,
-            cogsActual: 0,
-            cogsPercentage: 0,
-            weeklyRemainingCog: 0
+          weeklyTotals: {
+            ...(editingWeek.weeklyTotals || {}),
+            weeklyNetSales: editingWeek.weeklyTotals?.weeklyNetSales || weeklyNetSales,
+            totalCogsPercentage: 0 // Will be calculated
           }
         };
         setWeekFormData(weekDataWithTotals);
@@ -515,11 +557,13 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             cogsBudget: 0,
             cogsActual: 0,
             cogsPercentage: 0,
-            weeklyRemainingCog: 0
+            weeklyRemainingCog: 0,
+            weeklyNetSales: weeklyNetSales,
+            totalCogsPercentage: 0
           }
         });
       }
-    }, [editingWeek, weeklyData.length, weekDays, selectedDate]);
+    }, [editingWeek, weeklyData.length, weekDays, selectedDate, dashboardData]);
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
       // Block actual COGS for future dates (tomorrow and beyond)
@@ -594,6 +638,15 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Weekly Net Sales:</Text>
+                 <Input
+                   value={`$${formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0).toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                 />
+               </div>
+               <div className="w-full">
                  <Text strong className="text-sm sm:text-base">Total COGS Actual:</Text>
                  <Input
                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0).toFixed(2)}`}
@@ -606,9 +659,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  <Text strong className="text-sm sm:text-base">Total COGS Percentage:</Text>
                  <Input
                    value={`${(() => {
-                     const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                      const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
-                     return totalBudget > 0 ? ((totalActual / totalBudget) * 100).toFixed(1) : '0.0';
+                     const weeklyNetSales = formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0);
+                     return weeklyNetSales > 0 ? ((totalActual / weeklyNetSales) * 100).toFixed(1) : '0.0';
                    })()}%`}
                    className="mt-1"
                    disabled
@@ -655,6 +708,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                       <Text strong style={{ color: '#1890ff' }}>DAILY TOTALS</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
+                      <Text strong style={{ color: '#1890ff' }}>${totals.budget.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={2}>
                       <Text strong style={{ color: '#1890ff' }}>${totals.actual.toFixed(2)}</Text>
                     </Table.Summary.Cell>
                   </Table.Summary.Row>
@@ -675,6 +731,18 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                       </div>
                     </div>
                   )
+                },
+                {
+                  title: 'Daily Net Sales',
+                  dataIndex: 'netSales',
+                  key: 'netSales',
+                  width: 120,
+                  render: (value, record) => {
+                    const netSales = parseFloat(value) || 0;
+                    return (
+                      <Text strong style={{ color: '#1890ff' }}>${netSales.toFixed(2)}</Text>
+                    );
+                  }
                 },
                 {
                   title: 'Actual',
@@ -1006,6 +1074,39 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                            const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                            const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
                            return totalActual > totalBudget ? '#d32f2f' : '#1890ff';
+                         })()
+                       }}
+                     />
+                   </div>
+                   
+                   <div>
+                     <Text strong>Weekly Net Sales:</Text>
+                     <Input
+                       value={`$${formatNumber(weeklyTotals.weeklyNetSales || 0).toFixed(2)}`}
+                       className="mt-1"
+                       disabled
+                       style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                     />
+                   </div>
+                   
+                   <div>
+                     <Text strong>Total COGS Percentage:</Text>
+                     <Input
+                       value={`${formatNumber(weeklyTotals.totalCogsPercentage || 0).toFixed(1)}%`}
+                       className="mt-1"
+                       disabled
+                       style={{ 
+                         backgroundColor: (() => {
+                           const totalCogsPercentage = formatNumber(weeklyTotals.totalCogsPercentage || 0);
+                           const cogsGoal = getCogsGoal();
+                           if (cogsGoal && totalCogsPercentage > cogsGoal) return '#ffebee';
+                           return '#fff7ed';
+                         })(),
+                         color: (() => {
+                           const totalCogsPercentage = formatNumber(weeklyTotals.totalCogsPercentage || 0);
+                           const cogsGoal = getCogsGoal();
+                           if (cogsGoal && totalCogsPercentage > cogsGoal) return '#d32f2f';
+                           return '#1890ff';
                          })()
                        }}
                      />
