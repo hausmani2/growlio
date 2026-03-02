@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Select, InputNumber, Button, Card, Table, Tag, message } from 'antd';
-import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Select, InputNumber, Button, Card, Table, Tag, message } from 'antd';
+import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
@@ -10,9 +10,11 @@ import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 
 const { Option } = Select;
 
+const AUTO_SAVE_DEBOUNCE_MS = 700;
+const SAVED_MESSAGE_DURATION_MS = 2500;
+
 const SimulationDashboard = () => {
   const navigate = useNavigate();
-  const [isModalVisible, setIsModalVisible] = useState(false);
   const [dashboardParams, setDashboardParams] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -28,7 +30,6 @@ const SimulationDashboard = () => {
     createSimulationDashboard,
     getSimulationOnboardingStatus,
     getSimulationDashboard,
-    fetchRestaurantId,
     getDays,
     daysLoading,
     daysError
@@ -36,6 +37,14 @@ const SimulationDashboard = () => {
 
   const [restaurantId, setRestaurantId] = useState(null);
   const [period, setPeriod] = useState('monthly'); // daily, weekly, monthly, annually
+  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  const [saveErrorMessage, setSaveErrorMessage] = useState('');
+  const debounceRef = useRef(null);
+  const isSavingRef = useRef(false);
+  const savedMessageTimerRef = useRef(null);
+  const isInitialMountRef = useRef(true);
+  const latestParamsRef = useRef({ dashboardParams, period, restaurantId });
+  latestParamsRef.current = { dashboardParams, period, restaurantId };
 
   // Get onboarding status to check if regular users have completed onboarding
   const {
@@ -57,23 +66,14 @@ const SimulationDashboard = () => {
       let id = null;
       let restaurantName = null;
       let onboardingComplete = false;
-      
-      // Get restaurant ID from store (logged-in user's restaurant)
-      const storeRestaurantId = await fetchRestaurantId();
-      if (storeRestaurantId) {
-        id = parseInt(storeRestaurantId);
-        setRestaurantId(id);
+
+      // Use only simulation restaurant ID for simulation APIs (never regular restaurant ID)
+      const storedSimulationId = localStorage.getItem('simulation_restaurant_id');
+      if (storedSimulationId) {
+        id = parseInt(storedSimulationId, 10);
+        if (!Number.isNaN(id)) setRestaurantId(id);
       }
-      
-      // Fallback to simulation_restaurant_id if store doesn't have it
-      if (!id) {
-        const storedId = localStorage.getItem('simulation_restaurant_id');
-        if (storedId) {
-          id = parseInt(storedId);
-          setRestaurantId(id);
-        }
-      }
-      
+
       // Always check onboarding status to verify completion
       // CRITICAL: Use forceRefresh=true to bypass cache and get fresh data
       // This ensures we get the latest onboarding status after POST
@@ -122,13 +122,13 @@ const SimulationDashboard = () => {
       }
     };
     loadData();
-  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, fetchRestaurantId, hasRegularRestaurants, hasCompletedRegularOnboarding]);
+  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, hasRegularRestaurants, hasCompletedRegularOnboarding]);
 
-  // Fetch days when modal opens or month/year changes
+  // Fetch days when restaurantId or month/year changes
   useEffect(() => {
     const fetchDaysData = async () => {
-      if (!isModalVisible || !restaurantId) return;
-      
+      if (!restaurantId) return;
+
       const result = await getDays(dashboardParams.year, dashboardParams.month, restaurantId);
       if (result.success && result.data && result.data.working_days_count !== undefined) {
         setDashboardParams(prev => ({ ...prev, days: result.data.working_days_count }));
@@ -138,48 +138,95 @@ const SimulationDashboard = () => {
     };
 
     fetchDaysData();
-  }, [isModalVisible, dashboardParams.year, dashboardParams.month, restaurantId, getDays]);
+  }, [dashboardParams.year, dashboardParams.month, restaurantId, getDays]);
 
-  const showModal = () => {
-    setIsModalVisible(true);
-  };
-
-  const handleModalCancel = () => {
-    setIsModalVisible(false);
-  };
-
-  const handleModalSubmit = async () => {
-    if (!restaurantId) {
-      message.error('Restaurant ID not found. Please complete onboarding first.');
-      return;
+  // Shared save: create then fetch. Reads latest params from ref so debounced auto-save always uses current values (e.g. after getDays updates days).
+  const saveForecast = useCallback(async (options = {}) => {
+    const { showSuccessToast = false } = options;
+    const { dashboardParams: params, period: p, restaurantId: rid } = latestParamsRef.current;
+    if (!rid) {
+      if (showSuccessToast) message.error('Restaurant ID not found. Please complete onboarding first.');
+      return false;
     }
+    if (isSavingRef.current) return false;
 
     const payload = {
-      restaurant_id: restaurantId,
-      year: dashboardParams.year,
-      month: dashboardParams.month,
-      added_customer_per_day: dashboardParams.added_customer_per_day,
-      days: dashboardParams.days,
-      profit_loss: dashboardParams.profit_loss,
-      average_ticket_per_customer: dashboardParams.average_ticket_per_customer,
-      period: period
+      restaurant_id: rid,
+      year: params.year,
+      month: params.month,
+      added_customer_per_day: params.added_customer_per_day,
+      days: params.days,
+      profit_loss: params.profit_loss,
+      average_ticket_per_customer: params.average_ticket_per_customer,
+      period: p
     };
+
+    isSavingRef.current = true;
+    setSaveStatus('saving');
+    setSaveErrorMessage('');
 
     try {
       const result = await createSimulationDashboard(payload);
-      if (result.success) {
-        // After POST, call GET to fetch complete data with expenses breakdown
-        if (restaurantId) {
-          await getSimulationDashboard(restaurantId, dashboardParams.year, dashboardParams.month);
-        }
-        setIsModalVisible(false);
-        message.success('Forecast generated successfully!');
+      if (result.success && rid) {
+        await getSimulationDashboard(rid, params.year, params.month);
       }
+      setSaveStatus('saved');
+      setSaveErrorMessage('');
+      if (showSuccessToast) message.success('Forecast saved successfully.');
+      if (savedMessageTimerRef.current) clearTimeout(savedMessageTimerRef.current);
+      savedMessageTimerRef.current = setTimeout(() => {
+        setSaveStatus(null);
+        savedMessageTimerRef.current = null;
+      }, SAVED_MESSAGE_DURATION_MS);
+      return true;
     } catch (error) {
-      console.error('Error creating dashboard:', error);
-      message.error('Failed to generate forecast. Please try again.');
+      console.error('Error saving forecast:', error);
+      const errMsg = error?.message || 'Failed to save forecast. Please try again.';
+      setSaveStatus('error');
+      setSaveErrorMessage(errMsg);
+      message.error(errMsg);
+      return false;
+    } finally {
+      isSavingRef.current = false;
     }
+  }, [createSimulationDashboard, getSimulationDashboard]);
+
+  // Debounced auto-save when customer/day, profit_loss, or avg ticket change (skip on initial mount to avoid extra API call)
+  useEffect(() => {
+    if (!restaurantId) return;
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      if (isSavingRef.current) return;
+      saveForecast({ showSuccessToast: false });
+    }, AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [
+    dashboardParams.added_customer_per_day,
+    dashboardParams.profit_loss,
+    dashboardParams.average_ticket_per_customer,
+    restaurantId
+  ]);
+
+  const handleGenerate = () => {
+    saveForecast({ showSuccessToast: true });
   };
+
+  // Clear timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (savedMessageTimerRef.current) clearTimeout(savedMessageTimerRef.current);
+    };
+  }, []);
 
   // Generate years (current year ± 5 years)
   const years = Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i);
@@ -210,38 +257,160 @@ const SimulationDashboard = () => {
     <div className="">
       <div className="mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 ">
-          <div>
-            <h1 className="text-3xl font-bold text-orange-600 mb-2">
-              Simulation Dashboard
-            </h1>
-            <p className="text-gray-600 text-lg">
-              Forecast your restaurant's financial performance
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div>
-              <Select
-                value={period}
-                onChange={(value) => setPeriod(value)}
-                className="w-40 h-11"
-              >
-                <Option value="daily">Daily</Option>
-                <Option value="weekly">Weekly</Option>
-                <Option value="monthly">Monthly</Option>
-                <Option value="annually">Annually</Option>
-              </Select>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+          <h1 className="text-3xl font-bold text-orange-600 mb-2">
+            Simulation Dashboard
+          </h1>
+          <p className="text-gray-600 text-lg mb-6">
+            Forecast your restaurant's financial performance
+          </p>
+
+          {/* Generate Forecast - inputs at top (no modal) */}
+          <Card title="Generate Forecast" className="mb-0 shadow-sm">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Year <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={dashboardParams.year}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, year: value }))}
+                    className="w-full"
+                    size="large"
+                  >
+                    {years.map(year => (
+                      <Option key={year} value={year}>{year}</Option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Month <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={dashboardParams.month}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, month: value }))}
+                    className="w-full"
+                    size="large"
+                  >
+                    {months.map(month => (
+                      <Option key={month.value} value={month.value}>{month.label}</Option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Days <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    value={dashboardParams.days}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, days: value || 0 }))}
+                    min={0}
+                    className="w-full"
+                    size="large"
+                    placeholder="Working days"
+                    disabled={daysLoading}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customers Per Day <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    value={dashboardParams.added_customer_per_day}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, added_customer_per_day: value || 0 }))}
+                    min={0}
+                    className="w-full"
+                    size="large"
+                    placeholder="New customers/day"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profit/Loss <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    value={dashboardParams.profit_loss}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, profit_loss: value || 0 }))}
+                    step={0.01}
+                    precision={2}
+                    prefix="$"
+                    className="w-full"
+                    size="large"
+                    placeholder="Profit/loss"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Avg Ticket <span className="text-red-500">*</span>
+                  </label>
+                  <InputNumber
+                    value={dashboardParams.average_ticket_per_customer}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, average_ticket_per_customer: value || 0 }))}
+                    min={0}
+                    step={0.01}
+                    precision={2}
+                    prefix="$"
+                    className="w-full"
+                    size="large"
+                    placeholder="Per customer"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-gray-100 pt-4 mt-2">
+                <Select
+                  value={period}
+                  onChange={(value) => setPeriod(value)}
+                  size="large"
+                  style={{ width: 160, minWidth: 160 }}
+                >
+                  <Option value="daily">Daily</Option>
+                  <Option value="weekly">Weekly</Option>
+                  <Option value="monthly">Monthly</Option>
+                  <Option value="annually">Annually</Option>
+                </Select>
+                <Button
+                  type="primary"
+                  icon={<CalendarOutlined />}
+                  onClick={handleGenerate}
+                  loading={simulationDashboardLoading}
+                  size="large"
+                  className="bg-orange-500 hover:bg-orange-600 border-orange-500"
+                >
+                  Generate Forecast
+                </Button>
+                <div className="flex items-center gap-2 text-sm min-h-[24px]">
+                  {saveStatus === 'saving' && (
+                    <span className="text-amber-600 flex items-center gap-1.5">
+                      <LoadingOutlined />
+                      Saving…
+                    </span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <span className="text-green-600 flex items-center gap-1.5">
+                      <CheckCircleOutlined />
+                      Saved
+                    </span>
+                  )}
+                  {saveStatus === 'error' && saveErrorMessage && (
+                    <span className="text-red-600" title={saveErrorMessage}>
+                      Save failed. Try again or use Generate Forecast.
+                    </span>
+                  )}
+                  {!saveStatus && (
+                    <span className="text-gray-400">Changes save automatically</span>
+                  )}
+                </div>
+              </div>
             </div>
-            <Button
-              type="primary"
-              icon={<CalendarOutlined />}
-              onClick={showModal}
-              size="large"
-              className="bg-orange-500 hover:bg-orange-600 border-orange-500"
-            >
-              Generate Forecast
-            </Button>
-          </div>
+          </Card>
         </div>
 
         {dashboardData ? (
@@ -370,136 +539,11 @@ const SimulationDashboard = () => {
             <h3 className="text-xl font-semibold text-gray-700 mb-2">
               No Dashboard Data
             </h3>
-            <p className="text-gray-500 mb-6">
-              Generate a forecast by selecting a year and month, then entering your customer data.
+            <p className="text-gray-500">
+              Use the form above to generate a forecast. Select year and month, enter your customer data, then click Generate Forecast.
             </p>
-            <Button
-              type="primary"
-              icon={<CalendarOutlined />}
-              onClick={showModal}
-              size="large"
-              className="bg-orange-500 hover:bg-orange-600 border-orange-500"
-            >
-              Generate Forecast
-            </Button>
           </Card>
         )}
-
-        {/* Generate Forecast Modal */}
-        <Modal
-          title="Generate Forecast"
-          open={isModalVisible}
-          onOk={handleModalSubmit}
-          onCancel={handleModalCancel}
-          okText="Generate"
-          cancelText="Cancel"
-          width={600}
-          confirmLoading={simulationDashboardLoading}
-        >
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Year <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  value={dashboardParams.year}
-                  onChange={(value) => setDashboardParams(prev => ({ ...prev, year: value }))}
-                  className="w-full h-11"
-                >
-                  {years.map(year => (
-                    <Option key={year} value={year}>{year}</Option>
-                  ))}
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Month <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  value={dashboardParams.month}
-                  onChange={(value) => setDashboardParams(prev => ({ ...prev, month: value }))}
-                  className="w-full h-11"
-                >
-                  {months.map(month => (
-                    <Option key={month.value} value={month.value}>{month.label}</Option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Days <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                value={dashboardParams.days}
-                onChange={(value) => setDashboardParams(prev => ({ ...prev, days: value || 0 }))}
-                min={0}
-                className="w-full"
-                placeholder="Enter number of days"
-                disabled={daysLoading}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Number of working days in the selected month
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Customers Per Day <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                value={dashboardParams.added_customer_per_day}
-                onChange={(value) => setDashboardParams(prev => ({ ...prev, added_customer_per_day: value || 0 }))}
-                min={0}
-                className="w-full"
-                placeholder="Enter number of new customers per day"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Number of new customers you expect to add each day
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profit/Loss <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                value={dashboardParams.profit_loss}
-                onChange={(value) => setDashboardParams(prev => ({ ...prev, profit_loss: value || 0 }))}
-                step={0.01}
-                precision={2}
-                prefix="$"
-                className="w-full"
-                placeholder="Enter profit/loss amount"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Expected profit or loss for the month (negative values indicate loss)
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Average Ticket Per Customer <span className="text-red-500">*</span>
-              </label>
-              <InputNumber
-                value={dashboardParams.average_ticket_per_customer}
-                onChange={(value) => setDashboardParams(prev => ({ ...prev, average_ticket_per_customer: value || 0 }))}
-                min={0}
-                step={0.01}
-                precision={2}
-                prefix="$"
-                className="w-full"
-                placeholder="Enter average ticket amount"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Average amount each customer spends per visit
-              </p>
-            </div>
-          </div>
-        </Modal>
       </div>
       
       {/* Chat Widget for Simulation */}
