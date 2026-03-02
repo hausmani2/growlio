@@ -629,7 +629,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
            <Card title="Weekly COGS Totals Summary" size="small" className='bg-gray-50 opacity-50'>
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Total COGS Budget:</Text>
+                 <Text strong className="text-sm sm:text-base">Weekly Budget Sales:</Text>
                  <Input
                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2)}`}
                    className="mt-1"
@@ -647,7 +647,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Total COGS Actual:</Text>
+                 <Text strong className="text-sm sm:text-base">Current Sales To Date:</Text>
                  <Input
                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0).toFixed(2)}`}
                    className="mt-1"
@@ -656,7 +656,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Total COGS Percentage:</Text>
+                 <Text strong className="text-sm sm:text-base">Current COGS Percentage:</Text>
                  <Input
                    value={`${(() => {
                      const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
@@ -1090,7 +1090,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    </div>
                    
                    <div>
-                     <Text strong>Total COGS Percentage:</Text>
+                     <Text strong>Current COGS Percentage:</Text>
                      <Input
                        value={`${formatNumber(weeklyTotals.totalCogsPercentage || 0).toFixed(1)}%`}
                        className="mt-1"
