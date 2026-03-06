@@ -511,40 +511,55 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   // Weekly Modal Component
   const WeeklyModal = () => {
-    // Get weekly net sales from dashboard data for initial state
+    // Get weekly net sales and weekly cogs actual from dashboard data for initial state
     const initialWeeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
       ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
+      : 0;
+    const initialCogsActual = dashboardData?.["COGS Performance"]?.cogs_actual != null
+      ? formatNumber(dashboardData["COGS Performance"].cogs_actual)
+      : 0;
+    const initialTotalCogsPct = initialWeeklyNetSales > 0
+      ? formatNumber((initialCogsActual / initialWeeklyNetSales) * 100)
       : 0;
     
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
       startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
         dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
-        // Add weekly totals for the modal
+        // Add weekly totals for the modal (cogsActual and totalCogsPercentage from API)
         weeklyTotals: {
           cogsBudget: 0,
-          cogsActual: 0,
+          cogsActual: initialCogsActual,
           cogsPercentage: 0,
           weeklyRemainingCog: 0,
           weeklyNetSales: initialWeeklyNetSales,
-          totalCogsPercentage: 0
+          totalCogsPercentage: initialTotalCogsPct
         }
     });
 
     useEffect(() => {
-      // Get weekly net sales from dashboard data
+      // Get weekly net sales and weekly cogs actual from dashboard data (API)
       const weeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
         ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
         : 0;
+      const cogsActualFromApi = dashboardData?.["COGS Performance"]?.cogs_actual != null
+        ? formatNumber(dashboardData["COGS Performance"].cogs_actual)
+        : 0;
       
+      // Actual Weekly COGS Performance % = (cogs actual / weekly net sales) * 100
+      const totalCogsPct = weeklyNetSales > 0
+        ? formatNumber((cogsActualFromApi / weeklyNetSales) * 100)
+        : 0;
+
       if (editingWeek) {
-        // Ensure editingWeek has weeklyTotals property
+        // Ensure editingWeek has weeklyTotals property (cogsActual from API via processCogsData)
         const weekDataWithTotals = {
           ...editingWeek,
           weeklyTotals: {
             ...(editingWeek.weeklyTotals || {}),
+            cogsActual: editingWeek.weeklyTotals?.cogsActual ?? cogsActualFromApi,
             weeklyNetSales: editingWeek.weeklyTotals?.weeklyNetSales || weeklyNetSales,
-            totalCogsPercentage: 0 // Will be calculated
+            totalCogsPercentage: editingWeek.weeklyTotals?.totalCogsPercentage ?? totalCogsPct
           }
         };
         setWeekFormData(weekDataWithTotals);
@@ -555,11 +570,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           dailyData: generateDailyData(weekDays.length > 0 ? weekDays[0].date : selectedDate),
           weeklyTotals: {
             cogsBudget: 0,
-            cogsActual: 0,
+            cogsActual: cogsActualFromApi,
             cogsPercentage: 0,
             weeklyRemainingCog: 0,
             weeklyNetSales: weeklyNetSales,
-            totalCogsPercentage: 0
+            totalCogsPercentage: totalCogsPct
           }
         });
       }
@@ -628,17 +643,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                      {/* Weekly COGS Totals Summary - Auto-calculated from daily inputs */}
            <Card title="Weekly COGS Totals Summary" size="small" className='bg-gray-50 opacity-50'>
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
-               <div className="w-full">
+             <div className="w-full">
                  <Text strong className="text-sm sm:text-base">Weekly Budget Sales:</Text>
-                 <Input
-                   value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2)}`}
-                   className="mt-1"
-                   disabled
-                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
-                 />
-               </div>
-               <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly Net Sales:</Text>
                  <Input
                    value={`$${formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0).toFixed(2)}`}
                    className="mt-1"
@@ -646,6 +652,46 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
                  />
                </div>
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Weekly COGS Budget:</Text>
+                 <Input
+                   value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                 />
+               </div>
+             
+               <div className="w-full">
+                 <Text strong className="text-sm sm:text-base">Weekly COGS Actual:</Text>
+                 <Input
+                   value={`$${formatNumber(weekFormData.weeklyTotals?.cogsActual ?? 0).toFixed(2)}`}
+                   className="mt-1"
+                   disabled
+                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                 />
+               </div>
+              <div className="w-full">
+                <Text strong className="text-sm sm:text-base">Actual Weekly COGS Percentage:</Text>
+                {(() => {
+                  const budget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                  const actual = formatNumber(weekFormData.weeklyTotals?.cogsActual ?? weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0));
+                  const percentage = budget > 0 ? (actual / budget) * 100 : 0;
+                  const isOverBudget = actual > budget;
+                  return (
+                    <Input
+                      value={`${percentage.toFixed(1)}%`}
+                      className="mt-1"
+                      disabled
+                      style={{
+                        backgroundColor: isOverBudget ? '#ffebee' : '#f0f8ff',
+                        color: isOverBudget ? '#d32f2f' : '#1890ff'
+                      }}
+                    />
+                  );
+                })()}
+              </div>
+            
                <div className="w-full">
                  <Text strong className="text-sm sm:text-base">Current Sales To Date:</Text>
                  <Input
@@ -656,7 +702,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Current COGS Percentage:</Text>
+                 <Text strong className="text-sm sm:text-base">Percentage COGS to Date:</Text>
                  <Input
                    value={`${(() => {
                      const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
@@ -669,7 +715,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly Remaining COGS:</Text>
+                 <Text strong className="text-sm sm:text-base">Weekly COGS Remaining:</Text>
                  <Input
                    value={`$${(() => {
                      const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
