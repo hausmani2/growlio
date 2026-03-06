@@ -10,7 +10,7 @@ import chatIcon from '../../../assets/lio.png';
  * A full-page ChatGPT-like interface with conversation threads
  */
 const ChatPage = () => {
-  const { selectedConversationId: storeConversationId, setSelectedConversationId } = useStore();
+  const { setSelectedConversationId } = useStore();
   const [conversations, setConversations] = useState([]);
   const [selectedConversationId, setSelectedConversationIdLocal] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -79,42 +79,22 @@ const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Initialize: Check for existing conversation ID from widget or store
+  // Initialize: Only fetch conversations list on load. Do NOT auto-call conversation API.
+  // Conversation API is called only when user clicks a conversation (pass thread id then).
   useEffect(() => {
-    // Fetch conversations list first
     fetchConversations();
-    
-    // Check if there's a conversation ID in the store (from widget)
-    // If so, load that conversation instead of starting fresh
-    if (storeConversationId) {
-      // Load the conversation from the widget
-      loadConversationHistory(storeConversationId);
-    } else {
-      // No existing conversation, start fresh
-      setSelectedConversationIdLocal(null);
-      setSelectedConversationId(null);
-      sessionStorage.removeItem('chat_conversation_id');
-      
-      // Initialize with welcome message
-      setMessages([
-        {
-          text: "Hello! I'm here to help you. How can I assist you today?",
-          isUser: false,
-          timestamp: new Date(),
-        },
-      ]);
-    }
+    setSelectedConversationIdLocal(null);
+    setSelectedConversationId(null);
+    sessionStorage.removeItem('chat_conversation_id');
+    setMessages([
+      {
+        text: "Hello! I'm here to help you. How can I assist you today?",
+        isUser: false,
+        timestamp: new Date(),
+      },
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Watch for storeConversationId changes (e.g., when navigating from widget)
-  useEffect(() => {
-    // If storeConversationId is set and we don't have a selected conversation, load it
-    if (storeConversationId && !selectedConversationId && !isLoadingHistory) {
-      loadConversationHistory(storeConversationId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeConversationId]);
 
   /**
    * Fetch all conversations for the logged-in user
