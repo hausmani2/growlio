@@ -287,7 +287,7 @@ const SimulationDashboard = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Month <span className="text-red-500">*</span>
+                   Beginning Month <span className="text-red-500">*</span>
                   </label>
                   <Select
                     value={dashboardParams.month}
@@ -303,7 +303,7 @@ const SimulationDashboard = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Days <span className="text-red-500">*</span>
+                    Days Open <span className="text-red-500">*</span>
                   </label>
                   <InputNumber
                     value={dashboardParams.days}
@@ -330,7 +330,7 @@ const SimulationDashboard = () => {
                   />
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Profit/Loss <span className="text-red-500">*</span>
                   </label>
@@ -344,7 +344,7 @@ const SimulationDashboard = () => {
                     size="large"
                     placeholder="Profit/loss"
                   />
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

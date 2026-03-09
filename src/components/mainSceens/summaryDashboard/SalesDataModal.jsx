@@ -8,6 +8,7 @@ import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 
 const { Title, Text } = Typography;
+const NEW_USER_GUIDE_VIDEO_EMBED_URL = 'https://www.youtube.com/embed/aXUSZtOxN-k';
 
 const SalesDataModal = ({
   visible,
@@ -71,6 +72,7 @@ const SalesDataModal = ({
   const [showWeekConfirmationModal, setShowWeekConfirmationModal] = useState(false);
   const [weekStatus, setWeekStatus] = useState(null);
   const [weekConfirmed, setWeekConfirmed] = useState(false);
+  const [isGuideVideoModalVisible, setIsGuideVideoModalVisible] = useState(false);
 
   // Add refs for debouncing budgeted sales changes
   const budgetedSalesTimeoutRef = useRef({});
@@ -1771,6 +1773,20 @@ const SalesDataModal = ({
             }
           </Title>
 
+          <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
+            <Text className="block mb-2">
+              New here? Watch this quick guide before continuing.
+            </Text>
+            <Button
+              type="primary"
+              icon={<QuestionCircleOutlined />}
+              onClick={() => setIsGuideVideoModalVisible(true)}
+              style={{ backgroundColor: '#1677ff', borderColor: '#1677ff' }}
+            >
+              Watch Guide Video
+            </Button>
+          </div>
+
           <div className="flex flex-col items-center gap-3">
             <Button
               onClick={() => handleLaborRateConfirmationChoice('yes')}
@@ -1799,6 +1815,34 @@ const SalesDataModal = ({
               Set New Labor Rate
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        title="New User Guide Video"
+        open={isGuideVideoModalVisible}
+        onCancel={() => setIsGuideVideoModalVisible(false)}
+        footer={null}
+        width={900}
+        centered
+        destroyOnClose
+      >
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+          <iframe
+            src={NEW_USER_GUIDE_VIDEO_EMBED_URL}
+            title="New User Guide Video"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              border: 0
+            }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
         </div>
       </Modal>
 
