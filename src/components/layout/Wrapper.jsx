@@ -56,6 +56,14 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     useEffect(() => {
       const checkSimulationMode = async () => {
         try {
+          // Superadmin (without impersonation) must always see superadmin navigation.
+          if (isSuperAdmin && !impersonating) {
+            setIsSimulationMode(false);
+            sessionStorage.setItem('isSimulationMode', 'false');
+            sessionStorage.setItem('simulationModeLastCheck', Date.now().toString());
+            return;
+          }
+
           // CRITICAL: Check current route first
           const isOnSimulationRoute = location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation');
           const isOnRegularRoute = location.pathname.startsWith('/dashboard') && !isOnSimulationRoute;
@@ -106,7 +114,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       };
 
       checkSimulationMode();
-    }, [isRegularUser, isSimulationUser, hasRegularRestaurants, hasSimulationRestaurants, location.pathname]);
+    }, [isRegularUser, isSimulationUser, hasRegularRestaurants, hasSimulationRestaurants, location.pathname, isSuperAdmin, impersonating]);
   
     // Simulation Dashboard menu (only shown when in simulation mode)
     const simulationMenu = [

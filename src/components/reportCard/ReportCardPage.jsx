@@ -29,6 +29,7 @@ const getMessageFromScore = (score) => {
 
 const ReportCardPage = () => {
   const [showSetupProgress, setShowSetupProgress] = useState(false);
+  const [activeRestaurantId, setActiveRestaurantId] = useState(() => localStorage.getItem('restaurant_id'));
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(1, 'month').startOf('month'),
     dayjs().subtract(1, 'month').endOf('month'),
@@ -70,6 +71,22 @@ const ReportCardPage = () => {
   // Use cached progress if available, otherwise use fetched progress
   const onboardingProgress = cachedOnboardingProgress || fetchedOnboardingProgress;
 
+  // Keep restaurant id in sync during login/impersonation context switches.
+  useEffect(() => {
+    const syncRestaurantId = () => {
+      setActiveRestaurantId(localStorage.getItem('restaurant_id'));
+    };
+
+    syncRestaurantId();
+    window.addEventListener('storage', syncRestaurantId);
+    window.addEventListener('auth-storage-change', syncRestaurantId);
+
+    return () => {
+      window.removeEventListener('storage', syncRestaurantId);
+      window.removeEventListener('auth-storage-change', syncRestaurantId);
+    };
+  }, []);
+
   // Fetch sales information summary when date range changes
   // CRITICAL: Only call this API when restaurant exists
   const fetchSummaryData = async (startDate, endDate) => {
@@ -77,9 +94,8 @@ const ReportCardPage = () => {
       // Check if restaurant exists before making API call
       const restaurants = restaurantOnboardingData?.restaurants || [];
       const hasRestaurant = Array.isArray(restaurants) && restaurants.length > 0;
-      const restaurantId = localStorage.getItem('restaurant_id');
       
-      if (!hasRestaurant || !restaurantId) {
+      if (!hasRestaurant || !activeRestaurantId) {
         console.warn('⚠️ [ReportCardPage] Cannot fetch sales summary: No restaurant found');
         return;
       }
@@ -94,27 +110,6 @@ const ReportCardPage = () => {
   // Fetch sales information summary and onboarding data on mount
   useEffect(() => {
     const fetchData = async () => {
-      // CRITICAL: Only fetch sales information summary if restaurant exists
-      const restaurants = restaurantOnboardingData?.restaurants || [];
-      const hasRestaurant = Array.isArray(restaurants) && restaurants.length > 0;
-      const restaurantId = localStorage.getItem('restaurant_id');
-      
-      if (!hasRestaurant || !restaurantId) {
-        // No restaurant - don't fetch sales summary
-        hasFetchedRef.current = true;
-        return;
-      }
-      
-      // Fetch sales information summary with initial date range
-      if (!hasFetchedRef.current) {
-        if (!summaryData && !salesInformationSummaryLoading) {
-          hasFetchedRef.current = true;
-          await fetchSummaryData(dateRange[0], dateRange[1]);
-        } else if (summaryData) {
-          hasFetchedRef.current = true;
-        }
-      }
-
       // Fetch onboarding progress data - only if we don't have cached data or need refresh
       // Check if cached data is still fresh (less than 5 seconds old)
       const now = Date.now();
@@ -129,7 +124,6 @@ const ReportCardPage = () => {
           const result = await getRestaurantOnboarding(true);
               
           if (result.success && result.data) {
-            
             const progress = getOnboardingProgress(result.data);
             setFetchedOnboardingProgress(progress);
           } else {
@@ -157,11 +151,31 @@ const ReportCardPage = () => {
           }
         }
       }
+
+      // CRITICAL: Only fetch sales information summary if restaurant exists
+      const restaurants = restaurantOnboardingData?.restaurants || [];
+      const hasRestaurant = Array.isArray(restaurants) && restaurants.length > 0;
+      
+      if (!hasRestaurant || !activeRestaurantId) {
+        // Context is not ready yet; allow a later refetch when it becomes available.
+        hasFetchedRef.current = false;
+        return;
+      }
+      
+      // Fetch sales information summary with initial date range
+      if (!hasFetchedRef.current) {
+        if (!summaryData && !salesInformationSummaryLoading) {
+          hasFetchedRef.current = true;
+          await fetchSummaryData(dateRange[0], dateRange[1]);
+        } else if (summaryData) {
+          hasFetchedRef.current = true;
+        }
+      }
     };
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Fetch on mount only
+  }, [activeRestaurantId, restaurantOnboardingData, restaurantOnboardingDataTimestamp]); // Refetch when context becomes ready
 
   // Fetch data when date range changes
   useEffect(() => {

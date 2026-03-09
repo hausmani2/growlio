@@ -5,10 +5,15 @@ import PrimaryBtn from "../buttons/Buttons";
 import ImageLayout from "../imageWrapper/ImageLayout";
 import OnBoard from "../../assets/pngs/onBoard.png";
 import { CheckOutlined } from '@ant-design/icons';
+import { message } from "antd";
+import useStore from "../../store/store";
+import { isImpersonating } from "../../utils/tokenManager";
 
 const ProfitabilityScore = () => {
     const navigate = useNavigate();
     const [showInfoModal, setShowInfoModal] = useState(false);
+    const stopImpersonation = useStore((state) => state.stopImpersonation);
+    const impersonating = isImpersonating();
 
     const handleGetScore = () => {
         // Navigate to the profitability form or next step
@@ -18,6 +23,19 @@ const ProfitabilityScore = () => {
     const handleNoInfo = () => {
         // Handle the "What if I don't have this info?" link
         setShowInfoModal(true);
+    };
+
+    const handleStopImpersonation = async () => {
+        try {
+            const result = await stopImpersonation();
+            if (!result?.success) {
+                message.error(result?.error || "Failed to stop impersonation");
+                return;
+            }
+            window.location.href = "/superadmin/dashboard";
+        } catch (error) {
+            message.error("Failed to stop impersonation");
+        }
     };
 
     const requirements = [
@@ -33,6 +51,17 @@ const ProfitabilityScore = () => {
             <div className="w-full flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0 h-full">
                 <div className="w-full max-w-xl mx-auto flex flex-col h-full justify-center">
                     <div className="flex flex-col gap-2 bg-white rounded-2xl shadow-lg p-6 py-16">
+                        {impersonating && (
+                            <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
+                                <span className="text-sm text-amber-900">Impersonation active</span>
+                                <button
+                                    onClick={handleStopImpersonation}
+                                    className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                                >
+                                    Back to Superadmin Dashboard
+                                </button>
+                            </div>
+                        )}
                         
                         {/* Growlio Logo */}
                         <div className="flex justify-center mb-4">

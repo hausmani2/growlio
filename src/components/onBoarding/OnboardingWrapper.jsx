@@ -21,6 +21,7 @@ import {
   ONBOARDING_ROUTES,
 } from "../../utils/onboardingUtils";
 import { checkAndRedirectToSimulation } from "../../utils/simulationUtils";
+import { isImpersonating } from "../../utils/tokenManager";
 
 
 const OnboardingWrapper = () => {
@@ -47,8 +48,10 @@ const OnboardingWrapper = () => {
         getRestaurantOnboarding,
         getSalesInformation,
         salesInformationData,
-        getSimulationOnboardingStatus
+        getSimulationOnboardingStatus,
+        stopImpersonation
     } = useStore();
+    const impersonating = isImpersonating();
     
     // Check if sales information is complete using utility function
     const hasSalesInformation = () => {
@@ -147,6 +150,19 @@ const OnboardingWrapper = () => {
         logout();
         // logout() function now handles redirect internally
     }
+
+    const handleStopImpersonation = async () => {
+        try {
+            const result = await stopImpersonation();
+            if (!result?.success) {
+                message.error(result?.error || "Failed to stop impersonation");
+                return;
+            }
+            window.location.href = "/superadmin/dashboard";
+        } catch (error) {
+            message.error("Failed to stop impersonation");
+        }
+    };
      // Ref to prevent multiple simultaneous API calls
      const simulationCheckRef = useRef(false);
     
@@ -326,7 +342,22 @@ const OnboardingWrapper = () => {
 
     // Show loading spinner if checking onboarding status
     if (shouldShowLoading) {
-        return <LoadingSpinner message="Checking your setup..." />;
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 px-4">
+                {impersonating && (
+                    <div className="w-full max-w-xl rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
+                        <span className="text-sm text-amber-900">Impersonation active</span>
+                        <button
+                            onClick={handleStopImpersonation}
+                            className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                        >
+                            Back to Superadmin Dashboard
+                        </button>
+                    </div>
+                )}
+                <LoadingSpinner message="Checking your setup..." />
+            </div>
+        );
     }
 
     return (
@@ -335,6 +366,24 @@ const OnboardingWrapper = () => {
             <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0">
                 <div className="w-full max-w-md mx-auto flex flex-col h-full justify-center">
                     <div className="flex flex-col gap-6 sm:gap-8 bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10">
+                        {impersonating && (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                className="mb-2"
+                                message={
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-sm">Impersonation active</span>
+                                        <button
+                                            onClick={handleStopImpersonation}
+                                            className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                                        >
+                                            Back to Superadmin Dashboard
+                                        </button>
+                                    </div>
+                                }
+                            />
+                        )}
                         {/* Back Button */}
                         <div className="flex justify-between">
                             <button onClick={handleBack} className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium">

@@ -10,6 +10,7 @@ import ExpensesStep from './simulationSteps/ExpensesStep';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
 import Header from '../layout/Header';
 import ChatWidget from '../chatbot/ChatWidget';
+import { isImpersonating } from '../../utils/tokenManager';
 
 const STEPS = [
   { id: 'basic-information', title: 'Basic Information', component: BasicInformationStep },
@@ -52,7 +53,8 @@ const SimulationOnboarding = () => {
     expenses: []
   });
 
-  const { submitStepData, onboardingLoading, getSimulationOnboardingStatus, submitSimulationOnboarding, getRestaurantOnboarding, restaurantOnboardingData } = useStore();
+  const { submitStepData, onboardingLoading, getSimulationOnboardingStatus, submitSimulationOnboarding, getRestaurantOnboarding, restaurantOnboardingData, stopImpersonation } = useStore();
+  const impersonating = isImpersonating();
 
   // Load existing restaurant data before showing Basic Information
   // This runs on component mount and page reload
@@ -221,6 +223,19 @@ const SimulationOnboarding = () => {
     } else {
       // Last step - submit all data
       await handleSubmit();
+    }
+  };
+
+  const handleStopImpersonation = async () => {
+    try {
+      const result = await stopImpersonation();
+      if (!result?.success) {
+        message.error(result?.error || 'Failed to stop impersonation');
+        return;
+      }
+      window.location.href = '/superadmin/dashboard';
+    } catch (error) {
+      message.error('Failed to stop impersonation');
     }
   };
 
@@ -542,11 +557,41 @@ const SimulationOnboarding = () => {
   }, []);
 
   if (isLoadingRestaurant) {
-    return <LoadingSpinner message="Loading restaurant information..." />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 px-4">
+        {impersonating && (
+          <div className="w-full max-w-xl rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-amber-900">Impersonation active</span>
+            <button
+              onClick={handleStopImpersonation}
+              className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+            >
+              Back to Superadmin Dashboard
+            </button>
+          </div>
+        )}
+        <LoadingSpinner message="Loading restaurant information..." />
+      </div>
+    );
   }
 
   if (onboardingLoading || isSubmitting) {
-    return <LoadingSpinner message="Saving your information..." />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 px-4">
+        {impersonating && (
+          <div className="w-full max-w-xl rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-amber-900">Impersonation active</span>
+            <button
+              onClick={handleStopImpersonation}
+              className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+            >
+              Back to Superadmin Dashboard
+            </button>
+          </div>
+        )}
+        <LoadingSpinner message="Saving your information..." />
+      </div>
+    );
   }
 
   return (
@@ -557,6 +602,17 @@ const SimulationOnboarding = () => {
       </div>
 
       <div className="max-w-4xl mx-auto py-4">
+        {impersonating && (
+          <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
+            <span className="text-sm text-amber-900">Impersonation active</span>
+            <button
+              onClick={handleStopImpersonation}
+              className="px-3 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+            >
+              Back to Superadmin Dashboard
+            </button>
+          </div>
+        )}
         {/* Progress Bar */}
         <div className="mb-2">
           <div className="flex items-center justify-between mb-2">

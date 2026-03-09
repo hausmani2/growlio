@@ -14,6 +14,23 @@ import {
 } from '../../utils/tokenManager';
 
 const createSuperAdminSlice = (set, get) => {
+  const resetIdentityScopedState = () => {
+    const state = get();
+
+    if (state.resetUserScopedContext) {
+      state.resetUserScopedContext();
+      return;
+    }
+
+    // Fallback for safety if reset utility is unavailable.
+    if (state.clearSelectedConversation) {
+      state.clearSelectedConversation();
+    }
+    sessionStorage.removeItem('chat_conversation_id');
+    localStorage.removeItem('restaurant_id');
+    localStorage.removeItem('simulation_restaurant_id');
+  };
+
   return {
     name: 'superAdmin',
     dashboardStats: {
@@ -288,6 +305,9 @@ const createSuperAdminSlice = (set, get) => {
     // Switch to different user (when already impersonating)
     switchImpersonation: async (userId) => {
       try {
+        // Clear user-scoped caches before loading another impersonated identity.
+        resetIdentityScopedState();
+
         // First fetch user data by ID using super admin token
         const userResponse = await apiGet(`/authentication/users/${userId}/`);
         const userEmail = userResponse.data.email;
@@ -307,12 +327,7 @@ const createSuperAdminSlice = (set, get) => {
         // Update impersonation data with new user
         storeImpersonationData(response.data);
         
-        // Clear chat conversation ID when switching impersonation (each user should have their own conversations)
         const currentState = get();
-        if (currentState.clearSelectedConversation) {
-          currentState.clearSelectedConversation();
-        }
-        sessionStorage.removeItem('chat_conversation_id');
         
         // Update the main token to new impersonation token in both sessionStorage and localStorage
         sessionStorage.setItem('token', response.data.access);
@@ -355,10 +370,24 @@ const createSuperAdminSlice = (set, get) => {
             const userRestaurant = restaurantResponse.data.restaurants[0];
             if (userRestaurant.restaurant_id) {
               localStorage.setItem('restaurant_id', userRestaurant.restaurant_id.toString());
+              localStorage.removeItem('simulation_restaurant_id');
+            }
+          } else {
+            localStorage.removeItem('restaurant_id');
+            const simulationResult = currentState.getSimulationOnboardingStatus
+              ? await currentState.getSimulationOnboardingStatus(true)
+              : null;
+            const simulationId = simulationResult?.data?.restaurants?.[0]?.simulation_restaurant_id;
+            if (simulationId) {
+              localStorage.setItem('simulation_restaurant_id', simulationId.toString());
+            } else {
+              localStorage.removeItem('simulation_restaurant_id');
             }
           }
         } catch (error) {
           console.error('Error fetching restaurant data:', error);
+          localStorage.removeItem('restaurant_id');
+          localStorage.removeItem('simulation_restaurant_id');
         }
         
         return { success: true, data: response.data };
@@ -374,6 +403,9 @@ const createSuperAdminSlice = (set, get) => {
       set(() => ({ loading: true, error: null }));
       
       try {
+        // Clear user-scoped caches before entering impersonated identity.
+        resetIdentityScopedState();
+
         // Call impersonation API with super admin token
         const response = await withSuperAdminTokenForImpersonation(async () => {
           return await apiPost('/admin_access/impersonate/', { email });
@@ -412,12 +444,6 @@ const createSuperAdminSlice = (set, get) => {
         // Store impersonation data using the token manager
         storeImpersonationData(response.data);
         
-        // Clear chat conversation ID when impersonating (each user should have their own conversations)
-        if (currentState.clearSelectedConversation) {
-          currentState.clearSelectedConversation();
-        }
-        sessionStorage.removeItem('chat_conversation_id');
-        
         // Fetch impersonated user's restaurant information
         try {
           const restaurantResponse = await apiGet('/restaurant_v2/restaurants-onboarding/');
@@ -425,9 +451,23 @@ const createSuperAdminSlice = (set, get) => {
             const userRestaurant = restaurantResponse.data.restaurants[0];
             if (userRestaurant.restaurant_id) {
               localStorage.setItem('restaurant_id', userRestaurant.restaurant_id.toString());
+              localStorage.removeItem('simulation_restaurant_id');
+            }
+          } else {
+            localStorage.removeItem('restaurant_id');
+            const simulationResult = currentState.getSimulationOnboardingStatus
+              ? await currentState.getSimulationOnboardingStatus(true)
+              : null;
+            const simulationId = simulationResult?.data?.restaurants?.[0]?.simulation_restaurant_id;
+            if (simulationId) {
+              localStorage.setItem('simulation_restaurant_id', simulationId.toString());
+            } else {
+              localStorage.removeItem('simulation_restaurant_id');
             }
           }
         } catch (error) {
+          localStorage.removeItem('restaurant_id');
+          localStorage.removeItem('simulation_restaurant_id');
         }
         
         // Update the auth state with impersonated user data
@@ -480,6 +520,9 @@ const createSuperAdminSlice = (set, get) => {
         const originalSuperadminToken = sessionStorage.getItem('original_superadmin_token');
         const originalSuperadminRefresh = sessionStorage.getItem('original_superadmin_refresh');
         const originalRestaurantId = sessionStorage.getItem('original_restaurant_id');
+
+        // Clear user-scoped caches from impersonated context before restoring superadmin.
+        resetIdentityScopedState();
         
         // Clear ONLY impersonation data (keep super admin tokens safe)
         clearImpersonationData();
@@ -497,14 +540,8 @@ const createSuperAdminSlice = (set, get) => {
         // Restore the original restaurant_id
         if (originalRestaurantId) {
           localStorage.setItem('restaurant_id', originalRestaurantId);
+          localStorage.removeItem('simulation_restaurant_id');
         }
-        
-        // Clear chat conversation ID when stopping impersonation (super admin should have their own conversations)
-        const currentState = get();
-        if (currentState.clearSelectedConversation) {
-          currentState.clearSelectedConversation();
-        }
-        sessionStorage.removeItem('chat_conversation_id');
         
         // Restore original super admin user data
         if (originalSuperadmin && originalSuperadminToken) {
