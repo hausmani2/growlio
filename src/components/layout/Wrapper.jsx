@@ -124,34 +124,33 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         label: 'Simulation Dashboard',
         onClick: () => navigate('/simulation/dashboard'),
       },
-      // Only show simulation setup menu if user has simulation restaurants
-      ...(hasSimulationRestaurants ? [{
+      {
         key: 'simulation-setup',
         icon: <UserOutlined />,
-        label: 'Simulation Setup',
+        label: 'Simulation Setup Process',
         children: [
           {
             key: 'simulation-basic-information',
-            label: 'Basic Information',
+            label: 'Step 1: Basic Information',
             onClick: () => navigate('/simulation/basic-information'),
           },
           {
             key: 'simulation-sales-channels-operating-days',
-            label: 'Sales Channels & Operating Days',
+            label: 'Step 2: Sales Channels & Operating Days',
             onClick: () => navigate('/simulation/sales-channels-operating-days'),
           },
           {
             key: 'simulation-labor-information',
-            label: 'Labor Information',
+            label: 'Step 3: Labor Information',
             onClick: () => navigate('/simulation/labor-information'),
           },
           {
             key: 'simulation-expenses',
-            label: 'Expenses',
+            label: 'Step 4: Expenses',
             onClick: () => navigate('/simulation/expenses'),
           },
         ],
-      }] : []),
+      },
     ];
   
 
@@ -271,6 +270,33 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       icon: <FaChartLine />,
       label: 'Simulation Dashboard',
       onClick: () => navigate('/simulation/dashboard'),
+    },
+    {
+      key: 'simulation-setup',
+      icon: <UserOutlined />,
+      label: 'Simulation Setup Process',
+      children: [
+        {
+          key: 'simulation-basic-information',
+          label: 'Step 1: Basic Information',
+          onClick: () => navigate('/simulation/basic-information'),
+        },
+        {
+          key: 'simulation-sales-channels-operating-days',
+          label: 'Step 2: Sales Channels & Operating Days',
+          onClick: () => navigate('/simulation/sales-channels-operating-days'),
+        },
+        {
+          key: 'simulation-labor-information',
+          label: 'Step 3: Labor Information',
+          onClick: () => navigate('/simulation/labor-information'),
+        },
+        {
+          key: 'simulation-expenses',
+          label: 'Step 4: Expenses',
+          onClick: () => navigate('/simulation/expenses'),
+        },
+      ],
     }] : []),
     {
       key: 'pricing',

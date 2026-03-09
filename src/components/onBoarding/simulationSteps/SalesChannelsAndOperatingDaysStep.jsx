@@ -30,6 +30,29 @@ const DAYS_OF_WEEK = [
   { value: 'sun', label: 'Sunday' }
 ];
 
+const DAY_NORMALIZE_MAP = {
+  monday: 'mon',
+  mon: 'mon',
+  tuesday: 'tue',
+  tue: 'tue',
+  wednesday: 'wed',
+  wed: 'wed',
+  thursday: 'thu',
+  thu: 'thu',
+  friday: 'fri',
+  fri: 'fri',
+  saturday: 'sat',
+  sat: 'sat',
+  sunday: 'sun',
+  sun: 'sun'
+};
+
+const normalizeDayValue = (day) => {
+  if (!day) return null;
+  const normalized = DAY_NORMALIZE_MAP[String(day).trim().toLowerCase()];
+  return normalized || null;
+};
+
 const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, validateStep }) => {
   const [errors, setErrors] = useState({});
   
@@ -94,11 +117,18 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
   });
 
   // Operating Days state
-  const initialDays = Array.isArray(data?.restaurant_operating_days) 
-    ? data.restaurant_operating_days 
-    : Array.isArray(data?.operatingdays) 
-      ? data.operatingdays 
-      : [];
+  const initialDaysRaw = Array.isArray(data?.restaurant_operating_days)
+    ? data.restaurant_operating_days
+    : Array.isArray(data?.delivery_days)
+      ? data.delivery_days
+      : Array.isArray(data?.operatingdays)
+        ? data.operatingdays
+        : [];
+  const initialDays = [...new Set(
+    initialDaysRaw
+      .map(normalizeDayValue)
+      .filter(Boolean)
+  )];
   const [selectedDays, setSelectedDays] = useState(initialDays);
 
   // Check if all days are selected
@@ -129,26 +159,12 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
   const toggleDay = (day) => {
     setSelectedDays(prev => {
       const prevArray = Array.isArray(prev) ? prev : [];
-      // Normalize day values for comparison (handle both 'mon' and 'monday' formats)
-      const normalizeDay = (d) => {
-        const dayMap = {
-          'monday': 'mon',
-          'tuesday': 'tue',
-          'wednesday': 'wed',
-          'thursday': 'thu',
-          'friday': 'fri',
-          'saturday': 'sat',
-          'sunday': 'sun'
-        };
-        return dayMap[d] || d;
-      };
-      
-      const normalizedDay = normalizeDay(day);
-      const normalizedPrev = prevArray.map(normalizeDay);
+      const normalizedDay = normalizeDayValue(day);
+      const normalizedPrev = prevArray.map(normalizeDayValue).filter(Boolean);
       
       const newDays = normalizedPrev.includes(normalizedDay)
-        ? prevArray.filter(d => normalizeDay(d) !== normalizedDay)
-        : [...prevArray, day]; // Keep original format when adding
+        ? prevArray.filter(d => normalizeDayValue(d) !== normalizedDay)
+        : [...prevArray, normalizedDay];
       
       // Clear error when days are selected
       if (newDays.length > 0 && errors.operatingDays) {
@@ -230,23 +246,9 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
 
         <div className="space-y-3">
           {DAYS_OF_WEEK.map(day => {
-            // Normalize day values for comparison (handle both 'mon' and 'monday' formats)
-            const normalizeDay = (d) => {
-              const dayMap = {
-                'monday': 'mon',
-                'tuesday': 'tue',
-                'wednesday': 'wed',
-                'thursday': 'thu',
-                'friday': 'fri',
-                'saturday': 'sat',
-                'sunday': 'sun'
-              };
-              return dayMap[d] || d;
-            };
-            
-            const normalizedDayValue = normalizeDay(day.value);
+            const normalizedDayValue = normalizeDayValue(day.value);
             const normalizedSelectedDays = Array.isArray(selectedDays) 
-              ? selectedDays.map(normalizeDay)
+              ? selectedDays.map(normalizeDayValue).filter(Boolean)
               : [];
             const isSelected = normalizedSelectedDays.includes(normalizedDayValue);
             

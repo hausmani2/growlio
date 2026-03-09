@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Select, InputNumber, Button, Card, Table, Tag, message } from 'antd';
-import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
@@ -460,7 +460,7 @@ const SimulationDashboard = () => {
               <Card className="shadow-md">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Number of Customers</p>
+                    <p className="text-sm text-gray-600 mb-1">Total Customer Count</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {formatNumber(dashboardData.no_of_customer)}
                     </p>
@@ -487,7 +487,16 @@ const SimulationDashboard = () => {
 
             {/* Expenses Breakdown */}
             <Card className="shadow-md mb-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Expenses Breakdown</h2>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold text-gray-900">Expenses Breakdown</h2>
+                <Button
+                  type="default"
+                  icon={<EditOutlined />}
+                  onClick={() => navigate('/simulation/expenses')}
+                >
+                  Edit Expenses
+                </Button>
+              </div>
               <Table
                 dataSource={dashboardData.expenses || []}
                 rowKey="id"
