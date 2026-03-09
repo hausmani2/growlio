@@ -113,7 +113,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     setSalesChannelsConfig(currentConfig);
   }, [completeOnboardingData]);
 
-  // Function to check if a day should be closed based on restaurant goals
+  // Function to check if a day should be closed based on restaurant goals.
+  // API rule: days listed in restaurant_days are OPEN; missing days are CLOSED.
   const shouldDayBeClosed = (dayName) => {
     if (!restaurantGoals || !restaurantGoals.restaurant_days || !Array.isArray(restaurantGoals.restaurant_days)) {
       return false; // Default to open if no goals data
@@ -128,15 +129,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       day ? day.trim() : ''
     );
 
-    // Check if this day is IN the restaurant_days array (case-insensitive)
-    // If it's in the array, it means the restaurant is CLOSED on that day
-    // If it's NOT in the array, it means the restaurant is OPEN on that day
-    const isClosed = normalizedRestaurantDays.some(closedDay => 
-      closedDay.toLowerCase() === normalizedDayName.toLowerCase()
+    // If day is listed, it's OPEN. Missing means CLOSED.
+    const isOpen = normalizedRestaurantDays.some(openDay =>
+      openDay.toLowerCase() === normalizedDayName.toLowerCase()
     );
-    
-    
-    return isClosed;
+
+    return !isOpen;
   };
 
   // Function to fetch restaurant goals - always fetch on component mount
@@ -2382,9 +2380,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         </h3>
         {restaurantGoals && restaurantGoals.restaurant_days && (
           <div className="mt-2 text-sm text-gray-600">
-            <span className="font-medium">Closed Days:</span> {restaurantGoals.restaurant_days.join(', ')}
+            <span className="font-medium">Open Days:</span> {restaurantGoals.restaurant_days.join(', ')}
             <span className="ml-2 text-xs text-gray-500">
-              (Days not listed are automatically open)
+              (Days not listed are automatically closed)
             </span>
           </div>
         )}

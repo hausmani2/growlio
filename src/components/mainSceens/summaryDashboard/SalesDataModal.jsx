@@ -464,15 +464,16 @@ const SalesDataModal = ({
     });
   };
 
-  // Generate ALL 7 days of data starting from a given date
-  // By default, all days are set to OPEN (restaurant_open: 1) when adding new data
+  // Generate ALL 7 days of data starting from a given date.
+  // Days listed in restaurant_days are OPEN; missing days are CLOSED.
   const generateDailyData = (startDate, currentProviders) => {
     const days = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = dayjs(startDate).add(i, 'day');
       const dayName = currentDate.format('dddd');
+      const isOpen = isDayOpen(dayName);
 
-      // Include ALL days - by default all days are OPEN when adding new data
+      // Include all 7 days, using API operating days to set open/closed status.
       const dayData = {
         key: `day-${currentDate.format('YYYY-MM-DD')}`,
         date: currentDate,
@@ -482,7 +483,7 @@ const SalesDataModal = ({
         actualSalesAppOnline: 0,
         dailyTickets: 0,
         averageDailyTicket: 0,
-        restaurant_open: 1 // Default all days to OPEN when adding new data
+        restaurant_open: isOpen ? 1 : 0
       };
 
       // Add dynamic provider fields
@@ -1045,11 +1046,18 @@ const SalesDataModal = ({
   // Handle input change - allow budget data for future dates, but block actual sales for future dates
   const handleInputChange = (dayIndex, field, value, record) => {
     const isFuture = isFutureDate(record.date);
+    const isClosed = isDayClosed(record);
     
     // Allow budgetedSales for future dates (budget planning)
     // Block actual sales fields for future dates (only allow past/current dates for actual sales)
     if (isFuture && field !== 'restaurant_open' && field !== 'budgetedSales') {
       message.warning(`Cannot add actual sales data for ${record.dayName} - This date is in the future. Only budget data can be entered for future dates.`);
+      return;
+    }
+
+    // Block all value inputs for closed days (allow only open/close toggle)
+    if (isClosed && field !== 'restaurant_open') {
+      message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
       return;
     }
     
@@ -1491,7 +1499,7 @@ const SalesDataModal = ({
                   key: 'budgetedSales',
                   width: 140,
                   render: (value, record, index) => {
-                    // Allow budgetedSales for future dates (budget planning)
+                    const isClosed = isDayClosed(record);
                     return (
                       <Input
                         type="number"
@@ -1501,6 +1509,13 @@ const SalesDataModal = ({
                         placeholder="0.00"
                         className="w-full"
                         prefix="$"
+                        disabled={isClosed}
+                        tabIndex={isClosed ? -1 : 0}
+                        style={{
+                          opacity: isClosed ? 0.5 : 1,
+                          cursor: isClosed ? 'not-allowed' : 'text',
+                          backgroundColor: isClosed ? '#f5f5f5' : 'white'
+                        }}
                       />
                     );
                   }
@@ -1572,7 +1587,7 @@ const SalesDataModal = ({
                   key: 'budgetedSales',
                   width: 140,
                   render: (value, record, index) => {
-                    // Allow budgetedSales for future dates (budget planning)
+                    const isClosed = isDayClosed(record);
                     return (
                       <Input
                         type="number"
@@ -1582,6 +1597,13 @@ const SalesDataModal = ({
                         placeholder="0.00"
                         className="w-full"
                         prefix="$"
+                        disabled={isClosed}
+                        tabIndex={isClosed ? -1 : 0}
+                        style={{
+                          opacity: isClosed ? 0.5 : 1,
+                          cursor: isClosed ? 'not-allowed' : 'text',
+                          backgroundColor: isClosed ? '#f5f5f5' : 'white'
+                        }}
                       />
                     );
                   }
@@ -1593,6 +1615,8 @@ const SalesDataModal = ({
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
+                    const isClosed = isDayClosed(record);
+                    const isDisabled = isFuture || isClosed;
                     return (
                       <Input
                         type="number"
@@ -1600,12 +1624,13 @@ const SalesDataModal = ({
                         onChange={(e) => handleInputChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
-                        disabled={isFuture}
+                        disabled={isDisabled}
+                        tabIndex={isDisabled ? -1 : 0}
                         readOnly={isFuture}
                         style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isDisabled ? '#f5f5f5' : 'white'
                         }}
                       />
                     );
@@ -1618,6 +1643,8 @@ const SalesDataModal = ({
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
+                    const isClosed = isDayClosed(record);
+                    const isDisabled = isFuture || isClosed;
                     return (
                       <Input
                         type="number"
@@ -1625,12 +1652,13 @@ const SalesDataModal = ({
                         onChange={(e) => handleInputChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
-                        disabled={isFuture}
+                        disabled={isDisabled}
+                        tabIndex={isDisabled ? -1 : 0}
                         readOnly={isFuture}
                         style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isDisabled ? '#f5f5f5' : 'white'
                         }}
                       />
                     );
@@ -1644,6 +1672,8 @@ const SalesDataModal = ({
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
+                    const isClosed = isDayClosed(record);
+                    const isDisabled = isFuture || isClosed;
                     return (
                       <Input
                         type="number"
@@ -1651,12 +1681,13 @@ const SalesDataModal = ({
                         onChange={(e) => handleInputChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
-                        disabled={isFuture}
+                        disabled={isDisabled}
+                        tabIndex={isDisabled ? -1 : 0}
                         readOnly={isFuture}
                         style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isDisabled ? '#f5f5f5' : 'white'
                         }}
                       />
                     );
@@ -1686,6 +1717,8 @@ const SalesDataModal = ({
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
+                    const isClosed = isDayClosed(record);
+                    const isDisabled = isFuture || isClosed;
                     return (
                       <Input
                         type="number"
@@ -1693,12 +1726,13 @@ const SalesDataModal = ({
                         onChange={(e) => handleInputChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
                         placeholder="0"
                         className="w-full"
-                        disabled={isFuture}
+                        disabled={isDisabled}
+                        tabIndex={isDisabled ? -1 : 0}
                         readOnly={isFuture}
                         style={{
-                          opacity: isFuture ? 0.5 : 1,
-                          cursor: isFuture ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : 'white'
+                          opacity: isDisabled ? 0.5 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'text',
+                          backgroundColor: isDisabled ? '#f5f5f5' : 'white'
                         }}
                       />
                     );
