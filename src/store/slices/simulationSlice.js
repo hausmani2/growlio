@@ -286,7 +286,8 @@ const createSimulationSlice = (set, get) => ({
   },
   
   // Get simulation dashboard data
-  getSimulationDashboard: async (restaurantId, year = null, month = null) => {
+  // period: 'daily' | 'weekly' | 'monthly' - passed to API as query param
+  getSimulationDashboard: async (restaurantId, year = null, month = null, period = 'daily') => {
     // CRITICAL: Check if user is in simulation mode before calling simulation API
     // Use cached data from store to avoid unnecessary API calls
     const currentState = get();
@@ -332,9 +333,8 @@ const createSimulationSlice = (set, get) => ({
     set({ simulationDashboardLoading: true, simulationDashboardError: null });
     
     try {
-      // Call GET API with restaurant_id (required), year and month (optional)
-      // Format: /simulation/dashboard/?restaurant_id=2&year=2026&month=1
-      // restaurant_id is required by the API
+      // Call GET API: restaurant_id (required), year, month, period (optional)
+      // Format: /simulation/dashboard/?restaurant_id=39&year=2026&month=3&period=daily
       if (!restaurantId) {
         const errorMsg = 'Restaurant ID is required to fetch dashboard data';
         console.error('❌ [simulationSlice]', errorMsg);
@@ -347,13 +347,10 @@ const createSimulationSlice = (set, get) => ({
       
       const params = new URLSearchParams();
       params.append('restaurant_id', restaurantId);
-      
-      // Add optional year and month parameters if provided
-      if (year !== null && year !== undefined) {
-        params.append('year', year);
-      }
-      if (month !== null && month !== undefined) {
-        params.append('month', month);
+      if (year != null) params.append('year', year);
+      if (month != null) params.append('month', month);
+      if (period && ['daily', 'weekly', 'monthly'].includes(period)) {
+        params.append('period', period);
       }
       
       const queryString = params.toString();

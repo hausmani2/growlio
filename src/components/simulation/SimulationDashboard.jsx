@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Select, InputNumber, Button, Card, Table, Tag, message } from 'antd';
 import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import { formatCurrency, formatNumber } from '../../utils/formatUtils';
@@ -13,11 +13,16 @@ const { Option } = Select;
 const AUTO_SAVE_DEBOUNCE_MS = 700;
 const SAVED_MESSAGE_DURATION_MS = 2500;
 
+const PERIOD_OPTIONS = ['daily', 'weekly', 'monthly'];
+
 const SimulationDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
   const [dashboardParams, setDashboardParams] = useState({
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
+    year: currentYear,
+    month: currentMonth,
     added_customer_per_day: 5,
     days: 0,
     profit_loss: 0,
@@ -36,7 +41,10 @@ const SimulationDashboard = () => {
   } = useStore();
 
   const [restaurantId, setRestaurantId] = useState(null);
-  const [period, setPeriod] = useState('monthly'); // daily, weekly, monthly, annually
+  const [period, setPeriod] = useState(() => {
+    const p = searchParams.get('period');
+    return PERIOD_OPTIONS.includes(p) ? p : 'daily';
+  });
   const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
   const debounceRef = useRef(null);
@@ -116,13 +124,41 @@ const SimulationDashboard = () => {
       
       // Load dashboard data if restaurant ID is available and onboarding is complete
       if (id && onboardingComplete && restaurantName !== null) {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-        await getSimulationDashboard(id, currentYear, currentMonth);
+        const y = searchParams.get('year');
+        const m = searchParams.get('month');
+        const p = searchParams.get('period');
+        const year = y ? parseInt(y, 10) : currentYear;
+        const month = m ? parseInt(m, 10) : currentMonth;
+        const periodVal = PERIOD_OPTIONS.includes(p) ? p : 'daily';
+        setDashboardParams(prev => ({ ...prev, year, month }));
+        setPeriod(periodVal);
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev);
+          next.set('restaurant_id', String(id));
+          next.set('year', String(year));
+          next.set('month', String(month));
+          next.set('period', periodVal);
+          return next;
+        }, { replace: true });
       }
     };
     loadData();
-  }, [getSimulationOnboardingStatus, getSimulationDashboard, navigate, hasRegularRestaurants, hasCompletedRegularOnboarding]);
+  }, [getSimulationOnboardingStatus, navigate, hasRegularRestaurants, hasCompletedRegularOnboarding]);
+
+  // Fetch dashboard when restaurantId is set or when year, month, period change (syncs URL and calls API)
+  useEffect(() => {
+    if (!restaurantId) return;
+    const { year, month } = dashboardParams;
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('restaurant_id', String(restaurantId));
+      next.set('year', String(year));
+      next.set('month', String(month));
+      next.set('period', period);
+      return next;
+    }, { replace: true });
+    getSimulationDashboard(restaurantId, year, month, period);
+  }, [restaurantId, dashboardParams.year, dashboardParams.month, period]);
 
   // Fetch days when restaurantId or month/year changes
   useEffect(() => {
@@ -168,7 +204,7 @@ const SimulationDashboard = () => {
     try {
       const result = await createSimulationDashboard(payload);
       if (result.success && rid) {
-        await getSimulationDashboard(rid, params.year, params.month);
+        await getSimulationDashboard(rid, params.year, params.month, p);
       }
       setSaveStatus('saved');
       setSaveErrorMessage('');
@@ -365,17 +401,18 @@ const SimulationDashboard = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-gray-100 pt-4 mt-2">
-                <Select
-                  value={period}
-                  onChange={(value) => setPeriod(value)}
-                  size="large"
-                  style={{ width: 160, minWidth: 160 }}
-                >
-                  <Option value="daily">Daily</Option>
-                  <Option value="weekly">Weekly</Option>
-                  <Option value="monthly">Monthly</Option>
-                  <Option value="annually">Annually</Option>
-                </Select>
+                <div>
+                  <Select
+                    value={period}
+                    onChange={(value) => setPeriod(value)}
+                    size="large"
+                    style={{ width: 160, minWidth: 160 }}
+                  >
+                    <Option value="daily">Daily</Option>
+                    <Option value="weekly">Weekly</Option>
+                    <Option value="monthly">Monthly</Option>
+                  </Select>
+                </div>
                 <Button
                   type="primary"
                   icon={<CalendarOutlined />}
@@ -416,7 +453,7 @@ const SimulationDashboard = () => {
         {dashboardData ? (
           <>
             {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <Card className="shadow-md">
                 <div className="flex items-center justify-between">
                   <div>
@@ -469,15 +506,24 @@ const SimulationDashboard = () => {
                 </div>
               </Card>
 
+              <Card className="shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Cash on Hand</p>
+                    <p className="text-2xl font-bold text-indigo-600">
+                      {formatCurrency(dashboardData.cash_on_hand ?? 0)}
+                    </p>
+                  </div>
+                  <DollarOutlined className="text-3xl text-indigo-500" />
+                </div>
+              </Card>
+
               <Card className="shadow-md bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-700 mb-1 font-medium">Need to Achieve Goals Sales</p>
+                    <p className="text-sm text-gray-700 mb-1 font-medium">Avg Sales Needed ({period})</p>
                     <p className="text-2xl font-bold text-orange-700">
-                      {period === 'daily' && formatCurrency(dashboardData.avg_daily_sales_needed)}
-                      {period === 'weekly' && formatCurrency(dashboardData.avg_weekly_sales_needed)}
-                      {period === 'monthly' && formatCurrency(dashboardData.avg_monthly_sales_needed)}
-                      {period === 'annually' && formatCurrency((dashboardData.avg_monthly_sales_needed || 0) * 12)}
+                      {formatCurrency(dashboardData.avg_sales_needed ?? 0)}
                     </p>
                   </div>
                   <DollarOutlined className="text-3xl text-orange-500" />
