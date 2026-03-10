@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
-import { Card, Typography, Space, Spin, Empty, Button, message, notification, App, DatePicker, Modal } from 'antd';
+import { Card, Typography, Space, Spin, Empty, Button, message, App, DatePicker, Modal } from 'antd';
 import { PlusOutlined, DollarOutlined, ArrowRightOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -81,9 +81,6 @@ const SummaryDashboard = () => {
   const [isWeeklyAverageDataPopupVisible, setIsWeeklyAverageDataPopupVisible] = useState(false);
   const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
 
-  // Flash message state
-  const [showSuccessFlashMessage, setShowSuccessFlashMessage] = useState(false);
-  
   // Sales data popup hook
   const { shouldShowPopup, isLoading: popupLoading, markPopupAsShown } = useSalesDataPopup();
 
@@ -322,11 +319,11 @@ const SummaryDashboard = () => {
     hasHandledFailResponse.current = false;
   };
 
-  // Handle data saved callback
+  // Handle data saved callback - close modal, refresh data, then go to budget screen
   const handleDataSaved = async () => {
     setHasManuallyClosedModal(false);
-    setIsManuallyTriggered(false); // Reset manual trigger state
-    setShowSuccessFlashMessage(true);
+    setIsManuallyTriggered(false);
+    setIsSalesModalVisible(false);
 
     if (calendarDateRange && calendarDateRange.length === 2) {
       const startDate = calendarDateRange[0].format('YYYY-MM-DD');
@@ -335,73 +332,10 @@ const SummaryDashboard = () => {
     }
 
     message.success('Sales data added successfully! 🎉');
-
-    setTimeout(() => {
-      setShowSuccessFlashMessage(false);
-    }, 5000);
-
-    setTimeout(() => {
-      notification.info({
-        message: (
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
-            🎉 Sales Data Added Successfully!
-          </div>
-        ),
-        description: (
-          <div style={{ marginTop: '8px' }}>
-            <p style={{ marginBottom: '8px' }}>
-              Your sales data has been saved successfully.
-            </p>
-            <p style={{ marginBottom: '12px', color: '#666' }}>
-              Would you like to add more sales data or edit existing data for this week?
-            </p>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-              <Button
-                type="primary"
-                size="small"
-                icon={<DollarOutlined />}
-                onClick={() => {
-                  notification.destroy();
-                  handleFlashMessageButtonClick();
-                }}
-                style={{
-                  backgroundColor: '#52c41a',
-                  borderColor: '#52c41a'
-                }}
-              >
-                Proceed to Dashboard
-                <ArrowRightOutlined />
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  notification.destroy();
-                }}
-                style={{
-                  backgroundColor: '#f5f5f5',
-                  borderColor: '#d9d9d9',
-                  color: '#666'
-                }}
-              >
-                Close
-              </Button>
-            </div>
-            
-          </div>
-        ),
-        duration: 0,
-        placement: 'top',
-        style: {
-          width: 450,
-          zIndex: 99999,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          borderRadius: '8px'
-        }
-      });
-    }, 1000);
+    markPopupAsShown();
+    navigate('/dashboard');
   };
 
-  // Handle flash message button click
   const handleFlashMessageButtonClick = () => {
     markPopupAsShown();
     navigate('/dashboard');
@@ -555,50 +489,6 @@ const SummaryDashboard = () => {
   }, [dashboardSummaryData, summaryLoading, hasValidData, groupBy, isWeeklyAverageDataPopupVisible, calendarDateRange]);
 
 
-
-  // Success flash message
-  if (showSuccessFlashMessage) {
-    return (
-      <div className="w-full mx-auto">
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl shadow-md p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <span className="text-2xl">✅</span>
-                </div>
-                <h3 className="text-xl font-bold text-green-800">
-                  Sales Data Added Successfully!
-                </h3>
-              </div>
-              <p className="text-green-700 text-lg leading-relaxed">
-                Your sales data has been saved. The dashboard will now reflect your updated information.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="large"
-                type="primary"
-                icon={<DollarOutlined />}
-                onClick={handleFlashMessageButtonClick}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 border-0 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              >
-                View Dashboard
-                <ArrowRightOutlined />
-              </Button>
-              <Button
-                size="large"
-                onClick={() => setShowSuccessFlashMessage(false)}
-                className="border-gray-300 hover:border-gray-400 shadow-md hover:shadow-lg transition-all duration-200"
-              >
-                Dismiss
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <App>

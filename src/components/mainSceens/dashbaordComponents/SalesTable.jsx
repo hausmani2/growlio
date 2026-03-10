@@ -1458,6 +1458,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     return days;
   };
 
+  // Return a day object with all value fields set to 0 (for closed days).
+  const zeroDayValues = (day) => {
+    const zeroed = {
+      ...day,
+      restaurant_open: 0,
+      budgetedSales: 0,
+      actualSalesInStore: 0,
+      actualSalesAppOnline: 0,
+      dailyTickets: 0,
+      averageDailyTicket: 0
+    };
+    providers.forEach(provider => {
+      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+      zeroed[providerKey] = 0;
+    });
+    return zeroed;
+  };
+
   // Weekly Modal Component
   const WeeklyModal = () => {
     const [weekFormData, setWeekFormData] = useState({
@@ -1491,7 +1509,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           
           if (existingDay) {
             // Keep existing data but update restaurant_open if it was auto-set
-            return {
+            const mergedDay = {
               ...existingDay,
               // Only update restaurant_open if it matches the auto-closed status
               // This preserves manual toggles but applies API restaurant_days for new days
@@ -1499,6 +1517,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 ? existingDay.restaurant_open 
                 : newDay.restaurant_open
             };
+            // When day is closed, show all zeros (do not keep old saved values)
+            if (mergedDay.restaurant_open === 0) {
+              return zeroDayValues(mergedDay);
+            }
+            return mergedDay;
           }
           
           return newDay;
@@ -1549,7 +1572,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     useEffect(() => {
       if (editingWeek) {
         // When editing, use the weeklyGoals for weeklyTotals since that's where the weekly data is stored
-        let dailyData = editingWeek.dailyData || [];
+        let dailyData = (editingWeek.dailyData || []).map(day => {
+          const isClosed = day.restaurant_open === 0 || day.restaurant_open === false;
+          return isClosed ? zeroDayValues({ ...day, restaurant_open: 0 }) : day;
+        });
 
         // Check if we have budgeted sales data from Summary Dashboard (even in edit mode)
         const budgetedSalesData = localStorage.getItem('budgetedSalesData');
@@ -1690,7 +1716,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       }
 
       const newDailyData = [...weekFormData.dailyData];
-      newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
+      const currentDay = newDailyData[dayIndex];
+      // When toggling day to closed, set all that day's input values to zero
+      if (field === 'restaurant_open' && (value === 0 || value === false)) {
+        newDailyData[dayIndex] = zeroDayValues({ ...currentDay, restaurant_open: 0 });
+      } else {
+        newDailyData[dayIndex] = { ...currentDay, [field]: value };
+      }
 
       // Calculate new weekly totals based on updated daily data
       const newWeeklyTotals = calculateWeeklyTotals(newDailyData);

@@ -202,6 +202,7 @@ const SalesDataModal = ({
   // Initialize form data when modal opens or week data changes
   useEffect(() => {
     if (visible && selectedWeekData) {
+      console.log('[SalesDataModal] Modal visible, selectedWeekData', { weekNumber: selectedWeekData.weekNumber, startDate: selectedWeekData.startDate });
       // Reset the fetched flag when modal opens with new week data
       avgHourlyRateFetchedRef.current = false;
 
@@ -221,6 +222,7 @@ const SalesDataModal = ({
       // If it's not the current week and week hasn't been initially confirmed, show confirmation modal
       // Don't show if week was already confirmed (prevents showing during save operations)
       if (!status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
+        console.log('[SalesDataModal] Week confirmation required, deferring init', { isCurrentWeek: status.isCurrentWeek });
         setShowWeekConfirmationModal(true);
         setWeekConfirmed(false);
         return; // Don't proceed with initialization until confirmed
@@ -235,6 +237,7 @@ const SalesDataModal = ({
       // Proceed with initialization if week is confirmed or it's current week
       // (This prevents re-initialization during save operations)
       if (weekInitiallyConfirmedRef.current || status.isCurrentWeek) {
+        console.log('[SalesDataModal] Starting initializeModal (fetch goals + hourly rate + form)');
         // Fetch restaurant goals first (if not already loaded), then average hourly rate, then initialize form data
         const initializeModal = async () => {
           // Always fetch restaurant goals to ensure we have the latest restaurant_days
@@ -261,6 +264,7 @@ const SalesDataModal = ({
           }
           
           await fetchAverageHourlyRate();
+          console.log('[SalesDataModal] Calling initializeFormData after fetch');
           initializeFormData();
         };
 
@@ -302,7 +306,9 @@ const SalesDataModal = ({
   useEffect(() => {
     if (visible && selectedWeekData && restaurantGoals) {
       // Only reinitialize form data if we already have the average hourly rate
-      if (avgHourlyRateFetchedRef.current || dashboardSummaryData?.average_hourly_rate) {
+      const canInit = avgHourlyRateFetchedRef.current || dashboardSummaryData?.average_hourly_rate;
+      console.log('[SalesDataModal] Effect (restaurantGoals): visible, canInit=', canInit, { avgHourlyRateFetched: avgHourlyRateFetchedRef.current, hasRate: !!dashboardSummaryData?.average_hourly_rate });
+      if (canInit) {
         initializeFormData();
       }
 
@@ -365,9 +371,14 @@ const SalesDataModal = ({
 
   // Initialize form data based on selected week
   const initializeFormData = () => {
+    console.log('[SalesDataModal] initializeFormData called', {
+      hasSelectedWeek: !!selectedWeekData,
+      startDate: selectedWeekData?.startDate,
+      dailyDataLength: selectedWeekData?.dailyData?.length
+    });
     // Ensure we always have a valid start date from selectedWeekData
     if (!selectedWeekData?.startDate) {
-      console.error('selectedWeekData.startDate is missing:', selectedWeekData);
+      console.error('[SalesDataModal] selectedWeekData.startDate is missing:', selectedWeekData);
       message.error('Week data is missing. Please try again.');
       return;
     }
@@ -379,6 +390,7 @@ const SalesDataModal = ({
     // IMPORTANT: Show ALL 7 days, with all days set to OPEN by default when adding new data
     let dailyData;
     if (selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0) {
+      console.log('[SalesDataModal] Merging existing daily data', { count: selectedWeekData.dailyData.length });
       // Generate all 7 days (both open and closed)
       const generatedDays = generateDailyData(startDate, currentProviders);
       
@@ -408,11 +420,17 @@ const SalesDataModal = ({
             }
           }
           
-          return {
+          const mergedDay = {
             ...existingDay,
             date: dayjs.isDayjs(existingDay.date) ? existingDay.date : dayjs(existingDay.date),
             restaurant_open: restaurantOpenValue
           };
+          // When day is closed, show all zeros (do not keep old saved values)
+          if (restaurantOpenValue === 0) {
+            console.log('[SalesDataModal] Closed day zeroed on load', { key: mergedDay.key, date: mergedDay.date?.format?.('YYYY-MM-DD') });
+            return zeroDayValues(mergedDay, currentProviders);
+          }
+          return mergedDay;
         }
         
         // If no existing data for this day, use generated day (which defaults to open)
@@ -458,6 +476,15 @@ const SalesDataModal = ({
       }, {})
     };
 
+    console.log('[SalesDataModal] initializeFormData done', {
+      dailyDataLength: dailyData.length,
+      perDay: dailyData.map(d => ({
+        key: d.key,
+        restaurant_open: d.restaurant_open,
+        budgetedSales: d.budgetedSales,
+        actualSalesInStore: d.actualSalesInStore
+      }))
+    });
     setFormData({
       weeklyTotals: initialWeeklyTotals,
       dailyData: dailyData
@@ -495,6 +522,25 @@ const SalesDataModal = ({
       days.push(dayData);
     }
     return days;
+  };
+
+  // Return a day object with all value fields set to 0 (for closed days).
+  const zeroDayValues = (day, providers) => {
+    const zeroed = {
+      ...day,
+      restaurant_open: 0,
+      budgetedSales: 0,
+      actualSalesInStore: 0,
+      actualSalesAppOnline: 0,
+      dailyTickets: 0,
+      averageDailyTicket: 0
+    };
+    (providers || getProviders()).forEach(provider => {
+      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+      zeroed[providerKey] = 0;
+    });
+    console.log('[SalesDataModal] zeroDayValues', { key: day.key, hadBudgetedSales: day.budgetedSales });
+    return zeroed;
   };
 
   // Show top popup notification
@@ -569,7 +615,19 @@ const SalesDataModal = ({
   // Handle daily data changes without immediate popups
   const handleDailyDataChange = (dayIndex, field, value) => {
     const newDailyData = [...formData.dailyData];
-    newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
+    const currentDay = newDailyData[dayIndex];
+
+    // When toggling day to closed, set all that day's input values to zero
+    if (field === 'restaurant_open' && (value === 0 || value === false)) {
+      console.log('[SalesDataModal] Toggle day to CLOSED, zeroing row', { dayIndex, key: currentDay?.key });
+      newDailyData[dayIndex] = zeroDayValues({ ...currentDay, restaurant_open: 0 });
+      // Keep ref in sync so budgeted sales doesn't show stale value
+      if (currentDay?.key && lastBudgetedSalesValueRef.current) {
+        lastBudgetedSalesValueRef.current[currentDay.key] = 0;
+      }
+    } else {
+      newDailyData[dayIndex] = { ...currentDay, [field]: value };
+    }
 
     setFormData({
       ...formData,
@@ -691,6 +749,7 @@ const SalesDataModal = ({
 
   // Handle form submission
   const handleSubmit = async () => {
+    console.log('[SalesDataModal] handleSubmit called', { dailyDataLength: formData.dailyData?.length });
     try {
       // Check for open days without budgeted sales
       const openDaysWithoutBudget = checkOpenDaysWithoutBudget();
@@ -711,10 +770,12 @@ const SalesDataModal = ({
 
   // Actual save function
   const saveSalesData = async () => {
+    console.log('[SalesDataModal] saveSalesData called', { dailyDataLength: formData.dailyData?.length });
     try {
       setIsSubmitting(true);
 
       if (!formData.dailyData || formData.dailyData.length === 0) {
+        console.warn('[SalesDataModal] Save aborted: no dailyData');
         message.warning('Please add sales data before saving.');
         return;
       }
@@ -1047,6 +1108,7 @@ const SalesDataModal = ({
   const handleInputChange = (dayIndex, field, value, record) => {
     const isFuture = isFutureDate(record.date);
     const isClosed = isDayClosed(record);
+    console.log('[SalesDataModal] handleInputChange', { dayIndex, field, value: value ?? record[field], isFuture, isClosed, restaurant_open: record.restaurant_open });
     
     // Allow budgetedSales for future dates (budget planning)
     // Block actual sales fields for future dates (only allow past/current dates for actual sales)
@@ -1057,6 +1119,7 @@ const SalesDataModal = ({
 
     // Block all value inputs for closed days (allow only open/close toggle)
     if (isClosed && field !== 'restaurant_open') {
+      console.log('[SalesDataModal] Input blocked: day is closed', { dayName: record.dayName, field });
       message.warning(`Cannot add data for ${record.dayName} - Restaurant is closed on this day.`);
       return;
     }
