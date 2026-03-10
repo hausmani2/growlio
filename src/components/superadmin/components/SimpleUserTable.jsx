@@ -243,14 +243,6 @@ const SimpleUserTable = () => {
             okText="Yes"
             cancelText="No"
           >
-            <Tooltip title="Delete User">
-              <Button
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                disabled={record.is_superuser}
-              />
-            </Tooltip>
           </Popconfirm>
         </Space>
       ),
