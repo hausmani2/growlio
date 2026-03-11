@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
-import { CalendarOutlined, FlagOutlined, CheckOutlined } from "@ant-design/icons";
-import { DatePicker, Spin, Empty, Alert } from "antd";
+import { CalendarOutlined, FlagOutlined, CheckOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { DatePicker, Spin, Empty, Alert, Popover } from "antd";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import useStore from "../../store/store";
@@ -364,7 +364,30 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
 
       {/* Key Findings Section */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
-        <h2 className="text-2xl font-bold text-orange-600 mb-6">Key Findings</h2>
+        <div className="flex items-center gap-2 mb-6">
+          <h2 className="text-2xl font-bold text-orange-600 mb-0">Key Findings</h2>
+          <Popover
+            trigger="click"
+            placement="rightTop"
+            content={(
+              <div className="max-w-[320px] text-sm text-gray-700">
+                <div className="font-semibold text-gray-900 mb-1">What are Key Findings?</div>
+                <div>
+                  These are the biggest “over goal” and “under goal” items for the selected week.
+                  Click any finding to jump into the details and see what drove the result.
+                </div>
+              </div>
+            )}
+          >
+            <button
+              type="button"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500"
+              aria-label="Key Findings info"
+            >
+              <InfoCircleOutlined />
+            </button>
+          </Popover>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column - Over */}

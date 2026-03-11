@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Select, InputNumber, Button, Card, Table, Tag, message } from 'antd';
-import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Select, InputNumber, Button, Card, Table, Tag, message, Modal, Input, Popconfirm } from 'antd';
+import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
@@ -14,6 +14,16 @@ const AUTO_SAVE_DEBOUNCE_MS = 700;
 const SAVED_MESSAGE_DURATION_MS = 2500;
 
 const PERIOD_OPTIONS = ['daily', 'weekly', 'monthly'];
+
+const EXPENSE_TYPE_OPTIONS = [
+  { value: 'fixed_value', label: 'Fixed Value ($)' },
+  { value: 'percentage', label: 'Percentage (%)' }
+];
+
+const EXPENSE_FREQUENCY_OPTIONS = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'weekly', label: 'Weekly' }
+];
 
 const SimulationDashboard = () => {
   const navigate = useNavigate();
@@ -35,6 +45,7 @@ const SimulationDashboard = () => {
     createSimulationDashboard,
     getSimulationOnboardingStatus,
     getSimulationDashboard,
+    submitSimulationOnboarding,
     getDays,
     daysLoading,
     daysError
@@ -289,6 +300,209 @@ const SimulationDashboard = () => {
     ? simulationDashboardData[0] 
     : null;
 
+  // Expenses: local table state (so edits reflect immediately)
+  const [expensesTableData, setExpensesTableData] = useState([]);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseModalSaving, setExpenseModalSaving] = useState(false);
+  const [selectedExpenseId, setSelectedExpenseId] = useState(null);
+  const [expenseForm, setExpenseForm] = useState({
+    category: '',
+    name: '',
+    value_type: 'fixed_value', // 'fixed_value' | 'percentage'
+    frequency: 'monthly', // 'monthly' | 'weekly'
+    amount: 0
+  });
+
+  // Whenever dashboard data updates, sync expenses list into local table data
+  useEffect(() => {
+    if (!dashboardData?.expenses || !Array.isArray(dashboardData.expenses)) {
+      setExpensesTableData([]);
+      return;
+    }
+    setExpensesTableData(dashboardData.expenses);
+  }, [dashboardData?.id]);
+
+  const openExpenseEditModal = (record) => {
+    const originalAmount = record?.original_amount ?? record?.amount ?? 0;
+    setSelectedExpenseId(record?.id ?? null);
+    setExpenseForm({
+      category: record?.category || '',
+      name: record?.name || '',
+      value_type: record?.value_type === 'percentage' ? 'percentage' : 'fixed_value',
+      frequency: 'monthly',
+      amount: Number(originalAmount) || 0
+    });
+    setIsExpenseModalOpen(true);
+  };
+
+  const closeExpenseModal = () => {
+    if (expenseModalSaving) return;
+    setIsExpenseModalOpen(false);
+    setSelectedExpenseId(null);
+  };
+
+  const buildExpensesStepPayload = (list) => {
+    // Convert dashboard expense shape -> simulation onboarding "Expenses" step payload
+    return (list || []).map((exp) => {
+      const valueType = exp?.value_type === 'percentage' ? 'percentage' : 'fixed_value';
+      const originalAmount = exp?.original_amount ?? exp?.amount ?? 0;
+      return {
+        category: exp?.category || '',
+        name: exp?.name || '',
+        orignal_amount: Number(originalAmount) || 0,
+        is_value_type: valueType !== 'percentage',
+        amount: Number(originalAmount) || 0,
+        expense_type: exp?.expense_type || 'monthly',
+        is_active: true
+      };
+    });
+  };
+
+  const persistExpensesToApi = async (nextList) => {
+    if (!restaurantId) return false;
+    setExpenseModalSaving(true);
+    try {
+      const payload = {
+        restaurant_id: restaurantId,
+        Expenses: {
+          status: true,
+          data: buildExpensesStepPayload(nextList)
+        }
+      };
+      const result = await submitSimulationOnboarding(payload);
+      if (!result?.success) {
+        message.error(result?.error || 'Failed to update expenses.');
+        return false;
+      }
+      await getSimulationDashboard(restaurantId, dashboardParams.year, dashboardParams.month, period);
+      return true;
+    } catch (e) {
+      message.error(e?.message || 'Failed to update expenses.');
+      return false;
+    } finally {
+      setExpenseModalSaving(false);
+    }
+  };
+
+  const handleExpenseModalSave = async () => {
+    if (!expenseForm.category) return message.error('Please select a category.');
+    if (!String(expenseForm.name || '').trim()) return message.error('Please enter a name.');
+    if ((Number(expenseForm.amount) || 0) <= 0) return message.error('Please enter a valid amount.');
+
+    const nextList = expensesTableData.map((exp) => {
+      if (exp.id !== selectedExpenseId) return exp;
+      return {
+        ...exp,
+        category: expenseForm.category,
+        name: String(expenseForm.name).trim(),
+        value_type: expenseForm.value_type,
+        // Persist original_amount so the user-edited amount is used for calculations on backend
+        original_amount: Number(expenseForm.amount) || 0,
+        // Also keep amount in UI reasonably consistent (API may recalc after save + refetch)
+        amount: exp.amount
+      };
+    });
+
+    // Store frequency/type on the row so payload can include them
+    const nextListWithMeta = nextList.map((exp) => {
+      if (exp.id !== selectedExpenseId) return exp;
+      return {
+        ...exp,
+        expense_type: expenseForm.frequency
+      };
+    });
+
+    setExpensesTableData(nextListWithMeta);
+    const ok = await persistExpensesToApi(nextListWithMeta);
+    if (ok) {
+      message.success('Expense updated.');
+      closeExpenseModal();
+    }
+  };
+
+  const handleExpenseDelete = async (record) => {
+    const nextList = expensesTableData.filter((e) => e.id !== record.id);
+    setExpensesTableData(nextList);
+    const ok = await persistExpensesToApi(nextList);
+    if (ok) message.success('Expense deleted.');
+  };
+
+  const expensesColumns = useMemo(() => ([
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (category) => (
+        <Tag color="blue">{category}</Tag>
+      )
+    },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      className: 'font-medium'
+    },
+    {
+      title: 'Type',
+      dataIndex: 'value_type',
+      key: 'value_type',
+      render: (type) => (
+        <Tag color={type === 'percentage' ? 'purple' : 'green'}>
+          {type === 'percentage' ? 'Percentage' : 'Fixed Value'}
+        </Tag>
+      )
+    },
+    {
+      title: 'Original Amount',
+      dataIndex: 'original_amount',
+      key: 'original_amount',
+      align: 'right',
+      render: (val, record) => {
+        const type = record?.value_type;
+        const v = Number(val ?? 0) || 0;
+        return (
+          <span className="font-semibold text-gray-900">
+            {type === 'percentage' ? `${v}%` : formatCurrency(v)}
+          </span>
+        );
+      }
+    },
+    {
+      title: 'Calculated Amount',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (amount) => (
+        <span className="font-semibold text-gray-900">
+          {formatCurrency(amount)}
+        </span>
+      ),
+      align: 'right'
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      fixed: 'right',
+      width: 140,
+      render: (_, record) => (
+        <div className="flex items-center gap-2">
+          <Button size="small" icon={<EditOutlined />} onClick={() => openExpenseEditModal(record)}>
+            Edit
+          </Button>
+          <Popconfirm
+            title="Delete this expense?"
+            okText="Delete"
+            cancelText="Cancel"
+            onConfirm={() => handleExpenseDelete(record)}
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
+        </div>
+      )
+    }
+  ]), [expensesTableData, expenseModalSaving]);
+
   return (
     <div className="">
       <div className="mx-auto">
@@ -535,56 +749,13 @@ const SimulationDashboard = () => {
             <Card className="shadow-md mb-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-xl font-bold text-gray-900">Expenses Breakdown</h2>
-                <Button
-                  type="default"
-                  icon={<EditOutlined />}
-                  onClick={() => navigate('/simulation/expenses')}
-                >
-                  Edit Expenses
-                </Button>
               </div>
               <Table
-                dataSource={dashboardData.expenses || []}
+                dataSource={expensesTableData}
                 rowKey="id"
                 pagination={false}
                 scroll={{ x: 'max-content' }}
-                columns={[
-                  {
-                    title: 'Category',
-                    dataIndex: 'category',
-                    key: 'category',
-                    render: (category) => (
-                      <Tag color="blue">{category}</Tag>
-                    )
-                  },
-                  {
-                    title: 'Name',
-                    dataIndex: 'name',
-                    key: 'name',
-                    className: 'font-medium'
-                  },
-                  {
-                    title: 'Value Type',
-                    dataIndex: 'value_type',
-                    key: 'value_type',
-                    render: (type) => (
-                      <Tag color={type === 'percentage' ? 'purple' : 'green'}>
-                        {type === 'percentage' ? 'Percentage' : 'Fixed Value'}
-                      </Tag>
-                    )
-                  },
-                  {
-                    title: 'Calculated Amount',
-                    dataIndex: 'amount',
-                    key: 'amount',
-                    render: (amount) => (
-                      <span className="font-semibold text-gray-900">
-                        {formatCurrency(amount)}
-                      </span>
-                    ),
-                    align: 'right'
-                  }
-                ]}
+                columns={expensesColumns}
               />
             </Card>
           </>
@@ -603,6 +774,77 @@ const SimulationDashboard = () => {
       
       {/* Chat Widget for Simulation */}
       <ChatWidget botName="Growlio Assistant" />
+
+      {/* Edit Expense Modal */}
+      <Modal
+        title="Edit Expense"
+        open={isExpenseModalOpen}
+        onCancel={closeExpenseModal}
+        okText="Save"
+        cancelText="Cancel"
+        confirmLoading={expenseModalSaving}
+        onOk={handleExpenseModalSave}
+        maskClosable={!expenseModalSaving}
+        destroyOnClose
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <Select
+              value={expenseForm.value_type}
+              onChange={(value) => setExpenseForm(prev => ({ ...prev, value_type: value }))}
+              className="w-full"
+            >
+              {EXPENSE_TYPE_OPTIONS.map(opt => (
+                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+            <Select
+              value={expenseForm.frequency}
+              onChange={(value) => setExpenseForm(prev => ({ ...prev, frequency: value }))}
+              className="w-full"
+            >
+              {EXPENSE_FREQUENCY_OPTIONS.map(opt => (
+                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <Input
+              value={expenseForm.category}
+              onChange={(e) => setExpenseForm(prev => ({ ...prev, category: e.target.value }))}
+              placeholder="Category"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <Input
+              value={expenseForm.name}
+              onChange={(e) => setExpenseForm(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Amount {expenseForm.value_type === 'percentage' ? '(%)' : '($)'}
+            </label>
+            <InputNumber
+              value={expenseForm.amount}
+              onChange={(value) => setExpenseForm(prev => ({ ...prev, amount: value || 0 }))}
+              min={0}
+              className="w-full"
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

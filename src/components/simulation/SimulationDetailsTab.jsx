@@ -29,7 +29,6 @@ const SimulationDetailsTab = () => {
                                         ? 'font-bold text-black' 
                                         : 'font-normal text-neutral-700'
                                 }`}>
-                                    <span>Step {tab.id + 1}:</span>
                                     <span>{tab.title}</span>
                                     {completed && (
                                         <span className="text-green-600 text-lg font-bold ml-1">

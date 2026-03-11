@@ -131,22 +131,22 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         children: [
           {
             key: 'simulation-basic-information',
-            label: 'Step 1: Basic Information',
+            label: 'Basic Information',
             onClick: () => navigate('/simulation/basic-information'),
           },
           {
             key: 'simulation-sales-channels-operating-days',
-            label: 'Step 2: Sales Channels & Operating Days',
+            label: 'Sales Channels & Operating Days',
             onClick: () => navigate('/simulation/sales-channels-operating-days'),
           },
           {
             key: 'simulation-labor-information',
-            label: 'Step 3: Labor Information',
+            label: 'Labor Information',
             onClick: () => navigate('/simulation/labor-information'),
           },
           {
             key: 'simulation-expenses',
-            label: 'Step 4: Expenses',
+            label: 'Expenses',
             onClick: () => navigate('/simulation/expenses'),
           },
         ],
@@ -278,22 +278,22 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       children: [
         {
           key: 'simulation-basic-information',
-          label: 'Step 1: Basic Information',
+          label: 'Basic Information',
           onClick: () => navigate('/simulation/basic-information'),
         },
         {
           key: 'simulation-sales-channels-operating-days',
-          label: 'Step 2: Sales Channels & Operating Days',
+          label: 'Sales Channels & Operating Days',
           onClick: () => navigate('/simulation/sales-channels-operating-days'),
         },
         {
           key: 'simulation-labor-information',
-          label: 'Step 3: Labor Information',
+          label: 'Labor Information',
           onClick: () => navigate('/simulation/labor-information'),
         },
         {
           key: 'simulation-expenses',
-          label: 'Step 4: Expenses',
+          label: 'Expenses',
           onClick: () => navigate('/simulation/expenses'),
         },
       ],
