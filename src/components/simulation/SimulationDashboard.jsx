@@ -320,7 +320,7 @@ const SimulationDashboard = () => {
       return;
     }
     setExpensesTableData(dashboardData.expenses);
-  }, [dashboardData?.id]);
+  }, [dashboardData]);
 
   const openExpenseEditModal = (record) => {
     const originalAmount = record?.original_amount ?? record?.amount ?? 0;
