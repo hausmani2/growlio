@@ -732,17 +732,7 @@ const SimulationDashboard = () => {
                 </div>
               </Card>
 
-              <Card className="shadow-md bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700 mb-1 font-medium">Avg Sales Needed ({period})</p>
-                    <p className="text-2xl font-bold text-orange-700">
-                      {formatCurrency(dashboardData.avg_sales_needed ?? 0)}
-                    </p>
-                  </div>
-                  <DollarOutlined className="text-3xl text-orange-500" />
-                </div>
-              </Card>
+            
             </div>
 
             {/* Expenses Breakdown */}
