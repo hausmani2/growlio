@@ -138,6 +138,7 @@ const SummaryDashboard = () => {
   const hasHandledFailResponse = useRef(false);
   const weeklyAverageModalShown = useRef(null);
   const isProcessingWeek = useRef(false);
+  const pendingWeeklyAverageRef = useRef(null); // { dateRangeKey, weeklyData }
 
   // Fetch dashboard summary data for selected date range
   const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
@@ -251,11 +252,10 @@ const SummaryDashboard = () => {
                                 weeklyData.has_three_weeks_data === true ||
                                 weeklyData.message?.toLowerCase().includes('found 3 previous week'));
           
-          // Show Weekly Average Data Available modal if 3 weeks data exists (only once)
+          // Do NOT open the Weekly Average modal here.
+          // We only show it AFTER user clicks "Yes, Proceed" in the existing Week Selection Confirmation modal.
           if (hasThreeWeeks && weeklyAverageModalShown.current !== dateRangeKey) {
-            weeklyAverageModalShown.current = dateRangeKey;
-            setWeeklyAveragePopupData(weeklyData);
-            setIsWeeklyAverageDataPopupVisible(true);
+            pendingWeeklyAverageRef.current = { dateRangeKey, weeklyData };
           }
         } catch (weeklyError) {
           // Silently fail - don't block user flow if weekly average check fails
@@ -773,6 +773,36 @@ const SummaryDashboard = () => {
         visible={isSalesModalVisible}
         onCancel={handleCloseSalesModal}
         onDataSaved={handleDataSaved}
+        onWeekConfirmationProceed={async ({ startDate, endDate }) => {
+          try {
+            // Only check weekly average for daily flow
+            if (!startDate || !endDate || groupBy !== 'daily') return;
+            const dateRangeKey = `${startDate}-${endDate}`;
+            if (weeklyAverageModalShown.current === dateRangeKey) return;
+
+            const pending = pendingWeeklyAverageRef.current;
+            const weeklyData = pending?.dateRangeKey === dateRangeKey
+              ? pending.weeklyData
+              : await checkWeeklyAverageData(null, startDate, endDate);
+            const hasThreeWeeks = weeklyData &&
+              weeklyData.status === true &&
+              (weeklyData.message === "Found 3 previous week(s) of data." ||
+                weeklyData.has_three_weeks_data === true ||
+                weeklyData.message?.toLowerCase().includes('found 3 previous week'));
+
+            if (hasThreeWeeks) {
+              weeklyAverageModalShown.current = dateRangeKey;
+              pendingWeeklyAverageRef.current = null;
+              setWeeklyAveragePopupData(weeklyData);
+              // Open on next tick so the week confirmation overlay is fully gone
+              setTimeout(() => {
+                setIsWeeklyAverageDataPopupVisible(true);
+              }, 0);
+            }
+          } catch (e) {
+            console.error('Error checking weekly average after week confirmation:', e);
+          }
+        }}
         selectedWeekData={(() => {
           // Always use the current calendar date range
           if (calendarDateRange && calendarDateRange.length === 2) {

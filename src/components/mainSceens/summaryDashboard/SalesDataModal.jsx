@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty, notification } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOutlined, ArrowRightOutlined, ExclamationCircleOutlined, UserOutlined, QuestionCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +17,8 @@ const SalesDataModal = ({
   selectedWeekData,
   onDataSaved,
   autoOpenFromSummary = false,
-  isManuallyTriggered = false
+  isManuallyTriggered = false,
+  onWeekConfirmationProceed
 }) => {
   // Navigation hook
   const navigate = useNavigate();
@@ -1018,9 +1020,29 @@ const SalesDataModal = ({
 
   // Handle user choice in week confirmation modal
   const handleWeekConfirmationChoice = async (proceed) => {
-    setShowWeekConfirmationModal(false);
+    // Force the confirmation modal to close/unmount before opening any other modal
+    flushSync(() => {
+      setShowWeekConfirmationModal(false);
+    });
 
     if (proceed) {
+      // Allow DOM to paint after flushSync (prevents stacked/backdrop artifacts)
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      // Let parent optionally react to confirmation (e.g., show Weekly Average modal if 3 weeks data exists)
+      if (typeof onWeekConfirmationProceed === 'function' && selectedWeekData?.startDate && selectedWeekData?.endDate) {
+        try {
+          await onWeekConfirmationProceed({
+            startDate: selectedWeekData.startDate,
+            endDate: selectedWeekData.endDate,
+            isPastWeek: !!weekStatus?.isPastWeek
+          });
+        } catch (e) {
+          // Non-blocking: do not prevent user from proceeding if parent callback fails
+          console.warn('[SalesDataModal] onWeekConfirmationProceed failed:', e);
+        }
+      }
+
       // User confirmed they want to proceed with this week
       setWeekConfirmed(true);
       weekInitiallyConfirmedRef.current = true; // Mark week as initially confirmed
@@ -2108,7 +2130,7 @@ const SalesDataModal = ({
           </Button>
         ]}
         width={600}
-        destroyOnClosenpm
+        destroyOnClose
         maskClosable={false}
         zIndex={1002}
       >
