@@ -674,7 +674,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                <div className="w-full">
                  <Text strong className="text-sm sm:text-base">Weekly COGS Actual:</Text>
                  <Input
-                   value={`$${formatNumber(weekFormData.weeklyTotals?.cogsActual ?? 0).toFixed(2)}`}
+                   value={`$${formatNumber(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0)).toFixed(2)}`}
                    className="mt-1"
                    disabled
                    style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
