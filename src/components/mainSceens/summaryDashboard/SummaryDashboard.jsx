@@ -848,7 +848,7 @@ const SummaryDashboard = () => {
               height: '100%',
               border: 0
             }}
-            src="https://www.youtube.com/embed/aXUSZtOxN-k"
+            src="https://www.youtube.com/embed/2-9RvD6wQq8"
             title="Weekly Budgeted Dashboard Tutorial"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
