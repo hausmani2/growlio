@@ -803,20 +803,17 @@ const ProtectedRoutes = () => {
               );
               
               if (completeRestaurant) {
-                // Check if user has both regular and simulation restaurants
-                // Check regular restaurants from restaurantData or restaurantOnboardingData
+                // IMPORTANT: Do NOT override dashboard routes on refresh for regular users.
+                // Only redirect when the user is truly simulation-only (no regular restaurants).
                 const regularRestaurants = restaurantData?.restaurants || restaurantOnboardingData?.restaurants || [];
                 const hasRegularRestaurantsCheck = Array.isArray(regularRestaurants) && regularRestaurants.length > 0;
                 const hasSimulationRestaurantsCheck = Array.isArray(restaurants) && restaurants.length > 0;
-                
-                // Simulation onboarding is complete, redirect to simulation dashboard
+
                 localStorage.setItem('simulation_restaurant_id', completeRestaurant.simulation_restaurant_id.toString());
                 setIsCheckingSimulationForDashboard(false);
-                // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
-                if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
-                  navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
-                } else if (hasSimulationRestaurantsCheck) {
-                  // Only redirect to simulation dashboard if simulation onboarding API has restaurants
+
+                // Simulation-only user: redirect away from regular dashboard.
+                if (!hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
                   navigate('/simulation/dashboard', { replace: true });
                 }
                 return;
