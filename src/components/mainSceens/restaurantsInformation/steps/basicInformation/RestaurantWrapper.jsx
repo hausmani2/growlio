@@ -100,7 +100,7 @@ const RestaurantWrapperContent = () => {
 
     // Additional locations (Location 2..N)
     const [additionalLocations, setAdditionalLocations] = useState(
-        tempFormData?.additionalLocations || []
+        Array.isArray(tempFormData?.additionalLocations) ? tempFormData.additionalLocations : []
     );
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -153,6 +153,29 @@ const RestaurantWrapperContent = () => {
                     sqft: location.sqft?.toString() || "",
                     isFranchise: location.is_franchise ? "2" : "1"
                 }));
+
+                // Populate Location 2..N into additionalLocations
+                const extraLocations = data.locations.slice(1).map((loc) => ({
+                    locationName: loc.location_name || loc.name || "",
+                    address1: loc.address_1 || "",
+                    address2: loc.address_2 || "",
+                    country: loc.country === "USA" ? "1" : loc.country === "Canada" ? "2" : "",
+                    city: loc.city || "",
+                    state: loc.state || "",
+                    zipCode: loc.zip_code || "",
+                    latitude: loc.latitude || loc.lat || null,
+                    longitude: loc.longitude || loc.lng || null
+                }));
+
+                setAdditionalLocations(Array.isArray(extraLocations) ? extraLocations : []);
+
+                // Persist into temp form data (best-effort)
+                try {
+                    const { updateTempFormDataMultiple } = useStore.getState();
+                    updateTempFormDataMultiple?.("Basic Information", "additionalLocations", extraLocations);
+                } catch (e) {
+                    // ignore
+                }
             }
             
             // Load restaurant type and menu type
@@ -506,7 +529,7 @@ const RestaurantWrapperContent = () => {
                 />
 
                 {/* Additional Locations */}
-                {additionalLocations.map((loc, idx) => {
+                {(Array.isArray(additionalLocations) ? additionalLocations : []).map((loc, idx) => {
                     const locationNumber = idx + 2;
                     const locErrors = getAdditionalLocationErrors(locationNumber);
                     return (

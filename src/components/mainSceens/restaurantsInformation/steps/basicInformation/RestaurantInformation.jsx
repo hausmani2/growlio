@@ -45,6 +45,9 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         const pkg = subscriptionDetails?.package || null;
         const restaurant = subscriptionDetails?.restaurant || null;
 
+        // Primary source of truth for what the user is allowed to select in setup
+        const allowedLocations = typeof restaurant?.allowed_locations === 'number' ? restaurant.allowed_locations : null;
+        // Keep plan max as a secondary fallback (and for display)
         const maxFromPlan = typeof pkg?.max_locations === 'number' ? pkg.max_locations : null;
         const pricePerLocation = typeof pkg?.price_per_location === 'number' ? pkg.price_per_location : null;
 
@@ -54,26 +57,20 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
 
         // Hard safety caps (avoid huge dropdowns if backend misconfigures max_locations)
         const hardCap = 100;
-        const maxDropdown = Math.max(
-            1,
-            Math.min(
-                hardCap,
-                maxFromPlan ?? computedMaxAddableTotal ?? 5
-            )
-        );
+        // Dropdown should be based on allowed_locations when available
+        const maxDropdown = Math.max(1, Math.min(hardCap, allowedLocations ?? maxFromPlan ?? computedMaxAddableTotal ?? 5));
 
-        // If API gives an explicit addable total, disable options above it.
-        const maxSelectable = Math.max(
-            1,
-            Math.min(maxDropdown, computedMaxAddableTotal ?? maxDropdown)
-        );
+        // Selection limit should be allowed_locations (strict). If missing, fall back to computed totals.
+        const maxSelectable = Math.max(1, Math.min(maxDropdown, allowedLocations ?? computedMaxAddableTotal ?? maxDropdown));
 
         return {
             maxDropdown,
             maxSelectable,
             pricePerLocation,
             actualCount,
-            remainingAddable
+            remainingAddable,
+            allowedLocations,
+            planMaxLocations: maxFromPlan
         };
     }, [subscriptionDetails]);
 
@@ -226,9 +223,14 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
 
                     {/* Professional helper text driven by subscription/current */}
                     <div className="mt-2 text-xs text-gray-600">
-                        {subscriptionDetails?.package?.max_locations !== undefined && (
+                        {locationSelectModel.allowedLocations !== null && (
                             <div>
-                                Your plan allows up to <span className="font-semibold">{subscriptionDetails.package.max_locations}</span> locations.
+                                You’re currently allowed <span className="font-semibold">{locationSelectModel.allowedLocations}</span> location{locationSelectModel.allowedLocations > 1 ? 's' : ''}.
+                                {locationSelectModel.planMaxLocations !== null && (
+                                    <>
+                                        {" "} (Plan max: <span className="font-semibold">{locationSelectModel.planMaxLocations}</span>)
+                                    </>
+                                )}
                                 {locationSelectModel.actualCount !== null && (
                                     <>
                                         {" "}You currently have <span className="font-semibold">{locationSelectModel.actualCount}</span>.
