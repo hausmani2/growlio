@@ -25,14 +25,15 @@ export const TabProvider = ({ children }) => {
         isOnBoardingCompleted
     } = useStore();
     const { loadStepData, saveCurrentStepData } = useStepNavigation();
+    const completeOnboardingDataSafe = completeOnboardingData || {};
 
     // Check if we need to load existing onboarding data
     const shouldLoadExistingData = () => {
-        const hasAnyCompletedSteps = Object.values(completeOnboardingData).some(step =>
+        const hasAnyCompletedSteps = Object.values(completeOnboardingDataSafe).some(step =>
             step && typeof step === 'object' && step.status === true
         );
 
-        const hasRestaurantId = completeOnboardingData.restaurant_id || localStorage.getItem('restaurant_id');
+        const hasRestaurantId = completeOnboardingDataSafe.restaurant_id || localStorage.getItem('restaurant_id');
 
         // If we have a restaurant_id but no completed steps, we should load data
         if (hasRestaurantId && !hasAnyCompletedSteps) {
@@ -82,7 +83,7 @@ export const TabProvider = ({ children }) => {
 
     // Check if a step is completed
     const isStepCompleted = (stepName) => {
-        const stepData = completeOnboardingData[stepName];
+        const stepData = completeOnboardingDataSafe[stepName];
         const completed = stepData?.status === true;
 
 
@@ -150,7 +151,7 @@ export const TabProvider = ({ children }) => {
     // Get the next incomplete step
     const getNextIncompleteStep = () => {
         // Check if there are any steps with data at all
-        const hasAnyStepData = Object.values(completeOnboardingData).some(step =>
+        const hasAnyStepData = Object.values(completeOnboardingDataSafe).some(step =>
             step && typeof step === 'object' && step.status !== undefined
         );
 

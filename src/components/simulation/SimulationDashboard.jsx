@@ -291,13 +291,10 @@ const SimulationDashboard = () => {
     { value: 11, label: 'November' },
     { value: 12, label: 'December' }
   ];
+  const shouldShowInitialLoading = simulationDashboardLoading && !simulationDashboardData;
 
-  if (simulationDashboardLoading && !simulationDashboardData) {
-    return <LoadingSpinner message="Loading dashboard..." />;
-  }
-
-  const dashboardData = simulationDashboardData && simulationDashboardData.length > 0 
-    ? simulationDashboardData[0] 
+  const dashboardData = simulationDashboardData && simulationDashboardData.length > 0
+    ? simulationDashboardData[0]
     : null;
 
   // Expenses: local table state (so edits reflect immediately)
@@ -506,6 +503,9 @@ const SimulationDashboard = () => {
   return (
     <div className="">
       <div className="mx-auto">
+        {shouldShowInitialLoading && (
+          <LoadingSpinner message="Loading dashboard..." />
+        )}
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <h1 className="text-3xl font-bold text-orange-600 mb-2">

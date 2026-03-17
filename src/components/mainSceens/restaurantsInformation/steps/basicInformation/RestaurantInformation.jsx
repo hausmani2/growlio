@@ -21,7 +21,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     const tooltips = useTooltips('onboarding-basic');
     
     // Check if Basic Information step is completed
-    const isBasicInfoCompleted = completeOnboardingData["Basic Information"]?.status === true;
+    const isBasicInfoCompleted = completeOnboardingData?.["Basic Information"]?.status === true;
     
     const [localRestaurantName, setLocalRestaurantName] = useState("");
     
