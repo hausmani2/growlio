@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../layout/Header";
 import SimulationDetailsTab from "./SimulationDetailsTab";
 import { SimulationTabProvider } from "./SimulationTabContext";
 import { useSimulationTabHook } from "./hooks/useSimulationTabHook";
@@ -26,8 +25,6 @@ const SimulationRestaurantContent = () => {
 
     return (
         <div className="flex flex-col bg-white">
-            <Header />
-
             <div className="flex flex-col">
                 <div className="mx-auto container max-w-[1400px] px-10 py-4">
                     <SimulationDetailsTab />
