@@ -5,7 +5,7 @@ import PlaceSearchInput from '../../../../common/PlaceSearchInput';
 import { US_STATES, CANADA_PROVINCES, COUNTRY_OPTIONS } from './constants';
 import { parseAddressComponents, mapCountryCodeToFormValue, mapFormValueToCountryCode } from '../../../../../utils/parseAddressComponents';
 
-const AddressInformation = ({ data, updateData, errors = {} }) => {
+const AddressInformation = ({ data, updateData, errors = {}, title = 'Location Address 1' }) => {
     const tooltips = useTooltips('onboarding-basic');
     
     // Get Google Maps API key from environment variables
@@ -124,7 +124,7 @@ const AddressInformation = ({ data, updateData, errors = {} }) => {
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Location Address</h3>
+                <h3 className="text-xl font-bold text-orange-600 mb-2">{title}</h3>
                     {/* <p className="text-gray-600 text-sm">
                         Tell us about your restaurant location and address details.
                     </p> */}

@@ -1,5 +1,5 @@
 import { Input, Select, Tooltip } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useStore from "../../../../../store/store";
 import { apiGet } from "../../../../../utils/axiosInterceptors";
 import { fetchTooltips } from "../../../../../utils";
@@ -14,7 +14,9 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         restaurantNameCheckLoading, 
         restaurantNameCheckError, 
         restaurantNameExists,
-        completeOnboardingData
+        completeOnboardingData,
+        subscriptionDetails,
+        fetchCurrentSubscriptionDetails
     } = useStore();
     const tooltips = useTooltips('onboarding-basic');
     
@@ -31,6 +33,58 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         }
     }, [data.restaurantName]);
     const [debounceTimer, setDebounceTimer] = useState(null);
+
+    // Load subscription details to drive dynamic location limits + pricing
+    useEffect(() => {
+        // Don't block UX if this fails; UI will gracefully fall back
+        fetchCurrentSubscriptionDetails?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const locationSelectModel = useMemo(() => {
+        const pkg = subscriptionDetails?.package || null;
+        const restaurant = subscriptionDetails?.restaurant || null;
+
+        const maxFromPlan = typeof pkg?.max_locations === 'number' ? pkg.max_locations : null;
+        const pricePerLocation = typeof pkg?.price_per_location === 'number' ? pkg.price_per_location : null;
+
+        const actualCount = typeof restaurant?.actual_location_count === 'number' ? restaurant.actual_location_count : null;
+        const remainingAddable = typeof restaurant?.remaining_addable_locations === 'number' ? restaurant.remaining_addable_locations : null;
+        const computedMaxAddableTotal = (actualCount !== null && remainingAddable !== null) ? (actualCount + remainingAddable) : null;
+
+        // Hard safety caps (avoid huge dropdowns if backend misconfigures max_locations)
+        const hardCap = 100;
+        const maxDropdown = Math.max(
+            1,
+            Math.min(
+                hardCap,
+                maxFromPlan ?? computedMaxAddableTotal ?? 5
+            )
+        );
+
+        // If API gives an explicit addable total, disable options above it.
+        const maxSelectable = Math.max(
+            1,
+            Math.min(maxDropdown, computedMaxAddableTotal ?? maxDropdown)
+        );
+
+        return {
+            maxDropdown,
+            maxSelectable,
+            pricePerLocation,
+            actualCount,
+            remainingAddable
+        };
+    }, [subscriptionDetails]);
+
+    const numberOfLocationsOptions = useMemo(() => {
+        const options = [];
+        for (let i = 1; i <= locationSelectModel.maxDropdown; i += 1) {
+            const disabled = i > locationSelectModel.maxSelectable;
+            options.push({ value: String(i), label: String(i), disabled });
+        }
+        return options;
+    }, [locationSelectModel.maxDropdown, locationSelectModel.maxSelectable]);
 
     // Clear restaurant name validation state when in update mode
     useEffect(() => {
@@ -164,17 +218,39 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                         value={data.numberOfLocations}
                         onChange={(value) => updateData('numberOfLocations', value)}
                         status={errors.numberOfLocations ? 'error' : ''}
-                        options={[
-                            { value: '1', label: '1' }, 
-                            { value: '2', label: '2', disabled: true }, 
-                            { value: '3', label: '3', disabled: true }, 
-                            { value: '4', label: '4', disabled: true }, 
-                            { value: '5', label: '5', disabled: true }
-                        ]}
+                        options={numberOfLocationsOptions}
                     />
                     {errors.numberOfLocations && (
                         <span className="text-red-500 text-xs mt-1">{errors.numberOfLocations}</span>
                     )}
+
+                    {/* Professional helper text driven by subscription/current */}
+                    <div className="mt-2 text-xs text-gray-600">
+                        {subscriptionDetails?.package?.max_locations !== undefined && (
+                            <div>
+                                Your plan allows up to <span className="font-semibold">{subscriptionDetails.package.max_locations}</span> locations.
+                                {locationSelectModel.actualCount !== null && (
+                                    <>
+                                        {" "}You currently have <span className="font-semibold">{locationSelectModel.actualCount}</span>.
+                                    </>
+                                )}
+                                {locationSelectModel.remainingAddable !== null && (
+                                    <>
+                                        {" "}You can add <span className="font-semibold">{locationSelectModel.remainingAddable}</span> more.
+                                    </>
+                                )}
+                            </div>
+                        )}
+                        {locationSelectModel.pricePerLocation !== null && data.numberOfLocations && (
+                            <div className="mt-1">
+                                Estimated monthly total:{" "}
+                                <span className="font-semibold">
+                                    ${Number(locationSelectModel.pricePerLocation * Number(data.numberOfLocations || 1)).toFixed(0)}
+                                </span>
+                                {" "}(${Number(locationSelectModel.pricePerLocation).toFixed(0)}/location)
+                            </div>
+                        )}
+                    </div>
                 </div>
                 
                 {/* Location Name */}

@@ -6,6 +6,7 @@ const createPlansSlice = (set, get) => ({
   // Plans state
   packages: [],
   currentPackage: null,
+  subscriptionDetails: null,
   loading: false,
   error: null,
   
@@ -14,6 +15,7 @@ const createPlansSlice = (set, get) => ({
   setError: (error) => set({ error }),
   setPackages: (packages) => set({ packages }),
   setCurrentPackage: (currentPackage) => set({ currentPackage }),
+  setSubscriptionDetails: (subscriptionDetails) => set({ subscriptionDetails }),
   
   // Fetch all available packages
   fetchPackages: async (forceRefresh = false) => {
@@ -203,6 +205,39 @@ const createPlansSlice = (set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
+
+  // Fetch current subscription details (package + restaurant + billing)
+  // Source of truth for max_locations and addable locations
+  fetchCurrentSubscriptionDetails: async () => {
+    try {
+      const response = await apiGet('/restaurant_v2/subscription/current/');
+      const subscriptionData = response.data?.data || response.data || null;
+
+      set({
+        subscriptionDetails: subscriptionData,
+        error: null
+      });
+
+      // Keep currentPackage in sync when possible (helps existing consumers)
+      if (subscriptionData?.package) {
+        set({ currentPackage: subscriptionData.package });
+      }
+
+      return { success: true, data: subscriptionData };
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error.message ||
+        'Failed to fetch current subscription';
+
+      set({
+        error: errorMessage,
+        subscriptionDetails: null
+      });
+
+      return { success: false, error: errorMessage };
+    }
+  },
   
   // Update restaurant subscription
   updateSubscription: async (data) => {
@@ -282,6 +317,7 @@ const createPlansSlice = (set, get) => ({
     set({
       packages: [],
       currentPackage: null,
+      subscriptionDetails: null,
       loading: false,
       error: null
     });

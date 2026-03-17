@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { message } from "antd";
 import RestaurantInformation from "./RestaurantInformation";
 import AddressInformation from "./AddressInformation";
@@ -12,6 +12,7 @@ import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import StepDataManager from "../../StepDataManager";
 import PrimaryButton from "../../../../../components/buttons/Buttons";
+import { Input } from "antd";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -95,6 +96,11 @@ const RestaurantWrapperContent = () => {
             restaurantType: "",
             menuType: ""
         }
+    );
+
+    // Additional locations (Location 2..N)
+    const [additionalLocations, setAdditionalLocations] = useState(
+        tempFormData?.additionalLocations || []
     );
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -214,11 +220,83 @@ const RestaurantWrapperContent = () => {
         clearFieldError(field);
     };
 
+    const desiredLocationsCount = useMemo(() => {
+        const n = Number(restaurantData.numberOfLocations || 1);
+        return Number.isFinite(n) && n > 0 ? n : 1;
+    }, [restaurantData.numberOfLocations]);
+
+    // Ensure additionalLocations array matches the selected number of locations
+    useEffect(() => {
+        const neededAdditional = Math.max(0, desiredLocationsCount - 1);
+        setAdditionalLocations((prev) => {
+            const next = Array.isArray(prev) ? [...prev] : [];
+            if (next.length === neededAdditional) return next;
+
+            if (next.length < neededAdditional) {
+                for (let i = next.length; i < neededAdditional; i += 1) {
+                    next.push({
+                        locationName: "",
+                        address1: "",
+                        address2: "",
+                        country: "",
+                        city: "",
+                        state: "",
+                        zipCode: "",
+                        latitude: null,
+                        longitude: null
+                    });
+                }
+            } else {
+                next.length = neededAdditional;
+            }
+
+            // Persist for this step (best-effort)
+            try {
+                const { updateTempFormDataMultiple } = useStore.getState();
+                updateTempFormDataMultiple?.("Basic Information", "additionalLocations", next);
+            } catch (e) {
+                // ignore
+            }
+
+            return next;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [desiredLocationsCount]);
+
+    const updateAdditionalLocation = (index, field, value) => {
+        setAdditionalLocations((prev) => {
+            const next = Array.isArray(prev) ? [...prev] : [];
+            if (!next[index]) return prev;
+            next[index] = { ...next[index], [field]: value };
+            try {
+                const { updateTempFormDataMultiple } = useStore.getState();
+                updateTempFormDataMultiple?.("Basic Information", "additionalLocations", next);
+            } catch (e) {
+                // ignore
+            }
+            return next;
+        });
+    };
+
+    const getAdditionalLocationErrors = (locationNumber) => {
+        // Map flat validation keys to AddressInformation expected keys
+        // locationNumber starts at 2
+        const prefix = `location_${locationNumber}_`;
+        return {
+            locationName: validationErrors[`${prefix}locationName`],
+            address1: validationErrors[`${prefix}address1`],
+            country: validationErrors[`${prefix}country`],
+            city: validationErrors[`${prefix}city`],
+            state: validationErrors[`${prefix}state`],
+            zipCode: validationErrors[`${prefix}zipCode`]
+        };
+    };
+
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
             // Step 1: Validate all forms
-            const isValid = validateAllForms(restaurantData, addressData, addressTypeData);
+            const isValid = validateAllForms(restaurantData, addressData, addressTypeData, additionalLocations);
 
             if (!isValid) {
                 message.error("Please fill in all required fields correctly");
@@ -240,31 +318,40 @@ const RestaurantWrapperContent = () => {
             const existingRestaurantId = useStore.getState().getRestaurantId();
             
             // Build location object with conditional latitude/longitude
-            const locationObj = {
-                location_name: restaurantData.locationName, // API expects 'location_name'
-                address_1: addressData.address1,
-                address_2: addressData.address2,
-                city: addressData.city,
-                country: addressData.country === "1" ? "USA" : addressData.country === "2" ? "Canada" : "",
-                state: addressData.state, // Keep the actual state code (TX, CA, NY, etc.)
-                zip_code: addressData.zipCode,
-                sqft: parseInt(addressTypeData.sqft),
-                is_franchise: addressTypeData.isFranchise === "2"
+            const buildLocationObj = (locName, addr) => {
+                const locationObj = {
+                    location_name: locName,
+                    address_1: addr.address1,
+                    address_2: addr.address2,
+                    city: addr.city,
+                    country: addr.country === "1" ? "USA" : addr.country === "2" ? "Canada" : "",
+                    state: addr.state,
+                    zip_code: addr.zipCode,
+                    sqft: parseInt(addressTypeData.sqft),
+                    is_franchise: addressTypeData.isFranchise === "2"
+                };
+                if (addr.latitude !== null && addr.latitude !== undefined && !isNaN(parseFloat(addr.latitude))) {
+                    locationObj.latitude = parseFloat(addr.latitude);
+                }
+                if (addr.longitude !== null && addr.longitude !== undefined && !isNaN(parseFloat(addr.longitude))) {
+                    locationObj.longitude = parseFloat(addr.longitude);
+                }
+                return locationObj;
             };
-            
-            if (addressData.latitude !== null && addressData.latitude !== undefined && !isNaN(parseFloat(addressData.latitude))) {
-                locationObj.latitude = parseFloat(addressData.latitude);
-            }
-            if (addressData.longitude !== null && addressData.longitude !== undefined && !isNaN(parseFloat(addressData.longitude))) {
-                locationObj.longitude = parseFloat(addressData.longitude);
-            }
+
+            const locationsPayload = [
+                buildLocationObj(restaurantData.locationName, addressData),
+                ...additionalLocations.map((loc) =>
+                    buildLocationObj(loc.locationName, loc)
+                )
+            ];
             
             const stepData = {
                 restaurant_name: restaurantData.restaurantName,
                 number_of_locations: parseInt(restaurantData.numberOfLocations),
                 restaurant_type: addressTypeData.restaurantType,
                 menu_type: addressTypeData.menuType,
-                locations: [locationObj]
+                locations: locationsPayload
             };
             
             // Add restaurant_id to payload if it exists (for updates)
@@ -415,7 +502,51 @@ const RestaurantWrapperContent = () => {
                     data={addressData}
                     updateData={updateAddressData}
                     errors={validationErrors}
+                    title="Location Address 1"
                 />
+
+                {/* Additional Locations */}
+                {additionalLocations.map((loc, idx) => {
+                    const locationNumber = idx + 2;
+                    const locErrors = getAdditionalLocationErrors(locationNumber);
+                    return (
+                        <div key={`additional-location-${locationNumber}`} className="space-y-6">
+                            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                                <div className="mb-6">
+                                    <h3 className="text-xl font-bold text-orange-600 mb-2">
+                                        Location {locationNumber}
+                                    </h3>
+                                </div>
+                                <div>
+                                    <label
+                                        htmlFor={`locationName_${locationNumber}`}
+                                        className="block text-sm font-semibold text-gray-700 mb-2"
+                                    >
+                                        Location Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <Input
+                                        id={`locationName_${locationNumber}`}
+                                        placeholder={`Enter location ${locationNumber} name`}
+                                        className={`w-full h-11 rounded-lg text-sm ${locErrors.locationName ? 'border-red-500' : 'border-gray-300'}`}
+                                        value={loc.locationName || ""}
+                                        onChange={(e) => updateAdditionalLocation(idx, 'locationName', e.target.value)}
+                                    />
+                                    {locErrors.locationName && (
+                                        <span className="text-red-500 text-xs mt-1">{locErrors.locationName}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <AddressInformation
+                                data={loc}
+                                updateData={(field, value) => updateAdditionalLocation(idx, field, value)}
+                                errors={locErrors}
+                                title={`Location Address ${locationNumber}`}
+                            />
+                        </div>
+                    );
+                })}
+
                 <Address2Information
                     data={addressTypeData}
                     updateData={updateAddressTypeData}

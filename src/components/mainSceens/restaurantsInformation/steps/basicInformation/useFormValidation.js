@@ -86,20 +86,58 @@ const useFormValidation = () => {
         return errors;
     }, []);
 
-    const validateAllForms = useCallback((restaurantData, addressData, addressTypeData) => {
+    const validateAdditionalLocations = useCallback((additionalLocations = []) => {
+        const errors = {};
+
+        additionalLocations.forEach((loc, idx) => {
+            const locationNumber = idx + 2; // locations start from 2 here
+
+            if (!loc?.locationName?.trim()) {
+                errors[`location_${locationNumber}_locationName`] = VALIDATION_MESSAGES.LOCATION_NAME;
+            }
+            if (!loc?.address1?.trim()) {
+                errors[`location_${locationNumber}_address1`] = VALIDATION_MESSAGES.ADDRESS;
+            }
+            if (!loc?.country) {
+                errors[`location_${locationNumber}_country`] = VALIDATION_MESSAGES.COUNTRY;
+            }
+            if (!loc?.state) {
+                errors[`location_${locationNumber}_state`] = VALIDATION_MESSAGES.STATE;
+            }
+            if (!loc?.city) {
+                errors[`location_${locationNumber}_city`] = VALIDATION_MESSAGES.CITY;
+            }
+
+            if (!loc?.zipCode?.trim()) {
+                errors[`location_${locationNumber}_zipCode`] = VALIDATION_MESSAGES.ZIP_CODE;
+            } else {
+                const zipCode = loc.zipCode.trim();
+                const isValid = /^[A-Za-z0-9\s-]{2,20}$/.test(zipCode);
+                if (!isValid) {
+                    errors[`location_${locationNumber}_zipCode`] = VALIDATION_MESSAGES.INVALID_ZIP;
+                }
+            }
+        });
+
+        return errors;
+    }, []);
+
+    const validateAllForms = useCallback((restaurantData, addressData, addressTypeData, additionalLocations = []) => {
         const restaurantErrors = validateRestaurantInfo(restaurantData);
         const addressErrors = validateAddressInfo(addressData);
         const addressTypeErrors = validateAddressTypeInfo(addressTypeData);
+        const additionalLocationsErrors = validateAdditionalLocations(additionalLocations);
 
         const allErrors = {
             ...restaurantErrors,
             ...addressErrors,
-            ...addressTypeErrors
+            ...addressTypeErrors,
+            ...additionalLocationsErrors
         };
 
         setValidationErrors(allErrors);
         return Object.keys(allErrors).length === 0;
-    }, [validateRestaurantInfo, validateAddressInfo, validateAddressTypeInfo]);
+    }, [validateRestaurantInfo, validateAddressInfo, validateAddressTypeInfo, validateAdditionalLocations]);
 
     const clearAllErrors = useCallback(() => {
         setValidationErrors({});
@@ -111,6 +149,7 @@ const useFormValidation = () => {
         validateRestaurantInfo,
         validateAddressInfo,
         validateAddressTypeInfo,
+        validateAdditionalLocations,
         validateAllForms,
         clearAllErrors
     };
