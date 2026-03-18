@@ -19,6 +19,19 @@ import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 
 const { Title } = Typography;
 
+const BUDGET_TUTORIAL_VIDEOS = {
+  createBudget: {
+    title: 'How to Create a Budget Dashboard',
+    modalTitle: 'How to Create a Budget Dashboard',
+    embedUrl: 'https://www.youtube.com/embed/2-9RvD6wQq8?rel=0',
+  },
+  useBudget: {
+    title: 'How to Use My Budget',
+    modalTitle: 'How to Use My Budget',
+    embedUrl: 'https://www.youtube.com/embed/KYXWhQk_kGA?rel=0',
+  },
+};
+
 const SummaryDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +42,7 @@ const SummaryDashboard = () => {
   const [calendarError, setCalendarError] = useState(null);
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const [activeBudgetVideoKey, setActiveBudgetVideoKey] = useState('createBudget');
 
   // Initialize with current week
   useEffect(() => {
@@ -575,7 +589,10 @@ const SummaryDashboard = () => {
                   Weekly Budgeted Dashboard
                 </h1>
                 <button
-                  onClick={() => setIsVideoModalVisible(true)}
+                  onClick={() => {
+                    setActiveBudgetVideoKey('createBudget');
+                    setIsVideoModalVisible(true);
+                  }}
                   className="text-orange-600 hover:text-orange-700 transition-colors"
                   title="Watch tutorial video"
                   aria-label="Info about Weekly Budgeted Dashboard"
@@ -661,16 +678,37 @@ const SummaryDashboard = () => {
       )} */}
       {/* Show tutorial section only when no budget exists for the selected week */}
       {!hasBudgetForWeek() && !summaryLoading && (
-        <div className='p-3  bg-white rounded-xl shadow-lg border border-gray-100 mb-5'>
-          <div className='flex items-center justify-between gap-2'>
-            <p className='font-medium text-base text-orange-600'>
-            Watch a tutorial on how to create a <span className='text-purple-600'> Budget Dashboard</span>
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on how to create a <span className="text-purple-600">Budget Dashboard</span>
             </p>
             <button
-              onClick={() => setIsVideoModalVisible(true)}
+              onClick={() => {
+                setActiveBudgetVideoKey('createBudget');
+                setIsVideoModalVisible(true);
+              }}
               className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch tutorial video"
-              aria-label="Info about Weekly Budgeted Dashboard"
+              title="Watch: How to Create a Budget Dashboard"
+              aria-label="Watch: How to Create a Budget Dashboard"
+              type="button"
+            >
+              Watch Video
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on <span className="text-purple-600">How to Use My Budget</span>
+            </p>
+            <button
+              onClick={() => {
+                setActiveBudgetVideoKey('useBudget');
+                setIsVideoModalVisible(true);
+              }}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
+              title="Watch: How to Use My Budget"
+              aria-label="Watch: How to Use My Budget"
+              type="button"
             >
               Watch Video
             </button>
@@ -830,7 +868,7 @@ const SummaryDashboard = () => {
 
       {/* YouTube Video Tutorial Modal */}
       <Modal
-        title="Weekly Budgeted Dashboard Tutorial"
+        title={BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.modalTitle || 'Budget Tutorial'}
         open={isVideoModalVisible}
         onCancel={() => setIsVideoModalVisible(false)}
         footer={null}
@@ -838,6 +876,22 @@ const SummaryDashboard = () => {
         centered
         destroyOnClose={true}
       >
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            type={activeBudgetVideoKey === 'createBudget' ? 'primary' : 'default'}
+            onClick={() => setActiveBudgetVideoKey('createBudget')}
+            className={activeBudgetVideoKey === 'createBudget' ? 'bg-orange-500 border-orange-500' : ''}
+          >
+            How to Create
+          </Button>
+          <Button
+            type={activeBudgetVideoKey === 'useBudget' ? 'primary' : 'default'}
+            onClick={() => setActiveBudgetVideoKey('useBudget')}
+            className={activeBudgetVideoKey === 'useBudget' ? 'bg-orange-500 border-orange-500' : ''}
+          >
+            How to Use
+          </Button>
+        </div>
         <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
           <iframe
             style={{
@@ -848,8 +902,8 @@ const SummaryDashboard = () => {
               height: '100%',
               border: 0
             }}
-            src="https://www.youtube.com/embed/2-9RvD6wQq8"
-            title="Weekly Budgeted Dashboard Tutorial"
+            src={BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.embedUrl || BUDGET_TUTORIAL_VIDEOS.createBudget.embedUrl}
+            title={BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.title || BUDGET_TUTORIAL_VIDEOS.createBudget.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />

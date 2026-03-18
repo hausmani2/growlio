@@ -5,7 +5,11 @@ import {
   CloseCircleOutlined, 
   ReloadOutlined,
   InfoCircleOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  ShopOutlined,
+  GlobalOutlined,
+  DollarOutlined,
+  SafetyCertificateOutlined
 } from '@ant-design/icons';
 import useStore from '../../store/store';
 
@@ -20,8 +24,11 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
   const squareLoading = useStore((state) => state.squareLoading);
   const squareError = useStore((state) => state.squareError);
   const squareConnectionData = useStore((state) => state.squareConnectionData);
+  const squareMerchantDetail = useStore((state) => state.squareMerchantDetail);
+  const merchantDetailLoading = useStore((state) => state.merchantDetailLoading);
   const lastStatusCheck = useStore((state) => state.lastStatusCheck);
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
+  const fetchSquareMerchantDetail = useStore((state) => state.fetchSquareMerchantDetail);
   
   useEffect(() => {
     // Auto-check status on mount if not already checked
@@ -32,6 +39,16 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
       }
     }
   }, [restaurantId, squareStatus, squareLoading, checkSquareStatus]);
+  
+  useEffect(() => {
+    // Fetch merchant detail when connected
+    if (squareStatus === 'connected') {
+      const restaurantIdToUse = restaurantId || localStorage.getItem('restaurant_id');
+      if (restaurantIdToUse && !squareMerchantDetail && !merchantDetailLoading) {
+        fetchSquareMerchantDetail(restaurantIdToUse);
+      }
+    }
+  }, [squareStatus, restaurantId, squareMerchantDetail, merchantDetailLoading, fetchSquareMerchantDetail]);
   
   const handleRefresh = () => {
     const restaurantIdToUse = restaurantId || localStorage.getItem('restaurant_id');
@@ -174,42 +191,124 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
         />
       )}
       
-      {/* Connection Details */}
-      {isConnected && squareConnectionData && (
+      {/* Connection Details & Merchant Info */}
+      {isConnected && (squareConnectionData || squareMerchantDetail) && (
         <div className="mb-6">
           <Title level={5} className="!mb-4 !text-base font-semibold text-gray-900">
             Connection Details
           </Title>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-            {squareConnectionData.merchant_id && (
-              <div className="flex items-center justify-between">
-                <Text className="text-sm font-medium text-gray-600">Merchant ID</Text>
-                <Text code className="text-sm bg-white px-2 py-1 rounded border border-gray-200">
-                  {squareConnectionData.merchant_id}
-                </Text>
+
+          {merchantDetailLoading && (
+            <div className="flex items-center justify-center gap-3 py-12 rounded-xl bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-100">
+              <Spin size="default" />
+              <Text type="secondary" className="text-sm">Loading merchant details...</Text>
+            </div>
+          )}
+
+          {!merchantDetailLoading && (squareMerchantDetail || squareConnectionData) && (
+            <div className="space-y-4">
+              {/* Merchant Hero Card - Business Name */}
+              {(squareMerchantDetail?.business_name || squareConnectionData) && (
+                <div className="rounded-xl overflow-hidden bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border border-orange-100">
+                  <div className="p-5 flex items-center gap-4">
+                    <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/80 border border-orange-100 flex items-center justify-center shadow-sm">
+                      <ShopOutlined className="text-2xl text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text type="secondary" className="text-xs font-medium uppercase tracking-wider text-orange-600/80">
+                        Connected Business
+                      </Text>
+                      <h3 className="text-lg font-bold text-gray-900 mt-0.5 truncate">
+                        {squareMerchantDetail?.business_name || 'Square Merchant'}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Details Grid - Business Name, Country, Currency, Merchant Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Country */}
+                {squareMerchantDetail?.country && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                      <GlobalOutlined className="text-orange-500 text-base" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide">Country</Text>
+                      <Text className="block text-sm font-medium text-gray-800 mt-1">{squareMerchantDetail.country}</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Currency */}
+                {squareMerchantDetail?.currency && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                      <DollarOutlined className="text-orange-500 text-base" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide">Currency</Text>
+                      <Text className="block text-sm font-medium text-gray-800 mt-1">{squareMerchantDetail.currency}</Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Merchant Status */}
+                {squareMerchantDetail?.merchant_status && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                      <SafetyCertificateOutlined className="text-orange-500 text-base" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide">Merchant Status</Text>
+                      <Tag color="green" className="mt-1">
+                        {squareMerchantDetail.merchant_status}
+                      </Tag>
+                    </div>
+                  </div>
+                )}
+
+                {/* Merchant Created At */}
+                {squareMerchantDetail?.merchant_created_at && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                      <ClockCircleOutlined className="text-orange-500 text-base" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide">Merchant Created</Text>
+                      <Text className="block text-sm font-medium text-gray-800 mt-1">
+                        {new Date(squareMerchantDetail.merchant_created_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </div>
+                  </div>
+                )}
+
+                {/* Connected Since (from status API) */}
+                {squareConnectionData?.connected_at && (
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50/80 border border-gray-100 hover:border-gray-200 transition-colors">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                      <ClockCircleOutlined className="text-orange-500 text-base" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide">Connected Since</Text>
+                      <Text className="block text-sm font-medium text-gray-800 mt-1">
+                        {new Date(squareConnectionData.connected_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            {squareConnectionData.location_id && (
-              <div className="flex items-center justify-between">
-                <Text className="text-sm font-medium text-gray-600">Location ID</Text>
-                <Text code className="text-sm bg-white px-2 py-1 rounded border border-gray-200">
-                  {squareConnectionData.location_id}
-                </Text>
-              </div>
-            )}
-            {squareConnectionData.connected_at && (
-              <div className="flex items-center justify-between">
-                <Text className="text-sm font-medium text-gray-600">Connected Since</Text>
-                <Text className="text-sm text-gray-700">
-                  {new Date(squareConnectionData.connected_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                </Text>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
       

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, Modal, Button, message } from 'antd';
-import { CalendarOutlined, DollarOutlined } from '@ant-design/icons';
+import { CalendarOutlined, DollarOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
@@ -42,6 +42,7 @@ const Dashboard = () => {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardMessage, setDashboardMessage] = useState(null);
   const [weekPickerValue, setWeekPickerValue] = useState(null);
+  const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
@@ -756,9 +757,20 @@ const Dashboard = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
           {/* Left Side - Title and Description */}
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-orange-600 mb-2">
-              Enter Weekly Data
-            </h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold text-orange-600">
+                Enter Weekly Data
+              </h1>
+              <button
+                onClick={() => setIsTutorialModalVisible(true)}
+                className="text-orange-600 hover:text-orange-700 transition-colors"
+                title="Watch tutorial video"
+                aria-label="Watch Close Out Your Day tutorial"
+                type="button"
+              >
+                <InfoCircleOutlined className="text-lg" />
+              </button>
+            </div>
             <p className="text-gray-600 text-lg">
               Manage your restaurant's weekly financial data including sales, costs, and labor information
             </p>
@@ -800,7 +812,24 @@ const Dashboard = () => {
             {/* Only show dashboard components when a week is selected and dashboard data is available */}
             {selectedWeek && dashboardData ? (
               <>
-                
+                {/* Tutorial */}
+                <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="font-medium text-base text-orange-600">
+                      Watch a tutorial on <span className="text-purple-600">How To Enter My Weekly Data</span>
+                    </p>
+                    <button
+                      onClick={() => setIsTutorialModalVisible(true)}
+                      className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2 w-full sm:w-auto"
+                      title="Watch Enter Weekly Data Tutorial"
+                      aria-label="Watch Enter Weekly Data Tutorial"
+                      type="button"
+                    >
+                      Watch Video
+                    </button>
+                  </div>
+                </div>
+
                 {/* Data Tables - Pass dashboard data to all components */}
                 <SalesTable
                   selectedDate={getDateSelection().weekStartDate}
@@ -864,6 +893,33 @@ const Dashboard = () => {
           </Space>
         </div>
       </div>
+
+      <Modal
+        title="Close Out Your Day Tutorial"
+        open={isTutorialModalVisible}
+        onCancel={() => setIsTutorialModalVisible(false)}
+        footer={null}
+        width={900}
+        centered
+        destroyOnClose={true}
+      >
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+          <iframe
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              border: 0
+            }}
+            src="https://www.youtube.com/embed/iEWn2Atanws?rel=0"
+            title="Close Out Your Day Tutorial"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

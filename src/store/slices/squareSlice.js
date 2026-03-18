@@ -13,6 +13,8 @@ const createSquareSlice = (set, get) => ({
   squareError: null,
   squareStatus: null, // 'disconnected' | 'connected' | 'connecting' | 'error'
   squareConnectionData: null,
+  squareMerchantDetail: null,
+  merchantDetailLoading: false,
   lastStatusCheck: null,
   
   // Actions
@@ -20,6 +22,7 @@ const createSquareSlice = (set, get) => ({
   setSquareError: (error) => set({ squareError: error }),
   setSquareStatus: (status) => set({ squareStatus: status }),
   setSquareConnectionData: (data) => set({ squareConnectionData: data }),
+  setSquareMerchantDetail: (data) => set({ squareMerchantDetail: data }),
   
   /**
    * Initiate Square OAuth connection
@@ -98,8 +101,9 @@ const createSquareSlice = (set, get) => ({
       
       message.success('Square POS connected successfully!');
       
-      // Fetch updated status
-      await get().checkSquareStatus();
+      // Fetch updated status (which will also fetch merchant detail when connected)
+      const restaurantId = localStorage.getItem('restaurant_id') || get()?.restaurantId;
+      await get().checkSquareStatus(restaurantId);
       
       return { success: true, data };
     } catch (error) {
@@ -150,6 +154,13 @@ const createSquareSlice = (set, get) => ({
         lastStatusCheck: new Date().toISOString()
       });
       
+      // Fetch merchant details when connected
+      if (isConnected) {
+        get().fetchSquareMerchantDetail(restaurantIdToUse);
+      } else {
+        set({ squareMerchantDetail: null });
+      }
+      
       return { success: true, data, connected: isConnected };
     } catch (error) {
       const errorMessage = error?.response?.data?.message || 
@@ -165,7 +176,8 @@ const createSquareSlice = (set, get) => ({
         squareLoading: false, 
         squareError: isNotFound ? null : errorMessage,
         squareStatus: status,
-        squareConnectionData: null
+        squareConnectionData: null,
+        squareMerchantDetail: null
       });
       
       if (!isNotFound) {
@@ -173,6 +185,39 @@ const createSquareSlice = (set, get) => ({
       }
       
       return { success: false, error: isNotFound ? null : errorMessage, connected: false };
+    }
+  },
+  
+  /**
+   * Fetch Square merchant details (when connected)
+   * @param {number} restaurantId - Restaurant ID
+   */
+  fetchSquareMerchantDetail: async (restaurantId = null) => {
+    const restaurantIdToUse = restaurantId || 
+                              localStorage.getItem('restaurant_id') || 
+                              get()?.restaurantId;
+    
+    if (!restaurantIdToUse) return { success: false };
+    
+    set({ merchantDetailLoading: true });
+    
+    try {
+      const response = await apiGet(`/square_pos/merchant-detail/?restaurant_id=${restaurantIdToUse}`);
+      const data = response.data?.merchant ?? response.data?.data?.merchant ?? response.data?.data ?? response.data;
+      
+      set({ 
+        squareMerchantDetail: data,
+        merchantDetailLoading: false
+      });
+      
+      return { success: true, data };
+    } catch (error) {
+      set({ 
+        squareMerchantDetail: null,
+        merchantDetailLoading: false
+      });
+      console.error('❌ Square merchant detail error:', error);
+      return { success: false };
     }
   },
   
@@ -202,6 +247,7 @@ const createSquareSlice = (set, get) => ({
       set({ 
         squareLoading: false,
         squareConnectionData: null,
+        squareMerchantDetail: null,
         squareStatus: 'disconnected',
         squareError: null
       });
@@ -233,6 +279,8 @@ const createSquareSlice = (set, get) => ({
       squareError: null,
       squareStatus: null,
       squareConnectionData: null,
+      squareMerchantDetail: null,
+      merchantDetailLoading: false,
       lastStatusCheck: null
     });
   }

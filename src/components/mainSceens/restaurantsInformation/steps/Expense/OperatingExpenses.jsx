@@ -290,25 +290,43 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         {/* Expenses by Category */}
         <div className="space-y-6">
           {Object.keys(expensesByCategory).length > 0 ? (
-            Object.entries(expensesByCategory).map(([category, categoryExpenses]) => (
+            (() => {
+              // Prefer targeting the "Rent" row for guidance (matches onboarding screenshots).
+              // Fall back to the first rendered expense row if Rent isn't present.
+              const allExpenseRows = Object.values(expensesByCategory).flat();
+              const hasRentRow = allExpenseRows.some((e) =>
+                String(e?.name || '').trim().toLowerCase() === 'rent'
+              );
+
+              let hasMarkedFallbackFirstExpense = false;
+              return Object.entries(expensesByCategory).map(([category, categoryExpenses]) => (
               <div key={category} className="bg-white border border-gray-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">{category}</h3>
                 <div className="space-y-3">
-                  {categoryExpenses.map((expense) => (
-                    <ExpenseRow
-                      key={expense.id}
-                      expense={expense}
-                      onToggleActive={() => toggleExpenseActive(expense)}
-                      onToggleValueType={() => toggleValueType(expense)}
-                      onToggleExpenseType={() => toggleExpenseType(expense)}
-                      onUpdateAmount={(value) => updateExpense(expense, 'amount', value)}
-                      onUpdateName={(value) => updateExpense(expense, 'name', value)}
-                      onDelete={() => deleteExpense(expense)}
-                    />
-                  ))}
+                  {categoryExpenses.map((expense) => {
+                    const isRent = String(expense?.name || '').trim().toLowerCase() === 'rent';
+                    const isFallbackFirst = !hasMarkedFallbackFirstExpense;
+                    if (!hasMarkedFallbackFirstExpense) hasMarkedFallbackFirstExpense = true;
+
+                    const isGuidanceTarget = hasRentRow ? isRent : isFallbackFirst;
+                    return (
+                      <ExpenseRow
+                        key={expense.id}
+                        expense={expense}
+                        isFirstExpense={isGuidanceTarget}
+                        onToggleActive={() => toggleExpenseActive(expense)}
+                        onToggleValueType={() => toggleValueType(expense)}
+                        onToggleExpenseType={() => toggleExpenseType(expense)}
+                        onUpdateAmount={(value) => updateExpense(expense, 'amount', value)}
+                        onUpdateName={(value) => updateExpense(expense, 'name', value)}
+                        onDelete={() => deleteExpense(expense)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
-            ))
+              ));
+            })()
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p>Loading expenses...</p>
@@ -359,6 +377,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
 // Expense Row Component (similar to simulator)
 const ExpenseRow = ({ 
   expense, 
+  isFirstExpense = false,
   onToggleActive, 
   onToggleValueType, 
   onToggleExpenseType, 
@@ -385,11 +404,13 @@ const ExpenseRow = ({
     }`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <Switch
-            checked={expense.is_active}
-            onChange={onToggleActive}
-            size="small"
-          />
+          <div data-guidance={isFirstExpense ? "expense_first_toggle" : undefined}>
+            <Switch
+              checked={expense.is_active}
+              onChange={onToggleActive}
+              size="small"
+            />
+          </div>
           <Input
             type="text"
             value={expense.name}
@@ -412,7 +433,10 @@ const ExpenseRow = ({
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {/* Value Type Toggle */}
-        <div className="flex items-center justify-between p-2 bg-white rounded border">
+        <div
+          className="flex items-center justify-between p-2 bg-white rounded border"
+          data-guidance={isFirstExpense ? "expense_first_type" : undefined}
+        >
           <span className="text-xs text-gray-600">Type</span>
           <div className="flex items-center gap-1">
             <span className={`text-xs ${!expense.is_value_type ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
@@ -431,7 +455,10 @@ const ExpenseRow = ({
         </div>
 
         {/* Frequency Toggle */}
-        <div className="flex items-center justify-between p-2 bg-white rounded border">
+        <div
+          className="flex items-center justify-between p-2 bg-white rounded border"
+          data-guidance={isFirstExpense ? "expense_first_frequency" : undefined}
+        >
           <span className="text-xs text-gray-600">Frequency</span>
           <div className="flex items-center gap-1">
             <span className={`text-xs ${expense.fixed_expense_type === 'WEEKLY' ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
@@ -450,7 +477,7 @@ const ExpenseRow = ({
         </div>
 
         {/* Amount Input */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2" data-guidance={isFirstExpense ? "expense_first_amount" : undefined}>
           <InputNumber
             placeholder="0.00"
             value={expense.amount}
@@ -470,8 +497,12 @@ const ExpenseRow = ({
       {expense.is_active && expense.amount > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-200">
           <div className="flex justify-between text-xs text-gray-600">
-            <span>Monthly: <strong className="text-orange-600">${monthlyCost.toFixed(2)}</strong></span>
-            <span>Weekly: <strong className="text-orange-600">${weeklyCost.toFixed(2)}</strong></span>
+            <span data-guidance={isFirstExpense ? "total_monthly_expenses" : undefined}>
+              Monthly: <strong className="text-orange-600">${monthlyCost.toFixed(2)}</strong>
+            </span>
+            <span data-guidance={isFirstExpense ? "total_weekly_expenses" : undefined}>
+              Weekly: <strong className="text-orange-600">${weeklyCost.toFixed(2)}</strong>
+            </span>
           </div>
         </div>
       )}

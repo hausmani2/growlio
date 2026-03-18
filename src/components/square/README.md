@@ -76,6 +76,7 @@ The integration uses the following backend endpoints:
 - `GET /square_pos/connect/?restaurant_id={id}` - Initiates Square OAuth connection
 - `POST /square_pos/callback/` - Handles OAuth callback with authorization code
 - `GET /square_pos/{restaurant_id}/status/` - Checks Square connection status
+- `GET /square_pos/merchant-detail/?restaurant_id={id}` - Fetches merchant details (when connected)
 - `POST /square_pos/{restaurant_id}/disconnect/` - Disconnects Square integration
 
 ## OAuth Flow

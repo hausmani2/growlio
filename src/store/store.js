@@ -186,6 +186,8 @@ const useStore = create(
             squareError: null,
             squareStatus: null,
             squareConnectionData: null,
+            squareMerchantDetail: null,
+            merchantDetailLoading: false,
             lastStatusCheck: null
           }));
           

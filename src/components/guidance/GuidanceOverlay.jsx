@@ -44,11 +44,25 @@ const GuidanceOverlay = () => {
     const currentDataPopup = getCurrentDataGuidancePopup();
     if (currentDataPopup) {
       const isWeekSelector = currentDataPopup.key === 'week_selector';
+      const isExpenseGuidanceKey = [
+        'total_weekly_expenses',
+        'total_monthly_expenses',
+        'expense_first_toggle',
+        'expense_first_type',
+        'expense_first_frequency',
+        'expense_first_amount',
+        'expense_first_monthly_total',
+        'expense_first_weekly_total',
+      ].includes(currentDataPopup.key);
       
       const handleDataGuidanceNext = async () => {
         const isLast = currentDataGuidanceIndex === dataGuidancePopups.length - 1;
         const currentPage = location.pathname.includes('/dashboard/profit-loss') ? 'profit_loss' : 
                            location.pathname.includes('/dashboard') ? 'dashboard' : 'budget';
+
+        const isExpensePage =
+          location.pathname.includes('/onboarding/expense') ||
+          location.pathname.includes('/dashboard/expense');
         
         // Check if this is the last dashboard popup (actual-weekly-labor-totals)
         const isLastDashboardPopup = currentDataPopup.key === 'actual-weekly-labor-totals' && 
@@ -82,6 +96,28 @@ const GuidanceOverlay = () => {
               sessionStorage.setItem('guidance_navigate_to_dashboard', 'true');
               navigate('/dashboard');
             }, 100);
+          }
+        } else if (isExpensePage && isExpenseGuidanceKey) {
+          // Expense onboarding guidance: this is controlled by has_guidance_for_expense
+          // We should NOT mark has_seen_user_guidance_data here.
+          if (isLast) {
+            try {
+              if (context.markExpenseGuidanceAsSeen) {
+                await context.markExpenseGuidanceAsSeen();
+              } else {
+                // Fallback: just close locally if context function is missing
+                markDataGuidanceAsSeen();
+              }
+            } catch (e) {
+              // Ensure the overlay closes even if posting fails
+              if (context.markExpenseGuidanceAsSeen) {
+                await context.markExpenseGuidanceAsSeen();
+              } else {
+                markDataGuidanceAsSeen();
+              }
+            }
+          } else {
+            nextDataGuidancePopup();
           }
         } else if (isLastDashboardPopup) {
           // Last dashboard popup - navigate to profit_loss page
@@ -123,6 +159,15 @@ const GuidanceOverlay = () => {
       };
 
       const handleDataGuidanceSkip = () => {
+        // If we are on expense guidance, mark the expense flag instead
+        if (
+          (location.pathname.includes('/onboarding/expense') || location.pathname.includes('/dashboard/expense')) &&
+          isExpenseGuidanceKey &&
+          context.markExpenseGuidanceAsSeen
+        ) {
+          context.markExpenseGuidanceAsSeen();
+          return;
+        }
         markDataGuidanceAsSeen();
       };
 

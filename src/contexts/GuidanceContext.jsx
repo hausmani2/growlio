@@ -36,6 +36,7 @@ export const GuidanceProvider = ({ children }) => {
   const isOnBoardingCompleted = useStore((state) => state.isOnBoardingCompleted);
   const [hasSeenGuidance, setHasSeenGuidance] = useState(null); // null = not checked yet, true = seen, false = not seen
   const [hasSeenDataGuidance, setHasSeenDataGuidance] = useState(null); // null = not checked yet, true = seen, false = not seen
+  const [hasGuidanceForExpense, setHasGuidanceForExpense] = useState(null); // null = not checked yet, true = seen, false = not seen
   const [popups, setPopups] = useState([]);
   const [dataGuidancePopups, setDataGuidancePopups] = useState([]);
   const [currentPopupIndex, setCurrentPopupIndex] = useState(0);
@@ -47,6 +48,40 @@ export const GuidanceProvider = ({ children }) => {
   const hasInitializedRef = useRef(false); // Track if we've initialized guidance status
   const isCheckingStatusRef = useRef(false); // Track if we're currently checking status to prevent infinite loops
   const lastCheckedPathnameRef = useRef(''); // Track last pathname we checked to prevent duplicate calls
+  const hasAutoStartedExpenseGuidanceRef = useRef(false); // Prevent repeated auto-start loops on the expense step
+
+  const getAuthToken = () => {
+    // Axios interceptors often use localStorage; guidance logic must match that reality.
+    const storeToken = useStore.getState().token;
+    const localToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return storeToken || localToken || null;
+  };
+
+  const isGuidanceDebugEnabled = () => {
+    try {
+      return sessionStorage.getItem('debug_guidance') === 'true';
+    } catch {
+      return false;
+    }
+  };
+
+  const isStaticFallbackEnabled = () => {
+    // Default OFF: backend API is source of truth for title/text.
+    // Turn ON only for debugging/emergency:
+    // sessionStorage.setItem('guidance_static_fallback','true')
+    try {
+      return sessionStorage.getItem('guidance_static_fallback') === 'true';
+    } catch {
+      return false;
+    }
+  };
+
+  const debugLog = (...args) => {
+    if (!isGuidanceDebugEnabled()) return;
+    // Use a consistent prefix so it’s easy to filter in devtools
+    // eslint-disable-next-line no-console
+    console.log('[Guidance]', ...args);
+  };
 
   // Map route paths to page names
   const getPageNameFromRoute = (pathname) => {
@@ -91,13 +126,14 @@ export const GuidanceProvider = ({ children }) => {
     }
     
     // Check if user is authenticated before making API call
-    const token = useStore.getState().token;
+    const token = getAuthToken();
     const isAuthenticated = !!token;
     
     // If not authenticated, skip API call and return default values
     if (!isAuthenticated) {
       setHasSeenGuidance(false);
       setHasSeenDataGuidance(false);
+      setHasGuidanceForExpense(false);
       return { hasSeen: false, hasSeenData: false };
     }
     
@@ -109,8 +145,11 @@ export const GuidanceProvider = ({ children }) => {
       // Use false as default instead of true, so guidance shows by default
       const hasSeen = response.data?.has_seen_user_guidance ?? false;
       const hasSeenData = response.data?.has_seen_user_guidance_data ?? false;
+      const hasExpense = response.data?.has_guidance_for_expense ?? false;
       setHasSeenGuidance(hasSeen);
       setHasSeenDataGuidance(hasSeenData);
+      setHasGuidanceForExpense(hasExpense);
+      debugLog('guidance-status', { hasSeen, hasSeenData, hasExpense, path: location?.pathname });
       return { hasSeen, hasSeenData };
     } catch (error) {
       // Handle 401 errors gracefully - user is not authenticated
@@ -119,6 +158,7 @@ export const GuidanceProvider = ({ children }) => {
         // Silently handle 401 - user is not authenticated, which is expected
         setHasSeenGuidance(false);
         setHasSeenDataGuidance(false);
+        setHasGuidanceForExpense(false);
         return { hasSeen: false, hasSeenData: false };
       }
       
@@ -127,6 +167,7 @@ export const GuidanceProvider = ({ children }) => {
       // On error, default to false to allow guidance to show
       setHasSeenGuidance(false);
       setHasSeenDataGuidance(false);
+      setHasGuidanceForExpense(false);
       return { hasSeen: false, hasSeenData: false };
     } finally {
       // Reset the checking flag after the call completes
@@ -446,6 +487,138 @@ export const GuidanceProvider = ({ children }) => {
           text: 'Click "Save & Continue" to complete your onboarding setup. This will save all your information and take you to your dashboard. You\'re all done!',
           is_active: true,
         },
+        // Expense onboarding (field-level) guidance — used as fallback when API popups are missing
+        {
+          id: 101,
+          page: 'onboarding_expense',
+          key: 'total_weekly_expenses',
+          title: 'Total Weekly Expenses',
+          text: 'This is the estimated total of your active operating expenses converted to a weekly view (monthly expenses are divided by 4.33). Use this to compare against weekly sales and plan week-to-week performance.',
+          is_active: true,
+        },
+        {
+          id: 102,
+          page: 'onboarding_expense',
+          key: 'total_monthly_expenses',
+          title: 'Total Monthly Expenses',
+          text: 'This is the estimated total of your active operating expenses converted to a monthly view (weekly expenses are scaled using 4.33 weeks per month). Use this to understand your baseline monthly cash needs.',
+          is_active: true,
+        },
+        {
+          id: 103,
+          page: 'onboarding_expense',
+          key: 'expense_first_toggle',
+          title: 'Turn an Expense On/Off',
+          text: 'Use this switch to include or exclude an expense from your totals. Turn it off for seasonal, paused, or not-yet-applicable expenses—Growlio will keep it saved but won’t count it in totals.',
+          is_active: true,
+        },
+        {
+          id: 104,
+          page: 'onboarding_expense',
+          key: 'expense_first_type',
+          title: 'Choose Dollar vs Percent',
+          text: 'Select whether this expense is a fixed dollar amount ($) or a percentage (%). Use % for items tied to sales (like royalty/ad fund), and $ for standard bills (like rent, utilities, subscriptions).',
+          is_active: true,
+        },
+        {
+          id: 105,
+          page: 'onboarding_expense',
+          key: 'expense_first_frequency',
+          title: 'Set Weekly vs Monthly',
+          text: 'Choose how often this expense occurs. Pick Weekly for costs billed each week, and Monthly for costs billed once per month—Growlio will automatically convert it into both weekly and monthly totals.',
+          is_active: true,
+        },
+        {
+          id: 106,
+          page: 'onboarding_expense',
+          key: 'expense_first_amount',
+          title: 'Enter the Amount',
+          text: 'Enter the expense value based on the selected type and frequency. If you chose %, enter a percent value (e.g., 6.5). If you chose $, enter the dollar amount—Growlio will calculate the weekly/monthly impact automatically.',
+          is_active: true,
+        },
+        {
+          id: 107,
+          page: 'onboarding_expense',
+          key: 'expense_first_monthly_total',
+          title: 'Monthly Total for This Expense',
+          text: 'This shows the monthly impact of this expense based on your selections. If you entered a weekly amount, Growlio converts it to monthly using 4.33 weeks per month.',
+          is_active: true,
+        },
+        {
+          id: 108,
+          page: 'onboarding_expense',
+          key: 'expense_first_weekly_total',
+          title: 'Weekly Total for This Expense',
+          text: 'This shows the weekly impact of this expense based on your selections. If you entered a monthly amount, Growlio converts it to weekly by dividing by 4.33.',
+          is_active: true,
+        },
+      ],
+      // Dashboard "Operating Expenses" page uses the same UI anchors; provide the same fallback.
+      'expense': [
+        {
+          id: 101,
+          page: 'expense',
+          key: 'total_weekly_expenses',
+          title: 'Total Weekly Expenses',
+          text: 'This is the estimated total of your active operating expenses converted to a weekly view (monthly expenses are divided by 4.33). Use this to compare against weekly sales and plan week-to-week performance.',
+          is_active: true,
+        },
+        {
+          id: 102,
+          page: 'expense',
+          key: 'total_monthly_expenses',
+          title: 'Total Monthly Expenses',
+          text: 'This is the estimated total of your active operating expenses converted to a monthly view (weekly expenses are scaled using 4.33 weeks per month). Use this to understand your baseline monthly cash needs.',
+          is_active: true,
+        },
+        {
+          id: 103,
+          page: 'expense',
+          key: 'expense_first_toggle',
+          title: 'Turn an Expense On/Off',
+          text: 'Use this switch to include or exclude an expense from your totals. Turn it off for seasonal, paused, or not-yet-applicable expenses—Growlio will keep it saved but won’t count it in totals.',
+          is_active: true,
+        },
+        {
+          id: 104,
+          page: 'expense',
+          key: 'expense_first_type',
+          title: 'Choose Dollar vs Percent',
+          text: 'Select whether this expense is a fixed dollar amount ($) or a percentage (%). Use % for items tied to sales (like royalty/ad fund), and $ for standard bills (like rent, utilities, subscriptions).',
+          is_active: true,
+        },
+        {
+          id: 105,
+          page: 'expense',
+          key: 'expense_first_frequency',
+          title: 'Set Weekly vs Monthly',
+          text: 'Choose how often this expense occurs. Pick Weekly for costs billed each week, and Monthly for costs billed once per month—Growlio will automatically convert it into both weekly and monthly totals.',
+          is_active: true,
+        },
+        {
+          id: 106,
+          page: 'expense',
+          key: 'expense_first_amount',
+          title: 'Enter the Amount',
+          text: 'Enter the expense value based on the selected type and frequency. If you chose %, enter a percent value (e.g., 6.5). If you chose $, enter the dollar amount—Growlio will calculate the weekly/monthly impact automatically.',
+          is_active: true,
+        },
+        {
+          id: 107,
+          page: 'expense',
+          key: 'expense_first_monthly_total',
+          title: 'Monthly Total for This Expense',
+          text: 'This shows the monthly impact of this expense based on your selections. If you entered a weekly amount, Growlio converts it to monthly using 4.33 weeks per month.',
+          is_active: true,
+        },
+        {
+          id: 108,
+          page: 'expense',
+          key: 'expense_first_weekly_total',
+          title: 'Weekly Total for This Expense',
+          text: 'This shows the weekly impact of this expense based on your selections. If you entered a monthly amount, Growlio converts it to weekly by dividing by 4.33.',
+          is_active: true,
+        },
       ],
       'budget': [
         {
@@ -507,6 +680,20 @@ export const GuidanceProvider = ({ children }) => {
     try {
       const response = await apiGet('/admin_access/guidance-popups/');
       const allPopups = response.data || [];
+      debugLog('fetchPopups: api returned', {
+        pageName,
+        isDataGuidance,
+        total: allPopups.length,
+        keys: allPopups.map((p) => ({ page: p.page, key: p.key, is_active: p.is_active })),
+      });
+
+      // Some screens reuse the same UI but have different "page" names in routes.
+      // Allow backend to configure once (e.g., onboarding_expense) and still display on dashboard expense page.
+      const resolvePageNames = (name) => {
+        if (name === 'expense') return ['expense', 'onboarding_expense'];
+        return [name];
+      };
+      const acceptablePages = resolvePageNames(pageName);
       
       if (isDataGuidance) {
         // Data guidance keys for all pages
@@ -515,6 +702,7 @@ export const GuidanceProvider = ({ children }) => {
         //   actual-weekly-labor-performance, actual-weekly-labor-totals
         // Profit Loss page: change-display-format, expand-category-details
         // Budget page: summary_table, week_selector
+        // Onboarding Expense page: first expense row + totals guidance (custom)
         const dataGuidanceKeys = [
           'close-your-days',
           'add-actual-weekly-sales',
@@ -527,39 +715,72 @@ export const GuidanceProvider = ({ children }) => {
           'change-display-format',        // Profit Loss page
           'expand-category-details',      // Profit Loss page
           'summary_table',
-          'week_selector'
+          'week_selector',
+          // Onboarding expense (only used when pageName === onboarding_expense)
+          'total_weekly_expenses',
+          'total_monthly_expenses',
+          'expense_first_toggle',
+          'expense_first_type',
+          'expense_first_frequency',
+          'expense_first_amount',
+          'expense_first_monthly_total',
+          'expense_first_weekly_total',
         ];
         
         // Filter popups by current page and ensure key is in allowed list
         const filteredPopups = allPopups
           .filter(popup => 
-            popup.page === pageName && 
+            acceptablePages.includes(popup.page) &&
             popup.is_active === true && 
             dataGuidanceKeys.includes(popup.key)
           )
           .sort((a, b) => a.id - b.id);
-        
-        setDataGuidancePopups(filteredPopups);
-        return filteredPopups;
+        debugLog('fetchPopups: data guidance filter', {
+          pageName,
+          acceptablePages,
+          allowedKeys: dataGuidanceKeys,
+          matched: filteredPopups.map((p) => p.key),
+          dropped: allPopups
+            .filter((p) => acceptablePages.includes(p.page) && p.is_active === true && !dataGuidanceKeys.includes(p.key))
+            .map((p) => p.key),
+        });
+
+        // Default behavior: backend API is the source of truth.
+        // Optional fallback (OFF by default) can be enabled via sessionStorage for debugging.
+        const shouldFallbackToStatic =
+          isStaticFallbackEnabled() &&
+          (pageName === 'onboarding_expense' || pageName === 'expense') &&
+          filteredPopups.length === 0;
+        const finalPopups = shouldFallbackToStatic
+          ? (getStaticPopups(pageName) || []).filter((p) => dataGuidanceKeys.includes(p.key) && p.is_active === true)
+          : filteredPopups;
+
+        setDataGuidancePopups(finalPopups);
+        return finalPopups;
       } else {
-        // Regular guidance: sidebar popups + week_selector (only on budget page)
-        const allowedSidebarKeys = ['sidebar_budget', 'sidebar_dashboard', 'sidebar_profit-loss', 'sidebar_profit_loss', 'sidebar_onboarding', 'week_selector', 'summary_table'];
-        
+        // Regular guidance: allow ALL active popups for this page.
+        // The "admin_access/guidance-popups" endpoint is already the source of truth.
+        // A popup will still only render if a DOM element exists with data-guidance="<popup.key>".
         const filteredPopups = allPopups
-          .filter(popup => 
-            popup.page === pageName && 
-            popup.is_active === true && 
-            allowedSidebarKeys.includes(popup.key)
+          .filter((popup) => acceptablePages.includes(popup.page) && popup.is_active === true)
+          .map((popup) =>
+            // Backward compatibility for older key naming
+            popup.key === 'sidebar_profit_loss' ? { ...popup, key: 'sidebar_profit-loss' } : popup
           )
-          .map(popup => popup.key === 'sidebar_profit_loss' ? { ...popup, key: 'sidebar_profit-loss' } : popup)
           .sort((a, b) => {
-            // summary_table first, then sidebar items, then week_selector last
+            // Keep important popups in sensible order when present
             if (a.key === 'summary_table' && b.key !== 'summary_table') return -1;
             if (b.key === 'summary_table' && a.key !== 'summary_table') return 1;
             if (a.key === 'week_selector' && b.key !== 'week_selector') return 1;
             if (b.key === 'week_selector' && a.key !== 'week_selector') return -1;
             return a.id - b.id;
           });
+
+        debugLog('fetchPopups: regular guidance filter', {
+          pageName,
+          acceptablePages,
+          matched: filteredPopups.map((p) => p.key),
+        });
         
         setPopups(filteredPopups);
         return filteredPopups;
@@ -567,6 +788,12 @@ export const GuidanceProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Failed to fetch guidance popups:', error);
       if (isDataGuidance) {
+        // Optional fallback on error (OFF by default)
+        if (isStaticFallbackEnabled() && (pageName === 'onboarding_expense' || pageName === 'expense')) {
+          const fallback = (getStaticPopups(pageName) || []).filter((p) => p.is_active === true);
+          setDataGuidancePopups(fallback);
+          return fallback;
+        }
         setDataGuidancePopups([]);
       } else {
         setPopups([]);
@@ -575,10 +802,121 @@ export const GuidanceProvider = ({ children }) => {
     }
   }, []);
 
+  const markExpenseGuidanceAsSeen = useCallback(async () => {
+    const token = getAuthToken();
+    const isAuthenticated = !!token;
+
+    setHasGuidanceForExpense(true);
+    setIsDataGuidanceActive(false);
+    setDataGuidancePopups([]);
+    setCurrentDataGuidanceIndex(0);
+    hasAutoStartedExpenseGuidanceRef.current = true;
+
+    if (!isAuthenticated) {
+      debugLog('markExpenseGuidanceAsSeen (unauthenticated) -> local only');
+      return;
+    }
+
+    try {
+      const currentStatus = await apiGet('/authentication/user/guidance-status/');
+      await apiPost('/authentication/user/guidance-status/', {
+        has_seen_user_guidance: currentStatus.data?.has_seen_user_guidance ?? false,
+        has_seen_user_guidance_data: currentStatus.data?.has_seen_user_guidance_data ?? false,
+        has_guidance_for_expense: true,
+      });
+      debugLog('markExpenseGuidanceAsSeen -> posted');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        debugLog('markExpenseGuidanceAsSeen -> 401, local only');
+        return;
+      }
+      console.error('❌ Failed to mark expense guidance as seen:', error);
+    }
+  }, []);
+
+  const startExpenseGuidance = useCallback(async () => {
+    const pageName = getPageNameFromRoute(location.pathname);
+    if (pageName !== 'onboarding_expense' && pageName !== 'expense') return;
+
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
+    if (publicRoutes.includes(location.pathname)) return;
+
+    if (hasGuidanceForExpense === true) {
+      debugLog('startExpenseGuidance -> already seen, skipping');
+      return;
+    }
+
+    // If status hasn't loaded yet, let the normal flow load it first
+    if (hasGuidanceForExpense === null) {
+      debugLog('startExpenseGuidance -> status not ready (null), skipping for now');
+      return;
+    }
+
+    // Prevent repeating on rerenders / route refresh
+    if (hasAutoStartedExpenseGuidanceRef.current) {
+      debugLog('startExpenseGuidance -> already auto-started in this session, skipping');
+      return;
+    }
+
+    // Ensure the overlay is allowed to render while we start the tour.
+    // GuidanceOverlay returns null when `loading` is true.
+    setLoading(false);
+
+    // Fetch expense guidance popups via the "data guidance" channel so GuidanceOverlay can render them
+    debugLog('startExpenseGuidance -> fetching popups');
+    const pagePopups = await fetchPopups(pageName, true);
+
+    if (pagePopups.length === 0) {
+      debugLog('startExpenseGuidance -> no popups returned from API');
+      setIsDataGuidanceActive(false);
+      setLoading(false);
+      return;
+    }
+
+    let retryCount = 0;
+    const maxRetries = 20;
+
+    const checkForElements = () => {
+      const keysOnPage = Array.from(document.querySelectorAll('[data-guidance]')).map((el) =>
+        el.getAttribute('data-guidance')
+      );
+      const uniqueKeys = [...new Set(keysOnPage)];
+      const valid = pagePopups.filter((p) => uniqueKeys.includes(p.key));
+
+      debugLog('startExpenseGuidance -> element check', {
+        retryCount,
+        foundAnchors: uniqueKeys,
+        popupsFromApi: pagePopups.map((p) => p.key),
+        validPopups: valid.map((p) => p.key),
+      });
+
+      if (valid.length > 0) {
+        setDataGuidancePopups(valid);
+        setCurrentDataGuidanceIndex(0);
+        setIsDataGuidanceActive(true);
+        hasAutoStartedExpenseGuidanceRef.current = true;
+        setLoading(false);
+        debugLog('startExpenseGuidance -> started', { count: valid.length });
+        return;
+      }
+
+      if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(checkForElements, 500);
+      } else {
+        debugLog('startExpenseGuidance -> failed: anchors not found');
+        setIsDataGuidanceActive(false);
+        setLoading(false);
+      }
+    };
+
+    setTimeout(checkForElements, 1200);
+  }, [location.pathname, hasGuidanceForExpense, fetchPopups]);
+
   // Mark guidance as completed
   const markGuidanceAsSeen = useCallback(async () => {
     // Check if user is authenticated before making API call
-    const token = useStore.getState().token;
+    const token = getAuthToken();
     const isAuthenticated = !!token;
     
     if (!isAuthenticated) {
@@ -626,7 +964,7 @@ export const GuidanceProvider = ({ children }) => {
   // Mark data guidance as completed
   const markDataGuidanceAsSeen = useCallback(async () => {
     // Check if user is authenticated before making API call
-    const token = useStore.getState().token;
+    const token = getAuthToken();
     const isAuthenticated = !!token;
     
     if (!isAuthenticated) {
@@ -745,6 +1083,7 @@ export const GuidanceProvider = ({ children }) => {
   const startGuidance = useCallback(async (forceShow = false) => {
     const pageName = getPageNameFromRoute(location.pathname);
     setCurrentPage(pageName);
+    debugLog('startGuidance: invoked', { forceShow, pageName, path: location.pathname, hasSeenGuidance, hasSeenDataGuidance });
     
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     if (publicRoutes.includes(location.pathname)) {
@@ -819,6 +1158,13 @@ export const GuidanceProvider = ({ children }) => {
         );
         
         const validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
+        debugLog('startGuidance: dom check', {
+          pageName,
+          popupsFromApi: pagePopups.map((p) => p.key),
+          anchorsOnPage: allElements,
+          validPopups: validPopups.map((p) => p.key),
+          invalidPopupsMissingAnchors: pagePopups.filter((p) => !allElements.includes(p.key)).map((p) => p.key),
+        });
         
         if (validPopups.length > 0) {
           setPopups(validPopups);
@@ -885,7 +1231,7 @@ export const GuidanceProvider = ({ children }) => {
     const isPublicRoute = publicRoutes.includes(location.pathname);
     
     // Check if user is authenticated (has token)
-    const token = useStore.getState().token;
+    const token = getAuthToken();
     const isAuthenticated = !!token;
     
     // Only check guidance status if user is authenticated and not on a public route
@@ -903,12 +1249,15 @@ export const GuidanceProvider = ({ children }) => {
           const response = await apiGet('/authentication/user/guidance-status/');
           const hasSeen = response.data?.has_seen_user_guidance ?? false;
           const hasSeenData = response.data?.has_seen_user_guidance_data ?? false;
+          const hasExpense = response.data?.has_guidance_for_expense ?? false;
                   
           // Simply use the API response - NO automatic marking
           // The backend should handle marking existing users as having seen guidance
           // API call to mark as seen ONLY happens when user completes/skips guidance
           setHasSeenGuidance(hasSeen);
           setHasSeenDataGuidance(hasSeenData);
+          setHasGuidanceForExpense(hasExpense);
+          debugLog('initialize guidance-status', { hasSeen, hasSeenData, hasExpense });
         } catch (error) {
           console.error('❌ Failed to initialize guidance status:', error);
           // On error, default based on onboarding status
@@ -919,10 +1268,12 @@ export const GuidanceProvider = ({ children }) => {
             // Existing user - backend should have marked them, but if API fails, assume true
             setHasSeenGuidance(true);
             setHasSeenDataGuidance(true);
+            setHasGuidanceForExpense(true);
           } else {
             // New user - allow them to see guidance
             setHasSeenGuidance(false);
             setHasSeenDataGuidance(false);
+            setHasGuidanceForExpense(false);
           }
         }
       };
@@ -933,6 +1284,10 @@ export const GuidanceProvider = ({ children }) => {
 
   // Initialize guidance on route change
   useEffect(() => {
+    if (isGuidanceDebugEnabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[Guidance] TRACE ENABLED', { path: location.pathname });
+    }
     // Prevent multiple simultaneous calls
     if (isCheckingStatusRef.current) {
       return;
@@ -947,7 +1302,7 @@ export const GuidanceProvider = ({ children }) => {
     // Check if user is authenticated and not on a public route
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     const isPublicRoute = publicRoutes.includes(location.pathname);
-    const token = useStore.getState().token;
+    const token = getAuthToken();
     const isAuthenticated = !!token;
     
     // Skip guidance checks on public routes or when not authenticated
@@ -1019,14 +1374,13 @@ export const GuidanceProvider = ({ children }) => {
     const now = Date.now();
     const thirtySeconds = 30 * 1000; // 30 seconds cache
     
-    // Prevent duplicate calls for the same pathname
-    if (lastCheckedPathnameRef.current === location.pathname) {
-      setLoading(false);
-      return;
-    }
+    // If we already checked status for this pathname, skip ONLY the status refresh.
+    // Do NOT return early here, because returning early can prevent startGuidance()
+    // from running (especially in React StrictMode where effects mount/unmount twice).
+    const alreadyCheckedThisPath = lastCheckedPathnameRef.current === location.pathname;
     
     // Only refresh if it's been more than 30 seconds since last check
-    if (!lastCheckTime || (now - parseInt(lastCheckTime)) > thirtySeconds) {
+    if (!alreadyCheckedThisPath && (!lastCheckTime || (now - parseInt(lastCheckTime)) > thirtySeconds)) {
       const refreshStatus = async () => {
         // Prevent concurrent calls
         if (isCheckingStatusRef.current) {
@@ -1050,16 +1404,37 @@ export const GuidanceProvider = ({ children }) => {
     } else {
       // Use cached status, just update loading state
       setLoading(false);
-      lastCheckedPathnameRef.current = location.pathname;
+      if (!alreadyCheckedThisPath) {
+        lastCheckedPathnameRef.current = location.pathname;
+      }
     }
     
     const timer = setTimeout(() => {
+      debugLog('route-change effect -> calling startGuidance', { path: location.pathname });
       startGuidance();
     }, 1000);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // Auto-start expense guidance when backend says it’s not completed
+  useEffect(() => {
+    const pageName = getPageNameFromRoute(location.pathname);
+    if (pageName !== 'onboarding_expense' && pageName !== 'expense') {
+      // Reset per-session flag when leaving expense page so a future visit can re-run if backend still says false
+      hasAutoStartedExpenseGuidanceRef.current = false;
+      return;
+    }
+
+    // Only auto-start when explicitly false (backend controlled)
+    if (hasGuidanceForExpense === false) {
+      debugLog('auto-start condition met (hasGuidanceForExpense=false)');
+      startExpenseGuidance();
+    } else {
+      debugLog('auto-start skipped', { hasGuidanceForExpense });
+    }
+  }, [location.pathname, hasGuidanceForExpense, startExpenseGuidance]);
 
   // Listen for force show guidance event
   useEffect(() => {
@@ -1094,6 +1469,7 @@ export const GuidanceProvider = ({ children }) => {
   const value = {
     hasSeenGuidance,
     hasSeenDataGuidance,
+    hasGuidanceForExpense,
     popups,
     dataGuidancePopups,
     currentPopupIndex,
@@ -1111,8 +1487,10 @@ export const GuidanceProvider = ({ children }) => {
     checkElementExists,
     startGuidance: (forceShow) => startGuidance(forceShow),
     startDataGuidance: (forceShow) => startDataGuidance(forceShow),
+    startExpenseGuidance,
     markGuidanceAsSeen,
     markDataGuidanceAsSeen,
+    markExpenseGuidanceAsSeen,
     setHasSeenGuidance, // Expose setter for external use
     setHasSeenDataGuidance, // Expose setter for external use
   };

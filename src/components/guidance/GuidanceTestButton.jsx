@@ -11,11 +11,13 @@ const GuidanceTestButton = () => {
   const { 
     startGuidance, 
     startDataGuidance,
+    startExpenseGuidance,
     isActive, 
     isDataGuidanceActive,
     loading, 
     hasSeenGuidance,
     hasSeenDataGuidance,
+    hasGuidanceForExpense,
     popups, 
     dataGuidancePopups,
     currentPage 
@@ -66,6 +68,37 @@ const GuidanceTestButton = () => {
       await startDataGuidance(true);
     } catch (error) {
       console.error('Failed to force show data guidance:', error);
+    }
+  };
+
+  const handleForceShowExpenseGuidance = async () => {
+    try {
+      if (startExpenseGuidance) {
+        await startExpenseGuidance();
+      } else {
+        alert('startExpenseGuidance is not available in context.');
+      }
+    } catch (error) {
+      console.error('Failed to force show expense guidance:', error);
+    }
+  };
+
+  const handleResetExpenseGuidance = async () => {
+    try {
+      const currentStatus = await apiGet('/authentication/user/guidance-status/');
+      await apiPost('/authentication/user/guidance-status/', {
+        has_seen_user_guidance: currentStatus.data?.has_seen_user_guidance ?? false,
+        has_seen_user_guidance_data: currentStatus.data?.has_seen_user_guidance_data ?? false,
+        has_guidance_for_expense: false,
+      });
+      alert('Expense guidance reset to false. Refresh the expense page to re-trigger.');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        alert('Not authenticated. Please log in first.');
+        return;
+      }
+      console.error('Failed to reset expense guidance:', error);
+      alert('Failed to reset expense guidance. Check console for details.');
     }
   };
 
@@ -123,6 +156,21 @@ const GuidanceTestButton = () => {
           🎯 Force Data Guidance
         </Button>
         <Button
+          onClick={handleForceShowExpenseGuidance}
+          disabled={loading}
+          className="bg-purple-600 hover:bg-purple-700 w-full font-semibold text-white"
+          size="small"
+        >
+          💼 Force Expense Guidance
+        </Button>
+        <Button
+          onClick={handleResetExpenseGuidance}
+          size="small"
+          className="w-full"
+        >
+          ♻️ Reset Expense Flag
+        </Button>
+        <Button
           onClick={handleCheckPopups}
           size="small"
           className="w-full"
@@ -158,6 +206,12 @@ const GuidanceTestButton = () => {
             <span>Data Seen:</span>
             <span className={hasSeenDataGuidance ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
               {hasSeenDataGuidance ? '✅ Yes' : '❌ No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Expense Seen:</span>
+            <span className={hasGuidanceForExpense ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>
+              {hasGuidanceForExpense ? '✅ Yes' : '❌ No'}
             </span>
           </div>
           <div className="flex justify-between">

@@ -310,6 +310,14 @@ const GuidancePopupsAdmin = () => {
           { label: 'Variable Costs Section', value: 'variable_costs_section' },
           { label: 'Total Expense Title', value: 'total_expense_title' },
           { label: 'Total Expense Display', value: 'total_expense_display' },
+          { label: 'Total Weekly Expenses', value: 'total_weekly_expenses' },
+          { label: 'Total Monthly Expenses', value: 'total_monthly_expenses' },
+          { label: 'First Expense: On/Off Toggle', value: 'expense_first_toggle' },
+          { label: 'First Expense: Type Toggle', value: 'expense_first_type' },
+          { label: 'First Expense: Frequency Toggle', value: 'expense_first_frequency' },
+          { label: 'First Expense: Amount Input', value: 'expense_first_amount' },
+          { label: 'First Expense: Monthly Total', value: 'expense_first_monthly_total' },
+          { label: 'First Expense: Weekly Total', value: 'expense_first_weekly_total' },
           { label: 'Expense Continue Button', value: 'expense_continue_button' },
         ];
       default:
