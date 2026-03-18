@@ -7,6 +7,8 @@ const createPlansSlice = (set, get) => ({
   packages: [],
   currentPackage: null,
   subscriptionDetails: null,
+  subscriptionDetailsLoading: false,
+  subscriptionDetailsTimestamp: null,
   loading: false,
   error: null,
   
@@ -16,6 +18,7 @@ const createPlansSlice = (set, get) => ({
   setPackages: (packages) => set({ packages }),
   setCurrentPackage: (currentPackage) => set({ currentPackage }),
   setSubscriptionDetails: (subscriptionDetails) => set({ subscriptionDetails }),
+  setSubscriptionDetailsLoading: (subscriptionDetailsLoading) => set({ subscriptionDetailsLoading }),
   
   // Fetch all available packages
   fetchPackages: async (forceRefresh = false) => {
@@ -208,13 +211,27 @@ const createPlansSlice = (set, get) => ({
 
   // Fetch current subscription details (package + restaurant + billing)
   // Source of truth for max_locations and addable locations
-  fetchCurrentSubscriptionDetails: async () => {
+  fetchCurrentSubscriptionDetails: async (forceRefresh = false) => {
+    const state = get();
+    const now = Date.now();
+    const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+    if (!forceRefresh && state.subscriptionDetails && state.subscriptionDetailsTimestamp) {
+      const age = now - state.subscriptionDetailsTimestamp;
+      if (age < CACHE_DURATION) {
+        return { success: true, data: state.subscriptionDetails };
+      }
+    }
+
     try {
+      set({ subscriptionDetailsLoading: true, error: null });
       const response = await apiGet('/restaurant_v2/subscription/current/');
       const subscriptionData = response.data?.data || response.data || null;
 
       set({
         subscriptionDetails: subscriptionData,
+        subscriptionDetailsTimestamp: now,
+        subscriptionDetailsLoading: false,
         error: null
       });
 
@@ -232,7 +249,7 @@ const createPlansSlice = (set, get) => ({
 
       set({
         error: errorMessage,
-        subscriptionDetails: null
+        subscriptionDetailsLoading: false
       });
 
       return { success: false, error: errorMessage };
@@ -318,6 +335,8 @@ const createPlansSlice = (set, get) => ({
       packages: [],
       currentPackage: null,
       subscriptionDetails: null,
+      subscriptionDetailsLoading: false,
+      subscriptionDetailsTimestamp: null,
       loading: false,
       error: null
     });

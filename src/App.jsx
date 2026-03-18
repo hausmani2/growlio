@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import useStore from './store/store';
@@ -186,6 +186,8 @@ function App() {
   const syncAuthFromStorage = useStore((state) => state.syncAuthFromStorage);
   const isAuthenticated = useStore((state) => state.isAuthenticated);
   const token = useStore((state) => state.token);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const hasBootRefreshedSubscriptionRef = useRef(false);
 
   // Use the same onboarding status hook as Wrapper.jsx for consistency
   const { 
@@ -253,6 +255,23 @@ function App() {
       console.error('❌ App - Auth initialization failed:', error);
     }
   }, [initializeAuth]);
+
+  // Professional app behavior: refresh subscription/current once on hard reload
+  // so plan-gated UI (Square POS, Export, etc.) is accurate immediately.
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      hasBootRefreshedSubscriptionRef.current = false;
+      return;
+    }
+    if (hasBootRefreshedSubscriptionRef.current) return;
+    hasBootRefreshedSubscriptionRef.current = true;
+
+    // Only refresh if a restaurant is selected (subscription/current is restaurant-scoped)
+    const restaurantId = localStorage.getItem('restaurant_id');
+    if (!restaurantId) return;
+
+    fetchCurrentSubscriptionDetails?.(true);
+  }, [isAuthenticated, token, fetchCurrentSubscriptionDetails]);
   
   // Listen for storage events to sync auth state across tabs
   useEffect(() => {

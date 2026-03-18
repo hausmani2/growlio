@@ -17,7 +17,8 @@ const PlansPage = () => {
     error: packagesError,
     fetchPackages,
     getCurrentPackage,
-    setCurrentPackage
+    setCurrentPackage,
+    fetchCurrentSubscriptionDetails
   } = useStore();
   
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -108,8 +109,9 @@ const PlansPage = () => {
   const handlePlanChangeSuccess = () => {
     setIsModalVisible(false);
     setSelectedPlan(null);
-    // Refresh current package
-    getCurrentPackage();
+    // Refresh current package + subscription/current so the whole app updates immediately
+    getCurrentPackage(true);
+    fetchCurrentSubscriptionDetails?.(true);
     message.success('Subscription plan updated successfully!');
   };
 

@@ -40,30 +40,42 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   // Subscription / plan gating (POS integration)
   const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
   const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const currentPackage = useStore((state) => state.currentPackage);
   const hasFetchedSubscriptionRef = useRef(false);
+  const lastSubscriptionRestaurantIdRef = useRef(null);
+  const restaurantIdForPlan = localStorage.getItem('restaurant_id');
 
   useEffect(() => {
-    // Fetch once per session (safe: API returns current subscription)
     if (!showSidebar) return;
-    if (hasFetchedSubscriptionRef.current) return;
-    if (subscriptionDetails) {
-      hasFetchedSubscriptionRef.current = true;
-      return;
+    // If restaurant changes, re-fetch subscription/current for correct gating
+    if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
+      hasFetchedSubscriptionRef.current = false;
+      lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
     }
+    if (hasFetchedSubscriptionRef.current) return;
     hasFetchedSubscriptionRef.current = true;
-    fetchCurrentSubscriptionDetails?.();
-  }, [showSidebar, subscriptionDetails, fetchCurrentSubscriptionDetails]);
+    fetchCurrentSubscriptionDetails?.(false);
+  }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
 
   const posEnabled = useMemo(() => {
     const pkg = subscriptionDetails?.package || null;
-    if (!pkg) return true; // fail-open until we know; ProtectedRoutes will hard-block for direct URL
-    if ((pkg?.name || '').toLowerCase() === 'lite') return false;
-    // Prefer explicit feature flag if present
-    if (typeof pkg?.features?.pos_integration === 'boolean') return pkg.features.pos_integration;
-    // Fallback allowlist
-    return ['grow', 'pro'].includes((pkg?.name || '').toLowerCase());
-  }, [subscriptionDetails]);
+    const pkgName = (pkg?.name || '').toLowerCase();
+    const featureFlag = pkg?.features?.pos_integration;
+
+    if (pkg) {
+      if (pkgName === 'lite') return false;
+      if (typeof featureFlag === 'boolean') return featureFlag;
+      return ['grow', 'pro'].includes(pkgName);
+    }
+
+    const cpName = (currentPackage?.name || '').toLowerCase();
+    if (cpName) return cpName !== 'lite';
+
+    // If we still don't know, fail closed while loading; otherwise allow.
+    return subscriptionDetailsLoading ? false : true;
+  }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
 
   const handleSquarePosClick = () => {
     if (!posEnabled) {
