@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Card, Space, Typography, Tag, Button, Spin, Alert, Divider } from 'antd';
+import { Card, Space, Typography, Tag, Button, Spin, Alert, Divider, Popconfirm } from 'antd';
 import { 
   CheckCircleOutlined, 
   CloseCircleOutlined, 
@@ -29,6 +29,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
   const lastStatusCheck = useStore((state) => state.lastStatusCheck);
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
   const fetchSquareMerchantDetail = useStore((state) => state.fetchSquareMerchantDetail);
+  const disconnectSquare = useStore((state) => state.disconnectSquare);
   
   useEffect(() => {
     // Auto-check status on mount if not already checked
@@ -55,6 +56,11 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
     if (restaurantIdToUse) {
       checkSquareStatus(restaurantIdToUse);
     }
+  };
+
+  const handleDisconnect = async () => {
+    const restaurantIdToUse = restaurantId || localStorage.getItem('restaurant_id');
+    await disconnectSquare(restaurantIdToUse);
   };
   
   const getStatusConfig = () => {
@@ -144,17 +150,38 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
             </Text>
           </div>
         </div>
-        {showRefresh && (
-          <Button 
-            icon={<ReloadOutlined />} 
-            onClick={handleRefresh}
-            loading={squareLoading}
-            size="middle"
-            className="border-gray-300 hover:border-orange-400 hover:text-orange-500"
-          >
-            Refresh
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isConnected && (
+            <Popconfirm
+              title="Disconnect Square POS?"
+              description="This will disconnect your Square integration for this restaurant."
+              okText="Disconnect"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
+              onConfirm={handleDisconnect}
+            >
+              <Button
+                danger
+                size="middle"
+                disabled={squareLoading}
+                className="border-red-300 hover:border-red-400"
+              >
+                Disconnect
+              </Button>
+            </Popconfirm>
+          )}
+          {showRefresh && (
+            <Button 
+              icon={<ReloadOutlined />} 
+              onClick={handleRefresh}
+              loading={squareLoading}
+              size="middle"
+              className="border-gray-300 hover:border-orange-400 hover:text-orange-500"
+            >
+              Refresh
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Status Display Section */}
