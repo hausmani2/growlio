@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Table, Button, Space, Typography, Card, Row, Col, Spin, Alert } from 'antd';
 import { PrinterOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import SalesDataModal from './SalesDataModal';
+import useStore from '../../../store/store';
 
 const { Title, Text } = Typography;
 
@@ -12,6 +13,26 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   const [dataTimestamp, setDataTimestamp] = useState(Date.now());
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedWeekForEdit, setSelectedWeekForEdit] = useState(null);
+
+  // Plan gating (Lite should not show Export Data)
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const hasFetchedSubscriptionRef = useRef(false);
+
+  useEffect(() => {
+    if (hasFetchedSubscriptionRef.current) return;
+    if (subscriptionDetails) {
+      hasFetchedSubscriptionRef.current = true;
+      return;
+    }
+    hasFetchedSubscriptionRef.current = true;
+    fetchCurrentSubscriptionDetails?.();
+  }, [subscriptionDetails, fetchCurrentSubscriptionDetails]);
+
+  const isLitePlan = useMemo(() => {
+    const pkgName = (subscriptionDetails?.package?.name || '').toLowerCase();
+    return pkgName === 'lite';
+  }, [subscriptionDetails]);
 
   // Helper function to handle None/null/undefined values
   const handleValue = useCallback((value) => {
@@ -639,14 +660,16 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           >
             <span className="hidden sm:inline">Print Report</span>
           </Button>
-          <Button 
-            icon={<DownloadOutlined />} 
-            onClick={handleExport}
-            size="middle"
-            className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
-          >
-            <span className="hidden sm:inline">Export Data</span>
-          </Button>
+          {!isLitePlan && (
+            <Button 
+              icon={<DownloadOutlined />} 
+              onClick={handleExport}
+              size="middle"
+              className="h-9 px-4 bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
+            >
+              <span className="hidden sm:inline">Export Data</span>
+            </Button>
+          )}
         </div>
       </div>
 

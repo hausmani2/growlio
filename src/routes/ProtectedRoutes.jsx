@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Modal } from 'antd';
 import useStore from '../store/store';
 import LoadingSpinner from '../components/layout/LoadingSpinner';
 import { isImpersonating } from '../utils/tokenManager';
@@ -9,6 +10,7 @@ import {
   hasOneMonthSalesInfo,
   isSalesInformationComplete,
   getOnboardingRedirectRoute,
+  getNextIncompleteSetupRoute,
   ONBOARDING_ROUTES,
   isOnboardingComplete as checkOnboardingComplete,
 } from '../utils/onboardingUtils';
@@ -21,8 +23,11 @@ const ProtectedRoutes = () => {
   const hasCheckedRestaurantRef = useRef(false); // Track if we've checked restaurant to prevent multiple checks
   const hasRedirectedRef = useRef(false); // Track if we've already redirected to prevent infinite loops
   const redirectTimeoutRef = useRef(null); // Track redirect timeout for cleanup
+  const hasShownSetupModalRef = useRef(false);
   const [isCheckingSimulationForDashboard, setIsCheckingSimulationForDashboard] = useState(false);
   const hasCheckedSimulationRef = useRef(false);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  const hasShownPosBlockedModalRef = useRef(false);
   
   // Get onboarding status to determine user mode
   // CRITICAL: This hook provides the decision logic for users with both restaurants
@@ -45,6 +50,8 @@ const ProtectedRoutes = () => {
   const salesInformationLoading = useStore((state) => state.salesInformationLoading);
   const salesInformationError = useStore((state) => state.salesInformationError);
   const getSalesInformation = useStore((state) => state.getSalesInformation);
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
   const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
   const restaurantOnboardingDataTimestamp = useStore((state) => state.restaurantOnboardingDataTimestamp);
@@ -318,6 +325,37 @@ const ProtectedRoutes = () => {
       return;
     }
 
+    const showSetupRequiredModalOnce = (nextRoute) => {
+      // Never show on simulation routes
+      if (location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation')) return false;
+
+      // Super admins (without impersonation) should never see onboarding gating
+      const isSuperAdminUser = user?.is_superuser;
+      const impersonating = isImpersonating();
+      if (isSuperAdminUser && !impersonating) return false;
+
+      const modalKey = `setup_required_modal:${location.pathname}`;
+      const lastShown = sessionStorage.getItem(modalKey);
+      if (lastShown === 'shown') return false;
+      if (hasShownSetupModalRef.current) return false;
+
+      hasShownSetupModalRef.current = true;
+      sessionStorage.setItem(modalKey, 'shown');
+
+      Modal.info({
+        title: 'Finish your setup to continue',
+        content:
+          'To access this page, please complete your restaurant setup first. We’ll take you to the next required step now.',
+        okText: 'Continue setup',
+        onOk: () => {
+          hasRedirectedRef.current = false;
+          navigate(nextRoute, { replace: true });
+        },
+      });
+
+      return true;
+    };
+
     // CRITICAL: If onboarding is completely finished (onboarding_complete: true), 
     // allow ALL routes - user should NOT be redirected to /onboarding
     if (onboardingComplete) {
@@ -449,32 +487,20 @@ const ProtectedRoutes = () => {
       return; // Already on correct route
     }
     
-    // If One Month Sales Info is FALSE, block dashboard and /onboarding
-    // BUT: Skip this check if oneMonthSalesInfoComplete is true (already handled above)
+    // If One Month Sales Info is FALSE, block dashboard routes and guide user to next setup step
     if (restaurantExists && !oneMonthSalesInfoComplete) {
-      // If user is trying to access /onboarding page, redirect to score
-      if (location.pathname === ONBOARDING_ROUTES.ONBOARDING) {
+      // If user is trying to access ANY dashboard route, show modal and redirect to next required step
+      if (location.pathname.startsWith('/dashboard')) {
+        const nextRoute = getNextIncompleteSetupRoute(restaurantData);
+        const shown = showSetupRequiredModalOnce(nextRoute);
+        if (shown) return;
+
+        // Fallback redirect if modal is suppressed (e.g. already shown)
         if (!hasRedirectedRef.current) {
           hasRedirectedRef.current = true;
           sessionStorage.setItem('lastProcessedPath', location.pathname);
-          sessionStorage.setItem('lastRedirectRoute', ONBOARDING_ROUTES.SCORE);
-          setTimeout(() => {
-            navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
-          }, 0);
-        }
-        return;
-      }
-      
-      // If user is trying to access ANY dashboard route, redirect to score
-      // BUT: Only if oneMonthSalesInfoComplete is actually false (double-check to prevent race conditions)
-      if (location.pathname.startsWith('/dashboard') && !oneMonthSalesInfoComplete) {
-        if (!hasRedirectedRef.current) {
-          hasRedirectedRef.current = true;
-          sessionStorage.setItem('lastProcessedPath', location.pathname);
-          sessionStorage.setItem('lastRedirectRoute', ONBOARDING_ROUTES.SCORE);
-          setTimeout(() => {
-            navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
-          }, 0);
+          sessionStorage.setItem('lastRedirectRoute', nextRoute);
+          setTimeout(() => navigate(nextRoute, { replace: true }), 0);
         }
         return;
       }
@@ -515,6 +541,25 @@ const ProtectedRoutes = () => {
         return;
       }
       
+      // If user attempted a dashboard route and redirecting into onboarding, show a professional gate modal
+      if (location.pathname.startsWith('/dashboard') && redirectRoute.startsWith('/onboarding')) {
+        const nextRoute = getNextIncompleteSetupRoute(restaurantData);
+        const shown = showSetupRequiredModalOnce(nextRoute);
+        if (shown) return;
+
+        if (!hasRedirectedRef.current || lastProcessedPath !== location.pathname) {
+          hasRedirectedRef.current = true;
+          sessionStorage.setItem('lastProcessedPath', location.pathname);
+          sessionStorage.setItem('lastRedirectRoute', nextRoute);
+          if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+          redirectTimeoutRef.current = setTimeout(() => {
+            navigate(nextRoute, { replace: true });
+            redirectTimeoutRef.current = null;
+          }, 50);
+        }
+        return;
+      }
+
       // Only redirect if we haven't redirected for this path yet
       if (!hasRedirectedRef.current || lastProcessedPath !== location.pathname) {
         hasRedirectedRef.current = true;
@@ -866,6 +911,20 @@ const ProtectedRoutes = () => {
     }
   }, [isLoading, restaurantCheckLoading, salesInformationLoading]);
 
+  // Fetch current subscription details when needed for plan-gated routes
+  useEffect(() => {
+    const needsSubscriptionForThisRoute = location.pathname === '/dashboard/square';
+    if (!needsSubscriptionForThisRoute) return;
+    if (subscriptionDetails) return;
+    if (!fetchCurrentSubscriptionDetails) return;
+    if (isCheckingSubscription) return;
+
+    setIsCheckingSubscription(true);
+    Promise.resolve(fetchCurrentSubscriptionDetails())
+      .catch(() => {})
+      .finally(() => setIsCheckingSubscription(false));
+  }, [location.pathname, subscriptionDetails, fetchCurrentSubscriptionDetails, isCheckingSubscription]);
+
   // Early returns must come AFTER all hooks
   // If not authenticated, redirect to login
   if (!isAuthenticated || !token) {
@@ -885,7 +944,8 @@ const ProtectedRoutes = () => {
     (isLoading && !hasRestaurantData) || 
     (salesInformationLoading && !salesInformationData) || 
     (restaurantCheckLoading && !hasRestaurantData && !hasCachedRestaurantData) || 
-    (isCheckingSimulationForDashboard && isDashboardPathCheck && !hasRestaurantData)
+    (isCheckingSimulationForDashboard && isDashboardPathCheck && !hasRestaurantData) ||
+    (isCheckingSubscription && location.pathname === '/dashboard/square' && !subscriptionDetails)
   );
   
   if (shouldShowLoading) {
@@ -897,6 +957,32 @@ const ProtectedRoutes = () => {
   const isAdminUser = ((user?.role || '').toUpperCase() === 'ADMIN') || user?.is_staff;
   if (isAdminPath && !isAdminUser) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Plan gate: Square POS is not available on Lite (or when feature flag is disabled)
+  if (location.pathname === '/dashboard/square') {
+    const pkg = subscriptionDetails?.package || null;
+    const pkgName = (pkg?.name || '').toLowerCase();
+    const featureFlag = pkg?.features?.pos_integration;
+    const posAllowed = pkg
+      ? (pkgName !== 'lite') && (typeof featureFlag === 'boolean' ? featureFlag : ['grow', 'pro'].includes(pkgName))
+      : true;
+
+    if (!posAllowed) {
+      const modalKey = 'pos_blocked_modal:/dashboard/square';
+      if (!hasShownPosBlockedModalRef.current && sessionStorage.getItem(modalKey) !== 'shown') {
+        hasShownPosBlockedModalRef.current = true;
+        sessionStorage.setItem(modalKey, 'shown');
+        Modal.info({
+          title: 'Upgrade required',
+          content:
+            'Square POS integration is not available on your current plan. Please upgrade to access this feature.',
+          okText: 'View plans',
+          onOk: () => navigate('/dashboard/pricing', { replace: true }),
+        });
+      }
+      return <Navigate to="/dashboard/pricing" replace />;
+    }
   }
 
   // Check if sales information is complete (using utility function)

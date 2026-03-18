@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Layout } from 'antd';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Layout, Modal } from 'antd';
 import Sidebar from './Sidebar';
 import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ import GuidanceOverlay from '../guidance/GuidanceOverlay';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
+import { getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
 
 /**
  * Wrapper component
@@ -36,6 +37,47 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
     const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
+
+  // Subscription / plan gating (POS integration)
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const hasFetchedSubscriptionRef = useRef(false);
+
+  useEffect(() => {
+    // Fetch once per session (safe: API returns current subscription)
+    if (!showSidebar) return;
+    if (hasFetchedSubscriptionRef.current) return;
+    if (subscriptionDetails) {
+      hasFetchedSubscriptionRef.current = true;
+      return;
+    }
+    hasFetchedSubscriptionRef.current = true;
+    fetchCurrentSubscriptionDetails?.();
+  }, [showSidebar, subscriptionDetails, fetchCurrentSubscriptionDetails]);
+
+  const posEnabled = useMemo(() => {
+    const pkg = subscriptionDetails?.package || null;
+    if (!pkg) return true; // fail-open until we know; ProtectedRoutes will hard-block for direct URL
+    if ((pkg?.name || '').toLowerCase() === 'lite') return false;
+    // Prefer explicit feature flag if present
+    if (typeof pkg?.features?.pos_integration === 'boolean') return pkg.features.pos_integration;
+    // Fallback allowlist
+    return ['grow', 'pro'].includes((pkg?.name || '').toLowerCase());
+  }, [subscriptionDetails]);
+
+  const handleSquarePosClick = () => {
+    if (!posEnabled) {
+      Modal.info({
+        title: 'Upgrade required',
+        content:
+          'Square POS integration is not available on your current plan. Please upgrade to access this feature.',
+        okText: 'View plans',
+        onOk: () => navigate('/dashboard/pricing'),
+      });
+      return;
+    }
+    navigate('/dashboard/square');
+  };
   
   // Get onboarding status for Training menu gating and user mode determination
   const { 
@@ -46,6 +88,24 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     hasSimulationRestaurants,
     hasCompletedRegularOnboarding
   } = useOnboardingStatus();
+
+  const handleSimulationDashboardClick = () => {
+    // If regular onboarding isn't complete, guide the user to complete setup first.
+    if (isRegularUser && !hasCompletedRegularOnboarding) {
+      const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
+      Modal.info({
+        title: 'Complete onboarding to continue',
+        content:
+          'Please complete your restaurant onboarding to access the Simulation Dashboard. We’ll take you to the next required step now.',
+        okText: 'Continue setup',
+        onOk: () => navigate(nextRoute, { replace: false }),
+      });
+      return;
+    }
+
+    // Onboarding is complete (or user is not a regular user) — proceed to simulation.
+    navigate(hasSimulationRestaurants ? '/simulation/dashboard' : '/onboarding/simulation');
+  };
   
     // Check if user is in simulation mode - use onboarding status hook for decision
     // CRITICAL: According to requirements:
@@ -262,54 +322,57 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Training',
       onClick: () => navigate('/dashboard/training'),
   },
-    // Simulation Dashboard - only show if:
-    // 1. User can access training (has completed regular onboarding OR has simulation access), AND
-    // 2. If user is a regular user (has regular restaurants), they must have completed onboarding
-    ...(canAccessTraining && (!hasRegularRestaurants || hasCompletedRegularOnboarding) ? [{
-      key: 'simulation-dashboard',
-      icon: <FaChartLine />,
-      label: 'Simulation Dashboard',
-      onClick: () => navigate('/simulation/dashboard'),
-    },
-    {
-      key: 'simulation-setup',
-      icon: <UserOutlined />,
-      label: 'Simulation Setup Process',
-      children: [
-        {
-          key: 'simulation-basic-information',
-          label: 'Basic Information',
-          onClick: () => navigate('/simulation/basic-information'),
-        },
-        {
-          key: 'simulation-sales-channels-operating-days',
-          label: 'Sales Channels & Operating Days',
-          onClick: () => navigate('/simulation/sales-channels-operating-days'),
-        },
-        {
-          key: 'simulation-labor-information',
-          label: 'Labor Information',
-          onClick: () => navigate('/simulation/labor-information'),
-        },
-        {
-          key: 'simulation-expenses',
-          label: 'Expenses',
-          onClick: () => navigate('/simulation/expenses'),
-        },
-      ],
-    }] : []),
+    // Simulation Dashboard
+    // Always show for regular users in the sidebar.
+    // If simulation isn't set up yet, route them to simulation onboarding.
+    ...(isRegularUser ? [
+      {
+        key: 'simulation-dashboard',
+        icon: <FaChartLine />,
+        label: 'Simulation Dashboard',
+        onClick: handleSimulationDashboardClick,
+      },
+      // Only show simulation setup navigation when simulation restaurants exist (prevents dead links)
+      ...(hasSimulationRestaurants ? [{
+        key: 'simulation-setup',
+        icon: <UserOutlined />,
+        label: 'Simulation Setup Process',
+        children: [
+          {
+            key: 'simulation-basic-information',
+            label: 'Basic Information',
+            onClick: () => navigate('/simulation/basic-information'),
+          },
+          {
+            key: 'simulation-sales-channels-operating-days',
+            label: 'Sales Channels & Operating Days',
+            onClick: () => navigate('/simulation/sales-channels-operating-days'),
+          },
+          {
+            key: 'simulation-labor-information',
+            label: 'Labor Information',
+            onClick: () => navigate('/simulation/labor-information'),
+          },
+          {
+            key: 'simulation-expenses',
+            label: 'Expenses',
+            onClick: () => navigate('/simulation/expenses'),
+          },
+        ],
+      }] : []),
+    ] : []),
     {
       key: 'pricing',
       icon: <StarOutlined />,
       label: 'Pricing',
       onClick: () => navigate('/dashboard/pricing'),
     },
-    {
+    ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,
       label: 'Square POS',
-      onClick: () => navigate('/dashboard/square'),
-    },
+      onClick: handleSquarePosClick,
+    }] : []),
     {
       key: 'leo-ai',
       icon: <img src={lioIcon} alt="LIO AI" className="w-6 h-6" />,

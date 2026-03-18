@@ -173,6 +173,27 @@ export const getOnboardingProgress = (restaurantData) => {
 };
 
 /**
+ * Get the next incomplete setup route for regular onboarding.
+ * Returns the first incomplete item (by SETUP_ITEMS order) that has a route.
+ * Falls back to SCORE when a restaurant exists, otherwise ONBOARDING.
+ * @param {Object} restaurantData - Response from restaurants-onboarding API
+ * @returns {string} - Route path to redirect user to
+ */
+export const getNextIncompleteSetupRoute = (restaurantData) => {
+  const progress = getOnboardingProgress(restaurantData);
+  const items = progress?.items || [];
+
+  const nextItem = items.find((item) => item?.isCompleted === false && !!item?.route);
+  if (nextItem?.route) return nextItem.route;
+
+  // If we have a restaurant, the score page is the correct entry point.
+  if (hasRestaurant(restaurantData)) return ONBOARDING_ROUTES.SCORE;
+
+  // Otherwise the user must create a restaurant first.
+  return ONBOARDING_ROUTES.ONBOARDING;
+};
+
+/**
  * Check if restaurant exists in the API response
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if restaurant exists
