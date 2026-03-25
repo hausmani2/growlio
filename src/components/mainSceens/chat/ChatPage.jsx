@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2 } from 'react-icons/fi';
 import { apiGet, apiPut, apiDelete, streamChatbotMessage } from '../../../utils/axiosInterceptors';
 import { message, Modal } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
 import MessageBubble from '../../chatbot/MessageBubble';
 import chatIcon from '../../../assets/lio.png';
@@ -10,7 +11,9 @@ import chatIcon from '../../../assets/lio.png';
  * A full-page ChatGPT-like interface with conversation threads
  */
 const ChatPage = () => {
+  const navigate = useNavigate();
   const { setSelectedConversationId } = useStore();
+  const hasShownLimitModalRef = useRef(false);
   const [conversations, setConversations] = useState([]);
   const [selectedConversationId, setSelectedConversationIdLocal] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -23,6 +26,43 @@ const ChatPage = () => {
   const [editingTitle, setEditingTitle] = useState('');
   const [hoveredConversationId, setHoveredConversationId] = useState(null);
   const [showMenuId, setShowMenuId] = useState(null);
+
+  const showLimitReachedModalOnce = (data) => {
+    // Prevent multiple modals at once, but allow re-show after a short cooldown.
+    const cooldownKey = 'chatbot_limit_reached_last_shown_at';
+    const now = Date.now();
+    const lastShownAt = parseInt(sessionStorage.getItem(cooldownKey) || '0', 10) || 0;
+    const COOLDOWN_MS = 30 * 1000; // 30s
+
+    if (hasShownLimitModalRef.current) return;
+    if (now - lastShownAt < COOLDOWN_MS) return;
+
+    const detail = data?.error;
+    const msg =
+      "You've reached your daily message limit. To keep chatting, please upgrade your plan or try again tomorrow." +
+      (detail ? `\n\nDetails: ${detail}` : '');
+
+    hasShownLimitModalRef.current = true;
+    sessionStorage.setItem(cooldownKey, String(now));
+
+    let modalInstance;
+    modalInstance = Modal.confirm({
+      title: 'Message limit exceeded',
+      content: msg,
+      okText: 'Upgrade',
+      cancelText: 'Close',
+      maskClosable: true,
+      onOk: () => {
+        modalInstance?.destroy?.();
+        hasShownLimitModalRef.current = false;
+        navigate('/dashboard/pricing');
+      },
+      onCancel: () => {
+        modalInstance?.destroy?.();
+        hasShownLimitModalRef.current = false;
+      },
+    });
+  };
   
   // Close sidebar on mobile by default and prevent body scroll when sidebar is open
   useEffect(() => {
@@ -461,8 +501,16 @@ const ChatPage = () => {
             const updated = [...prev];
             const lastIndex = updated.length - 1;
             if (lastIndex >= 0) {
+              const errorData = error?.response?.data;
+              const limitData = errorData?.limit_reached ? errorData : errorData?.data;
+              if (error?.response?.status === 403 && limitData?.limit_reached) {
+                showLimitReachedModalOnce(limitData);
+              }
               updated[lastIndex] = {
-                text: error.response?.data?.message || 
+                text: limitData?.error ||
+                      limitData?.message ||
+                      errorData?.error ||
+                      errorData?.message ||
                       error.message || 
                       'Sorry, I encountered an error. Please try again later.',
                 isUser: false,

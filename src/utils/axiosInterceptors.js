@@ -331,7 +331,37 @@ export const streamChatbotMessage = async (url, payload, callbacks = {}) => {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Try to parse JSON error body (e.g. limit_reached payload)
+      let errorData = null;
+      try {
+        // Be defensive: some servers return JSON without proper content-type.
+        const text = await response.text();
+        if (text) {
+          try {
+            errorData = JSON.parse(text);
+          } catch {
+            errorData = { error: text };
+          }
+        } else {
+          errorData = null;
+        }
+      } catch {
+        // ignore parsing errors
+      }
+
+      const errMsg =
+        errorData?.error ||
+        errorData?.message ||
+        `HTTP error! status: ${response.status}`;
+      const err = new Error(errMsg);
+      // Axios-like shape for downstream consumers
+      err.response = { status: response.status, data: errorData };
+
+      if (onError) {
+        onError(err);
+        return;
+      }
+      throw err;
     }
 
     const reader = response.body.getReader();
