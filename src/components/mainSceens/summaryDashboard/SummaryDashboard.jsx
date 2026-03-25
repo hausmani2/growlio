@@ -590,7 +590,8 @@ const SummaryDashboard = () => {
                 </h1>
                 <button
                   onClick={() => {
-                    setActiveBudgetVideoKey('createBudget');
+                    // Show the right tutorial based on whether a budget exists.
+                    setActiveBudgetVideoKey(hasBudgetForWeek() ? 'useBudget' : 'createBudget');
                     setIsVideoModalVisible(true);
                   }}
                   className="text-orange-600 hover:text-orange-700 transition-colors"
@@ -696,6 +697,12 @@ const SummaryDashboard = () => {
               Watch Video
             </button>
           </div>
+        </div>
+      )}
+
+      {/* After a budget exists, show the "How to Use My Budget" tutorial from the Budget screen */}
+      {hasBudgetForWeek() && !summaryLoading && (
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
               Watch a tutorial on <span className="text-purple-600">How to Use My Budget</span>
