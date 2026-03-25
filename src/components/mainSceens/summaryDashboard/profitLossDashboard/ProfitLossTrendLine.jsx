@@ -26,7 +26,7 @@ ChartJS.register(
 );
 
 const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
-  const [selectedMetric, setSelectedMetric] = useState('sales');
+  const [selectedMetric, setSelectedMetric] = useState('overall');
   // Helper function to determine if data is weekly format
   const isWeeklyData = (data) => {
     if (!Array.isArray(data) || data.length === 0) return false;
@@ -101,7 +101,9 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     const budgetDataset = entries.map((entry) => {
       let budgetValue = 0;
       
-      if (selectedMetric === 'sales') {
+      if (selectedMetric === 'overall') {
+        budgetValue = parseFloat(entry.budgeted_profit_loss ?? entry.budgetedProfitLoss ?? entry.budgeted_profit ?? 0) || 0;
+      } else if (selectedMetric === 'sales') {
         budgetValue = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
       } else if (selectedMetric === 'labor') {
         budgetValue = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? entry.budgeted_labor_dollars ?? 0) || 0;
@@ -115,7 +117,9 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
     const actualDataset = entries.map((entry) => {
       let actualValue = 0;
       
-      if (selectedMetric === 'sales') {
+      if (selectedMetric === 'overall') {
+        actualValue = parseFloat(entry.profit_loss ?? entry.profit_loss_actual ?? entry.actual_profit_loss ?? entry.actualProfitLoss ?? 0) || 0;
+      } else if (selectedMetric === 'sales') {
         actualValue = parseFloat(entry.sales_actual ?? entry.actual_sales ?? entry.salesActual ?? 0) || 0;
       } else if (selectedMetric === 'labor') {
         actualValue = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? entry.actual_labor_dollars ?? entry.amount ?? 0) || 0;
@@ -137,6 +141,8 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
   // Get labels and colors based on selected metric
   const getMetricLabels = () => {
     switch (selectedMetric) {
+      case 'overall':
+        return { budget: 'Budgeted Profit & Loss', actual: 'Actual Profit & Loss' };
       case 'labor':
         return { budget: 'Labor Budget', actual: 'Labor Actual' };
       case 'cogs':
@@ -196,7 +202,12 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
 
   // Determine the appropriate title based on data format and selected metric
   const getTitle = () => {
-    const metricName = selectedMetric === 'labor' ? 'Labor' : (selectedMetric === 'cogs' ? 'COGS' : 'Sales');
+    const metricName =
+      selectedMetric === 'overall'
+        ? 'Profit & Loss'
+        : selectedMetric === 'labor'
+          ? 'Labor'
+          : (selectedMetric === 'cogs' ? 'COGS' : 'Sales');
     
     if (!dashboardData?.data || !Array.isArray(dashboardData.data) || dashboardData.data.length === 0) {
       return `Daily ${metricName}: Budget vs Actual`;
@@ -224,6 +235,7 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
             onChange={setSelectedMetric}
             style={{ width: 200 }}
             options={[
+              { label: 'Overall (Budgeted P&L vs Actual P&L)', value: 'overall' },
               { label: 'Sales (Budget to Actual)', value: 'sales' },
               { label: 'Labor (Budget to Actual)', value: 'labor' },
               { label: 'COGS (Budget to Actual)', value: 'cogs' },
@@ -238,7 +250,9 @@ const ProfitLossTrendLine = ({ dashboardData, viewMode = 'daily' }) => {
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
-              <p className="text-sm">No {selectedMetric === 'labor' ? 'labor' : (selectedMetric === 'cogs' ? 'COGS' : 'sales')} data available</p>
+              <p className="text-sm">
+                No {selectedMetric === 'overall' ? 'profit & loss' : (selectedMetric === 'labor' ? 'labor' : (selectedMetric === 'cogs' ? 'COGS' : 'sales'))} data available
+              </p>
               <p className="text-xs text-gray-400 mt-1">
                 {(budgetDataset.length > 0 || actualDataset.length > 0) ? 'All values are zero' : 'No data points found'}
               </p>

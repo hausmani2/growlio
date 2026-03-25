@@ -56,8 +56,6 @@ export const checkAndRedirectToSimulation = async (navigate, payload = {}) => {
  */
 export const EXPENSE_CATEGORIES = [
   'Rent',
-  'Cost of Goods Sold',
-  'Labor',
   'Utilities',
   'Dishwasher',
   'Insurance',
@@ -89,26 +87,6 @@ export const DEFAULT_EXPENSES = [
     is_value_type: true,
     name: 'Rent',
     amount: 2500,
-    fixed_expense_type: 'MONTHLY',
-    is_active: true
-  },
-  
-  // Cost of Goods Sold
-  {
-    category: 'Cost of Goods Sold',
-    is_value_type: false, // Percentage
-    name: 'Cost of Goods Sold',
-    amount: 30,
-    fixed_expense_type: 'MONTHLY',
-    is_active: true
-  },
-  
-  // Labor - General Labor
-  {
-    category: 'Labor',
-    is_value_type: true,
-    name: 'General Labor',
-    amount: 5000,
     fixed_expense_type: 'MONTHLY',
     is_active: true
   },

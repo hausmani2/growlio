@@ -285,7 +285,7 @@ const SalesDetailDropdown = ({
               </Text>
             </div>
             <div className="flex items-center justify-between">
-              <Text className="text-xs font-semibold text-gray-700">% Over/Under:</Text>
+              <Text className="text-xs font-semibold text-gray-700">% Over/Under of Actual:</Text>
               <Text className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </Text>

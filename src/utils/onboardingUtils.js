@@ -58,7 +58,7 @@ export const SETUP_ITEMS = [
   {
     label: 'Enter additional sales data',
     key: RESTAURANT_STATUS_KEYS.SALES_INFORMATION,
-    route: '/dashboard/sales-data',
+    route: '/dashboard/basic-information',
     order: 4,
   },
   {

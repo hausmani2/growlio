@@ -273,12 +273,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Operating Expenses',
           onClick: () => navigate('/dashboard/expense'),
         },
-        {
-          key: 'sales-data',
-          // icon: <DollarOutlined />,
-          label: 'Sales Data',
-          onClick: () => navigate('/dashboard/sales-data'),
-        },
+        // {
+        //   key: 'sales-data',
+        //   // icon: <DollarOutlined />,
+        //   label: 'Sales Data',
+        //   onClick: () => navigate('/dashboard/sales-data'),
+        // },
        
         {
           key: 'basic-information',

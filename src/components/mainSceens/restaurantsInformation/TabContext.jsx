@@ -319,7 +319,7 @@ export const TabProvider = ({ children }) => {
             // All local steps completed - navigate to Sales Data if skipping, otherwise check completion
             if (skipCompletionCheck) {
                 // When skipping the last step, navigate to Sales Data
-                navigate('/dashboard/sales-data', { replace: false });
+                navigate('/dashboard/basic-informationsales-data', { replace: false });
                 // Scroll to top after navigation
                 setTimeout(() => {
                     window.scrollTo({ top: 0, behavior: 'smooth' });

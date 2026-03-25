@@ -1699,6 +1699,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     };
 
     const handleDailyDataChange = (dayIndex, field, value, record) => {
+      // Budgeted sales must be edited from the Budget screen, not Close Out Your Day(s).
+      if (field === 'budgetedSales') {
+        message.warning('Sales budget cannot be edited from this screen. Please update it from the Budget page.');
+        return;
+      }
+
       // Block all future dates (tomorrow and beyond) - including restaurant_open (close out days)
       if (isFutureDate(record.date)) {
         if (field === 'restaurant_open') {
@@ -2104,13 +2110,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Input
                       type='number'
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
                       placeholder="0.00"
                       className="w-full"
-                      disabled={isDayClosed(record)}
+                      disabled={true}
+                      readOnly={true}
                       style={{
-                        opacity: isDayClosed(record) ? 0.5 : 1,
-                        cursor: isDayClosed(record) ? 'not-allowed' : 'text'
+                        backgroundColor: '#f5f5f5',
+                        cursor: 'not-allowed',
+                        color: '#1890ff'
                       }}
                     />
                   )
@@ -2126,7 +2133,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     return (
                       <Input
                         type='number'
-                        value={value}
+                        value={value || 0}
                         onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -2152,7 +2159,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     return (
                       <Input
                         type='number'
-                        value={value}
+                        value={value || 0}
                         onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -2178,7 +2185,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     return (
                       <Input
                         type='number'
-                        value={value}
+                        value={value || 0}
                         onChange={(e) => handleDailyDataChange(index, 'actualSalesOnline', parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -2205,7 +2212,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     return (
                       <Input
                         type='number'
-                        value={value}
+                        value={value || 0}
                         onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -2268,7 +2275,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       <div>
                         <Input
                           type='number'
-                          value={value}
+                          value={value || 0}
                           onChange={(e) => handleDailyTicketsChange(e.target.value, (value) => handleDailyDataChange(index, 'dailyTickets', value, record))}
                           onBlur={(e) => {
                             const wholeNumber = ensureWholeNumberTickets(e.target.value);
@@ -2293,38 +2300,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     );
                   }
                 },
-                {
-                  title: 'Actual Sales Budget (%)',
-                  dataIndex: 'actualSalesBudget',
-                  key: 'actualSalesBudget',
-                  width: 150,
-                  render: (value, record) => {
-                    const budgetedSales = parseFloat(record.budgetedSales) || 0;
-                    
-                    // Only include enabled sales channels
-                    let netSales = 0;
-                    if (salesChannelsConfig.in_store) {
-                      netSales += parseFloat(record.actualSalesInStore) || 0;
-                    }
-                    if (salesChannelsConfig.from_app) {
-                      netSales += parseFloat(record.actualSalesAppOnline) || 0;
-                    }
-                    if (salesChannelsConfig.online) {
-                      netSales += parseFloat(record.actualSalesOnline) || 0;
-                    }
-
-                    // Add dynamic provider sales
-                    const providerSales = providers.reduce((sum, provider) => {
-                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                      return sum + (parseFloat(record[providerKey]) || 0);
-                    }, 0);
-
-                    netSales += providerSales;
-                    const actualSalesBudget = calculateActualSalesBudget(budgetedSales, netSales);
-
-                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{actualSalesBudget.toFixed(1)}%</Text>;
-                  }
-                },
+             
                 {
                   title: (
                     <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { message, Modal, Select } from "antd";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import OperatingExpenses from "./OperatingExpenses";
 import TotalExpense from "./TotalExpense";
 import { TabProvider } from "../../TabContext";
@@ -14,6 +14,7 @@ import PrimaryButton from "../../../../buttons/Buttons";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
@@ -301,8 +302,8 @@ const ExpenseWrapperContent = () => {
                     // Onboarding mode OR new user in update mode: navigate to next step (Sales Data)
                     message.success("Expense information saved successfully!");
                 }
-                // Always navigate to Sales Data since Expenses is the last onboarding step
-                await navigateToNextStep(true); // Skip completion check since we just saved successfully
+                // After saving expenses in setup, route back to Restaurant Details (not Sales Data).
+                navigate('/dashboard/basic-information');
             });
 
             if (!result.success) {
@@ -397,7 +398,7 @@ const ExpenseWrapperContent = () => {
                             <div className="flex justify-end gap-3 mt-8 pt-6">
                                 <button
                                     onClick={() => {
-                                        navigateToNextStep(true);
+                                        navigate('/dashboard/basic-information');
                                     }}
                                     disabled={loading}
                                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
@@ -452,7 +453,7 @@ const ExpenseWrapperContent = () => {
                 <button
                     onClick={() => {
                      
-                        navigateToNextStep(true);
+                        navigate('/dashboard/basic-information');
                     }}
                     disabled={loading}
                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${

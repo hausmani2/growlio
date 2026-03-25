@@ -347,12 +347,12 @@ const SummaryDashboard = () => {
 
     message.success('Sales data added successfully! 🎉');
     markPopupAsShown();
-    navigate('/dashboard');
+    navigate('/dashboard/budget');
   };
 
   const handleFlashMessageButtonClick = () => {
     markPopupAsShown();
-    navigate('/dashboard');
+    navigate('/dashboard/budget');
   };
 
   // Handle weekly average data popup actions
@@ -765,8 +765,8 @@ const SummaryDashboard = () => {
                   startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
                   endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
                   onEditData={() => {
-                    // Navigate to dashboard for editing
-                    navigate('/dashboard');
+                    // Budget editing should route to the Budget screen (not Close Out Your Day).
+                    navigate('/dashboard/budget');
                   }}
                 />
                 {groupBy === 'week' ? (

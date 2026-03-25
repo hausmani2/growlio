@@ -864,13 +864,20 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Final Weekly Labor %:</Text>
+                <Text strong className="text-sm sm:text-base">Remaining Labor $ based on Actual Labor Rate:</Text>
                 <Input
                   value={`${(() => {
-                    const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
-                    const totalSales = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0);
-                    return totalSales > 0 ? Math.round((totalLabor / totalSales) * 100) : 0;
-                  })()}%`}
+                    const totalBudgetLabor = weekFormData.dailyData.reduce((sum, day) => {
+                      return sum + (parseFloat(day.budgetedLaborDollars) || 0);
+                    }, 0);
+
+                    const totalActualLabor = weekFormData.dailyData.reduce((sum, day) => {
+                      return sum + (parseFloat(day.actualLaborDollars) || 0);
+                    }, 0);
+
+                    const remaining = totalBudgetLabor - totalActualLabor;
+                    return `$${remaining.toFixed(2)}`;
+                  })()}`}
                   disabled
                   style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
                   className="w-full"
@@ -1065,7 +1072,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   )
                 },
                 {
-                  title: 'Weekly Labor % of Sales',
+                  title: 'Week To Date Labor % of Sales',
                   dataIndex: 'weeklyLaborPercentage',
                   key: 'weeklyLaborPercentage',
                   width: 200,
@@ -1412,7 +1419,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 }
                               },
                               {
-                                title:"Weekly Labor % of Sales",
+                                title:"Week To Date Labor % of Sales",
                                 dataIndex:"weeklyLaborPercentage",
                                 key:"weeklyLaborPercentage",
                                 width:150,
@@ -1579,21 +1586,22 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 </div>
                 
                 <div>
-                  <Text strong className="text-sm sm:text-base">Final Weekly Labor % of Sales:</Text>
+                  <Text strong className="text-sm sm:text-base">Remaining Labor $ based on Actual Labor Rate:</Text>
                   <Input
                     value={`${(() => {
-                      if (weeklyData.length === 0) return '0.0';
-                      
-                      const totalLabor = weeklyData[0].dailyData.reduce((sum, day) => {
+                      if (weeklyData.length === 0) return '$0.00';
+
+                      const totalBudgetLabor = weeklyData[0].dailyData.reduce((sum, day) => {
+                        return day.restaurantOpen !== false ? sum + (parseFloat(day.budgetedLaborDollars) || 0) : sum;
+                      }, 0);
+
+                      const totalActualLabor = weeklyData[0].dailyData.reduce((sum, day) => {
                         return day.restaurantOpen !== false ? sum + (parseFloat(day.actualLaborDollars) || 0) : sum;
                       }, 0);
-                      
-                      const totalSales = weeklyData[0].dailyData.reduce((sum, day) => {
-                        return day.restaurantOpen !== false ? sum + getNetSalesForDate(day.date) : sum;
-                      }, 0);
-                      
-                      return totalSales > 0 ? Math.round((totalLabor / totalSales) * 100) : 0;
-                    })()}%`}
+
+                      const remaining = totalBudgetLabor - totalActualLabor;
+                      return `$${remaining.toFixed(2)}`;
+                    })()}`}
                     className="mt-1"
                     disabled
                     style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}

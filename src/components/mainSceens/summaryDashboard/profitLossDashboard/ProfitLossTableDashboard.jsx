@@ -1486,7 +1486,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className={`text-xs font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-700'}`}>% Over/Under:</span>
+              <span className={`text-xs font-semibold ${isClosed ? 'text-gray-600' : 'text-gray-700'}`}>% Over/Under of Actual:</span>
               <span className={`text-xs font-bold ${isClosed ? 'text-gray-500' : getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </span>
@@ -1606,7 +1606,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-700">% Over/Under:</span>
+              <span className="text-xs font-semibold text-gray-700">% Over/Under of Actual:</span>
               <span className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </span>
@@ -1712,7 +1712,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-700">% Over/Under:</span>
+              <span className="text-xs font-semibold text-gray-700">% Over/Under of Actual:</span>
               <span className={`text-xs font-bold ${getOverUnderColor(percentOverUnder)}`}>
                 {formatPercentage(percentOverUnder)}
               </span>

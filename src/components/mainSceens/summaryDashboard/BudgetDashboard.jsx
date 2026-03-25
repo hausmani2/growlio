@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import useStore from '../../../store/store';
 import useRestaurantGoals from '../../../hooks/useRestaurantGoals';
+import { useNavigate } from 'react-router-dom';
 
 // Custom plugin to draw labels inside pie chart slices without extra deps
 const SliceLabelsPlugin = {
@@ -75,11 +76,13 @@ ChartJS.register(
 const { Title: AntTitle, Text } = Typography;
 
 const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData, startDate, endDate }) => {
+  const navigate = useNavigate();
   const [chartData, setChartData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [weekRange, setWeekRange] = useState('');
   const fetchBudgetAllocationSummary = useStore((s) => s.fetchBudgetAllocationSummary);
+  const restaurantGoals = useStore((s) => s.restaurantGoals);
   const lastFetchKeyRef = useRef('');
   const fetchDebounceRef = useRef(null);
   
@@ -698,6 +701,58 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
             </div>
             <div className="mt-3 text-sm text-gray-600">
               <p>This chart shows how your weekly expenses are allocated across Labor, Food, and Operational Expense.</p>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Budget assumptions (what budgets are based on) */}
+      <Row gutter={[16, 16]} className="mt-4">
+        <Col xs={24}>
+          <Card className="h-full">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-orange-600 mb-1">Budget assumptions</h3>
+                <p className="text-sm text-gray-600">
+                  These settings are used to calculate your weekly budgets.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto">
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="text-xs text-gray-600">Labor % target</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {Number(restaurantGoals?.labour_goal || 0) ? `${Math.round(Number(restaurantGoals.labour_goal))}%` : '—'}
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="text-xs text-gray-600">COGS % target</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {Number(restaurantGoals?.cogs_goal || 0) ? `${Math.round(Number(restaurantGoals.cogs_goal))}%` : '—'}
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="text-xs text-gray-600">Avg hourly rate</div>
+                  <div className="text-base font-semibold text-gray-900">
+                    {Number(restaurantGoals?.avg_hourly_rate || 0) ? `$${Number(restaurantGoals.avg_hourly_rate).toFixed(2)}/hr` : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 justify-end">
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => navigate('/dashboard/labor-information')}
+                >
+                  Edit labor & rate
+                </Button>
+                <Button
+                  icon={<EditOutlined />}
+                  onClick={() => navigate('/dashboard/food-cost-details')}
+                >
+                  Edit COGS
+                </Button>
+              </div>
             </div>
           </Card>
         </Col>

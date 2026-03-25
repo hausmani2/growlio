@@ -352,7 +352,7 @@ function App() {
           <Route path="/dashboard/food-cost-details" element={<Wrapper showSidebar={true} children={<FoodCostDetailsWrapper />} />} />
           <Route path="/dashboard/sales-channels" element={<Wrapper showSidebar={true} children={<SalesChannelsWrapper />} />} />
           <Route path="/dashboard/third-party-delivery" element={<Wrapper showSidebar={true} children={<ThirdPartyDeliveryWrapper />} />} />
-          <Route path="/dashboard/sales-data" element={<Wrapper showSidebar={true} children={<SalesDataWrapper />} />} />
+          {/* <Route path="/dashboard/sales-data" element={<Wrapper showSidebar={true} children={<SalesDataWrapper />} />} /> */}
           <Route path="/dashboard/expense" element={<Wrapper showSidebar={true} children={<ExpenseWrapper />} />} />
           <Route path="/dashboard/profile" element={<Wrapper showSidebar={true} children={<ProfileWrapper />} />} />
           <Route path="/dashboard/support" element={<Wrapper showSidebar={true} children={<SupportPage />} />} />

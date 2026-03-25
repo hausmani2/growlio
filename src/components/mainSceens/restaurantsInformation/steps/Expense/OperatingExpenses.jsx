@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Modal, Switch, InputNumber } from "antd";
+import { Button, Input, Modal, Switch, InputNumber, Select, message } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
-import { DEFAULT_EXPENSES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
+import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
 
 // Removed COST_TYPES - no longer using fixed/variable distinction
 
@@ -36,8 +36,14 @@ const convertDefaultExpensesToFields = (defaultExpenses) => {
  */
 const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [modalForm, setModalForm] = useState({
+    category: "",
+    name: "",
+    is_value_type: true, // true = value ($), false = percentage (%)
+    fixed_expense_type: "MONTHLY",
+    amount: 0,
+  });
 
   // Initialize with default expenses if no data exists - do this immediately on mount
   useEffect(() => {
@@ -153,26 +159,56 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
     return grouped;
   }, [data.dynamicFixedFields, data.dynamicVariableFields]);
 
-  const showModal = () => setIsModalVisible(true);
+  const categoryOptions = useMemo(() => {
+    const fromDefaults = DEFAULT_EXPENSES.map((e) => e?.category).filter(Boolean);
+    const merged = [...new Set([...(EXPENSE_CATEGORIES || []), ...fromDefaults, "Other"])];
+    return merged.sort((a, b) => String(a).localeCompare(String(b)));
+  }, []);
+
+  const showModal = () => {
+    setModalForm({
+      category: "",
+      name: "",
+      is_value_type: true,
+      fixed_expense_type: "MONTHLY",
+      amount: 0,
+    });
+    setIsModalVisible(true);
+  };
   const handleCancel = () => {
     setIsModalVisible(false);
-    setNewLabel("");
+    setModalForm({
+      category: "",
+      name: "",
+      is_value_type: true,
+      fixed_expense_type: "MONTHLY",
+      amount: 0,
+    });
   };
 
   const handleOk = () => {
-    const label = newLabel.trim();
-    if (!label || label.length < 2) return;
+    const category = String(modalForm.category || "").trim();
+    const name = String(modalForm.name || "").trim();
+    if (!category) {
+      message.warning("Please select an expense category.");
+      return;
+    }
+    if (!name || name.length < 2) {
+      message.warning("Please enter an expense name (at least 2 characters).");
+      return;
+    }
 
     // Add to fixed fields (we'll treat all expenses the same way)
+    const freq = modalForm.fixed_expense_type === "WEEKLY" ? "weekly" : "monthly";
     const newField = {
       id: Date.now() + Math.random(),
-      label,
-      value: "",
+      label: name,
+      value: String(modalForm.amount ?? 0),
       key: `dynamic_expense_${Date.now()}_${Math.random()}`,
-      expense_type: "monthly",
+      expense_type: freq,
       is_active: true,
-      is_value_type: true,
-      category: "Other",
+      is_value_type: !!modalForm.is_value_type,
+      category: category || "Other",
     };
     updateData("dynamicFixedFields", [...(data.dynamicFixedFields || []), newField]);
 
@@ -355,17 +391,82 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         open={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
-        okText="Add"
+        okText="Add Expense"
         cancelText="Cancel"
+        width={600}
       >
-        <div className="flex flex-col gap-3">
+        <div className="space-y-4 py-2">
           <div>
-            <label className="text-sm font-medium">Expense Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <Select
+              placeholder="Select Category"
+              value={modalForm.category}
+              onChange={(value) => setModalForm((prev) => ({ ...prev, category: value }))}
+              className="w-full h-11"
+              options={categoryOptions.map((cat) => ({ label: cat, value: cat }))}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Expense Name <span className="text-red-500">*</span>
+            </label>
             <Input
               placeholder="Enter expense name"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              className="h-11 text-sm mt-1"
+              value={modalForm.name}
+              onChange={(e) => setModalForm((prev) => ({ ...prev, name: e.target.value }))}
+              className="h-11"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <span className="text-sm font-medium text-gray-700">Value Type</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${!modalForm.is_value_type ? "font-semibold" : "text-gray-500"}`}>
+                Percentage
+              </span>
+              <Switch
+                checked={modalForm.is_value_type}
+                onChange={(checked) => setModalForm((prev) => ({ ...prev, is_value_type: checked }))}
+              />
+              <span className={`text-sm ${modalForm.is_value_type ? "font-semibold" : "text-gray-500"}`}>
+                Value
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <span className="text-sm font-medium text-gray-700">Frequency</span>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm ${modalForm.fixed_expense_type === "WEEKLY" ? "font-semibold" : "text-gray-500"}`}>
+                Weekly
+              </span>
+              <Switch
+                checked={modalForm.fixed_expense_type === "MONTHLY"}
+                onChange={(checked) =>
+                  setModalForm((prev) => ({
+                    ...prev,
+                    fixed_expense_type: checked ? "MONTHLY" : "WEEKLY",
+                  }))
+                }
+              />
+              <span className={`text-sm ${modalForm.fixed_expense_type === "MONTHLY" ? "font-semibold" : "text-gray-500"}`}>
+                Monthly
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Amount {modalForm.is_value_type ? "($)" : "(%)"}
+            </label>
+            <InputNumber
+              value={modalForm.amount}
+              onChange={(value) => setModalForm((prev) => ({ ...prev, amount: value || 0 }))}
+              min={0}
+              className="w-full"
             />
           </div>
         </div>

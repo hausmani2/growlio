@@ -24,7 +24,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/basic-information': 'basic-information',
     '/dashboard/sales-channels': 'sales-channels',
     '/dashboard/third-party-delivery': 'third-party-delivery',
-    '/dashboard/sales-data': 'sales-data',
+    // '/dashboard/sales-data': 'sales-data',
     '/dashboard/labor-data': 'labor-data',
     '/dashboard/labor-information': 'labor-information',
     '/dashboard/food-cost-details': 'food-cost-details',

@@ -7,7 +7,7 @@ const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 // Map item labels to their corresponding routes (fallback for static items)
 const ITEM_ROUTES = {
   "Add operating expenses": "/dashboard/expense",
-  "Enter additional sales data": "/dashboard/sales-data",
+  "Enter additional sales data": "/dashboard/basic-information",
   "Restaurant details": "/dashboard/basic-information",
   "Operating information": "/dashboard/sales-channels",
   "Labor information": "/dashboard/labor-information",

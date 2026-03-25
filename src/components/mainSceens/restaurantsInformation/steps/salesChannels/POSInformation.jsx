@@ -207,7 +207,7 @@ const POSInformation = ({ data, updateData, errors = {}, onSaveAndContinue, load
                             className="bg-gray-200 text-gray-700 h-11 w-full sm:w-auto text-sm" 
                             onClick={() => {
                             
-                                navigate('/dashboard/sales-data');
+                                navigate('/dashboard/basic-information');
                             }} 
                             disabled={loading} 
                         />
