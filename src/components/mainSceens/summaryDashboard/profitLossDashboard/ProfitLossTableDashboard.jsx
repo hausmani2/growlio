@@ -1500,19 +1500,34 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render labor details
   const renderLaborDetails = useCallback((laborData) => {
     const isClosed = isDayClosed(laborData);
-    const laborBudget = parseFloat(laborData.labour) || 
-                       parseFloat(laborData.labor_budget) || 
-                       parseFloat(laborData.budgeted_labor_dollars) || 0;
+    const getFirstNumeric = (...values) => {
+      for (const value of values) {
+        if (value === null || value === undefined || value === '') continue;
+        const parsed = parseFloat(value);
+        if (!Number.isNaN(parsed)) return parsed;
+      }
+      return 0;
+    };
+
+    const laborBudget = getFirstNumeric(
+      laborData.labour,
+      laborData.labor_budget,
+      laborData.budgeted_labor_dollars
+    );
     
     // Use dynamic variable based on format
     const dynamicLaborKey = getDynamicVariableName('labour_actual');
     const laborActual = printFormat === 'percentage' ? 
-      parseFloat(laborData[dynamicLaborKey]) || 0 :
-      parseFloat(laborData.labour_actual) || 
-      parseFloat(laborData.amount) || 
-      parseFloat(laborData.actual_labor_dollars) || 0;
-    const laborHours = parseFloat(laborData.labor_hours_actual) || 
-                      parseFloat(laborData.hours_actual) || 0;
+      getFirstNumeric(laborData[dynamicLaborKey]) :
+      getFirstNumeric(
+        laborData.labour_actual,
+        laborData.actual_labor_dollars,
+        laborData.amount
+      );
+    const laborHours = getFirstNumeric(
+      laborData.labor_hours_actual,
+      laborData.hours_actual
+    );
     const averageHourlyRate = parseFloat(laborData.actual_daily_labor_rate) || 0;
     const amtOverUnder = parseFloat(laborData.labour_amount) || 0;
     const percentOverUnder = parseFloat(laborData.labour_amount_percent) || 0;

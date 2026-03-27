@@ -19,17 +19,33 @@ const LaborDetailDropdown = ({
   }
 
 
+  // Preserve API zeros (e.g., "0.00") instead of falling through to fallback fields.
+  const getFirstNumeric = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === '') continue;
+      const parsed = parseFloat(value);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
   // Calculate values - handle different possible field names
-  const laborBudget = parseFloat(laborData.labour) || 
-                     parseFloat(laborData.labor_budget) || 
-                     parseFloat(laborData.budgeted_labor_dollars) || 0;
+  const laborBudget = getFirstNumeric(
+    laborData.labour,
+    laborData.labor_budget,
+    laborData.budgeted_labor_dollars
+  );
   
-  const laborActual = parseFloat(laborData.labour_actual) || 
-                     parseFloat(laborData.amount) || 
-                     parseFloat(laborData.actual_labor_dollars) || 0;
+  const laborActual = getFirstNumeric(
+    laborData.labour_actual,
+    laborData.amount,
+    laborData.actual_labor_dollars
+  );
   
-  const laborHours = parseFloat(laborData.labor_hours_actual) || 
-                    parseFloat(laborData.hours_actual) || 0;
+  const laborHours = getFirstNumeric(
+    laborData.labor_hours_actual,
+    laborData.hours_actual
+  );
   
   const averageHourlyRate = parseFloat(laborData.actual_daily_labor_rate) || 0;
   
