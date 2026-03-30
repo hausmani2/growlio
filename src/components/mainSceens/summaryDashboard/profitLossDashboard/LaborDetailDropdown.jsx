@@ -8,6 +8,8 @@ const LaborDetailDropdown = ({
   children, 
   dayData, 
   laborData,
+  dayHighlightClass = 'bg-gray-100 text-gray-800 ring-1 ring-gray-200',
+  expandedBgClass = 'bg-white',
   printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
@@ -88,14 +90,20 @@ const LaborDetailDropdown = ({
     }));
   };
 
+  const isThemedExpanded = expandedBgClass !== 'bg-white';
+  const expandedSectionBorder = isThemedExpanded ? 'border-white/30' : 'border-gray-200';
+
   const dropdownContent = (
     <div className="w-72 p-4 bg-white rounded-lg shadow-xl border border-gray-200">
       <div className="space-y-3">
         {/* Header */}
         <div className="text-center pb-2 border-b border-gray-200">
-          <Text strong className="text-sm text-gray-700">
-            {dayData.dayName} ({dayData.date})
-          </Text>
+          <div className="flex items-center justify-center gap-2">
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-sm font-semibold ${dayHighlightClass}`}>
+              {dayData.dayName}
+            </span>
+            <span className="text-sm text-gray-600">({dayData.date})</span>
+          </div>
         </div>
 
         {/* Labor Budget */}
@@ -139,7 +147,7 @@ const LaborDetailDropdown = ({
           
           {/* Expanded Labor Actual Content */}
           {expandedSections.laborActual && (
-            <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+            <div className={`p-2 ${expandedBgClass} border-t ${expandedSectionBorder} space-y-2`}>
               {/* Over/Under Analysis */}
               <div className="p-2 bg-orange-50 rounded border border-orange-200">
                 <div className="space-y-1">

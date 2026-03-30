@@ -21,6 +21,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     loading: storeLoading,
     error: storeError,
     completeOnboardingData,
+    loadExistingOnboardingData,
     restaurantGoals,
     getRestaurentGoal,
     checkWeeklyAverageData,
@@ -75,10 +76,35 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Get providers from onboarding data
   const getProviders = () => {
-    if (!completeOnboardingData || !completeOnboardingData['Sales Channels'] || !completeOnboardingData['Sales Channels'].data) {
-      return [];
-    }
-    return completeOnboardingData['Sales Channels'].data.providers || [];
+    if (!completeOnboardingData) return [];
+
+    // Primary source: "Third Party" step (current onboarding model)
+    const thirdPartyStep = completeOnboardingData['Third Party'];
+    const thirdPartyProviders = Array.isArray(thirdPartyStep?.data?.providers)
+      ? thirdPartyStep.data.providers
+      : [];
+    const isThirdPartyEnabled = thirdPartyStep?.data?.third_party === true || thirdPartyProviders.length > 0;
+
+    // Backward compatibility: some older data stored providers under "Sales Channels"
+    const salesChannelsStep = completeOnboardingData['Sales Channels'];
+    const legacyProviders = Array.isArray(salesChannelsStep?.data?.providers)
+      ? salesChannelsStep.data.providers
+      : [];
+
+    const merged = isThirdPartyEnabled ? [...thirdPartyProviders, ...legacyProviders] : legacyProviders;
+
+    // Normalize and de-duplicate by provider_name
+    const map = new Map();
+    merged.forEach((p) => {
+      const name = (p?.provider_name || p?.name || '').toString().trim();
+      if (!name) return;
+      map.set(name.toLowerCase(), {
+        ...p,
+        provider_name: name
+      });
+    });
+
+    return Array.from(map.values());
   };
 
   // Get sales channels configuration from onboarding data
@@ -99,11 +125,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   };
 
   const [providers, setProviders] = useState([]);
+  // Stable, computed list used for UI + calculations to avoid flicker/race conditions
+  const [displayProviders, setDisplayProviders] = useState([]);
   const [salesChannelsConfig, setSalesChannelsConfig] = useState({
     in_store: true,
     online: false,
     from_app: false
   });
+
+  // Use displayProviders everywhere once available; fallback to configured providers
+  const providerList = displayProviders.length > 0 ? displayProviders : providers;
 
   // Update providers and sales channels config when onboarding data changes
   useEffect(() => {
@@ -112,6 +143,32 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     setProviders(currentProviders);
     setSalesChannelsConfig(currentConfig);
   }, [completeOnboardingData]);
+
+  // Ensure provider config is always fresh (so newly-added 3P providers show immediately)
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshOnboarding = async () => {
+      try {
+        await loadExistingOnboardingData?.(true);
+      } catch (_) {
+        // Non-blocking: page should still work with cached onboarding data
+      }
+    };
+
+    refreshOnboarding();
+
+    const onFocus = () => {
+      if (!isMounted) return;
+      refreshOnboarding();
+    };
+
+    window.addEventListener('focus', onFocus);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [loadExistingOnboardingData]);
 
   // Function to check if a day should be closed based on restaurant goals.
   // API rule: days listed in restaurant_days are OPEN; missing days are CLOSED.
@@ -446,7 +503,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         const averageDailyTicket = parseFloat(day.averageDailyTicket) || 0;
 
         // Check dynamic provider fields
-        const providerFields = providers.map(provider => {
+        const providerFields = providerList.map(provider => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           return parseFloat(day[providerKey]) || 0;
         });
@@ -621,7 +678,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             daily_tickets: ensureWholeNumberTickets(weeklyGoals.dailyTickets),
             average_daily_ticket: Math.round(weeklyGoals.averageDailyTicket || 0),
             // Add dynamic provider fields to weekly data
-            ...providers.reduce((acc, provider) => {
+            ...providerList.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(weeklyGoals[providerKey] || 0);
               return acc;
@@ -652,7 +709,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 return dayValue !== 0 ? 1 : 0;
               })(),
               // Add dynamic provider fields to daily data
-              ...providers.reduce((acc, provider) => {
+              ...providerList.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                 acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(parseFloat(day[providerKey]) || 0);
                 return acc;
@@ -663,7 +720,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             const baseSales = (parseFloat(day.actualSalesInStore) || 0) +
               (parseFloat(day.actualSalesAppOnline) || 0) +
               (parseFloat(day.actualSalesOnline) || 0);
-            const providerSales = providers.reduce((sum, provider) => {
+            const providerSales = providerList.reduce((sum, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               return sum + (parseFloat(day[providerKey]) || 0);
             }, 0);
@@ -709,48 +766,76 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
     setDataNotFound(false);
 
-    // Extract providers from API response and merge with onboarding providers
-    let allProviders = [...providers]; // Start with onboarding providers
-    const providerMap = new Map();
+    // Provider rules (per your requirements):
+    // - If Third Party Delivery Info has providers AND API has third party, show BOTH (union).
+    // - If Third Party Delivery Info has NO providers, only show providers detected from API for this week.
+    // - If API has no third party providers for this week, don't show any API-only providers.
+    const configuredProviders = Array.isArray(providers) ? providers : [];
+    const apiProviderMap = new Map();
+    const hasConfiguredProviders = configuredProviders.length > 0;
     
-    // Add onboarding providers to map
-    providers.forEach(provider => {
-      const key = provider.provider_name.toLowerCase();
-      providerMap.set(key, provider);
-    });
+    const getThirdPartyProviderSource = (salesPerformance) => {
+      if (!salesPerformance) return null;
+      const tps = salesPerformance.third_party_sales;
+      if (tps && typeof tps === 'object') {
+        const hasAnyProviderKeys = Object.keys(tps).some((k) => k.startsWith('actual_sales_'));
+        if (hasAnyProviderKeys) return tps;
+      }
+      // Fallback: providers may be present directly on Sales Performance
+      return salesPerformance;
+    };
 
-    // Extract providers from API response (from weekly and daily entries)
-    if (dashboardData['Sales Performance']?.third_party_sales) {
-      const apiProviders = extractProvidersFromAPI(dashboardData['Sales Performance'].third_party_sales);
-      apiProviders.forEach(apiProvider => {
+    const addApiProvidersFromSalesPerformance = (salesPerformance) => {
+      if (!salesPerformance) return;
+      const apiProviders = extractProvidersFromAPI(getThirdPartyProviderSource(salesPerformance));
+      apiProviders.forEach((apiProvider) => {
         const key = apiProvider.provider_name.toLowerCase();
-        if (!providerMap.has(key)) {
-          providerMap.set(key, apiProvider);
-          allProviders.push(apiProvider);
+        if (!apiProviderMap.has(key)) {
+          apiProviderMap.set(key, apiProvider);
         }
       });
+    };
+
+    // Extract providers from API response (from weekly and daily entries)
+    // Support both shapes:
+    // - Sales Performance.third_party_sales.{actual_sales_*}
+    // - Sales Performance.{actual_sales_*} (direct fields)
+    if (dashboardData['Sales Performance']) {
+      addApiProvidersFromSalesPerformance(dashboardData['Sales Performance']);
     }
 
     // Also check daily entries for additional providers
     if (dashboardData.daily_entries) {
       dashboardData.daily_entries.forEach(entry => {
-        if (entry['Sales Performance']?.third_party_sales) {
-          const apiProviders = extractProvidersFromAPI(entry['Sales Performance'].third_party_sales);
-          apiProviders.forEach(apiProvider => {
-            const key = apiProvider.provider_name.toLowerCase();
-            if (!providerMap.has(key)) {
-              providerMap.set(key, apiProvider);
-              allProviders.push(apiProvider);
-            }
-          });
+        if (entry['Sales Performance']) {
+          addApiProvidersFromSalesPerformance(entry['Sales Performance']);
         }
       });
     }
 
-    // Update providers state if we found new ones from API
-    if (allProviders.length > providers.length) {
-      setProviders(allProviders);
+    // Final provider list (stable order): configured first, then API-only when allowed by rules
+    const configuredMap = new Map();
+    configuredProviders.forEach((p) => {
+      const name = (p?.provider_name || '').toString().trim();
+      if (!name) return;
+      configuredMap.set(name.toLowerCase(), { ...p, provider_name: name });
+    });
+
+    const apiProvidersForWeek = Array.from(apiProviderMap.values());
+
+    let mergedProviders;
+    if (hasConfiguredProviders) {
+      // Setup providers always show; if API has providers, union them (deduped)
+      mergedProviders = [
+        ...Array.from(configuredMap.values()),
+        ...apiProvidersForWeek.filter((p) => !configuredMap.has(p.provider_name.toLowerCase())),
+      ];
+    } else {
+      // No setup providers: only show API providers when present for this week
+      mergedProviders = apiProvidersForWeek;
     }
+
+    setDisplayProviders(mergedProviders);
 
     // Load weekly goals from the Sales Performance section
     if (dashboardData['Sales Performance']) {
@@ -767,20 +852,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       };
 
       // Add dynamic provider fields to goals from third_party_sales object
-      if (salesPerformance.third_party_sales) {
-        allProviders.forEach(provider => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          // If provider has originalField, use it directly, otherwise construct field name
-          const providerFieldName = provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
-          goals[providerKey] = parseFloat(salesPerformance.third_party_sales[providerFieldName]) || 0;
-        });
-      } else {
-        // Fallback to direct fields if third_party_sales doesn't exist
-        allProviders.forEach(provider => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          goals[providerKey] = parseFloat(salesPerformance[providerKey]) || 0;
-        });
-      }
+      mergedProviders.forEach(provider => {
+        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+        const providerFieldName =
+          provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
+
+        // Prefer nested third_party_sales when present, fallback to direct field on Sales Performance
+        const nestedVal = salesPerformance.third_party_sales?.[providerFieldName];
+        const directVal = salesPerformance?.[providerFieldName];
+        goals[providerKey] = parseFloat(nestedVal ?? directVal) || 0;
+      });
 
       setWeeklyGoals(goals);
     }
@@ -818,20 +899,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       };
 
       // Add dynamic provider fields to daily data from third_party_sales object
-      if (entry['Sales Performance']?.third_party_sales) {
-        allProviders.forEach(provider => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          // If provider has originalField, use it directly, otherwise construct field name
-          const providerFieldName = provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
-          dailyData[providerKey] = parseFloat(entry['Sales Performance'].third_party_sales[providerFieldName]) || 0;
-        });
-      } else {
-        // Fallback to direct fields if third_party_sales doesn't exist
-        allProviders.forEach(provider => {
-          const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-          dailyData[providerKey] = entry['Sales Performance']?.[providerKey] || 0;
-        });
-      }
+      mergedProviders.forEach(provider => {
+        const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+        const providerFieldName =
+          provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
+
+        const sp = entry['Sales Performance'] || {};
+        const nestedVal = sp.third_party_sales?.[providerFieldName];
+        const directVal = sp?.[providerFieldName];
+        dailyData[providerKey] = parseFloat(nestedVal ?? directVal) || 0;
+      });
 
       return dailyData;
     }) || [];
@@ -884,7 +961,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         };
 
         // Add dynamic provider fields to default data
-        allProviders.forEach(provider => {
+        mergedProviders.forEach(provider => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           defaultData[providerKey] = 0;
         });
@@ -915,7 +992,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
 
         // Add dynamic provider totals
-        providers.forEach(provider => {
+        providerList.forEach(provider => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           if (!acc[providerKey]) acc[providerKey] = 0;
           acc[providerKey] += parseFloat(record[providerKey]) || 0;
@@ -928,7 +1005,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: 0,
         actualSalesOnline: 0,
         dailyTickets: 0,
-        ...providers.reduce((acc, provider) => {
+        ...providerList.reduce((acc, provider) => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           acc[providerKey] = 0;
           return acc;
@@ -937,7 +1014,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
       // Calculate net sales actual total (including dynamic providers)
       const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline', 'actualSalesOnline'];
-      providers.forEach(provider => {
+      providerList.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
         allSalesFields.push(providerKey);
       });
@@ -1176,7 +1253,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
           dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
           averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0,
-          ...providers.reduce((acc, provider) => {
+          ...providerList.reduce((acc, provider) => {
             const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
             acc[providerKey] = weekData.weeklyTotals[providerKey] || 0;
             return acc;
@@ -1292,7 +1369,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             daily_tickets: finalTotals.dailyTickets || 0,
             average_daily_ticket: Math.round(finalTotals.averageDailyTicket || 0),
             // Add dynamic provider fields to weekly data
-            ...providers.reduce((acc, provider) => {
+            ...providerList.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(finalTotals[providerKey] || 0);
               return acc;
@@ -1323,7 +1400,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 return value !== 0 ? 1 : 0;
               })(), // Include the restaurant open/closed status
               // Add dynamic provider fields to daily data
-              ...providers.reduce((acc, provider) => {
+              ...providerList.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                 acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(parseFloat(day[providerKey]) || 0);
                 return acc;
@@ -1334,7 +1411,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             const baseSales = (parseFloat(day.actualSalesInStore) || 0) +
               (parseFloat(day.actualSalesAppOnline) || 0) +
               (parseFloat(day.actualSalesOnline) || 0);
-            const providerSales = providers.reduce((sum, provider) => {
+            const providerSales = providerList.reduce((sum, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               return sum + (parseFloat(day[providerKey]) || 0);
             }, 0);
@@ -1448,7 +1525,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       };
 
       // Add dynamic provider fields
-      providers.forEach(provider => {
+      providerList.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
         dayData[providerKey] = 0;
       });
@@ -1469,7 +1546,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       dailyTickets: 0,
       averageDailyTicket: 0
     };
-    providers.forEach(provider => {
+    providerList.forEach(provider => {
       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
       zeroed[providerKey] = 0;
     });
@@ -1662,7 +1739,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         acc.dailyTickets += ensureWholeNumberTickets(record.dailyTickets);
 
         // Add dynamic provider totals
-        providers.forEach(provider => {
+        providerList.forEach(provider => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           if (!acc[providerKey]) acc[providerKey] = 0;
           acc[providerKey] += parseFloat(record[providerKey]) || 0;
@@ -1675,7 +1752,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: 0,
         actualSalesOnline: 0,
         dailyTickets: 0,
-        ...providers.reduce((acc, provider) => {
+        ...providerList.reduce((acc, provider) => {
           const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
           acc[providerKey] = 0;
           return acc;
@@ -1684,7 +1761,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
       // Calculate net sales actual total (including dynamic providers)
       const allSalesFields = ['actualSalesInStore', 'actualSalesAppOnline', 'actualSalesOnline'];
-      providers.forEach(provider => {
+      providerList.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
         allSalesFields.push(providerKey);
       });
@@ -1900,10 +1977,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           </Card>
 
           {/* Dynamic Provider Fields - Responsive Grid (Read-only) */}
-          {providers.length > 0 && (
+          {providerList.length > 0 && (
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border p-2 rounded-md bg-gray-50 opacity-50">
-              {providers.map((provider) => (
+              {providerList.map((provider) => (
                 <div key={provider.provider_name} className="w-full">
                   <Text strong className="text-sm sm:text-base">Actual Sales - {provider.provider_name}:</Text>
                   <Input
@@ -1944,7 +2021,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   acc.averageDailyTicket += parseFloat(record.averageDailyTicket) || 0;
 
                   // Add dynamic provider totals
-                  providers.forEach(provider => {
+                  providerList.forEach(provider => {
                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                     if (!acc[providerKey]) acc[providerKey] = 0;
                     acc[providerKey] += parseFloat(record[providerKey]) || 0;
@@ -1958,7 +2035,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   actualSalesOnline: 0,
                   dailyTickets: 0,
                   averageDailyTicket: 0,
-                  ...providers.reduce((acc, provider) => {
+                  ...providerList.reduce((acc, provider) => {
                     const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                     acc[providerKey] = 0;
                     return acc;
@@ -1976,7 +2053,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 if (salesChannelsConfig.online) {
                   allSalesFields.push('actualSalesOnline');
                 }
-                providers.forEach(provider => {
+                providerList.forEach(provider => {
                   const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                   allSalesFields.push(providerKey);
                 });
@@ -2012,7 +2089,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       </Table.Summary.Cell>
                     )}
                     {/* Dynamic Provider Summary Cells */}
-                    {providers.map((provider) => {
+                    {providerList.map((provider) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return (
                         <Table.Summary.Cell key={providerKey} index={cellIndex++}>
@@ -2201,7 +2278,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   }
                 }] : []),
                 // Dynamic Provider Columns
-                ...providers.map(provider => ({
+                ...providerList.map(provider => ({
                   title: `Actual Sales - ${provider.provider_name}`,
                   dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                   key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
@@ -2248,7 +2325,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     }
 
                     // Add dynamic provider sales
-                    const providerSales = providers.reduce((sum, provider) => {
+                    const providerSales = providerList.reduce((sum, provider) => {
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return sum + (parseFloat(record[providerKey]) || 0);
                     }, 0);
@@ -2300,7 +2377,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     );
                   }
                 },
-             
+                
                 {
                   title: (
                     <div className="flex items-center gap-2">
@@ -2810,7 +2887,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </div>
 
                 {/* Dynamic Provider Fields */}
-                {providers.map((provider) => (
+                {providerList.map((provider) => (
                   <div key={provider.provider_name}>
                     <Text strong>Actual Sales - {provider.provider_name}:</Text>
                     <Input

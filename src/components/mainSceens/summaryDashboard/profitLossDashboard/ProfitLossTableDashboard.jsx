@@ -786,7 +786,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         
         return (
           <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
-            <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
+            <SalesDetailDropdown
+              dayData={dayData}
+              salesData={entry}
+              printFormat={printFormat}
+              dayHighlightClass="bg-green-100 text-green-900 ring-1 ring-green-200"
+              expandedBgClass="bg-green-50"
+            >
               <span 
                 className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center gap-1 ${isClosed ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
                 title={isClosed ? "Restaurant is closed on this day" : "Click to view sales details"}
@@ -795,7 +801,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               </span>
             </SalesDetailDropdown>
             {profitPercentage && !isClosed && (
-              <SalesDetailDropdown dayData={dayData} salesData={entry} printFormat={printFormat}>
+              <SalesDetailDropdown
+                dayData={dayData}
+                salesData={entry}
+                printFormat={printFormat}
+                dayHighlightClass="bg-green-100 text-green-900 ring-1 ring-green-200"
+                expandedBgClass="bg-green-50"
+              >
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry[`${categoryKey}_profit`] || entry.sales_amount_percent, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -822,7 +834,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               {formattedValue}
             </span>
             {profitPercentage && !isClosed && (
-              <FoodCostDetailDropdown dayData={dayData} foodCostData={entry} printFormat={printFormat}>
+              <FoodCostDetailDropdown
+                dayData={dayData}
+                foodCostData={entry}
+                printFormat={printFormat}
+                dayHighlightClass="bg-purple-100 text-purple-900 ring-1 ring-purple-200"
+                expandedBgClass="bg-purple-50"
+              >
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.food_cost_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -842,7 +860,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         if (rawValue > 0) {
           return (
             <div className={`flex items-start justify-start ${isClosed ? 'opacity-50' : ''}`}>
-              <VariableCostDetailDropdown dayData={dayData} variableCostData={entry} printFormat={printFormat}>
+              <VariableCostDetailDropdown
+                dayData={dayData}
+                variableCostData={entry}
+                printFormat={printFormat}
+                dayHighlightClass="bg-blue-100 text-blue-900 ring-1 ring-blue-200"
+                expandedBgClass="bg-blue-50"
+              >
                 <span 
                   className={`text-sm ${isClosed ? 'text-gray-400' : colorClass} flex items-center gap-1 ${isClosed ? '' : 'cursor-pointer hover:text-blue-600 hover:underline'}`}
                   title={isClosed ? "Restaurant is closed on this day" : "Click to view operating expenses details"}
@@ -906,7 +930,13 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               {formattedLabourValue} 
             </span>
             {profitPercentage && !isClosed && (
-              <LaborDetailDropdown dayData={dayData} laborData={entry} printFormat={printFormat}>
+              <LaborDetailDropdown
+                dayData={dayData}
+                laborData={entry}
+                printFormat={printFormat}
+                dayHighlightClass="bg-yellow-100 text-yellow-900 ring-1 ring-yellow-200"
+                expandedBgClass="bg-yellow-50"
+              >
                 <span className={`text-xs ml-1 mb-2 cursor-pointer hover:text-blue-600 hover:underline ${getPercentageColor(entry.labour_profit, categoryKey)} font-bold`}>
                   {profitPercentage}
                 </span>
@@ -1835,11 +1865,50 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const isAnnual = isAnnualData(tableData);
     const periodType = isAnnual ? 'Annual' : (isMonthly ? 'Monthly' : (isWeekly ? 'Weekly' : 'Daily'));
 
+    const themeByCategory = {
+      sales_actual: {
+        summaryBg: 'bg-green-50',
+        summaryBorder: 'border-green-200',
+        summaryText: 'text-green-800',
+        cardBg: 'bg-green-50',
+        cardBorder: 'border-green-200',
+      },
+      labour_actual: {
+        summaryBg: 'bg-yellow-50',
+        summaryBorder: 'border-yellow-200',
+        summaryText: 'text-yellow-800',
+        cardBg: 'bg-yellow-50',
+        cardBorder: 'border-yellow-200',
+      },
+      food_cost_actual: {
+        summaryBg: 'bg-purple-50',
+        summaryBorder: 'border-purple-200',
+        summaryText: 'text-purple-800',
+        cardBg: 'bg-purple-50',
+        cardBorder: 'border-purple-200',
+      },
+      variableCost: {
+        summaryBg: 'bg-blue-50',
+        summaryBorder: 'border-blue-200',
+        summaryText: 'text-blue-800',
+        cardBg: 'bg-blue-50',
+        cardBorder: 'border-blue-200',
+      },
+    };
+
+    const theme = themeByCategory[categoryKey] || {
+      summaryBg: 'bg-blue-50',
+      summaryBorder: 'border-blue-200',
+      summaryText: 'text-blue-800',
+      cardBg: 'bg-white',
+      cardBorder: 'border-gray-200',
+    };
+
     return (
       <div className="space-y-3">
         {/* Period Summary */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h5 className="font-semibold text-blue-800 text-sm mb-3">{periodType} Summary</h5>
+        <div className={`${theme.summaryBg} p-4 rounded-lg border ${theme.summaryBorder}`}>
+          <h5 className={`font-semibold ${theme.summaryText} text-sm mb-3`}>{periodType} Summary</h5>
           {renderWeeklySummary(categoryKey, weeklyTotals)}
         </div>
 
@@ -1874,8 +1943,11 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             
             const isClosed = isDayClosed(entry);
             return (
-              <div key={detailKey} className={`bg-white p-4 rounded-lg border border-gray-200 min-w-[280px] flex-shrink-0 ${isClosed ? 'opacity-60' : ''}`}>
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+              <div
+                key={detailKey}
+                className={`${theme.cardBg} p-4 rounded-lg border ${theme.cardBorder} min-w-[280px] flex-shrink-0 ${isClosed ? 'opacity-60' : ''}`}
+              >
+                <div className={`flex items-center justify-between mb-3 pb-2 border-b ${theme.cardBorder}`}>
                   <h5 className={`font-semibold text-sm ${isClosed ? 'text-gray-500' : 'text-gray-800'} flex items-center gap-2`}>
                     {dateInfo.day} - {dateInfo.fullDate}
                     {isClosed && <span className="text-xs">🔒</span>}
@@ -2037,7 +2109,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                if (!category?.hasDetails) return null;
                
                return (
-                 <div key={`expanded-${record.key}`} className="bg-gray-50 rounded-lg">
+                 <div key={`expanded-${record.key}`} className={`${category?.bgColor || 'bg-gray-50'} rounded-lg p-3`}>
                    <h4 className="font-semibold text-gray-800 mb-3">{category.detailLabel}</h4>
                    {renderWeeklyDetailedContent(category.key)}
                  </div>

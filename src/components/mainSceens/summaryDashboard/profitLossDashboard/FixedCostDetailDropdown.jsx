@@ -8,6 +8,8 @@ const FixedCostDetailDropdown = ({
   children, 
   dayData, 
   fixedCostData,
+  dayHighlightClass = 'bg-gray-100 text-gray-800 ring-1 ring-gray-200',
+  expandedBgClass = 'bg-white',
   printFormat = 'dollar'
 }) => {
   const [expandedSections, setExpandedSections] = useState({
@@ -54,14 +56,22 @@ const FixedCostDetailDropdown = ({
     }));
   };
 
+  const isThemedExpanded = expandedBgClass !== 'bg-white';
+  const expandedInnerCardBg = isThemedExpanded ? 'bg-white/70' : 'bg-gray-50';
+  const expandedInnerCardBorder = isThemedExpanded ? 'border-white/40' : 'border-gray-200';
+  const expandedSectionBorder = isThemedExpanded ? 'border-white/30' : 'border-gray-200';
+
   const dropdownContent = (
     <div className="w-72 p-4 bg-white rounded-lg shadow-xl border border-gray-200">
       <div className="space-y-3">
         {/* Header */}
         <div className="text-center pb-2 border-b border-gray-200">
-          <Text strong className="text-sm text-gray-700">
-            {dayData.dayName} ({dayData.date})
-          </Text>
+          <div className="flex items-center justify-center gap-2">
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-sm font-semibold ${dayHighlightClass}`}>
+              {dayData.dayName}
+            </span>
+            <span className="text-sm text-gray-600">({dayData.date})</span>
+          </div>
         </div>
 
     
@@ -92,10 +102,10 @@ const FixedCostDetailDropdown = ({
           
           {/* Expanded Fixed Cost Actual Content */}
           {expandedSections.fixedCostActual && (
-            <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+            <div className={`p-2 ${expandedBgClass} border-t ${expandedSectionBorder} space-y-2`}>
               {Array.isArray(fixedCostData.fixed_costs) && fixedCostData.fixed_costs.length > 0 ? (
                 fixedCostData.fixed_costs.map((cost, index) => (
-                  <div key={cost.id || index} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                  <div key={cost.id || index} className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                     <div className="flex items-center gap-2">
                       <Text className="text-xs font-medium text-gray-700">{cost.name}:</Text>
                     </div>
@@ -108,7 +118,7 @@ const FixedCostDetailDropdown = ({
                   </div>
                 ))
               ) : (
-                <div className="text-center py-2 bg-gray-50 rounded border border-gray-200">
+                <div className={`text-center py-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                   <Text className="text-xs text-gray-500 italic">
                     No fixed cost details available
                   </Text>

@@ -18,6 +18,8 @@ const SalesDetailDropdown = ({
   children, 
   dayData, 
   salesData,
+  dayHighlightClass = 'bg-gray-100 text-gray-800 ring-1 ring-gray-200',
+  expandedBgClass = 'bg-white',
   printFormat = 'dollar' // Default to dollar format
 }) => {
   const [expandedSections, setExpandedSections] = useState({
@@ -131,14 +133,23 @@ const SalesDetailDropdown = ({
     }));
   };
 
+  const isThemedExpanded = expandedBgClass !== 'bg-white';
+  const expandedInnerCardBg = isThemedExpanded ? 'bg-white/70' : 'bg-gray-50';
+  const expandedInnerCardHoverBg = isThemedExpanded ? 'hover:bg-white/80' : 'hover:bg-gray-100';
+  const expandedInnerCardBorder = isThemedExpanded ? 'border-white/40' : 'border-gray-200';
+  const expandedSectionBorder = isThemedExpanded ? 'border-white/30' : 'border-gray-200';
+
   const dropdownContent = (
     <div className="w-72 p-4 bg-white rounded-lg shadow-xl border border-gray-200">
       <div className="space-y-3">
         {/* Header */}
         <div className="text-center pb-2 border-b border-gray-200">
-          <Text strong className="text-sm text-gray-700">
-            {dayData.dayName} ({dayData.date})
-          </Text>
+          <div className="flex items-center justify-center gap-2">
+            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-sm font-semibold ${dayHighlightClass}`}>
+              {dayData.dayName}
+            </span>
+            <span className="text-sm text-gray-600">({dayData.date})</span>
+          </div>
         </div>
 
         {/* Sales Budget */}
@@ -172,11 +183,11 @@ const SalesDetailDropdown = ({
           
           {/* Expanded Sales Actual Content */}
           {expandedSections.salesActual && (
-            <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+            <div className={`p-2 ${expandedBgClass} border-t ${expandedSectionBorder} space-y-2`}>
               {/* In-Store Sales - Expandable */}
-              <div className="border border-gray-200 rounded">
+              <div className={`border ${expandedSectionBorder} rounded`}>
                 <div 
-                  className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                  className={`flex items-center justify-between p-2 ${expandedInnerCardBg} cursor-pointer ${expandedInnerCardHoverBg} border ${expandedInnerCardBorder} rounded`}
                   onClick={() => toggleSection('inStore')}
                 >
                   <div className="flex items-center gap-2">
@@ -195,7 +206,7 @@ const SalesDetailDropdown = ({
                 
                 {/* Expanded In-Store Content */}
                 {expandedSections.inStore && (
-                  <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+                  <div className={`p-2 ${expandedBgClass} border-t ${expandedSectionBorder} space-y-2`}>
                     <div className="flex items-center justify-between">
                       <Text className="text-xs text-gray-600"># Tickets:</Text>
                       <Text className="text-xs font-semibold">{tickets}</Text>
@@ -209,7 +220,7 @@ const SalesDetailDropdown = ({
               </div>
 
               {/* App/Online Sales - Single Level (No Expandable) */}
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+              <div className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                 <div className="flex items-center gap-2">
                   <MobileOutlined className="text-gray-600 text-xs" />
                   <Text className="text-xs font-medium text-gray-700">App/Online Sales:</Text>
@@ -219,9 +230,9 @@ const SalesDetailDropdown = ({
 
               {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (
-                <div className="border border-gray-200 rounded">
+                <div className={`border ${expandedSectionBorder} rounded`}>
                   <div 
-                    className="flex items-center justify-between p-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    className={`flex items-center justify-between p-2 ${expandedInnerCardBg} cursor-pointer ${expandedInnerCardHoverBg} border ${expandedInnerCardBorder} rounded`}
                     onClick={() => toggleSection('thirdParty')}
                   >
                     <div className="flex items-center gap-2">
@@ -242,10 +253,10 @@ const SalesDetailDropdown = ({
                   
                   {/* Expanded Third Party Content */}
                   {expandedSections.thirdParty && (
-                    <div className="p-2 bg-white border-t border-gray-200 space-y-2">
+                    <div className={`p-2 ${expandedBgClass} border-t ${expandedSectionBorder} space-y-2`}>
                       {/* Dynamic Provider List with Professional Names */}
                       {thirdPartyProviders.map((provider, index) => (
-                        <div key={provider.key} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                        <div key={provider.key} className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                           <div className="flex items-center gap-2">
                             <CarOutlined className="text-gray-500 text-xs" />
                             <Text className="text-xs font-medium text-gray-600">{provider.name}:</Text>
@@ -265,7 +276,7 @@ const SalesDetailDropdown = ({
 
                                             {/* Show message if no detailed sales data available */}
                 {salesActual === 0 && appOnlineSales === 0 && thirdPartyProviders.length === 0 && (
-                  <div className="text-center py-2 bg-gray-50 rounded border border-gray-200">
+                  <div className={`text-center py-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                     <Text className="text-xs text-gray-500 italic">
                       No detailed sales data available
                     </Text>
