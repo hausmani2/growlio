@@ -736,7 +736,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     
     if (displayValue === '-') {
       return (
-        <span className={`text-xs ${isClosed ? 'text-gray-300 opacity-30' : 'text-gray-500'}`}>
+        <span className={`text-xs ${isClosed ? 'text-gray-400 ' : 'text-gray-500'}`}>
           {isClosed ? 'Closed' : '-'}
         </span>
       );
@@ -1373,6 +1373,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const salesBudget = parseFloat(salesData.sales_budget) || 0;
     const salesActual = parseFloat(salesData.sales_actual) || 0;
     const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
+    const onlineSales = parseFloat(salesData.online_sales) || 0;
     const tickets = parseFloat(salesData.tickets) || 0;
     const avgTicket = parseFloat(salesData.average_ticket) || (tickets > 0 ? salesActual / tickets : 0);
     const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
@@ -1459,6 +1460,22 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                   }
                 </span>
               </div>
+
+              {/* Online Sales */}
+              {(onlineSales !== 0 || (salesData?.online_sales !== '' && salesData?.online_sales !== null && salesData?.online_sales !== undefined)) && (
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-600 text-xs">🌐</span>
+                    <span className="text-xs font-medium text-gray-700">Online Sales:</span>
+                  </div>
+                  <span className="text-xs font-semibold">
+                    {printFormat === 'percentage'
+                      ? formatPercentage(parseFloat(salesData?.percentage_online_sales || 0))
+                      : formatCurrency(onlineSales)
+                    }
+                  </span>
+                </div>
+              )}
 
               {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (

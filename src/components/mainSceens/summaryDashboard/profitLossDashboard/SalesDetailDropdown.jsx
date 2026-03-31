@@ -42,6 +42,7 @@ const SalesDetailDropdown = ({
   // Get sales_actual directly from API response (not calculated)
   const salesActual = parseFloat(salesData.sales_actual) || 0;
   const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
+  const onlineSales = parseFloat(salesData.online_sales) || 0;
   
   // Handle third party sales using utility functions with percentage support
   // Check if third-party sales data is nested or at root level
@@ -105,6 +106,8 @@ const SalesDetailDropdown = ({
         percentageField = 'percentage_in_store_sales';
       } else if (fieldName === 'app_online_sales') {
         percentageField = 'percentage_app_online_sales';
+      } else if (fieldName === 'online_sales') {
+        percentageField = 'percentage_online_sales';
       } else if (fieldName === 'sales_actual') {
         return '100.0%';
       } else {
@@ -228,6 +231,17 @@ const SalesDetailDropdown = ({
                 <Text className="text-xs font-semibold">{formatValue(appOnlineSales, 'app_online_sales')}</Text>
               </div>
 
+              {/* Online Sales - Single Level (No Expandable) */}
+              {(onlineSales !== 0 || salesData?.online_sales !== '' && salesData?.online_sales !== null && salesData?.online_sales !== undefined) && (
+                <div className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
+                  <div className="flex items-center gap-2">
+                    <MobileOutlined className="text-gray-600 text-xs" />
+                    <Text className="text-xs font-medium text-gray-700">Online Sales:</Text>
+                  </div>
+                  <Text className="text-xs font-semibold">{formatValue(onlineSales, 'online_sales')}</Text>
+                </div>
+              )}
+
               {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (
                 <div className={`border ${expandedSectionBorder} rounded`}>
@@ -275,7 +289,7 @@ const SalesDetailDropdown = ({
               )}
 
                                             {/* Show message if no detailed sales data available */}
-                {salesActual === 0 && appOnlineSales === 0 && thirdPartyProviders.length === 0 && (
+                {salesActual === 0 && appOnlineSales === 0 && onlineSales === 0 && thirdPartyProviders.length === 0 && (
                   <div className={`text-center py-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                     <Text className="text-xs text-gray-500 italic">
                       No detailed sales data available

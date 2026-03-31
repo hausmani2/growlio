@@ -14,7 +14,7 @@ import GuidanceOverlay from '../guidance/GuidanceOverlay';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
-import { getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
+import { getIncompleteSetupItems, getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
 
 /**
  * Wrapper component
@@ -97,12 +97,38 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     // If regular onboarding isn't complete, guide the user to complete setup first.
     if (isRegularUser && !hasCompletedRegularOnboarding) {
       const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
+      const incompleteItems = getIncompleteSetupItems(restaurantOnboardingData);
       Modal.info({
         title: 'Complete onboarding to continue',
-        content:
-          'Please complete your restaurant onboarding to access the Simulation Dashboard. We’ll take you to the next required step now.',
+        content: (
+          <div>
+            <div className="mb-3">
+              Please complete your restaurant onboarding to access the Simulation Dashboard.
+            </div>
+            {incompleteItems.length > 0 && (
+              <div className="mb-3">
+                <div className="font-medium mb-2">Steps remaining:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {incompleteItems.slice(0, 6).map((item) => (
+                    <li key={item.key || item.label}>{item.label}</li>
+                  ))}
+                  {incompleteItems.length > 6 && (
+                    <li>…and {incompleteItems.length - 6} more</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            <div className="text-sm text-gray-600">
+              We’ll take you to the next required step now.
+            </div>
+          </div>
+        ),
         okText: 'Continue setup',
-        onOk: () => navigate(nextRoute, { replace: false }),
+        onOk: async () => {
+          // Ensure the modal closes before navigation (avoids “click did nothing” feeling)
+          await Promise.resolve();
+          navigate(nextRoute, { replace: false });
+        },
       });
       return;
     }

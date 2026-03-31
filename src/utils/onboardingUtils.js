@@ -194,6 +194,21 @@ export const getNextIncompleteSetupRoute = (restaurantData) => {
 };
 
 /**
+ * Get a user-friendly list of incomplete onboarding steps (regular onboarding).
+ * Excludes the final "Go to your budget" pseudo-step.
+ * @param {Object} restaurantData - Response from restaurants-onboarding API
+ * @returns {Array<{label: string, route: (string|null), key: (string|null), order: number}>}
+ */
+export const getIncompleteSetupItems = (restaurantData) => {
+  const progress = getOnboardingProgress(restaurantData);
+  const items = Array.isArray(progress?.items) ? progress.items : [];
+  return items
+    .filter((item) => item?.key !== null) // drop "Go to your budget"
+    .filter((item) => item?.isCompleted === false)
+    .map(({ label, route, key, order }) => ({ label, route, key, order }));
+};
+
+/**
  * Check if restaurant exists in the API response
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if restaurant exists
