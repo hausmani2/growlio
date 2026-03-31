@@ -39,55 +39,47 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
 
   // Subscription / plan gating (POS integration)
-  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
-  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
-  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
-  const currentPackage = useStore((state) => state.currentPackage);
-  const hasFetchedSubscriptionRef = useRef(false);
-  const lastSubscriptionRestaurantIdRef = useRef(null);
-  const restaurantIdForPlan = localStorage.getItem('restaurant_id');
-
-  useEffect(() => {
-    if (!showSidebar) return;
-    // If restaurant changes, re-fetch subscription/current for correct gating
-    if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
-      hasFetchedSubscriptionRef.current = false;
-      lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
-    }
-    if (hasFetchedSubscriptionRef.current) return;
-    hasFetchedSubscriptionRef.current = true;
-    fetchCurrentSubscriptionDetails?.(false);
-  }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
-
-  const posEnabled = useMemo(() => {
-    const pkg = subscriptionDetails?.package || null;
-    const pkgName = (pkg?.name || '').toLowerCase();
-    const featureFlag = pkg?.features?.pos_integration;
-
-    if (pkg) {
-      if (pkgName === 'lite') return false;
-      if (typeof featureFlag === 'boolean') return featureFlag;
-      return ['grow', 'pro'].includes(pkgName);
-    }
-
-    const cpName = (currentPackage?.name || '').toLowerCase();
-    if (cpName) return cpName !== 'lite';
-
-    // If we still don't know, fail closed while loading; otherwise allow.
-    return subscriptionDetailsLoading ? false : true;
-  }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
+  // Temporarily disabled per request: always show Square POS like normal.
+  // const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  // const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
+  // const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  // const currentPackage = useStore((state) => state.currentPackage);
+  // const hasFetchedSubscriptionRef = useRef(false);
+  // const lastSubscriptionRestaurantIdRef = useRef(null);
+  // const restaurantIdForPlan = localStorage.getItem('restaurant_id');
+  //
+  // useEffect(() => {
+  //   if (!showSidebar) return;
+  //   // If restaurant changes, re-fetch subscription/current for correct gating
+  //   if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
+  //     hasFetchedSubscriptionRef.current = false;
+  //     lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
+  //   }
+  //   if (hasFetchedSubscriptionRef.current) return;
+  //   hasFetchedSubscriptionRef.current = true;
+  //   fetchCurrentSubscriptionDetails?.(false);
+  // }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
+  //
+  // const posEnabled = useMemo(() => {
+  //   const pkg = subscriptionDetails?.package || null;
+  //   const pkgName = (pkg?.name || '').toLowerCase();
+  //   const featureFlag = pkg?.features?.pos_integration;
+  //
+  //   if (pkg) {
+  //     if (pkgName === 'lite') return false;
+  //     if (typeof featureFlag === 'boolean') return featureFlag;
+  //     return ['grow', 'pro'].includes(pkgName);
+  //   }
+  //
+  //   const cpName = (currentPackage?.name || '').toLowerCase();
+  //   if (cpName) return cpName !== 'lite';
+  //
+  //   // If we still don't know, fail closed while loading; otherwise allow.
+  //   return subscriptionDetailsLoading ? false : true;
+  // }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
+  const posEnabled = true;
 
   const handleSquarePosClick = () => {
-    if (!posEnabled) {
-      Modal.info({
-        title: 'Upgrade required',
-        content:
-          'Square POS integration is not available on your current plan. Please upgrade to access this feature.',
-        okText: 'View plans',
-        onOk: () => navigate('/dashboard/pricing'),
-      });
-      return;
-    }
     navigate('/dashboard/square');
   };
   
@@ -373,12 +365,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         ],
       }] : []),
     ] : []),
-    {
-      key: 'pricing',
-      icon: <StarOutlined />,
-      label: 'Pricing',
-      onClick: () => navigate('/dashboard/pricing'),
-    },
+    // {
+    //   key: 'pricing',
+    //   icon: <StarOutlined />,
+    //   label: 'Pricing',
+    //   onClick: () => navigate('/dashboard/pricing'),
+    // },
     ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,

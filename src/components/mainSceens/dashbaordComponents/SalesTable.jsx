@@ -55,6 +55,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     Object.keys(thirdPartySales).forEach(fieldName => {
       // Only process actual_sales_ fields
       if (fieldName.startsWith('actual_sales_')) {
+        // Never treat core channels as "providers" (prevents duplicate columns in edit mode)
+        // These fields can exist directly on Sales Performance (fallback shape).
+        if (
+          fieldName === 'actual_sales_in_store' ||
+          fieldName === 'actual_sales_app_online' ||
+          fieldName === 'actual_sales_online'
+        ) {
+          return;
+        }
         const providerName = extractProviderNameFromField(fieldName);
         if (providerName) {
           // Check if provider already exists
@@ -104,7 +113,23 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       });
     });
 
-    return Array.from(map.values());
+    // Guard against bad provider config that can create duplicate columns:
+    // These are core channels and should not appear as "providers".
+    const RESERVED_PROVIDER_NAMES = new Set([
+      'in store',
+      'instore',
+      'app/online',
+      'app online',
+      'apponline',
+      'online',
+      'from app',
+      'from_app',
+    ]);
+
+    return Array.from(map.values()).filter((p) => {
+      const n = (p?.provider_name || '').toString().trim().toLowerCase();
+      return n && !RESERVED_PROVIDER_NAMES.has(n);
+    });
   };
 
   // Get sales channels configuration from onboarding data
@@ -289,6 +314,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
   const weeklyAverageModalShown = useRef(null);
   const [isAutoAverageLoading, setIsAutoAverageLoading] = useState(false);
+
+  // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to selectedDate)
+  const calendarDateRange = selectedDate
+    ? [
+        dayjs(selectedDate).subtract(3, 'week').startOf('week'),
+        dayjs(selectedDate).subtract(1, 'week').endOf('week'),
+      ]
+    : null;
   
   // Week warning modal states
   const [showWeekWarningModal, setShowWeekWarningModal] = useState(false);
@@ -2755,7 +2788,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(0)}</Text>
                             },
                             {
-                              title: 'Actual Sales Budget (%)',
+                              title: ' Sales Variance %',
                               dataIndex: 'actualSalesBudget',
                               key: 'actualSalesBudget',
                               width: 150,
@@ -3026,14 +3059,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </h3>
               </div>
               <p className="text-blue-700 text-base leading-relaxed mb-4">
-                Good news! Because you've entered your actual sales data for the past 3 weeks, the Auto feature is now active.
+              Good News: Because you've entered your actuals sales and labor data for the past 3 week {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')} the Auto feature is now active.
+              the Auto feature is now active. 
               </p>
-              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically complete your sales budget for the week using your daily averages. You'll still have full control to review and adjust any numbers afterward if needed.</p>
+              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks.   You'll still have full control to review, edit and adjust your budget.</p>
               
               <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                 {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li><span className="font-medium">Auto:</span> When you select Auto, Growlio uses your last 3 weeks of sales data by day of the week, averaging all your Mondays, all your Tuesdays, and so on. This trailing 3-week average gives you a more accurate daily sales trend and helps you plan labor and food costs with confidence.</li>
+                  <li><span className="font-medium">Auto:</span> When you select Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks.   You'll still have full control to review, edit and adjust your budget.</li>
                   <li><span className="font-medium">Manual:</span> Enter all data yourself. A quick warning will appear if it's a future week.</li>
                   <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
                 </ul>

@@ -89,7 +89,12 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     let data = [];
     
     if (selectedView === 'totals') {
-      data = categories;
+      // Totals view is meant to show the expense mix (as % of sales), so exclude sales.
+      data = (categories || []).filter((c) => {
+        const key = (c?.key || '').toLowerCase();
+        const label = (c?.label || '').toLowerCase();
+        return key !== 'sales' && label !== 'sales';
+      });
     } else {
       // For detailed breakdowns, use the actual subcategories data
       const breakdownData = detailedBreakdowns[selectedView] || [];
@@ -129,7 +134,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       'variable_brand/ad fund': '#ca8a04', // Darker yellow
       
       // Expenses (new structure)
-      'expenses': '#f97316', // Orange
+      'expenses': '#eab308', // Yellow
       'variable_Royalty': '#eab308', // Yellow
       'variable_Brand/Ad Fund': '#ca8a04', // Darker yellow
       
@@ -148,8 +153,14 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     return { bg, border };
   }, [currentData]);
 
+  const displayLabelForCategory = (c) => {
+    const key = (c?.key || '').toLowerCase();
+    if (key === 'variable_expenses' || key === 'expenses') return 'Operating Expenses';
+    return c?.label;
+  };
+
   const data = {
-    labels: currentData.map((c) => c.label),
+    labels: currentData.map((c) => displayLabelForCategory(c)),
     datasets: [
       {
         data: currentData.map((c) => Math.abs(Number(c.value || 0)) || 0.0001),
@@ -185,9 +196,6 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
   const dropdownOptions = useMemo(() => {
     const options = [{ value: 'totals', label: 'Totals' }];
     
-    if (detailedBreakdowns.sales && detailedBreakdowns.sales.length > 0) {
-      options.push({ value: 'sales', label: 'Sales Breakdown' });
-    }
     if (detailedBreakdowns.labor && detailedBreakdowns.labor.length > 0) {
       options.push({ value: 'labor', label: 'Labor Breakdown' });
     }
@@ -195,7 +203,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       options.push({ value: 'food', label: 'Food Cost Breakdown' });
     }
     if (detailedBreakdowns.expenses && detailedBreakdowns.expenses.length > 0) {
-      options.push({ value: 'expenses', label: 'Expenses Breakdown' });
+      options.push({ value: 'expenses', label: 'Operating Expenses Breakdown' });
     }
     if (detailedBreakdowns.third_party_fees && detailedBreakdowns.third_party_fees.length > 0) {
       options.push({ value: 'third_party_fees', label: 'Third-Party Fees Breakdown' });
@@ -206,7 +214,7 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       options.push({ value: 'fixed_expenses', label: 'Fixed Expenses Breakdown' });
     }
     if (detailedBreakdowns.variable_expenses && detailedBreakdowns.variable_expenses.length > 0) {
-      options.push({ value: 'variable_expenses', label: 'Variable Expenses Breakdown' });
+      options.push({ value: 'variable_expenses', label: 'Operating Expenses Breakdown' });
     }
     
     return options;
@@ -240,17 +248,20 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
           </div>
         </div>
       </div>
+      {selectedView === 'totals' && (
+        <div className="mb-2 text-center text-sm font-medium text-gray-700">
+          Expense Breakdown as a Percent of Sales
+        </div>
+      )}
       <div style={{ height: '300px' }}>
         <Pie data={data} options={options} />
       </div>
       <div className="mt-3 text-sm text-gray-600">
         <p>
-          <span className="font-medium text-green-600">Green</span>: Sales; 
           <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
           <span className="font-medium text-red-800"> Dark Red</span>: Labor Budget; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
-          <span className="font-medium text-orange-600"> Orange</span>: Expenses; 
-          <span className="font-medium text-yellow-600"> Yellow</span>: Variable Expenses; 
+          <span className="font-medium text-yellow-600"> Yellow</span>: Operating Expenses; 
           <span className="font-medium text-purple-600"> Purple</span>: Third-Party Fees;
         </p>
       </div>

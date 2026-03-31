@@ -959,31 +959,7 @@ const ProtectedRoutes = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Plan gate: Square POS is not available on Lite (or when feature flag is disabled)
-  if (location.pathname === '/dashboard/square') {
-    const pkg = subscriptionDetails?.package || null;
-    const pkgName = (pkg?.name || '').toLowerCase();
-    const featureFlag = pkg?.features?.pos_integration;
-    const posAllowed = pkg
-      ? (pkgName !== 'lite') && (typeof featureFlag === 'boolean' ? featureFlag : ['grow', 'pro'].includes(pkgName))
-      : true;
-
-    if (!posAllowed) {
-      const modalKey = 'pos_blocked_modal:/dashboard/square';
-      if (!hasShownPosBlockedModalRef.current && sessionStorage.getItem(modalKey) !== 'shown') {
-        hasShownPosBlockedModalRef.current = true;
-        sessionStorage.setItem(modalKey, 'shown');
-        Modal.info({
-          title: 'Upgrade required',
-          content:
-            'Square POS integration is not available on your current plan. Please upgrade to access this feature.',
-          okText: 'View plans',
-          onOk: () => navigate('/dashboard/pricing', { replace: true }),
-        });
-      }
-      return <Navigate to="/dashboard/pricing" replace />;
-    }
-  }
+  // Plan gate for Square POS temporarily disabled per request.
 
   // Check if sales information is complete (using utility function)
   const hasSalesData = () => {
