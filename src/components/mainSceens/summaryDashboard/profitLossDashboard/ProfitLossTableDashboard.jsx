@@ -1930,7 +1930,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         </div>
 
         {/* Period Breakdown */}
-        <div className="flex flex-row gap-4 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <div className="pl-x-scroll flex flex-row flex-nowrap gap-4 overflow-x-auto overflow-y-hidden pb-2">
           {tableData.map((entry, index) => {
             // Determine data format
             let dateField;
@@ -2158,7 +2158,8 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                 </div>
                 
                 {/* Main row data */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="mb-3 overflow-x-auto pl-x-scroll">
+                  <div className="flex flex-nowrap gap-2 min-w-max pb-2">
                   {tableData.map((entry, index) => {
                     // Determine data format
                     const isWeekly = isWeeklyData(tableData);
@@ -2189,17 +2190,24 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                     
                     const isClosed = isDayClosed(entry);
                     return (
-                      <div key={uniqueKey} className={`flex justify-between text-xs ${isClosed ? 'opacity-50' : ''}`}>
-                        <span className={`${isClosed ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}>
-                          {dateInfo.day} {dateInfo.date}
+                      <div
+                        key={uniqueKey}
+                        className={`min-w-[180px] rounded-md border border-gray-200 bg-white px-3 py-2 ${isClosed ? 'opacity-50' : ''}`}
+                      >
+                        <div className={`text-[11px] ${isClosed ? 'text-gray-400' : 'text-gray-600'} flex items-center justify-between gap-2`}>
+                          <span className="truncate">
+                            {dateInfo.day} {dateInfo.date}
+                          </span>
                           {isClosed && <span className="text-xs">🔒</span>}
-                        </span>
-                        <div className="flex items-center">
-                          {renderCellValue(rawValue, row, entry, dateInfo)}
+                        </div>
+                        <div className="mt-1 text-xs flex items-center justify-between">
+                          <span className="text-gray-500">Value</span>
+                          <span className="flex items-center">{renderCellValue(rawValue, row, entry, dateInfo)}</span>
                         </div>
                       </div>
                     );
                   })}
+                  </div>
                 </div>
                 
                 {/* Expandable details */}
