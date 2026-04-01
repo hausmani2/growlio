@@ -45,6 +45,13 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
     amount: 0,
   });
 
+  const normalizeExpenseAmount = useCallback((amount, isValueType) => {
+    const raw = Number(amount ?? 0);
+    const safe = Number.isFinite(raw) ? raw : 0;
+    if (isValueType) return Math.max(0, safe);
+    return Math.min(100, Math.max(0, safe));
+  }, []);
+
   // Initialize with default expenses if no data exists - do this immediately on mount
   useEffect(() => {
     if (hasInitialized) return;
@@ -200,10 +207,11 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
 
     // Add to fixed fields (we'll treat all expenses the same way)
     const freq = modalForm.fixed_expense_type === "WEEKLY" ? "weekly" : "monthly";
+    const normalizedAmount = normalizeExpenseAmount(modalForm.amount, !!modalForm.is_value_type);
     const newField = {
       id: Date.now() + Math.random(),
       label: name,
-      value: String(modalForm.amount ?? 0),
+      value: String(normalizedAmount),
       key: `dynamic_expense_${Date.now()}_${Math.random()}`,
       expense_type: freq,
       is_active: true,
@@ -226,13 +234,15 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         const next = fixedFields.map((f) => {
           if (f.id === expense.id) {
             if (field === 'amount') {
-              return { ...f, value: value ? value.toString() : "0" };
+              const normalized = normalizeExpenseAmount(value, f.is_value_type !== undefined ? f.is_value_type : true);
+              return { ...f, value: normalized.toString() };
             } else if (field === 'name') {
               return { ...f, label: value };
             } else if (field === 'is_active') {
               return { ...f, is_active: value };
             } else if (field === 'is_value_type') {
-              return { ...f, is_value_type: value };
+              const normalized = normalizeExpenseAmount(f.value, !!value);
+              return { ...f, is_value_type: value, value: normalized.toString() };
             } else if (field === 'fixed_expense_type') {
               const freq = value === 'MONTHLY' ? 'monthly' : 'weekly';
               return { ...f, expense_type: freq, fixed_expense_type: freq };
@@ -246,13 +256,15 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         const next = variableFields.map((f) => {
           if (f.id === expense.id) {
             if (field === 'amount') {
-              return { ...f, value: value ? value.toString() : "0" };
+              const normalized = normalizeExpenseAmount(value, f.is_value_type !== undefined ? f.is_value_type : true);
+              return { ...f, value: normalized.toString() };
             } else if (field === 'name') {
               return { ...f, label: value };
             } else if (field === 'is_active') {
               return { ...f, is_active: value };
             } else if (field === 'is_value_type') {
-              return { ...f, is_value_type: value };
+              const normalized = normalizeExpenseAmount(f.value, !!value);
+              return { ...f, is_value_type: value, value: normalized.toString() };
             } else if (field === 'fixed_expense_type') {
               const freq = value === 'MONTHLY' ? 'monthly' : 'weekly';
               return { ...f, expense_type: freq, variable_expense_type: freq };
@@ -263,7 +275,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
         updateData("dynamicVariableFields", next);
       }
     },
-    [data.dynamicFixedFields, data.dynamicVariableFields, updateData]
+    [data.dynamicFixedFields, data.dynamicVariableFields, updateData, normalizeExpenseAmount]
   );
 
   const toggleExpenseActive = useCallback(
@@ -274,8 +286,8 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
   );
 
   const toggleValueType = useCallback(
-    (expense) => {
-      updateExpense(expense, 'is_value_type', !expense.is_value_type);
+    (expense, checked) => {
+      updateExpense(expense, 'is_value_type', checked);
     },
     [updateExpense]
   );
@@ -361,7 +373,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
                         expense={expense}
                         isFirstExpense={isGuidanceTarget}
                         onToggleActive={() => toggleExpenseActive(expense)}
-                        onToggleValueType={() => toggleValueType(expense)}
+                        onToggleValueType={(checked) => toggleValueType(expense, checked)}
                         onToggleExpenseType={() => toggleExpenseType(expense)}
                         onUpdateAmount={(value) => updateExpense(expense, 'amount', value)}
                         onUpdateName={(value) => updateExpense(expense, 'name', value)}
@@ -439,7 +451,13 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
               </span>
               <Switch
                 checked={modalForm.is_value_type}
-                onChange={(checked) => setModalForm((prev) => ({ ...prev, is_value_type: checked }))}
+                onChange={(checked) =>
+                  setModalForm((prev) => ({
+                    ...prev,
+                    is_value_type: checked,
+                    amount: normalizeExpenseAmount(prev.amount, checked),
+                  }))
+                }
               />
               <span className={`text-sm ${modalForm.is_value_type ? "font-semibold" : "text-gray-500"}`}>
                 Value
@@ -476,6 +494,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
               value={modalForm.amount}
               onChange={(value) => setModalForm((prev) => ({ ...prev, amount: value || 0 }))}
               min={0}
+              max={!modalForm.is_value_type ? 100 : undefined}
               className="w-full"
             />
           </div>
@@ -594,6 +613,7 @@ const ExpenseRow = ({
             value={expense.amount}
             onChange={onUpdateAmount}
             min={0}
+            max={!expense.is_value_type ? 100 : undefined}
             step={0.01}
             precision={2}
             className="w-full h-9"

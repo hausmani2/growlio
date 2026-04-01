@@ -24,6 +24,13 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
     is_active: true
   });
 
+  const normalizeExpenseAmount = (amount, isValueType) => {
+    const raw = Number(amount ?? 0);
+    const safe = Number.isFinite(raw) ? raw : 0;
+    if (isValueType) return Math.max(0, safe);
+    return Math.min(100, Math.max(0, safe));
+  };
+
   // Initialize expenses from data prop when it changes
   useEffect(() => {
     if (data && Array.isArray(data) && data.length > 0 && !hasInitialized) {
@@ -121,7 +128,20 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
   const updateExpense = (index, field, value) => {
     setExpenses(prev => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const current = updated[index] || {};
+      if (field === 'amount') {
+        const raw = Number(value ?? 0);
+        const safe = Number.isFinite(raw) ? raw : 0;
+        const normalized = current.is_value_type ? Math.max(0, safe) : Math.min(100, Math.max(0, safe));
+        updated[index] = { ...current, amount: normalized };
+      } else if (field === 'is_value_type') {
+        const raw = Number(current.amount ?? 0);
+        const safe = Number.isFinite(raw) ? raw : 0;
+        const normalized = value ? Math.max(0, safe) : Math.min(100, Math.max(0, safe));
+        updated[index] = { ...current, is_value_type: value, amount: normalized };
+      } else {
+        updated[index] = { ...current, [field]: value };
+      }
       return updated;
     });
   };
@@ -130,8 +150,8 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
     updateExpense(index, 'is_active', !expenses[index].is_active);
   };
 
-  const toggleValueType = (index) => {
-    updateExpense(index, 'is_value_type', !expenses[index].is_value_type);
+  const toggleValueType = (index, checked) => {
+    updateExpense(index, 'is_value_type', checked);
   };
 
   const toggleExpenseType = (index) => {
@@ -182,7 +202,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
     const newExpense = {
       ...modalForm,
       name: modalForm.name.trim(),
-      amount: parseFloat(modalForm.amount) || 0
+      amount: normalizeExpenseAmount(parseFloat(modalForm.amount) || 0, !!modalForm.is_value_type)
     };
 
     setExpenses(prev => [...prev, newExpense]);
@@ -241,7 +261,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
                     expense={expense}
                     index={globalIndex}
                     onToggleActive={() => toggleExpenseActive(globalIndex)}
-                    onToggleValueType={() => toggleValueType(globalIndex)}
+                    onToggleValueType={(checked) => toggleValueType(globalIndex, checked)}
                     onToggleExpenseType={() => toggleExpenseType(globalIndex)}
                     onUpdateAmount={(value) => updateExpense(globalIndex, 'amount', value)}
                     onDelete={() => deleteExpense(globalIndex)}
@@ -311,7 +331,13 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
               </span>
               <Switch
                 checked={modalForm.is_value_type}
-                onChange={(checked) => setModalForm(prev => ({ ...prev, is_value_type: checked }))}
+                onChange={(checked) =>
+                  setModalForm(prev => ({
+                    ...prev,
+                    is_value_type: checked,
+                    amount: normalizeExpenseAmount(prev.amount, checked)
+                  }))
+                }
               />
               <span className={`text-sm ${modalForm.is_value_type ? 'font-semibold' : 'text-gray-500'}`}>
                 Value
@@ -347,6 +373,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
               value={modalForm.amount}
               onChange={(value) => setModalForm(prev => ({ ...prev, amount: value || 0 }))}
               min={0}
+              max={!modalForm.is_value_type ? 100 : undefined}
               step={0.01}
               precision={2}
               className="w-full h-11"

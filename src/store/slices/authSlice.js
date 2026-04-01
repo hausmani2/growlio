@@ -54,6 +54,30 @@ const createAuthSlice = (set, get) => {
     restaurantSimulationDataTimestamp: null,
     
     // Onboarding status checking is now handled by onBoardingSlice.checkOnboardingCompletion()
+
+    // Update user in store + storage (keeps Header in sync)
+    setUser: (userUpdate) => {
+      const current = get().user || {};
+      const next =
+        userUpdate && typeof userUpdate === 'object'
+          ? { ...current, ...userUpdate }
+          : current;
+
+      // Persist for cross-tab sync and reloads
+      try {
+        localStorage.setItem('user', JSON.stringify(next));
+        sessionStorage.setItem('user', JSON.stringify(next));
+      } catch (e) {
+        // Ignore storage errors (private mode / quota), but still update in-memory state
+      }
+
+      set(() => ({ user: next }));
+      try {
+        window.dispatchEvent(new Event('auth-storage-change'));
+      } catch (e) {
+        // ignore
+      }
+    },
     
     login: async (credentials) => {
       set(() => ({ loading: true, error: null }));

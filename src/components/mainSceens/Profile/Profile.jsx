@@ -10,7 +10,9 @@ const { TabPane } = Tabs;
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { logout, user } = useStore();
+  const logout = useStore((state) => state.logout);
+  const user = useStore((state) => state.user);
+  const setUser = useStore((state) => state.setUser);
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [deleteForm] = Form.useForm();
@@ -42,6 +44,13 @@ const Profile = () => {
       
       if (response.data.status === 'success') {
         setProfileData(response.data.data);
+        // Keep global user state in sync so Header updates immediately
+        setUser?.({
+          full_name: response.data.data.full_name,
+          email: response.data.data.email,
+          username: response.data.data.username,
+          role: response.data.data.role,
+        });
         profileForm.setFieldsValue({
           full_name: response.data.data.full_name || ''
         });
@@ -61,6 +70,10 @@ const Profile = () => {
       
       if (response.data.status === 'success') {
         message.success('Profile updated successfully');
+        // Update Header immediately (no logout/login needed)
+        if (values?.full_name) {
+          setUser?.({ full_name: values.full_name });
+        }
         fetchProfileData(); // Refresh data
       } else {
         message.error(response.data.message || 'Failed to update profile');
@@ -180,12 +193,26 @@ const Profile = () => {
                       <Form.Item
                         label="Full Name"
                         name="full_name"
-                        rules={[{ required: true, message: 'Please enter your full name' }]}
+                        rules={[
+                          { required: true, message: 'Please enter your full name' },
+                          {
+                            pattern: /^[A-Za-z][A-Za-z\s.'-]*$/,
+                            message: 'Full Name can only contain letters, spaces, apostrophes, periods, and hyphens',
+                          },
+                        ]}
                       >
                         <Input 
                           prefix={<UserOutlined />} 
                           placeholder="Enter your full name"
                           size="large"
+                          onChange={(e) => {
+                            const raw = e.target.value ?? '';
+                            // Remove digits and collapse repeated whitespace for a clean, predictable input.
+                            const cleaned = String(raw)
+                              .replace(/[0-9]/g, '')
+                              .replace(/\s+/g, ' ');
+                            profileForm.setFieldsValue({ full_name: cleaned });
+                          }}
                         />
                       </Form.Item>
                       
