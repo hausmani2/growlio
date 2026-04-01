@@ -660,7 +660,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           >
             <span className="hidden sm:inline">Print Report</span>
           </Button>
-          {!isLitePlan && (
+          {/* {!isLitePlan && ( */}
             <Button 
               icon={<DownloadOutlined />} 
               onClick={handleExport}
@@ -669,7 +669,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             >
               <span className="hidden sm:inline">Export Data</span>
             </Button>
-          )}
+          {/* )} */}
         </div>
       </div>
 
