@@ -96,8 +96,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const handleSimulationDashboardClick = () => {
     // If regular onboarding isn't complete, guide the user to complete setup first.
     if (isRegularUser && !hasCompletedRegularOnboarding) {
-      const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
       const incompleteItems = getIncompleteSetupItems(restaurantOnboardingData);
+      const nextRoute =
+        incompleteItems.find((i) => !!i?.route)?.route ||
+        getNextIncompleteSetupRoute(restaurantOnboardingData);
       Modal.info({
         title: 'Complete onboarding to continue',
         content: (
@@ -110,7 +112,22 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
                 <div className="font-medium mb-2">Steps remaining:</div>
                 <ul className="list-disc list-inside space-y-1">
                   {incompleteItems.slice(0, 6).map((item) => (
-                    <li key={item.key || item.label}>{item.label}</li>
+                    <li key={item.key || item.label}>
+                      {item.route ? (
+                        <button
+                          type="button"
+                          className="text-blue-600 hover:underline"
+                          onClick={() => {
+                            Modal.destroyAll();
+                            navigate(item.route, { replace: false });
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ) : (
+                        item.label
+                      )}
+                    </li>
                   ))}
                   {incompleteItems.length > 6 && (
                     <li>…and {incompleteItems.length - 6} more</li>
@@ -349,7 +366,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
  {
       key: 'training',
       icon: <BookOutlined />,
-      label: 'Training',
+      label: 'Tutorials',
       onClick: () => navigate('/dashboard/training'),
   },
     // Simulation Dashboard

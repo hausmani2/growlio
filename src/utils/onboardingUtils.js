@@ -214,13 +214,17 @@ export const getIncompleteSetupItems = (restaurantData) => {
  * @returns {boolean} - True if restaurant exists
  */
 export const hasRestaurant = (restaurantData) => {
-  
-  if (!restaurantData?.restaurants) {
-    return false;
-  }
-  
-  const result = Array.isArray(restaurantData.restaurants) && restaurantData.restaurants.length > 0;
-  return result;
+  // Support multiple response shapes:
+  // - { restaurants: [...] }
+  // - { data: { restaurants: [...] } }
+  // - { data: { data: { restaurants: [...] } } } (some axios wrappers)
+  const restaurants =
+    restaurantData?.restaurants ??
+    restaurantData?.data?.restaurants ??
+    restaurantData?.data?.data?.restaurants ??
+    null;
+
+  return Array.isArray(restaurants) && restaurants.length > 0;
 };
 
 /**
@@ -230,7 +234,14 @@ export const hasRestaurant = (restaurantData) => {
  */
 export const getFirstRestaurant = (restaurantData) => {
   if (!hasRestaurant(restaurantData)) return null;
-  return restaurantData.restaurants[0];
+
+  const restaurants =
+    restaurantData?.restaurants ??
+    restaurantData?.data?.restaurants ??
+    restaurantData?.data?.data?.restaurants ??
+    [];
+
+  return restaurants[0] || null;
 };
 
 /**

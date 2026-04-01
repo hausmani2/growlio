@@ -11,6 +11,7 @@ import {
   isSalesInformationComplete,
   getOnboardingRedirectRoute,
   getNextIncompleteSetupRoute,
+  getIncompleteSetupItems,
   ONBOARDING_ROUTES,
   isOnboardingComplete as checkOnboardingComplete,
 } from '../utils/onboardingUtils';
@@ -342,14 +343,58 @@ const ProtectedRoutes = () => {
       hasShownSetupModalRef.current = true;
       sessionStorage.setItem(modalKey, 'shown');
 
+      const safeNextRoute =
+        typeof nextRoute === 'string' && nextRoute.length > 0
+          ? nextRoute
+          : getNextIncompleteSetupRoute(restaurantData);
+
+      const incompleteItems = getIncompleteSetupItems(restaurantData);
+
       Modal.info({
         title: 'Finish your setup to continue',
-        content:
-          'To access this page, please complete your restaurant setup first. We’ll take you to the next required step now.',
+        content: (
+          <div>
+            <div className="mb-3">
+              To access this page, please complete your restaurant setup first.
+            </div>
+            {incompleteItems.length > 0 && (
+              <div className="mb-3">
+                <div className="font-medium mb-2">Steps remaining:</div>
+                <ul className="list-disc list-inside space-y-1">
+                  {incompleteItems.slice(0, 8).map((item) => (
+                    <li key={item.key || item.label}>
+                      {item.route ? (
+                        <button
+                          type="button"
+                          className="text-blue-600 hover:underline"
+                          onClick={() => {
+                            Modal.destroyAll();
+                            hasRedirectedRef.current = false;
+                            navigate(item.route, { replace: true });
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ) : (
+                        item.label
+                      )}
+                    </li>
+                  ))}
+                  {incompleteItems.length > 8 && (
+                    <li>…and {incompleteItems.length - 8} more</li>
+                  )}
+                </ul>
+              </div>
+            )}
+            <div className="text-sm text-gray-600">
+              We’ll take you to the next required step now.
+            </div>
+          </div>
+        ),
         okText: 'Continue setup',
         onOk: () => {
           hasRedirectedRef.current = false;
-          navigate(nextRoute, { replace: true });
+          navigate(safeNextRoute, { replace: true });
         },
       });
 
