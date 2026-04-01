@@ -313,9 +313,19 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <div className="mb-6">
-        <h3 className="text-xl font-bold text-orange-600">Expenses</h3>
-        <p className="text-gray-600 text-sm">Non-negotiable. Always plan for them.</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-bold text-orange-600">Expenses</h3>
+          <p className="text-gray-600 text-sm">Non-negotiable. Always plan for them.</p>
+        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={showModal}
+          className="h-10 bg-orange-600 border-orange-600 hover:!bg-orange-700 hover:!border-orange-700"
+        >
+          Add new expense
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -375,7 +385,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
             onClick={showModal}
             className="h-11 text-sm"
           >
-            Add New Expense
+            Add new expense
           </Button>
         </div>
 
