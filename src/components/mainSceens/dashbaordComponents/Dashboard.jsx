@@ -744,15 +744,14 @@ const Dashboard = () => {
                 </h3>
               </div>
               <p className="text-blue-700 text-base leading-relaxed mb-4">
-              Good News: Because you've entered your actuals sales and labor data for the past 3 week {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')} the Auto feature is now active.
-              the Auto feature is now active. 
+              Good News: Because you've entered your actual sales and labor data for the past 3 weeks {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')}, the Auto feature is now active.
               </p>
-              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks.   You'll still have full control to review, edit and adjust your budget.</p>
+              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks. You'll still have full control to review, edit and adjust your budget.</p>
               
               <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                 {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li><span className="font-medium">Auto:</span> When selected, LIO, our AI assistant builds your budget using your last 3 weeks of real sales and labor data — averaged by day of week. This gives you a more accurate daily, data driven plan.  </li>
+                  <li><span className="font-medium">Auto:</span> When selected, LIO, our AI assistant builds your budget using your last 3 weeks of real sales and labor data — averaged by day of week. This gives you a more accurate daily, data driven plan.</li>
                   <li><span className="font-medium">Manual:</span> Enter all data yourself. A quick warning will appear if it's a future week.</li>
                   <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
                 </ul>

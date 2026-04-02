@@ -116,27 +116,22 @@ const RootRedirect = () => {
           return;
         }
         
-        // If user has ONLY simulation restaurant (no regular restaurant), handle simulation flow
+        // If user has ONLY simulation restaurant (no regular restaurant)
+        // Prefer regular app landing on login (report card) instead of simulation dashboard.
         if (hasSimulationRestaurant && !hasRegularRestaurant) {
-          // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
-          if (simulationRestaurants.length > 0) {
-            const completeSimulationRestaurant = simulationRestaurants.find(
-              (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-            );
-            
-            if (completeSimulationRestaurant) {
-              // Simulation onboarding is complete, redirect to simulation dashboard
-              localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
-              navigate('/simulation/dashboard', { replace: true });
-              return;
-            }
-            
-            // Simulation restaurant exists but not complete, redirect to simulation onboarding
+          // If simulation onboarding isn't complete yet, keep them in simulation onboarding.
+          const completeSimulationRestaurant = simulationRestaurants.find(
+            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
+          );
+
+          if (!completeSimulationRestaurant) {
             navigate('/onboarding/simulation', { replace: true });
             return;
           }
-          // If simulation onboarding API has no restaurants, redirect to onboarding
-          navigate('/onboarding/simulation', { replace: true });
+
+          // Simulation onboarding complete: land on report card (requested behavior).
+          localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
+          navigate('/dashboard/report-card', { replace: true });
           return;
         }
         

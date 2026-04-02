@@ -93,19 +93,39 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     hasCompletedRegularOnboarding
   } = useOnboardingStatus();
 
-  const handleSimulationDashboardClick = () => {
-    // If regular onboarding isn't complete, guide the user to complete setup first.
+  const handleSimulationDashboardClick = async () => {
+    // Always refresh first so we don't navigate based on stale cached onboarding data.
+    try {
+      await refreshOnboardingStatus();
+    } catch (_) {
+      // Non-blocking: proceed with cached state if refresh fails.
+    }
+
+    const latestRestaurantOnboardingData = useStore.getState().restaurantOnboardingData;
+    const latestSimulationOnboardingStatus = useStore.getState().simulationOnboardingStatus;
+    const latestRestaurantSimulationData = useStore.getState().restaurantSimulationData;
+    const latestHasSimulationRestaurants =
+      Array.isArray(latestSimulationOnboardingStatus?.restaurants) &&
+      latestSimulationOnboardingStatus.restaurants.length > 0;
+    const latestHasSimulationAccess =
+      latestHasSimulationRestaurants ||
+      latestRestaurantSimulationData?.restaurant_simulation === true ||
+      !!localStorage.getItem('simulation_restaurant_id');
+
+    // If regular onboarding isn't complete, don't "dead click".
+    // Show a professional choice: complete setup OR continue to Simulation onboarding now.
     if (isRegularUser && !hasCompletedRegularOnboarding) {
-      const incompleteItems = getIncompleteSetupItems(restaurantOnboardingData);
+      const incompleteItems = getIncompleteSetupItems(latestRestaurantOnboardingData);
       const nextRoute =
         incompleteItems.find((i) => !!i?.route)?.route ||
-        getNextIncompleteSetupRoute(restaurantOnboardingData);
-      Modal.info({
+        getNextIncompleteSetupRoute(latestRestaurantOnboardingData);
+
+      Modal.confirm({
         title: 'Complete onboarding to continue',
         content: (
           <div>
             <div className="mb-3">
-              Please complete your restaurant onboarding to access the Simulation Dashboard.
+              Your restaurant setup isn’t finished yet. You can complete setup now, or continue to Simulation.
             </div>
             {incompleteItems.length > 0 && (
               <div className="mb-3">
@@ -135,23 +155,22 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
                 </ul>
               </div>
             )}
-            <div className="text-sm text-gray-600">
-              We’ll take you to the next required step now.
-            </div>
           </div>
         ),
         okText: 'Continue setup',
         onOk: async () => {
-          // Ensure the modal closes before navigation (avoids “click did nothing” feeling)
           await Promise.resolve();
           navigate(nextRoute, { replace: false });
         },
+     
       });
+
       return;
     }
 
-    // Onboarding is complete (or user is not a regular user) — proceed to simulation.
-    navigate(hasSimulationRestaurants ? '/simulation/dashboard' : '/onboarding/simulation');
+    // Regular onboarding is complete (or user is not a regular user) — proceed to simulation.
+    // Only go straight to the simulation dashboard when the user has simulation access.
+    navigate(latestHasSimulationAccess ? '/simulation/dashboard' : '/onboarding/simulation', { replace: false });
   };
   
     // Check if user is in simulation mode - use onboarding status hook for decision
@@ -379,8 +398,9 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         label: 'Simulation Dashboard',
         onClick: handleSimulationDashboardClick,
       },
-      // Only show simulation setup navigation when simulation restaurants exist (prevents dead links)
-      ...(hasSimulationRestaurants ? [{
+      // Always show Simulation Setup for regular users.
+      // If simulation isn't set up yet, route to Simulation onboarding instead of dead links.
+      {
         key: 'simulation-setup',
         icon: <UserOutlined />,
         label: 'Simulation Setup Process',
@@ -388,25 +408,25 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           {
             key: 'simulation-basic-information',
             label: 'Basic Information',
-            onClick: () => navigate('/simulation/basic-information'),
+            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/basic-information' : '/onboarding/simulation'),
           },
           {
             key: 'simulation-sales-channels-operating-days',
             label: 'Sales Channels & Operating Days',
-            onClick: () => navigate('/simulation/sales-channels-operating-days'),
+            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/sales-channels-operating-days' : '/onboarding/simulation'),
           },
           {
             key: 'simulation-labor-information',
             label: 'Labor Information',
-            onClick: () => navigate('/simulation/labor-information'),
+            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/labor-information' : '/onboarding/simulation'),
           },
           {
             key: 'simulation-expenses',
             label: 'Expenses',
-            onClick: () => navigate('/simulation/expenses'),
+            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/expenses' : '/onboarding/simulation'),
           },
         ],
-      }] : []),
+      },
     ] : []),
     // {
     //   key: 'pricing',

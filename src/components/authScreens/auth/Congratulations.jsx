@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Modal } from "antd";
 import Mask from "../../../assets/pngs/new-onboard.png"
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +11,12 @@ import GuidanceOverlay from "../../guidance/GuidanceOverlay";
 const Congratulations = () => {
     const navigate = useNavigate();
     const [isChecking, setIsChecking] = useState(true);
+
+    // Safety: if any global gating modal was triggered during a brief redirect,
+    // ensure it doesn't linger on this public page.
+    useEffect(() => {
+        Modal.destroyAll();
+    }, []);
 
     // Zustand store hooks
     const {

@@ -36,15 +36,9 @@ const Register = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      // Check if user has completed onboarding
-      const restaurantId = localStorage.getItem('restaurant_id');
-      if (restaurantId) {
-        // User has completed onboarding, redirect to dashboard
-        navigate('/dashboard/budget');
-      } else {
-        // User hasn't completed onboarding, redirect to onboarding
-        navigate('/congratulations');
-      }
+      // Do not rely on `restaurant_id` here; it can be stale or present before onboarding is complete.
+      // New users should always go through the welcome/congratulations flow first.
+      navigate('/congratulations');
     }
   }, [isAuthenticated, navigate]);
 

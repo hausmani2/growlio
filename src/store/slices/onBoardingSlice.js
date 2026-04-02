@@ -658,6 +658,20 @@ const createOnBoardingSlice = (set, get) => ({
             if (onSuccess && typeof onSuccess === 'function') {
                 onSuccess(response.data);
             }
+
+            // CRITICAL: Keep onboarding status in sync across the app (sidebar gating, setup progress, etc.)
+            // Many screens (e.g., `Wrapper.jsx`) read onboarding completion from `restaurantOnboardingData`
+            // which is cached by `getRestaurantOnboarding()` in the auth slice.
+            // Without refreshing it here, the UI can remain stale until the user visits Report Card.
+            try {
+                const refreshRestaurantOnboarding = get().getRestaurantOnboarding;
+                if (typeof refreshRestaurantOnboarding === 'function') {
+                    await refreshRestaurantOnboarding(true);
+                }
+            } catch (e) {
+                // Non-blocking: saving the step succeeded; this is just a cache refresh.
+                console.warn('⚠️ Failed to refresh restaurants-onboarding after step save:', e);
+            }
             
             return { success: true, data: response.data };
         } catch (error) {

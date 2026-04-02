@@ -98,6 +98,15 @@ const createAuthSlice = (set, get) => {
         if (currentState.clearPersistedState) {
           currentState.clearPersistedState();
         }
+
+        // Prevent stale restaurant context from previous users/sessions.
+        // Restaurant selection should be re-derived from onboarding APIs after login.
+        try {
+          localStorage.removeItem('restaurant_id');
+          localStorage.removeItem('simulation_restaurant_id');
+        } catch (e) {
+          // ignore
+        }
         
         // Store access token and user data in localStorage for cross-tab synchronization
         // Also store in sessionStorage for backward compatibility
@@ -324,6 +333,15 @@ const createAuthSlice = (set, get) => {
         const { access, refresh, ...userData } = response.data.data || response.data;
         
         if (hasToken(access)) {
+          // Prevent stale restaurant context from previous users/sessions.
+          // Restaurant selection should be re-derived from onboarding APIs after registration.
+          try {
+            localStorage.removeItem('restaurant_id');
+            localStorage.removeItem('simulation_restaurant_id');
+          } catch (e) {
+            // ignore
+          }
+
           // Registration successful with token - user is automatically authenticated
           // Store in localStorage for cross-tab sync and sessionStorage for backward compatibility
           localStorage.setItem('token', access);
@@ -774,7 +792,9 @@ const createAuthSlice = (set, get) => {
           return { 
             success: true, 
             data: currentState.restaurantOnboardingData,
-            restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+            restaurantId: Array.isArray(currentState.restaurantOnboardingData?.restaurants) && currentState.restaurantOnboardingData.restaurants.length > 0
+              ? (currentState.restaurantOnboardingData.restaurants[0]?.restaurant_id ?? null)
+              : null
           };
         }
       }
@@ -792,7 +812,9 @@ const createAuthSlice = (set, get) => {
             return { 
               success: true, 
               data: currentState.restaurantOnboardingData,
-              restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+              restaurantId: Array.isArray(currentState.restaurantOnboardingData?.restaurants) && currentState.restaurantOnboardingData.restaurants.length > 0
+                ? (currentState.restaurantOnboardingData.restaurants[0]?.restaurant_id ?? null)
+                : null
             };
           }
           return { success: false, error: 'Request throttled - please wait' };
@@ -806,7 +828,9 @@ const createAuthSlice = (set, get) => {
           return { 
             success: true, 
             data: currentState.restaurantOnboardingData,
-            restaurantId: currentState.restaurantOnboardingData?.restaurant_id || currentState.restaurantOnboardingData?.restaurants?.[0]?.restaurant_id || null
+            restaurantId: Array.isArray(currentState.restaurantOnboardingData?.restaurants) && currentState.restaurantOnboardingData.restaurants.length > 0
+              ? (currentState.restaurantOnboardingData.restaurants[0]?.restaurant_id ?? null)
+              : null
           };
         }
         return { success: false, error: 'Request already in progress' };
@@ -851,8 +875,11 @@ const createAuthSlice = (set, get) => {
           restaurantOnboardingDataTimestamp: now
         }));
         
-        // Extract restaurant_id from response
-        const restaurantId = restaurantData?.restaurant_id || restaurantData?.restaurants?.[0]?.restaurant_id || null;
+        // Extract restaurant_id ONLY when a real restaurant exists.
+        // Some API shapes can include a top-level restaurant_id even when restaurants: [],
+        // which breaks new-user routing (treats them like a regular user).
+        const restaurantsList = Array.isArray(restaurantData?.restaurants) ? restaurantData.restaurants : [];
+        const restaurantId = restaurantsList.length > 0 ? (restaurantsList[0]?.restaurant_id ?? null) : null;
         
         // Store restaurant_id in localStorage and store if found
         if (restaurantId) {

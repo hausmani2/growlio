@@ -1077,28 +1077,12 @@ const ProtectedRoutes = () => {
     // CRITICAL: Only redirect to simulation dashboard if user is simulation-only (no regular restaurants)
     // If user has BOTH restaurants, they should be able to access regular dashboard routes
     // Per requirement: "If both exist → treat user as regular"
-    if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
-      // Only redirect if user is simulation-only (no regular restaurants)
-      if (!hasRegularRestaurants && hasSimulationRestaurants) {
-        // User is simulation-only, check if they should be redirected
-        // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
-        const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
-        if (Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0) {
-          const completeRestaurant = simulationRestaurants.find(
-            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-          );
-          if (completeRestaurant) {
-            // Only redirect to simulation dashboard if simulation onboarding API has restaurants
-            return <Navigate to="/simulation/dashboard" replace />;
-          }
-        }
-      } else if (hasRegularRestaurants && hasSimulationRestaurants) {
-        // User has both restaurants - allow regular dashboard access (per requirement)
-      }
-    }
+    // Note: Do not force simulation-only users to the simulation dashboard on login.
+    // The requested behavior is to land on the regular report card.
     
     // Block access to onboarding/score/profitability when sales data is complete
-    if (isOnboardingPath && !isCompleteStepsPath) {
+    // BUT: Always allow simulation onboarding/routes.
+    if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
     // Allow all dashboard routes and other paths
@@ -1113,25 +1097,8 @@ const ProtectedRoutes = () => {
     // CRITICAL: Only redirect to simulation dashboard if user is simulation-only (no regular restaurants)
     // If user has BOTH restaurants, they should be able to access regular dashboard routes
     // Per requirement: "If both exist → treat user as regular"
-    if (isDashboardPath && restaurantSimulationData?.restaurant_simulation === true) {
-      // Only redirect if user is simulation-only (no regular restaurants)
-      if (!hasRegularRestaurants && hasSimulationRestaurants) {
-        // User is simulation-only, check if they should be redirected
-        // CRITICAL: Only redirect to simulation dashboard if simulation onboarding API has restaurants
-        const simulationRestaurants = simulationOnboardingStatus?.restaurants || [];
-        if (Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0) {
-          const completeRestaurant = simulationRestaurants.find(
-            (r) => r.simulation_restaurant_name !== null && r.simulation_onboarding_complete === true
-          );
-          if (completeRestaurant) {
-            // Only redirect to simulation dashboard if simulation onboarding API has restaurants
-            return <Navigate to="/simulation/dashboard" replace />;
-          }
-        }
-      } else if (hasRegularRestaurants && hasSimulationRestaurants) {
-        // User has both restaurants - allow regular dashboard access (per requirement)
-      }
-    }
+    // Note: Do not force simulation-only users to the simulation dashboard on login.
+    // The requested behavior is to land on the regular report card.
     
     // Block access to onboarding, score, and profitability pages
      // But allow simulation routes

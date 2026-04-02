@@ -26,6 +26,7 @@ const SimulationOnboarding = () => {
   const [isLoadingRestaurant, setIsLoadingRestaurant] = useState(true);
   const [restaurantId, setRestaurantId] = useState(null);
   const validateStepRef = useRef(null);
+  const hasEnabledSimulationModeRef = useRef(false);
   const [formData, setFormData] = useState({
     basicinformation: {
       restaurantName: '',
@@ -53,8 +54,46 @@ const SimulationOnboarding = () => {
     expenses: []
   });
 
-  const { submitStepData, onboardingLoading, getSimulationOnboardingStatus, submitSimulationOnboarding, getRestaurantOnboarding, restaurantOnboardingData, stopImpersonation } = useStore();
+  const {
+    submitStepData,
+    onboardingLoading,
+    getSimulationOnboardingStatus,
+    submitSimulationOnboarding,
+    getRestaurantOnboarding,
+    restaurantOnboardingData,
+    stopImpersonation,
+    updateRestaurantSimulation,
+    restaurantSimulationData
+  } = useStore();
   const impersonating = isImpersonating();
+
+  // Ensure simulation mode is enabled before calling simulation APIs.
+  // This prevents "Simulation APIs are not available" errors during save.
+  const ensureSimulationModeEnabled = useCallback(async () => {
+    if (hasEnabledSimulationModeRef.current) return true;
+
+    // If already enabled in cached state, don't POST again.
+    if (restaurantSimulationData?.restaurant_simulation === true) {
+      hasEnabledSimulationModeRef.current = true;
+      return true;
+    }
+
+    if (typeof updateRestaurantSimulation !== 'function') {
+      // Can't enable automatically; let downstream logic show errors.
+      return false;
+    }
+
+    try {
+      const result = await updateRestaurantSimulation({ restaurant_simulation: true });
+      if (result?.success) {
+        hasEnabledSimulationModeRef.current = true;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }, [restaurantSimulationData, updateRestaurantSimulation]);
 
   // Load existing restaurant data before showing Basic Information
   // This runs on component mount and page reload
@@ -70,6 +109,9 @@ const SimulationOnboarding = () => {
       setIsLoadingRestaurant(true);
       
       try {
+        // Enable simulation mode before calling simulation onboarding endpoints.
+        await ensureSimulationModeEnabled();
+
         if (typeof getSimulationOnboardingStatus !== 'function') {
           console.error('❌ [SimulationOnboarding] getSimulationOnboardingStatus is not a function!');
           setIsLoadingRestaurant(false);
@@ -186,7 +228,7 @@ const SimulationOnboarding = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run on mount
+  }, [ensureSimulationModeEnabled]); // Run on mount and if enable function changes
 
   const CurrentStepComponent = STEPS[currentStep].component;
 
@@ -285,6 +327,13 @@ const SimulationOnboarding = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Ensure simulation mode is enabled before saving.
+      const ok = await ensureSimulationModeEnabled();
+      if (!ok) {
+        message.error('Simulation mode is not enabled for this account yet. Please try again.');
+        return;
+      }
+
       // Format expenses - convert to single array format
       // Ensure expenses is always an array
       let expenses = formData.expenses;

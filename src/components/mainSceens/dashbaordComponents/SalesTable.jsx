@@ -2410,6 +2410,50 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     );
                   }
                 },
+                {
+                  title: 'Sales Variance %',
+                  dataIndex: 'salesVariancePct',
+                  key: 'salesVariancePct',
+                  width: 150,
+                  render: (value, record) => {
+                    const budgetedSales = parseFloat(record.budgetedSales) || 0;
+
+                    // Only include enabled sales channels
+                    let netSales = 0;
+                    if (salesChannelsConfig.in_store) {
+                      netSales += parseFloat(record.actualSalesInStore) || 0;
+                    }
+                    if (salesChannelsConfig.from_app) {
+                      netSales += parseFloat(record.actualSalesAppOnline) || 0;
+                    }
+                    if (salesChannelsConfig.online) {
+                      netSales += parseFloat(record.actualSalesOnline) || 0;
+                    }
+
+                    // Add dynamic provider sales
+                    const providerSales = providerList.reduce((sum, provider) => {
+                      const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+                      return sum + (parseFloat(record[providerKey]) || 0);
+                    }, 0);
+                    netSales += providerSales;
+
+                    if (budgetedSales <= 0) {
+                      return (
+                        <Text style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '3px', color: '#6b7280' }}>
+                          —
+                        </Text>
+                      );
+                    }
+
+                    const pct = calculateActualSalesBudget(budgetedSales, netSales);
+                    const pctColor = pct >= 0 ? '#16a34a' : '#dc2626';
+                    return (
+                      <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px', color: pctColor }}>
+                        {pct.toFixed(1)}%
+                      </Text>
+                    );
+                  }
+                },
                 
                 {
                   title: (
@@ -3059,15 +3103,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </h3>
               </div>
               <p className="text-blue-700 text-base leading-relaxed mb-4">
-              Good News: Because you've entered your actuals sales and labor data for the past 3 week {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')} the Auto feature is now active.
-              the Auto feature is now active. 
+              Good News: Because you've entered your actual sales and labor data for the past 3 weeks {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')}, the Auto feature is now active.
               </p>
-              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks.   You'll still have full control to review, edit and adjust your budget.</p>
+              <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks. You'll still have full control to review, edit and adjust your budget.</p>
               
               <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                 {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li><span className="font-medium">Auto:</span> When you select Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks.   You'll still have full control to review, edit and adjust your budget.</li>
+                  <li><span className="font-medium">Auto:</span> When selected, LIO, our AI assistant builds your budget using your last 3 weeks of real sales and labor data — averaged by day of week. This gives you a more accurate daily, data driven plan.</li>
                   <li><span className="font-medium">Manual:</span> Enter all data yourself. A quick warning will appear if it's a future week.</li>
                   <li><span className="font-medium">Close:</span> Return to the week selection screen without making changes.</li>
                 </ul>
