@@ -53,6 +53,10 @@ import ChatPage from './components/mainSceens/chat/ChatPage';
 import { ProfitabilityScore, ProfitabilityWizard } from './components/profitability';
 import ReportCardPage from './components/reportCard/ReportCardPage';
 import { SquareIntegration, SquareCallbackHandler } from './components/square';
+import PosOrders from './components/mainSceens/posDetails/PosOrders';
+import PosLocations from './components/mainSceens/posDetails/PosLocations';
+import PosPayments from './components/mainSceens/posDetails/PosPayments';
+import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
 
 // Smart redirect component that checks simulation status and restaurant onboarding
 const RootRedirect = () => {
@@ -358,6 +362,10 @@ function App() {
           <Route path="/dashboard/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/dashboard/chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />
           <Route path="/dashboard/square" element={<Wrapper showSidebar={true} children={<SquareIntegration />} />} />
+          <Route path="/dashboard/pos/orders" element={<Wrapper showSidebar={true} children={<PosOrders />} />} />
+          <Route path="/dashboard/pos/locations" element={<Wrapper showSidebar={true} children={<PosLocations />} />} />
+          <Route path="/dashboard/pos/payments" element={<Wrapper showSidebar={true} children={<PosPayments />} />} />
+          <Route path="/dashboard/pos/timecards" element={<Wrapper showSidebar={true} children={<PosTimecards />} />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
         <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />

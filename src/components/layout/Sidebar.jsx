@@ -14,6 +14,30 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
   const [expandedItems, setExpandedItems] = useState(new Set());
   const location = useLocation();
 
+  const getInitials = (label = '') => {
+    const cleaned = String(label || '').trim();
+    if (!cleaned) return '?';
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    const first = words[0]?.[0] || '?';
+    const second = words.length > 1 ? words[1]?.[0] : '';
+    const initials = `${first}${second}`.toUpperCase();
+    return initials.slice(0, 2);
+  };
+
+  const FallbackGlyph = ({ label, selected }) => (
+    <span
+      className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-semibold border transition-colors ${
+        selected
+          ? 'bg-orange-100 text-orange-700 border-orange-200'
+          : 'bg-gray-50 text-gray-600 border-gray-200 group-hover:bg-gray-100 group-hover:text-gray-700'
+      }`}
+      aria-hidden="true"
+      title={label}
+    >
+      {getInitials(label)}
+    </span>
+  );
+
   // Map pathname to menu key
   const pathKeyMap = {
     '/dashboard/report-card': 'report-card',
@@ -33,6 +57,10 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/training': 'training',
     '/dashboard/pricing': 'pricing',
     '/dashboard/square': 'square',
+    '/dashboard/pos/orders': 'pos-orders',
+    '/dashboard/pos/locations': 'pos-locations',
+    '/dashboard/pos/payments': 'pos-payments',
+    '/dashboard/pos/timecards': 'pos-timecards',
     '/dashboard/profile': 'profile',
     '/dashboard/faq': 'faq',
     '/dashboard/chat': 'chat',
@@ -153,9 +181,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
               : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
           } ${collapsed ? 'lg:justify-center lg:px-2' : ''} ${level > 0 ? (item.icon ? 'pl-5' : 'pl-4') : ''}`}
         >
-          {item.icon && (
-            <span className={`mr-3 text-lg ${isSelected ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'} ${collapsed ? 'lg:mr-0' : ''}`}>
+          {item.icon ? (
+            <span
+              className={`mr-3 text-lg ${isSelected ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'} ${
+                collapsed ? 'lg:mr-0' : ''
+              }`}
+              title={item.label}
+            >
               {item.icon}
+            </span>
+          ) : (
+            <span className={`mr-3 ${collapsed ? 'lg:mr-0' : ''}`}>
+              <FallbackGlyph label={item.label} selected={isSelected} />
             </span>
           )}
           <span className={`font-medium flex-1 ${collapsed ? 'lg:hidden' : ''} ${!item.icon && level > 0 ? 'text-sm' : ''}`}>
@@ -191,11 +228,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
                           ? 'bg-orange-50 text-orange-700'
                           : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                       }`}
+                      title={child.label}
                     >
-                      {child.icon && (
-                        <span className={`text-lg ${selectedKey === child.key ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'}`}>
+                      {child.icon ? (
+                        <span
+                          className={`text-lg ${
+                            selectedKey === child.key ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'
+                          }`}
+                        >
                           {child.icon}
                         </span>
+                      ) : (
+                        <FallbackGlyph label={child.label} selected={selectedKey === child.key} />
                       )}
                     </button>
                   </div>

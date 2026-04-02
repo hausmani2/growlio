@@ -553,7 +553,7 @@ const ReportCard = ({
             </div>
             <div className="text-lg font-medium text-gray-900">
               Profit:{" "}
-              <span className="text-green-500 font-bold">{formatCurrency(summary.profit || 0)}</span>
+              <span className="text-red-500 font-bold">{formatCurrency(summary.profit || 0)}</span>
             </div>
           </div>
         </div>

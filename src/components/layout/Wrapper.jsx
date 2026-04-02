@@ -82,6 +82,14 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const handleSquarePosClick = () => {
     navigate('/dashboard/square');
   };
+
+  const squareStatus = useStore((state) => state.squareStatus);
+  const squareConnectionData = useStore((state) => state.squareConnectionData);
+  const isPosConnected = useMemo(() => {
+    if (squareStatus === 'connected') return true;
+    const connectedFlag = squareConnectionData?.connected;
+    return connectedFlag === true;
+  }, [squareStatus, squareConnectionData]);
   
   // Get onboarding status for Training menu gating and user mode determination
   const { 
@@ -439,6 +447,33 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       icon: <ShoppingOutlined />,
       label: 'Square POS',
       onClick: handleSquarePosClick,
+    }] : []),
+    ...(posEnabled && isPosConnected ? [{
+      key: 'pos-details',
+      icon: <ShopOutlined />,
+      label: 'POS Details',
+      children: [
+        {
+          key: 'pos-payments',
+          label: 'POS Payments',
+          onClick: () => navigate('/dashboard/pos/payments'),
+        },
+        {
+          key: 'pos-timecards',
+          label: 'POS Timecards',
+          onClick: () => navigate('/dashboard/pos/timecards'),
+        },
+        {
+          key: 'pos-locations',
+          label: 'Locations',
+          onClick: () => navigate('/dashboard/pos/locations'),
+        },
+        {
+          key: 'pos-orders',
+          label: 'Orders',
+          onClick: () => navigate('/dashboard/pos/orders'),
+        },
+      ],
     }] : []),
     {
       key: 'leo-ai',

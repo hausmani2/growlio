@@ -11,6 +11,7 @@ import createChatSlice from './slices/chatSlice';
 import createSalesInformationSlice from './slices/salesInformationSlice';
 import createPlansSlice from './slices/plansSlice';
 import createSquareSlice from './slices/squareSlice';
+import createSquarePosDetailsSlice from './slices/squarePosDetailsSlice';
 import createSimulationSlice from './slices/simulationSlice';
 
 
@@ -29,6 +30,7 @@ const useStore = create(
         ...createSalesInformationSlice(set, get),
         ...createPlansSlice(set, get),
         ...createSquareSlice(set, get),
+        ...createSquarePosDetailsSlice(set, get),
         ...createSimulationSlice(set, get),
 
       
