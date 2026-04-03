@@ -763,7 +763,7 @@ const SimulationDashboard = () => {
       </div>
       
       {/* Chat Widget for Simulation */}
-      <ChatWidget botName="Growlio Assistant" />
+      <ChatWidget botName="LIO Advisor" />
 
       {/* Edit Expense Modal */}
       <Modal

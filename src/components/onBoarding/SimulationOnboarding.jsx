@@ -733,7 +733,7 @@ const SimulationOnboarding = () => {
       </div>
       
       {/* Chat Widget for Simulation */}
-      <ChatWidget botName="Growlio Assistant" />
+      <ChatWidget botName="LIO Advisor" />
     </div>
   );
 };

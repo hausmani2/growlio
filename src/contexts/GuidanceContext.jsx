@@ -49,6 +49,17 @@ export const GuidanceProvider = ({ children }) => {
   const isCheckingStatusRef = useRef(false); // Track if we're currently checking status to prevent infinite loops
   const lastCheckedPathnameRef = useRef(''); // Track last pathname we checked to prevent duplicate calls
   const hasAutoStartedExpenseGuidanceRef = useRef(false); // Prevent repeated auto-start loops on the expense step
+  const isDataGuidanceActiveRef = useRef(false);
+  const hasSeenDataGuidanceRef = useRef(null);
+  const dashboardGuidanceRetryTimerRef = useRef(null);
+
+  useEffect(() => {
+    isDataGuidanceActiveRef.current = isDataGuidanceActive;
+  }, [isDataGuidanceActive]);
+
+  useEffect(() => {
+    hasSeenDataGuidanceRef.current = hasSeenDataGuidance;
+  }, [hasSeenDataGuidance]);
 
   const getAuthToken = () => {
     // Axios interceptors often use localStorage; guidance logic must match that reality.
@@ -716,6 +727,8 @@ export const GuidanceProvider = ({ children }) => {
           'expand-category-details',      // Profit Loss page
           'summary_table',
           'week_selector',
+          // Close Out Your Day(s) header week picker (DOM: data-guidance="week_selector_help")
+          'week_selector_help',
           // Onboarding expense (only used when pageName === onboarding_expense)
           'total_weekly_expenses',
           'total_monthly_expenses',
@@ -726,11 +739,21 @@ export const GuidanceProvider = ({ children }) => {
           'expense_first_monthly_total',
           'expense_first_weekly_total',
         ];
+
+        const profitLossDomKeys = new Set(['change-display-format', 'expand-category-details']);
+        const popupMatchesDataGuidancePage = (popup) => {
+          if (acceptablePages.includes(popup.page)) return true;
+          // CMS rows sometimes use page "dashboard" for P&L tooltips; anchors live on /dashboard/profit-loss
+          if (pageName === 'profit_loss' && popup.page === 'dashboard' && profitLossDomKeys.has(popup.key)) {
+            return true;
+          }
+          return false;
+        };
         
         // Filter popups by current page and ensure key is in allowed list
         const filteredPopups = allPopups
           .filter(popup => 
-            acceptablePages.includes(popup.page) &&
+            popupMatchesDataGuidancePage(popup) &&
             popup.is_active === true && 
             dataGuidanceKeys.includes(popup.key)
           )
@@ -1036,7 +1059,8 @@ export const GuidanceProvider = ({ children }) => {
     
     if (pagePopups.length > 0) {
       let retryCount = 0;
-      const maxRetries = 20; // Increased retries for modal elements
+      // Dashboard tables (sales / COGS / labor) mount only after week + dashboardData load — allow extra time
+      const maxRetries = pageName === 'dashboard' ? 45 : 25;
       
       const checkForElements = () => {
         // Check both regular DOM and modal content (modals might be in portals)
@@ -1054,7 +1078,32 @@ export const GuidanceProvider = ({ children }) => {
         });
         
         const uniqueElements = [...new Set(allElements)]; // Remove duplicates
-        const validPopups = pagePopups.filter(popup => uniqueElements.includes(popup.key));
+        const hasAnchor = (k) => uniqueElements.includes(k);
+        const validPopups = pagePopups
+          .filter((popup) => {
+            if (hasAnchor(popup.key)) return true;
+            // Close Out Your Day(s) uses data-guidance="week_selector_help"; budget uses "week_selector"
+            if (
+              pageName === 'dashboard' &&
+              popup.key === 'week_selector' &&
+              hasAnchor('week_selector_help') &&
+              !hasAnchor('week_selector')
+            ) {
+              return true;
+            }
+            return false;
+          })
+          .map((popup) => {
+            if (
+              pageName === 'dashboard' &&
+              popup.key === 'week_selector' &&
+              !hasAnchor('week_selector') &&
+              hasAnchor('week_selector_help')
+            ) {
+              return { ...popup, key: 'week_selector_help' };
+            }
+            return popup;
+          });
         
         if (validPopups.length > 0) {
           setDataGuidancePopups(validPopups);
@@ -1072,7 +1121,7 @@ export const GuidanceProvider = ({ children }) => {
       // For dashboard page, check if we're looking for modal elements (close-your-days)
       // If so, wait a bit longer for modal to render
       const hasModalElements = pagePopups.some(popup => popup.key === 'close-your-days');
-      const initialDelay = hasModalElements ? 2000 : 1500;
+      const initialDelay = hasModalElements ? 2000 : pageName === 'dashboard' ? 600 : 1200;
       setTimeout(checkForElements, initialDelay);
     } else {
       setIsDataGuidanceActive(false);
@@ -1133,18 +1182,24 @@ export const GuidanceProvider = ({ children }) => {
     if (pageName === 'dashboard') {
       setIsActive(false);
       setLoading(false);
-      if (!forceShow) {
-        // Only show data guidance if user has seen regular guidance but not data guidance
-        if (hasSeenGuidance === true && hasSeenDataGuidance !== true) {
-          if (hasSeenDataGuidance === null) {
-            const { hasSeenData } = await checkGuidanceStatus();
-            if (hasSeenData !== true) {
-              startDataGuidance(false, true);
-            }
-          } else {
+      if (!forceShow && hasSeenDataGuidance !== true) {
+        if (hasSeenDataGuidance === null) {
+          const { hasSeenData } = await checkGuidanceStatus();
+          if (hasSeenData !== true) {
             startDataGuidance(false, true);
           }
+        } else {
+          startDataGuidance(false, true);
         }
+      }
+      return;
+    }
+
+    if (pageName === 'profit_loss') {
+      setIsActive(false);
+      setLoading(false);
+      if (!forceShow && hasSeenDataGuidance !== true) {
+        startDataGuidance(false, true);
       }
       return;
     }
@@ -1179,7 +1234,7 @@ export const GuidanceProvider = ({ children }) => {
       setIsActive(false);
       setLoading(false);
     }
-  }, [location.pathname, hasSeenGuidance, checkGuidanceStatus, fetchPopups, startDataGuidance]);
+  }, [location.pathname, hasSeenGuidance, hasSeenDataGuidance, checkGuidanceStatus, fetchPopups, startDataGuidance]);
 
   // Go to next popup
   const nextPopup = useCallback(() => {
@@ -1447,6 +1502,37 @@ export const GuidanceProvider = ({ children }) => {
       window.removeEventListener('forceShowGuidance', handleForceShow);
     };
   }, [startGuidance]);
+
+  // Close Out Your Day(s): labor/sales/COGS anchors mount only after week + dashboard data load.
+  // Retry data guidance when tables are on the page so API-driven keys (e.g. actual-weekly-labor-performance) resolve.
+  useEffect(() => {
+    const handleDashboardTablesMounted = () => {
+      if (location.pathname !== '/dashboard') return;
+      if (!getAuthToken()) return;
+      if (hasSeenDataGuidanceRef.current === true) return;
+
+      if (dashboardGuidanceRetryTimerRef.current) {
+        clearTimeout(dashboardGuidanceRetryTimerRef.current);
+      }
+      dashboardGuidanceRetryTimerRef.current = setTimeout(() => {
+        dashboardGuidanceRetryTimerRef.current = null;
+        // If guidance already started with only header anchors, restart so the full tour includes table keys
+        if (isDataGuidanceActiveRef.current) {
+          setIsDataGuidanceActive(false);
+          setCurrentDataGuidanceIndex(0);
+        }
+        startDataGuidance(false, true);
+      }, 700);
+    };
+
+    window.addEventListener('growlio-dashboard-tables-mounted', handleDashboardTablesMounted);
+    return () => {
+      window.removeEventListener('growlio-dashboard-tables-mounted', handleDashboardTablesMounted);
+      if (dashboardGuidanceRetryTimerRef.current) {
+        clearTimeout(dashboardGuidanceRetryTimerRef.current);
+      }
+    };
+  }, [location.pathname, startDataGuidance]);
 
   // Get current data guidance popup
   const getCurrentDataGuidancePopup = useCallback(() => {

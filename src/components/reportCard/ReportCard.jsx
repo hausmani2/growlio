@@ -29,6 +29,14 @@ const formatCurrency = (n) => {
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
+const getProfitColorClass = (profit) => {
+  const v = Number(profit);
+  if (!Number.isFinite(v)) return "text-gray-900";
+  if (v < 0) return "text-red-500";
+  if (v > 0) return "text-green-500";
+  return "text-gray-900";
+};
+
 const formatCompactCurrency = (n) => {
   const v = Number(n);
   if (!Number.isFinite(v)) return "$0";
@@ -553,7 +561,9 @@ const ReportCard = ({
             </div>
             <div className="text-lg font-medium text-gray-900">
               Profit:{" "}
-              <span className="text-red-500 font-bold">{formatCurrency(summary.profit || 0)}</span>
+              <span className={`font-bold ${getProfitColorClass(summary?.profit)}`}>
+                {formatCurrency(summary.profit || 0)}
+              </span>
             </div>
           </div>
         </div>

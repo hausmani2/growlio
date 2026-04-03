@@ -862,7 +862,7 @@ const ChatPage = () => {
                   </>
               )}
             <div className="flex-1 min-w-0">
-              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-tight truncate">Growlio Assistant</h2>
+              <h2 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 leading-tight truncate">LIO Advisor</h2>
               <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">AI-powered restaurant assistant</p>
             </div>
           </div>

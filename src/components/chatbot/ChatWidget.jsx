@@ -11,8 +11,8 @@ import chatIcon from '../../assets/lio.png';
  * ChatWidget Component
  * A professional floating chatbot widget with smooth animations
  */
-const ChatWidget = ({ botName = 'Growlio Assistant' }) => {
-  const navigate = useNavigate();
+const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
+  const navigate = useNavigate(); 
   const hasShownLimitModalRef = useRef(false);
   const { 
     selectedConversationId: storeConversationId, 

@@ -230,6 +230,22 @@ const Dashboard = () => {
     }
   }, [checkWeeklyAverageData, fetchDashboardDataIfNeeded]);
 
+  // Let guidance system know Sales/Labor/COGS tables are mounted (data-guidance anchors exist)
+  const hadTablesForGuidanceRef = useRef(false);
+  useEffect(() => {
+    const ready = !!(selectedWeek && dashboardData);
+    if (!ready) {
+      hadTablesForGuidanceRef.current = false;
+      return undefined;
+    }
+    if (hadTablesForGuidanceRef.current) return undefined;
+    hadTablesForGuidanceRef.current = true;
+    const timer = window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('growlio-dashboard-tables-mounted'));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [selectedWeek, dashboardData]);
+
   // Callback function to refresh dashboard data after any component saves data
   const refreshDashboardData = async () => {
     const { weekStartDate } = getDateSelection();

@@ -394,7 +394,7 @@ function App() {
         </Routes>
       
         {/* Chatbot Widget - Only show when authenticated and NOT in simulation mode */}
-        {isAuthenticated && !isSimulationMode && <ChatWidget botName="Growlio Assistant" />}
+        {isAuthenticated && !isSimulationMode && <ChatWidget botName="LIO Advisor" />}
       </GuidanceProvider>
     </Router>
   );
