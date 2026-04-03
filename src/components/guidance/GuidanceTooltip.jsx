@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Button, Card } from 'antd';
 import { CloseOutlined, ArrowRightOutlined } from '@ant-design/icons';
 
-const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
+const GuidanceTooltip = ({ popup, onNext, onSkip, onClose, isLast }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [elementRect, setElementRect] = useState(null);
   const [arrowPosition, setArrowPosition] = useState({ side: 'right', top: null, left: null });
@@ -291,7 +291,8 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, isLast }) => {
               </h3>
             </div>
             <button
-              onClick={onSkip}
+              type="button"
+              onClick={() => (onClose || onSkip)()}
               className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 p-1 hover:bg-gray-100 rounded"
               aria-label="Close"
             >

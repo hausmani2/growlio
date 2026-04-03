@@ -27,6 +27,7 @@ const GuidanceOverlay = () => {
     nextPopup,
     nextDataGuidancePopup,
     skipGuidance,
+    dismissGuidanceUIOnly,
     markGuidanceAsSeen,
     markDataGuidanceAsSeen,
     currentPopupIndex,
@@ -181,6 +182,7 @@ const GuidanceOverlay = () => {
             totalCount: dataGuidancePopups.length,
           }}
           onNext={handleDataGuidanceNext}
+          onClose={dismissGuidanceUIOnly}
           onSkip={handleDataGuidanceSkip}
           isLast={isLast && !isWeekSelector} // Show "Got It" only on last popup (unless it's week_selector)
         />
@@ -245,6 +247,7 @@ const GuidanceOverlay = () => {
     <GuidanceTooltip
       popup={popupWithIndex}
       onNext={handleGuidanceNext}
+      onClose={dismissGuidanceUIOnly}
       onSkip={skipGuidance}
       isLast={isLast}
     />

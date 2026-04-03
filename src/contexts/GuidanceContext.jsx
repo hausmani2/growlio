@@ -24,7 +24,8 @@ export const useGuidance = () => {
       currentPopupIndex: 0,
       currentDataGuidanceIndex: 0,
       loading: false,
-      currentPage: ''
+      currentPage: '',
+      dismissGuidanceUIOnly: () => {},
     };
   }
   return context;
@@ -1265,6 +1266,12 @@ export const GuidanceProvider = ({ children }) => {
     markGuidanceAsSeen();
   }, [markGuidanceAsSeen]);
 
+  /** Close the overlay only (no API). Guidance can show again on next visit/reload. */
+  const dismissGuidanceUIOnly = useCallback(() => {
+    setIsActive(false);
+    setIsDataGuidanceActive(false);
+  }, []);
+
   // Get current popup
   const getCurrentPopup = useCallback(() => {
     if (!isActive || popups.length === 0 || currentPopupIndex >= popups.length) {
@@ -1570,6 +1577,7 @@ export const GuidanceProvider = ({ children }) => {
     nextPopup,
     nextDataGuidancePopup,
     skipGuidance,
+    dismissGuidanceUIOnly,
     checkElementExists,
     startGuidance: (forceShow) => startGuidance(forceShow),
     startDataGuidance: (forceShow) => startDataGuidance(forceShow),
