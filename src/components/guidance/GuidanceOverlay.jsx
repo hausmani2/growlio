@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GuidanceContext } from '../../contexts/GuidanceContext';
 import { apiGet, apiPost } from '../../utils/axiosInterceptors';
@@ -7,6 +7,13 @@ import GuidanceTooltip from './GuidanceTooltip';
 const GuidanceOverlay = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const routePage = useMemo(() => {
+    const path = location.pathname || '';
+    if (path.startsWith('/dashboard/profit-loss')) return 'profit_loss';
+    if (path === '/dashboard/budget') return 'budget';
+    if (path.startsWith('/dashboard')) return 'dashboard';
+    return 'unknown';
+  }, [location.pathname]);
   
   // Check context directly to avoid throwing error if provider is not available
   const context = useContext(GuidanceContext);
@@ -36,6 +43,34 @@ const GuidanceOverlay = () => {
     dataGuidancePopups,
   } = context;
 
+  // Hard guard: Budget screen must never render the dashboard-only week selector help anchor.
+  // If something slipped through (stale state, backend row, etc.), skip it immediately.
+  useEffect(() => {
+    if (loading) return;
+    if (!isDataGuidanceActive) return;
+    if (routePage !== 'budget') return;
+    const current = getCurrentDataGuidancePopup?.();
+    if (!current) return;
+    if (current.key !== 'week_selector_help') return;
+
+    const isLast = currentDataGuidanceIndex === dataGuidancePopups.length - 1;
+    if (isLast) {
+      markDataGuidanceAsSeen();
+    } else {
+      nextDataGuidancePopup();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isDataGuidanceActive,
+    routePage,
+    currentDataGuidanceIndex,
+    dataGuidancePopups.length,
+    nextDataGuidancePopup,
+    markDataGuidanceAsSeen,
+    getCurrentDataGuidancePopup,
+    loading,
+  ]);
+
   if (loading) {
     return null;
   }
@@ -58,8 +93,7 @@ const GuidanceOverlay = () => {
       
       const handleDataGuidanceNext = async () => {
         const isLast = currentDataGuidanceIndex === dataGuidancePopups.length - 1;
-        const currentPage = location.pathname.includes('/dashboard/profit-loss') ? 'profit_loss' : 
-                           location.pathname.includes('/dashboard') ? 'dashboard' : 'budget';
+        const currentPage = routePage;
 
         const isExpensePage =
           location.pathname.includes('/onboarding/expense') ||

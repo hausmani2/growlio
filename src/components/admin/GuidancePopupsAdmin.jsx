@@ -613,7 +613,7 @@ const GuidancePopupsAdmin = () => {
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
               <p className="text-sm text-blue-800 mb-2">
                 <strong>Note:</strong> Make sure the target element on the page has the matching <code className="bg-blue-100 px-1 rounded">data-guidance="{editing.key}"</code> attribute.
-                For Close Out Your Day(s), the week picker uses <code className="bg-blue-100 px-1 rounded">week_selector_help</code> (or use key <code className="bg-blue-100 px-1 rounded">week_selector</code> — it maps automatically).
+                For Close Out Your Day(s), the week picker anchor is <code className="bg-blue-100 px-1 rounded">week_selector_help</code>. For the Budget screen, the week picker anchor is <code className="bg-blue-100 px-1 rounded">week_selector</code> (no cross-page auto-mapping).
                 For Budget vs Actual / P&amp;L tooltips, set Context/Page to <strong>Profit &amp; Loss</strong> (<code className="bg-blue-100 px-1 rounded">profit_loss</code>); rows saved as Dashboard are still matched for display-format keys.
               </p>
             </div>

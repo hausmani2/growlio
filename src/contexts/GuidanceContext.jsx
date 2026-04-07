@@ -88,6 +88,16 @@ export const GuidanceProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Data-guidance is a global tour (dashboard + P&L + expense onboarding).
+   * The Budget page should NOT auto-run data guidance because it causes cross-page noise
+   * and incorrectly implies per-page completion based on the global flag.
+   */
+  const isDataGuidanceAutoEnabledForPage = useCallback((pageName) => {
+    if (pageName === 'budget') return false;
+    return true;
+  }, []);
+
   const debugLog = (...args) => {
     if (!isGuidanceDebugEnabled()) return;
     // Use a consistent prefix so it’s easy to filter in devtools
@@ -708,38 +718,58 @@ export const GuidanceProvider = ({ children }) => {
       const acceptablePages = resolvePageNames(pageName);
       
       if (isDataGuidance) {
-        // Data guidance keys for all pages
-        // Dashboard page: close-your-days, add-actual-weekly-sales, actual-weekly-sales-table, 
-        //   actual-weekly-sales-totals, actual-weekly-cogs-performance, actual-weekly-cogs-totals,
-        //   actual-weekly-labor-performance, actual-weekly-labor-totals
-        // Profit Loss page: change-display-format, expand-category-details
-        // Budget page: summary_table, week_selector
-        // Onboarding Expense page: first expense row + totals guidance (custom)
-        const dataGuidanceKeys = [
-          'close-your-days',
-          'add-actual-weekly-sales',
-          'actual-weekly-sales-table',
-          'actual-weekly-sales-totals',
-          'actual-weekly-cogs-performance',
-          'actual-weekly-cogs-totals',
-          'actual-weekly-labor-performance',
-          'actual-weekly-labor-totals',
-          'change-display-format',        // Profit Loss page
-          'expand-category-details',      // Profit Loss page
-          'summary_table',
-          'week_selector',
-          // Close Out Your Day(s) header week picker (DOM: data-guidance="week_selector_help")
-          'week_selector_help',
-          // Onboarding expense (only used when pageName === onboarding_expense)
-          'total_weekly_expenses',
-          'total_monthly_expenses',
-          'expense_first_toggle',
-          'expense_first_type',
-          'expense_first_frequency',
-          'expense_first_amount',
-          'expense_first_monthly_total',
-          'expense_first_weekly_total',
-        ];
+        // Budget: do not auto-run data guidance on this page (see isDataGuidanceAutoEnabledForPage).
+        // We still allow fetching other data guidance popups for other pages normally.
+        if (!isDataGuidanceAutoEnabledForPage(pageName)) {
+          setDataGuidancePopups([]);
+          return [];
+        }
+
+        // Data guidance keys are PAGE-SCOPED to prevent cross-page leakage.
+        // IMPORTANT: Budget must never show the dashboard-only week selector help tooltip.
+        const baseKeysByPage = {
+          dashboard: [
+            'close-your-days',
+            'add-actual-weekly-sales',
+            'actual-weekly-sales-table',
+            'actual-weekly-sales-totals',
+            'actual-weekly-cogs-performance',
+            'actual-weekly-cogs-totals',
+            'actual-weekly-labor-performance',
+            'actual-weekly-labor-totals',
+            // Close Out Your Day(s) header week picker (DOM: data-guidance="week_selector_help")
+            'week_selector_help',
+            // Back-compat key (DB rows may still be saved as week_selector)
+            'week_selector',
+          ],
+          profit_loss: ['change-display-format', 'expand-category-details'],
+          // Intentionally excluded from auto data guidance (see early return above).
+          budget: ['summary_table', 'week_selector'],
+          onboarding_expense: [
+            'total_weekly_expenses',
+            'total_monthly_expenses',
+            'expense_first_toggle',
+            'expense_first_type',
+            'expense_first_frequency',
+            'expense_first_amount',
+            'expense_first_monthly_total',
+            'expense_first_weekly_total',
+          ],
+          expense: [
+            'total_weekly_expenses',
+            'total_monthly_expenses',
+            'expense_first_toggle',
+            'expense_first_type',
+            'expense_first_frequency',
+            'expense_first_amount',
+            'expense_first_monthly_total',
+            'expense_first_weekly_total',
+          ],
+        };
+
+        // Some pages share anchors (e.g., Summary tables appear on multiple screens).
+        // Keep common keys explicit per page to avoid accidental bleed.
+        const dataGuidanceKeys = baseKeysByPage[pageName] || [];
 
         const profitLossDomKeys = new Set(['change-display-format', 'expand-category-details']);
         const popupMatchesDataGuidancePage = (popup) => {
@@ -758,7 +788,21 @@ export const GuidanceProvider = ({ children }) => {
             popup.is_active === true && 
             dataGuidanceKeys.includes(popup.key)
           )
-          .sort((a, b) => a.id - b.id);
+          .sort((a, b) => {
+            // Keep a predictable, UX-friendly order regardless of backend IDs.
+            // Dashboard: show "week selector" hint first (it unlocks the rest of the page context).
+            if (pageName === 'dashboard') {
+              const rank = (key) => {
+                if (key === 'week_selector_help' || key === 'week_selector') return -200;
+                if (key === 'close-your-days') return -100;
+                return 0;
+              };
+              const ra = rank(a.key);
+              const rb = rank(b.key);
+              if (ra !== rb) return ra - rb;
+            }
+            return a.id - b.id;
+          });
         debugLog('fetchPopups: data guidance filter', {
           pageName,
           acceptablePages,
@@ -1056,6 +1100,16 @@ export const GuidanceProvider = ({ children }) => {
     }
     // If skipStatusCheck is true, continue without checking status
 
+    // Do not auto-run data guidance on Budget page.
+    // Budget "week_selector" guidance is managed explicitly elsewhere (if ever needed),
+    // but should not appear as part of the global data guidance tour.
+    if (!forceShow && isDataGuidanceAutoEnabledForPage(pageName) === false) {
+      debugLog('startDataGuidance -> blocked for page', { pageName, path: location.pathname });
+      setIsDataGuidanceActive(false);
+      setDataGuidancePopups([]);
+      return;
+    }
+
     const pagePopups = await fetchPopups(pageName, true);
     
     if (pagePopups.length > 0) {
@@ -1083,9 +1137,10 @@ export const GuidanceProvider = ({ children }) => {
         const validPopups = pagePopups
           .filter((popup) => {
             if (hasAnchor(popup.key)) return true;
-            // Close Out Your Day(s) uses data-guidance="week_selector_help"; budget uses "week_selector"
+            // Close Out Your Day(s) uses data-guidance="week_selector_help".
+            // Only allow the week_selector -> week_selector_help fallback on the ACTUAL dashboard route.
             if (
-              pageName === 'dashboard' &&
+              location.pathname === '/dashboard' &&
               popup.key === 'week_selector' &&
               hasAnchor('week_selector_help') &&
               !hasAnchor('week_selector')
@@ -1096,7 +1151,7 @@ export const GuidanceProvider = ({ children }) => {
           })
           .map((popup) => {
             if (
-              pageName === 'dashboard' &&
+              location.pathname === '/dashboard' &&
               popup.key === 'week_selector' &&
               !hasAnchor('week_selector') &&
               hasAnchor('week_selector_help')
@@ -1388,7 +1443,12 @@ export const GuidanceProvider = ({ children }) => {
       const timer = setTimeout(() => {
         if (showDataGuidance === 'true') {
           sessionStorage.removeItem('show_data_guidance_after_user_guidance');
-          startDataGuidance(false, true);
+          const pageName = getPageNameFromRoute(location.pathname);
+          if (isDataGuidanceAutoEnabledForPage(pageName)) {
+            startDataGuidance(false, true);
+          } else {
+            debugLog('navigation-flag: showDataGuidance suppressed for page', { pageName, path: location.pathname });
+          }
           return;
         }
         
