@@ -267,16 +267,18 @@ const ReportCardPage = () => {
   return (
     <div className="w-full mx-auto">
       <div className="w-full flex flex-col gap-3">
-        <ReportCard
-          score={score}
-          goals={goals}
-          metrics={metrics}
-          summary={summary}
-          onDateRangeChange={setDateRange}
-          loading={salesInformationSummaryLoading}
-          gradeDetails={gradeDetails}
-          showNextSteps={!isOnboardingComplete}
-        />
+        <div data-guidance="meet_lio_report_card">
+          <ReportCard
+            score={score}
+            goals={goals}
+            metrics={metrics}
+            summary={summary}
+            onDateRangeChange={setDateRange}
+            loading={salesInformationSummaryLoading}
+            gradeDetails={gradeDetails}
+            showNextSteps={!isOnboardingComplete}
+          />
+        </div>
         
         {/* Show Daily Performance Card when onboarding is complete */}
         {isOnboardingComplete ? (

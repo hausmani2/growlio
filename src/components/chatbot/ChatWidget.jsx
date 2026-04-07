@@ -519,6 +519,7 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
             : 'bg-[#FF8132] hover:bg-[#EB5B00] hover:scale-110'
         }`}
         aria-label={isOpen ? 'Close chat' : 'Open chat'}
+        data-guidance="lio_chat_widget"
       >
         {isOpen ? (
           <FiX className="w-6 h-6 md:w-7 md:h-7" />

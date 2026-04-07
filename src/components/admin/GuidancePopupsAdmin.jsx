@@ -12,6 +12,7 @@ const pageOptions = [
   { label: 'Onboarding: Food Cost Details', value: 'onboarding_food_cost_details' },
   { label: 'Onboarding: Sales Channels', value: 'onboarding_sales_channels' },
   { label: 'Onboarding: Expense', value: 'onboarding_expense' },
+  { label: 'Report Card', value: 'report_card' },
   { label: 'Dashboard', value: 'dashboard' },
   { label: 'Budget', value: 'budget' },
   { label: 'Weekly Sales Data', value: 'weekly_sales_data' },
@@ -225,6 +226,24 @@ const GuidancePopupsAdmin = () => {
   // Get key options based on selected page
   const getKeyOptions = (page) => {
     switch (page) {
+      case 'report_card':
+        return [
+          { label: 'Meet LIO (Chat Widget Button)', value: 'lio_chat_widget' },
+          { label: 'Meet LIO (Report Card intro container)', value: 'meet_lio_report_card' },
+        ];
+      case 'dashboard':
+        return [
+          { label: 'Week Selector Help (Close Out Your Day(s))', value: 'week_selector_help' },
+          { label: 'Meet LIO (Chat Widget Button)', value: 'lio_chat_widget' },
+          { label: 'Close Out Your Day(s)', value: 'close-your-days' },
+          { label: 'Add Actual Weekly Sales', value: 'add-actual-weekly-sales' },
+          { label: 'Actual Weekly Sales Table', value: 'actual-weekly-sales-table' },
+          { label: 'Actual Weekly Sales Totals', value: 'actual-weekly-sales-totals' },
+          { label: 'Actual Weekly COGS Performance', value: 'actual-weekly-cogs-performance' },
+          { label: 'Actual Weekly COGS Totals', value: 'actual-weekly-cogs-totals' },
+          { label: 'Actual Weekly Labor Performance', value: 'actual-weekly-labor-performance' },
+          { label: 'Actual Weekly Labor Totals', value: 'actual-weekly-labor-totals' },
+        ];
       case 'budget':
         return [
           { label: 'Budget Dashboard Title', value: 'budget_dashboard_title' },

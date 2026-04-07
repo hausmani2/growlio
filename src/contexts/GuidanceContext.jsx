@@ -123,6 +123,7 @@ export const GuidanceProvider = ({ children }) => {
       'dashboard/budget': 'budget',
       'budget': 'budget',
       'dashboard/profit-loss': 'profit_loss',
+      'dashboard/report-card': 'report_card',
       'dashboard/basic-information': 'basic_information',
       'dashboard/labor-information': 'labor_information',
       'dashboard/food-cost-details': 'food_cost_details',
@@ -730,6 +731,8 @@ export const GuidanceProvider = ({ children }) => {
         const baseKeysByPage = {
           dashboard: [
             'close-your-days',
+            // Global LIO chat widget (bottom-right floating button)
+            'lio_chat_widget',
             'add-actual-weekly-sales',
             'actual-weekly-sales-table',
             'actual-weekly-sales-totals',

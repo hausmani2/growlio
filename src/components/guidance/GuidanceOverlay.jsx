@@ -246,6 +246,14 @@ const GuidanceOverlay = () => {
   const handleGuidanceNext = async () => {
     const currentPopup = getCurrentPopup();
     const isSummaryTable = currentPopup?.key === 'summary_table';
+    const isLioMeetPopup = currentPopup?.key === 'lio_chat_widget';
+
+    // LIO "Meet LIO" tooltip: dismiss UI only (do NOT update guidance-status API).
+    // This popup is meant to be lightweight and non-blocking.
+    if (isLioMeetPopup) {
+      dismissGuidanceUIOnly();
+      return;
+    }
     
     if (isLast) {
       try {
