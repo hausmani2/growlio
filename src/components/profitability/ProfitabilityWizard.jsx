@@ -249,25 +249,57 @@ const ProfitabilityWizard = () => {
               </div>
 
               <div className="mt-8 flex flex-col items-center">
-                <div className="relative w-72 sm:w-80">
-                  <div className="h-2 bg-gray-200 rounded-full" />
-                  <div
-                    className="absolute -bottom-2 w-1.5 h-6 bg-orange-500 rounded-full"
-                    style={{
-                      left: `${((numericValue - step.min) / (step.max - step.min || 1)) * 100}%`,
-                      transform: "translateX(-50%)",
-                    }}
-                  />
-                  <input
-                    type="range"
-                    min={step.min}
-                    max={step.max}
-                    step={step.step}
-                    value={numericValue}
-                    onChange={(e) => setCurrentValueFromSlider(e.target.value)}
-                    className="absolute inset-0 w-full h-6 -top-2 opacity-0 cursor-pointer"
-                    aria-label={`${step.title} slider`}
-                  />
+                <div className="w-72 sm:w-96">
+                  <div className="relative">
+                    <div className="h-2 bg-gray-200 rounded-full" />
+                    <div
+                      className="absolute -bottom-2 w-1.5 h-6 bg-orange-500 rounded-full"
+                      style={{
+                        left: `${((numericValue - step.min) / (step.max - step.min || 1)) * 100}%`,
+                        transform: "translateX(-50%)",
+                      }}
+                    />
+                    <input
+                      type="range"
+                      min={step.min}
+                      max={step.max}
+                      step={step.step}
+                      value={numericValue}
+                      onChange={(e) => setCurrentValueFromSlider(e.target.value)}
+                      className="absolute inset-0 w-full h-6 -top-2 opacity-0 cursor-pointer"
+                      aria-label={`${step.title} slider`}
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-xs text-gray-500 tabular-nums">
+                      ${formatMoney(step.min)}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Value</span>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                          $
+                        </span>
+                        <input
+                          inputMode="numeric"
+                          value={formatMoney(numericValue)}
+                          onChange={(e) => setCurrentValue(e.target.value)}
+                          className="w-[132px] h-9 pl-5 pr-3 rounded-md border border-gray-200 bg-white text-sm text-gray-900 tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300"
+                          aria-label={`${step.title} value`}
+                        />
+                      </div>
+                    </div>
+
+                    <span className="text-xs text-gray-500 tabular-nums">
+                      Max ${formatMoney(step.max)}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-gray-400 text-center">
+                    Drag the slider or type a value.
+                  </div>
                 </div>
                 <div className="mt-4 text-lg sm:text-xl font-bold text-gray-900">
                   {step.title}

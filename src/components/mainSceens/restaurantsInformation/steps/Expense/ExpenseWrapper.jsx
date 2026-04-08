@@ -302,8 +302,8 @@ const ExpenseWrapperContent = () => {
                     // Onboarding mode OR new user in update mode: navigate to next step (Sales Data)
                     message.success("Expense information saved successfully!");
                 }
-                // After saving expenses in setup, route back to Restaurant Details (not Sales Data).
-                navigate('/dashboard/basic-information');
+                // After saving expenses in setup, route to Operating Information next.
+                navigate('/dashboard/sales-channels');
             });
 
             if (!result.success) {
@@ -398,7 +398,7 @@ const ExpenseWrapperContent = () => {
                             <div className="flex justify-end gap-3 mt-8 pt-6">
                                 <button
                                     onClick={() => {
-                                        navigate('/dashboard/basic-information');
+                                        navigate('/dashboard/sales-channels');
                                     }}
                                     disabled={loading}
                                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
@@ -453,7 +453,7 @@ const ExpenseWrapperContent = () => {
                 <button
                     onClick={() => {
                      
-                        navigate('/dashboard/basic-information');
+                        navigate('/dashboard/sales-channels');
                     }}
                     disabled={loading}
                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${

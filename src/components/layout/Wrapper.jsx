@@ -330,6 +330,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Your Setup',
       children: [
         {
+          key: 'basic-information',
+          // icon: <InfoCircleOutlined />,
+          label: 'Restaurant Details',
+          onClick: () => navigate('/dashboard/basic-information'),
+        },
+        {
           key: 'expense',
           // icon: <SiExpensify  />,
           label: 'Operating Expenses',
@@ -342,12 +348,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         //   onClick: () => navigate('/dashboard/sales-data'),
         // },
        
-        {
-          key: 'basic-information',
-          // icon: <InfoCircleOutlined />,
-          label: 'Restaurant Details',
-          onClick: () => navigate('/dashboard/basic-information'),
-        },
+       
         {
           key: 'sales-channels',
           // icon: <ShopOutlined />,

@@ -230,6 +230,7 @@ const GuidancePopupsAdmin = () => {
         return [
           { label: 'Meet LIO (Chat Widget Button)', value: 'lio_chat_widget' },
           { label: 'Meet LIO (Report Card intro container)', value: 'meet_lio_report_card' },
+          { label: 'Info Icon Hint (click the “i”)', value: 'info_icon_help' },
         ];
       case 'dashboard':
         return [

@@ -5,6 +5,7 @@ import useStore from './store/store';
 import { GuidanceProvider } from './contexts/GuidanceContext';
 import LoadingSpinner from './components/layout/LoadingSpinner';
 import useOnboardingStatus from './hooks/useOnboardingStatus';
+import ScrollToTop from './components/common/ScrollToTop';
 
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
@@ -308,6 +309,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <GuidanceProvider>
         <Routes>
         {/* Public Routes */}

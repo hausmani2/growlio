@@ -402,8 +402,16 @@ const RestaurantWrapperContent = () => {
                     // In onboarding mode OR new user in update mode: show success and navigate
                     message.success("Basic information saved successfully!");
                 }
-                // Always navigate to next step (Operating Information/Sales Channels)
+                // Navigation rule:
+                // - Update mode (settings flow): go to Operating Expenses next (RD -> Expenses).
+                // - Onboarding flow: continue normal step navigation.
                 setTimeout(() => {
+                    // In dashboard "Your Setup" flow (non-/onboarding routes), always take RD -> Expenses.
+                    // This avoids depending on potentially stale `isOnBoardingCompleted`.
+                    if (isUpdateMode) {
+                        navigate('/dashboard/expense');
+                        return;
+                    }
                     navigateToNextStep(true); // Skip completion check since we just saved successfully
                 }, 200); // Small delay to ensure state update
             });
@@ -472,7 +480,11 @@ const RestaurantWrapperContent = () => {
                                 <div className="flex gap-3 ml-auto">
                                     <button
                                         onClick={() => {
-                                            // Navigate directly to Sales Data instead of next tab
+                                            // Update mode: RD -> Expenses. Otherwise continue normal flow.
+                                            if (isUpdateMode) {
+                                                navigate('/dashboard/expense');
+                                                return;
+                                            }
                                             navigate('/dashboard/sales-channels');
                                         }}
                                         disabled={loading}
@@ -582,7 +594,11 @@ const RestaurantWrapperContent = () => {
             <div className="flex justify-end gap-3 mt-8 pt-6">
                 <button
                     onClick={() => {
-                        // Navigate directly to Sales Data instead of next tab
+                        // Update mode: RD -> Expenses. Otherwise continue normal flow.
+                        if (isUpdateMode) {
+                            navigate('/dashboard/expense');
+                            return;
+                        }
                         navigate('/dashboard/sales-channels');
                     }}
                     disabled={loading}

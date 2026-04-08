@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Input, message, Button, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import growlioLogo from "../../../assets/svgs/growlio-logo.png"
+import Smile from "../../../assets/lio.png"
 
 const Login = () => {
   const [form, setForm] = useState({ 
@@ -359,8 +360,8 @@ const Login = () => {
       >
         {/* Header Section */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-orange-600 mb-3">
-            Welcome Back! <span role="img" aria-label="wave" className="text-2xl">👋</span>
+          <h1 className="text-3xl font-bold text-orange-600  flex items-center justify-center gap-2 mb-2">
+            Welcome to Growlio! <img src={Smile} alt="Smile" className="w-10 h-10"></img>
           </h1>
           <p className="text-gray-600 text-lg leading-relaxed max-w-sm mx-auto">
             Know Your Numbers and Grow Your Profits

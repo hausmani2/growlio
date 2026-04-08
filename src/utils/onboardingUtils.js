@@ -50,9 +50,10 @@ export const SETUP_ITEMS = [
     order: 2,
   },
   {
-    label: 'Add operating expenses',
-    key: RESTAURANT_STATUS_KEYS.EXPENSE,
-    route: '/dashboard/expense',
+    // Match the "Your Setup" sidebar flow: Restaurant Details comes before Operating Expenses.
+    label: 'Restaurant details',
+    key: RESTAURANT_STATUS_KEYS.BASIC_INFORMATION,
+    route: '/dashboard/basic-information',
     order: 3,
   },
   {
@@ -62,9 +63,9 @@ export const SETUP_ITEMS = [
     order: 4,
   },
   {
-    label: 'Restaurant details',
-    key: RESTAURANT_STATUS_KEYS.BASIC_INFORMATION,
-    route: '/dashboard/basic-information',
+    label: 'Add operating expenses',
+    key: RESTAURANT_STATUS_KEYS.EXPENSE,
+    route: '/dashboard/expense',
     order: 5,
   },
   {

@@ -9,6 +9,7 @@ const pages = [
   { label: 'Onboarding: Food Cost', value: 'onboarding-food' },
   { label: 'Onboarding: Sales Channels', value: 'onboarding-sales' },
   { label: 'Onboarding: Expense', value: 'onboarding-expense' },
+  { label: 'Report Card', value: 'report-card' },
 ];
 
 const SuperAdminTooltips = () => {
@@ -170,6 +171,12 @@ const SuperAdminTooltips = () => {
           { label: 'Variable Costs', value: 'variable_costs' },
           { label: 'Total Weekly Expense', value: 'total_weekly_expense' },
           { label: 'Total Monthly Expense', value: 'total_monthly_expense' },
+        ];
+      case 'report-card':
+        return [
+          { label: 'Close Out Previous Days button', value: 'close_out_previous_days' },
+          { label: 'Close Out Your Day(s) (alias)', value: 'close_out_your_days' },
+          { label: 'Close Out Days (alias)', value: 'close_out_days' },
         ];
       default:
         return [];

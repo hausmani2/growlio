@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
 import { CalendarOutlined, FlagOutlined, CheckOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { DatePicker, Spin, Empty, Alert, Popover } from "antd";
+import { DatePicker, Spin, Empty, Alert, Popover, Tooltip } from "antd";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import useStore from "../../store/store";
+import useTooltips from "../../utils/useTooltips";
 
 dayjs.extend(weekOfYear);
 
@@ -286,15 +287,29 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     setPendingChatMessage(prompt);
   }, [setPendingChatMessage]);
 
+  const tooltips = useTooltips('report-card');
+
+  const closeOutTooltipText =
+    tooltips?.close_out_previous_days ||
+    tooltips?.close_out_your_days ||
+    tooltips?.close_out_days ||
+    "Go to Close Out Your Day(s) to select a week and enter your actuals (sales, COGS, and labor).";
+
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Close Out Previous Days Button */}
-      <button
-        onClick={onCloseOutDays}
-        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center"
+      <Tooltip
+        placement="bottom"
+        title={closeOutTooltipText}
       >
-        Close Out Previous Days
-      </button>
+        <button
+          onClick={onCloseOutDays}
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center"
+          aria-label="Close out previous days"
+        >
+          Close Out Previous Days
+        </button>
+      </Tooltip>
 
       {/* Last 7 Days Section */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">

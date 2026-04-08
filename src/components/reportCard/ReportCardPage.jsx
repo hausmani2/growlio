@@ -5,6 +5,7 @@ import LoadingSpinner from "../layout/LoadingSpinner";
 import { message } from "antd";
 import { getOnboardingProgress } from "../../utils/onboardingUtils";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
 
 // Calculate grade based on score - moved outside component to avoid hoisting issues
 const getGradeFromScore = (score) => {
@@ -28,6 +29,7 @@ const getMessageFromScore = (score) => {
 };
 
 const ReportCardPage = () => {
+  const navigate = useNavigate();
   const [showSetupProgress, setShowSetupProgress] = useState(false);
   const [activeRestaurantId, setActiveRestaurantId] = useState(() => localStorage.getItem('restaurant_id'));
   const [dateRange, setDateRange] = useState([
@@ -260,8 +262,7 @@ const ReportCardPage = () => {
 
   // Handle close out previous days button
   const handleCloseOutDays = () => {
-    // TODO: Implement close out previous days functionality
-    message.info("Close out previous days functionality will be implemented");
+    navigate("/dashboard");
   };
 
   return (
@@ -277,6 +278,8 @@ const ReportCardPage = () => {
             loading={salesInformationSummaryLoading}
             gradeDetails={gradeDetails}
             showNextSteps={!isOnboardingComplete}
+            restaurantOnboardingData={restaurantOnboardingData}
+            showSetupCompletePopup={isOnboardingComplete}
           />
         </div>
         

@@ -12,6 +12,7 @@ import { DatePicker, Button, Dropdown, Modal } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import { getOnboardingProgress } from "../../utils/onboardingUtils";
 
 const { RangePicker } = DatePicker;
 
@@ -271,9 +272,25 @@ const ReportCard = ({
   loading = false,
   gradeDetails = null,
   showNextSteps = false,
+  restaurantOnboardingData = null,
+  showSetupCompletePopup = false,
 }) => {
   const navigate = useNavigate();
   const [isNextStepsModalOpen, setIsNextStepsModalOpen] = useState(false);
+  const [isReportCardInfoModalOpen, setIsReportCardInfoModalOpen] = useState(false);
+  const [isSetupCompleteModalOpen, setIsSetupCompleteModalOpen] = useState(false);
+  const nextSetupItem = useMemo(() => {
+    if (!restaurantOnboardingData) return null;
+    const progress = getOnboardingProgress(restaurantOnboardingData);
+    const items = Array.isArray(progress?.items) ? progress.items : [];
+    // Exclude the "Go to your budget" pseudo-step (key === null)
+    const actionable = items.filter((it) => it?.key !== null);
+    return actionable.find((it) => it?.isCompleted === false && !!it?.route) || null;
+  }, [restaurantOnboardingData]);
+  const nextSetupRoute = nextSetupItem?.route || "/dashboard/expense";
+  const nextSetupLabel = nextSetupItem?.label
+    ? `Complete ${nextSetupItem.label}`
+    : "Complete setup";
   
   // Auto-open modal when showNextSteps is true
   useEffect(() => {
@@ -281,6 +298,19 @@ const ReportCard = ({
       setIsNextStepsModalOpen(true);
     }
   }, [showNextSteps]);
+
+  // Setup complete modal: show once after onboarding is fully complete.
+  useEffect(() => {
+    if (!showSetupCompletePopup) return;
+    const storageKey = 'growlio_setup_complete_modal_shown_v1';
+    try {
+      if (sessionStorage.getItem(storageKey) === 'true') return;
+      sessionStorage.setItem(storageKey, 'true');
+    } catch (_) {
+      // if storage fails, still show once per mount
+    }
+    setIsSetupCompleteModalOpen(true);
+  }, [showSetupCompletePopup]);
   
   // Extract grade letter from label or calculate from score
   const gradeFromLabel = gradeDetails?.label 
@@ -452,7 +482,19 @@ const ReportCard = ({
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 flex-wrap">
-        <div className="text-xl sm:text-2xl font-bold text-gray-900">{title}</div>
+        <div className="flex items-center gap-2">
+          <div className="text-xl sm:text-2xl font-bold text-gray-900">{title}</div>
+          <button
+            type="button"
+            onClick={() => setIsReportCardInfoModalOpen(true)}
+            className="text-gray-400 hover:text-gray-700 transition-colors"
+            aria-label="Report card help"
+            title="What is this page?"
+            data-guidance="info_icon_help"
+          >
+            <InfoCircleOutlined />
+          </button>
+        </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="text-xs font-semibold text-gray-900 hidden sm:block lg:block text-center sm:text-left">{formattedDateLabel}</div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
@@ -574,6 +616,38 @@ const ReportCard = ({
         title={
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-orange-600 font-bold text-sm">ℹ️</span>
+            </div>
+            <span>About your Report Card</span>
+          </div>
+        }
+        open={isReportCardInfoModalOpen}
+        onCancel={() => setIsReportCardInfoModalOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsReportCardInfoModalOpen(false)} className="bg-orange-500 hover:bg-orange-600 border-0">
+            Got it
+          </Button>,
+        ]}
+        width={560}
+        centered
+        destroyOnClose
+      >
+        <div className="py-1">
+          <p className="text-base text-gray-700 leading-relaxed mb-3">
+            This page summarizes your profitability performance for the selected date range and highlights the biggest drivers (Labor, COGS, and Rent/Expenses).
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-sm text-gray-700 m-0">
+              <span className="font-semibold">Tip:</span> Look for the “i” icon throughout Growlio—click it anytime for helpful tips and guidance.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
               <span className="text-orange-600 font-bold text-sm">💡</span>
             </div>
             <span>Next Steps</span>
@@ -590,12 +664,12 @@ const ReportCard = ({
             type="primary"
             onClick={() => {
               setIsNextStepsModalOpen(false);
-              navigate('/dashboard/expense');
+              navigate(nextSetupRoute);
             }}
             className="bg-orange-500 hover:bg-orange-600 border-0"
             icon={<ArrowRightOutlined />}
           >
-            Go to Operating Expenses
+            {nextSetupLabel}
           </Button>
         ]}
         width={500}
@@ -615,13 +689,58 @@ const ReportCard = ({
               type="link"
               onClick={() => {
                 setIsNextStepsModalOpen(false);
-                navigate('/dashboard/expense');
+                navigate(nextSetupRoute);
               }}
               className="p-0 text-orange-600 hover:text-orange-700 font-semibold text-base"
               icon={<ArrowRightOutlined />}
             >
-              Complete Operating Expenses
+              {nextSetupLabel}
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Setup Complete Modal - shown after onboarding is fully complete */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-green-700 font-bold text-sm">✅</span>
+            </div>
+            <span>Your setup is complete</span>
+          </div>
+        }
+        open={isSetupCompleteModalOpen}
+        onCancel={() => setIsSetupCompleteModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsSetupCompleteModalOpen(false)}>
+            Close
+          </Button>,
+          <Button
+            key="budget"
+            type="primary"
+            onClick={() => {
+              setIsSetupCompleteModalOpen(false);
+              navigate('/dashboard/budget');
+            }}
+            className="bg-orange-500 hover:bg-orange-600 border-0"
+            icon={<ArrowRightOutlined />}
+          >
+            Start my daily budget
+          </Button>,
+        ]}
+        width={560}
+        centered
+        destroyOnClose
+      >
+        <div className="py-1">
+          <p className="text-base text-gray-700 leading-relaxed mb-3">
+            Great work—your restaurant setup is complete. You can now build and track your daily budget in Growlio.
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-sm text-gray-700 m-0">
+              Head to <span className="font-semibold">Budget</span> to enter your week, add daily numbers, and see how your choices impact profitability.
+            </p>
           </div>
         </div>
       </Modal>

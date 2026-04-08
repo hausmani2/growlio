@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Input, Modal, Switch, InputNumber, Select, message } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Button, Input, Modal, Switch, InputNumber, Select, Tooltip, message } from "antd";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
 
@@ -330,14 +330,28 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
           <h3 className="text-xl font-bold text-orange-600">Expenses</h3>
           <p className="text-gray-600 text-sm">Non-negotiable. Always plan for them.</p>
         </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={showModal}
-          className="h-10 bg-orange-600 border-orange-600 hover:!bg-orange-700 hover:!border-orange-700"
-        >
-          Add new expense
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={showModal}
+            className="h-10 bg-orange-600 border-orange-600 hover:!bg-orange-700 hover:!border-orange-700"
+          >
+            Add new expense
+          </Button>
+          <Tooltip
+            placement="left"
+            title="Don’t see an expense you need? Click “Add new expense” to create a custom one, choose its category, and enter it as $ or % (weekly or monthly)."
+          >
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
+              aria-label='Help: how to add a new expense'
+            >
+              <InfoCircleOutlined />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -515,6 +529,14 @@ const ExpenseRow = ({
   onUpdateName,
   onDelete 
 }) => {
+  const isRoyaltyAdFund = String(expense?.category || '').trim().toLowerCase() === 'royalty + ad fund';
+  const nameLower = String(expense?.name || '').trim().toLowerCase();
+  const isProtectedFranchiseFee =
+    isRoyaltyAdFund ||
+    nameLower.includes('royalty') ||
+    nameLower.includes('ad fund') ||
+    nameLower.includes('brand');
+
   // Convert expense to format needed for calculations
   const expenseForCalc = {
     ...expense,
@@ -550,15 +572,17 @@ const ExpenseRow = ({
             placeholder="Expense name"
           />
         </div>
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={onDelete}
-          size="small"
-        >
-          Delete
-        </Button>
+        {!isProtectedFranchiseFee && (
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={onDelete}
+            size="small"
+          >
+            Delete
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
