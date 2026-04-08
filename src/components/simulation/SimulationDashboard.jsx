@@ -15,6 +15,47 @@ const SAVED_MESSAGE_DURATION_MS = 2500;
 
 const PERIOD_OPTIONS = ['daily', 'weekly', 'monthly'];
 
+const generateLaborPercentOptions = () => {
+  const options = [];
+  for (let i = 1; i <= 30; i += 1) {
+    const zoneColor = '#52c41a';
+    const zoneLabel = ' (Goal)';
+    options.push({
+      value: i,
+      label: (
+        <span style={{ color: zoneColor }}>
+          {i}%{zoneLabel}
+        </span>
+      )
+    });
+  }
+  return options;
+};
+
+const generateCogsPercentOptions = () => {
+  const options = [];
+  for (let i = 1; i <= 34; i += 1) {
+    let zoneColor = '#52c41a';
+    let zoneLabel = ' (Goal)';
+    if (i >= 32 && i <= 33) {
+      zoneColor = '#faad14';
+      zoneLabel = ' (Needs Attention)';
+    } else if (i >= 34) {
+      zoneColor = '#ff4d4f';
+      zoneLabel = ' (Danger)';
+    }
+    options.push({
+      value: i,
+      label: (
+        <span style={{ color: zoneColor }}>
+          {i}%{zoneLabel}
+        </span>
+      )
+    });
+  }
+  return options;
+};
+
 const EXPENSE_TYPE_OPTIONS = [
   { value: 'fixed_value', label: 'Fixed Value ($)' },
   { value: 'percentage', label: 'Percentage (%)' }
@@ -34,6 +75,8 @@ const SimulationDashboard = () => {
     year: currentYear,
     month: currentMonth,
     added_customer_per_day: 5,
+    labour_goal: 28, // Labor as % of sales (simulator modifier)
+    cogs_goal: 30, // COGS as % of sales (simulator modifier)
     days: 0,
     profit_loss: 0,
     average_ticket_per_customer: 20
@@ -202,6 +245,8 @@ const SimulationDashboard = () => {
       year: params.year,
       month: params.month,
       added_customer_per_day: params.added_customer_per_day,
+      labour_goal: Number(params.labour_goal) || 0,
+      cogs_goal: Number(params.cogs_goal) || 0,
       days: params.days,
       profit_loss: params.profit_loss,
       average_ticket_per_customer: params.average_ticket_per_customer,
@@ -258,6 +303,8 @@ const SimulationDashboard = () => {
     };
   }, [
     dashboardParams.added_customer_per_day,
+    dashboardParams.labour_goal,
+    dashboardParams.cogs_goal,
     dashboardParams.profit_loss,
     dashboardParams.average_ticket_per_customer,
     restaurantId
@@ -518,7 +565,7 @@ const SimulationDashboard = () => {
           {/* Generate Forecast - inputs at top (no modal) */}
           <Card title="Generate Forecast" className="mb-0 shadow-sm">
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-4 items-end">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Year <span className="text-red-500">*</span>
@@ -577,6 +624,34 @@ const SimulationDashboard = () => {
                     className="w-full"
                     size="large"
                     placeholder="New customers/day"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Labor as a % of Sales <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={Number(dashboardParams.labour_goal) || 0}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, labour_goal: value }))}
+                    options={generateLaborPercentOptions()}
+                    className="w-full"
+                    size="large"
+                    showSearch={false}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    COGS as a % of Sales <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={Number(dashboardParams.cogs_goal) || 0}
+                    onChange={(value) => setDashboardParams(prev => ({ ...prev, cogs_goal: value }))}
+                    options={generateCogsPercentOptions()}
+                    className="w-full"
+                    size="large"
+                    showSearch={false}
                   />
                 </div>
 

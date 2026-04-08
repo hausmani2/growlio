@@ -226,7 +226,7 @@ const SalesDetailDropdown = ({
               <div className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
                 <div className="flex items-center gap-2">
                   <MobileOutlined className="text-gray-600 text-xs" />
-                  <Text className="text-xs font-medium text-gray-700">App/Online Sales:</Text>
+                  <Text className="text-xs font-medium text-gray-700">App Sales:</Text>
                 </div>
                 <Text className="text-xs font-semibold">{formatValue(appOnlineSales, 'app_online_sales')}</Text>
               </div>

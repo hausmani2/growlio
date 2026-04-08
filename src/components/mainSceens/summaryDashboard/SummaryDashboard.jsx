@@ -43,6 +43,14 @@ const SummaryDashboard = () => {
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [activeBudgetVideoKey, setActiveBudgetVideoKey] = useState('createBudget');
+  const openVideoInNewTab = useCallback(() => {
+    const embedUrl = BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.embedUrl || BUDGET_TUTORIAL_VIDEOS.createBudget.embedUrl;
+    // Convert embed -> watch URL for a better "follow along" experience
+    const match = String(embedUrl).match(/youtube\.com\/embed\/([^?]+)/i);
+    const id = match?.[1] || null;
+    const watchUrl = id ? `https://www.youtube.com/watch?v=${id}` : embedUrl;
+    window.open(watchUrl, '_blank', 'noopener,noreferrer');
+  }, [activeBudgetVideoKey]);
 
   // Initialize with current week
   useEffect(() => {
@@ -82,6 +90,12 @@ const SummaryDashboard = () => {
     setSelectedMonth,
     setSelectedWeek
   } = useStore();
+  const isOnBoardingCompleted = useStore((s) => s.isOnBoardingCompleted);
+  const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
+  const isSetupComplete =
+    isOnBoardingCompleted === true ||
+    restaurantOnboardingData?.restaurants?.[0]?.onboarding_complete === true ||
+    restaurantOnboardingData?.data?.restaurants?.[0]?.onboarding_complete === true;
 
   // Local state for group by selection
   const [groupBy, setGroupBy] = useState('daily');
@@ -315,6 +329,10 @@ const SummaryDashboard = () => {
 
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
+    if (!isSetupComplete) {
+      // Don't show projected sales entry until setup is complete.
+      return;
+    }
     // Ensure we have a valid date range before opening the modal
     if (!calendarDateRange || calendarDateRange.length !== 2) {
       // If no date range is selected, use the current week
@@ -484,6 +502,7 @@ const SummaryDashboard = () => {
       // 3. Weekly average modal hasn't been shown for this date range
       // 4. We haven't already handled this response
       if (hasNoData && 
+          isSetupComplete &&
           groupBy === 'daily' && 
           !hasManuallyClosedModal && 
           !isSalesModalVisible && 
@@ -814,7 +833,7 @@ const SummaryDashboard = () => {
       </Space>
 
       <SalesDataModal
-        visible={isSalesModalVisible}
+        visible={isSetupComplete && isSalesModalVisible}
         onCancel={handleCloseSalesModal}
         onDataSaved={handleDataSaved}
         onWeekConfirmationProceed={async ({ startDate, endDate }) => {
@@ -877,10 +896,35 @@ const SummaryDashboard = () => {
         title={BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.modalTitle || 'Budget Tutorial'}
         open={isVideoModalVisible}
         onCancel={() => setIsVideoModalVisible(false)}
-        footer={null}
+        footer={[
+          <Button
+            key="corner"
+            onClick={() => {
+              const embedUrl =
+                BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.embedUrl || BUDGET_TUTORIAL_VIDEOS.createBudget.embedUrl;
+              const title =
+                BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.modalTitle || BUDGET_TUTORIAL_VIDEOS.createBudget.modalTitle;
+              window.dispatchEvent(
+                new CustomEvent('growlio:youtubePlayer', {
+                  detail: { action: 'open', title, embedUrl },
+                })
+              );
+              setIsVideoModalVisible(false);
+            }}
+          >
+            Play in corner
+          </Button>,
+          <Button key="open" onClick={openVideoInNewTab}>
+            Open in new tab
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setIsVideoModalVisible(false)} className="bg-orange-500 border-orange-500">
+            Close
+          </Button>,
+        ]}
         width={900}
         centered
         destroyOnClose={true}
+        maskClosable={true}
       >
         <div className="flex flex-wrap gap-2 mb-4">
           <Button

@@ -1451,7 +1451,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600 text-xs">📱</span>
-                  <span className="text-xs font-medium text-gray-700">App/Online Sales:</span>
+                  <span className="text-xs font-medium text-gray-700">App Sales:</span>
                 </div>
                 <span className="text-xs font-semibold">
                   {printFormat === 'percentage' 

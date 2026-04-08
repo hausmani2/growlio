@@ -114,7 +114,7 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
         <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Entry Method</h3>
+                <h3 className="text-xl font-bold text-orange-600 mb-2">Labor Rate</h3>
                 {/* <p className="text-gray-600 text-sm">
                     Configure how you want to record and manage your labor information.
                 </p> */}

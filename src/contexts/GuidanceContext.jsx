@@ -909,6 +909,17 @@ export const GuidanceProvider = ({ children }) => {
     const pageName = getPageNameFromRoute(location.pathname);
     if (pageName !== 'onboarding_expense' && pageName !== 'expense') return;
 
+    // Do not start expense guidance until the user dismisses the Operating Expenses disclaimer.
+    // This keeps the UX focused and prevents overlapping overlays.
+    try {
+      if (sessionStorage.getItem('expense_disclaimer_ack_v1') !== 'true') {
+        debugLog('startExpenseGuidance -> blocked by disclaimer gate');
+        return;
+      }
+    } catch {
+      // If storage isn't available, continue (fail open).
+    }
+
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     if (publicRoutes.includes(location.pathname)) return;
 
@@ -1078,6 +1089,21 @@ export const GuidanceProvider = ({ children }) => {
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password', '/admin/login'];
     if (publicRoutes.includes(location.pathname)) {
       return;
+    }
+
+    // Expense guidance has its own completion flag (`has_guidance_for_expense`).
+    // Even if the global data-guidance tour is incomplete, we MUST NOT show the
+    // expense/onboarding-expense tooltips once that flag is true.
+    if (!forceShow && (pageName === 'expense' || pageName === 'onboarding_expense')) {
+      if (hasGuidanceForExpense === true) {
+        debugLog('startDataGuidance -> blocked by hasGuidanceForExpense', { pageName, path: location.pathname });
+        return;
+      }
+      // If status hasn't loaded yet, do nothing (avoid flashing guidance while status resolves)
+      if (hasGuidanceForExpense === null) {
+        debugLog('startDataGuidance -> expense status not ready (null), skipping for now', { pageName, path: location.pathname });
+        return;
+      }
     }
     
     // If skipStatusCheck is true, we're explicitly bypassing status checks (e.g., for navigation-based guidance)

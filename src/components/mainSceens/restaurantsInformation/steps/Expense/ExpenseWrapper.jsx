@@ -11,10 +11,12 @@ import useStepValidation from "../useStepValidation";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import PrimaryButton from "../../../../buttons/Buttons";
+import { useGuidance } from "../../../../../contexts/GuidanceContext";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { startExpenseGuidance, dismissGuidanceUIOnly } = useGuidance();
     const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
@@ -26,6 +28,38 @@ const ExpenseWrapperContent = () => {
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
+
+    // Operating Expenses disclaimer (shown before guidance starts)
+    const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+    useEffect(() => {
+        const pageIsExpense =
+            location.pathname.includes('/onboarding/expense') || location.pathname.includes('/dashboard/expense');
+        if (!pageIsExpense) return;
+
+        try {
+            // Show once per session
+            if (sessionStorage.getItem('expense_disclaimer_shown_v1') === 'true') return;
+            sessionStorage.setItem('expense_disclaimer_shown_v1', 'true');
+        } catch {
+            // ignore storage errors (still show once per mount)
+        }
+
+        // Ensure guidance overlays are not visible underneath
+        dismissGuidanceUIOnly?.();
+        setIsDisclaimerOpen(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.pathname]);
+
+    const acknowledgeDisclaimer = useCallback(() => {
+        try {
+            sessionStorage.setItem('expense_disclaimer_ack_v1', 'true');
+        } catch {
+            // ignore
+        }
+        setIsDisclaimerOpen(false);
+        // Start expense guidance if eligible (backend controlled).
+        startExpenseGuidance?.();
+    }, [startExpenseGuidance]);
 
     // Load existing expense data on mount if in update mode
     // Use ref to prevent multiple calls
@@ -372,7 +406,7 @@ const ExpenseWrapperContent = () => {
                         {/* Header Section with same styling as dashboard */}
                         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
                             <OnboardingBreadcrumb
-                                currentStep="Expenses"
+                                currentStep="Operating Expenses"
                                 description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
                                 heading="Fixed Costs =" description2=" Non-negotiable. Always plan for them."
                                 heading2="Variable Fixed Costs = " description3=" Can sometimes be paused or reduced if needed."
@@ -424,12 +458,51 @@ const ExpenseWrapperContent = () => {
 
     return (
         <div className="w-full mx-auto">
+            <Modal
+                title={
+                    <div className="flex items-center gap-2">
+                        <span className="text-orange-600 font-bold">ℹ️</span>
+                        <span>Operating Expenses Disclaimer</span>
+                    </div>
+                }
+                open={isDisclaimerOpen}
+                onCancel={acknowledgeDisclaimer}
+                footer={null}
+                width={720}
+                centered={false}
+                destroyOnClose
+                maskClosable={false}
+                style={{ top: 20 }}
+                zIndex={10050}
+            >
+                <div className="space-y-3">
+                    <p className="text-gray-800">
+                        These expenses are preloaded as a guide. The amounts shown are not your actual numbers—replace
+                        them with your real costs.
+                    </p>
+                    <ul className="list-disc pl-5 text-gray-700 space-y-1">
+                        <li>Only keep the expenses that apply to your restaurant and turn off anything you don’t use.</li>
+                        <li>Do not include Labor or Cost of Goods (COGS) here. Growlio calculates those separately.</li>
+                        <li>Not sure about an expense? Ask LIO for help.</li>
+                    </ul>
+                    <div className="pt-3 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={acknowledgeDisclaimer}
+                            className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
+                        >
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
             {/* Header Section with same styling as dashboard */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6 flex justify-between items-center">
                 <OnboardingBreadcrumb
-                    currentStep="Expenses"
+                    currentStep="Operating Expenses"
                     description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
-                    heading="Expenses =" description2=" Non-negotiable. Always plan for them."
+                    heading="Operating Expenses=" description2=" Non-negotiable. Always plan for them."
                 />
 
             </div>

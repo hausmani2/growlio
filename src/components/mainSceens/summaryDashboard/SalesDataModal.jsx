@@ -1258,7 +1258,7 @@ const SalesDataModal = ({
               </Col>
               <Col xs={24} sm={12} md={8} lg={6}>
                 <div>
-                  <Text strong className="text-sm">Actual Sales - App/Online:</Text>
+                  <Text strong className="text-sm">Actual Sales - App:</Text>
                   <Input
                     type="number"
                     value={formData.weeklyTotals.actualSalesAppOnline}
@@ -1722,7 +1722,7 @@ const SalesDataModal = ({
                   }
                 },
                 {
-                  title: 'Actual Sales - App/Online',
+                  title: 'Actual Sales - App',
                   dataIndex: 'actualSalesAppOnline',
                   key: 'actualSalesAppOnline',
                   width: 150,

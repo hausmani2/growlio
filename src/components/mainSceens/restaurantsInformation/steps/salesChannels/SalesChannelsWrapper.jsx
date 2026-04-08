@@ -77,11 +77,20 @@ const SalesChannelsWrapperContent = () => {
         if (salesChannelsInfoData && salesChannelsInfoData.data) {
             const data = salesChannelsInfoData.data;
 
-            // Handle restaurant days - if days are returned from API, they are OPEN days
-            // IMPORTANT: restaurant_days from API contains OPEN days (not closed)
-            // If restaurant_days is empty array, it means all days are CLOSED
-            // If restaurant_days has days, those are the OPEN days
-            let selectedDays = {
+            // Handle restaurant days - `restaurant_days` from API contains OPEN days.
+            // IMPORTANT:
+            // - If API returns restaurant_days: [] (explicit empty array), treat as "all closed".
+            // - If API does NOT provide restaurant_days (undefined/null), default to "all open" for better UX.
+            const allOpen = {
+                Sunday: true,
+                Monday: true,
+                Tuesday: true,
+                Wednesday: true,
+                Thursday: true,
+                Friday: true,
+                Saturday: true
+            };
+            const allClosed = {
                 Sunday: false,
                 Monday: false,
                 Tuesday: false,
@@ -91,19 +100,29 @@ const SalesChannelsWrapperContent = () => {
                 Saturday: false
             };
 
-            // If restaurant_days is returned from API, those are the OPEN days
-            if (data.restaurant_days && Array.isArray(data.restaurant_days) && data.restaurant_days.length > 0) {
-                // Mark returned days as OPEN (true)
-                // All other days remain false (closed)
-                data.restaurant_days.forEach(day => {
-                    const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
-                    if (selectedDays.hasOwnProperty(dayName)) {
-                        selectedDays[dayName] = true; // Open
+            // If the step hasn't been completed yet, default to all open for new users.
+            const stepCompleted = salesChannelsInfoData?.status === true;
+            let selectedDays = allOpen;
+
+            if (Array.isArray(data.restaurant_days)) {
+                // Explicit array provided by API.
+                // If populated -> those days open, others closed.
+                // If empty:
+                // - completed step => user intentionally saved "all closed"
+                // - incomplete step => treat as "not configured yet" and default to all open
+                if (data.restaurant_days.length === 0 && !stepCompleted) {
+                    selectedDays = allOpen;
+                } else {
+                    selectedDays = { ...allClosed };
+                    if (data.restaurant_days.length > 0) {
+                        data.restaurant_days.forEach(day => {
+                            const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+                            if (Object.prototype.hasOwnProperty.call(selectedDays, dayName)) {
+                                selectedDays[dayName] = true;
+                            }
+                        });
                     }
-                });
-            } else {
-                // If restaurant_days is empty array or not provided, all days are CLOSED
-                // Keep all days as false (closed)
+                }
             }
 
             setSalesChannelsData(prev => {

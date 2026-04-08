@@ -58,6 +58,7 @@ import PosOrders from './components/mainSceens/posDetails/PosOrders';
 import PosLocations from './components/mainSceens/posDetails/PosLocations';
 import PosPayments from './components/mainSceens/posDetails/PosPayments';
 import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
+import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
 
 // Smart redirect component that checks simulation status and restaurant onboarding
 const RootRedirect = () => {
@@ -397,6 +398,7 @@ function App() {
       
         {/* Chatbot Widget - Only show when authenticated and NOT in simulation mode */}
         {isAuthenticated && !isSimulationMode && <ChatWidget botName="LIO Advisor" />}
+        <FloatingYouTubePlayer />
       </GuidanceProvider>
     </Router>
   );

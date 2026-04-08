@@ -6,6 +6,14 @@ import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWe
 
 // Removed COST_TYPES - no longer using fixed/variable distinction
 
+const getBlueSwitchStyle = (_checked, disabled) => {
+  if (disabled) return undefined;
+  return {
+    // Force blue track in BOTH states (per UX request)
+    backgroundColor: '#1677ff',
+  };
+};
+
 const clampStrAmount = (v) => {
   if (v === "") return "";
   const n = Number(v);
@@ -472,6 +480,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
                     amount: normalizeExpenseAmount(prev.amount, checked),
                   }))
                 }
+                style={getBlueSwitchStyle(!!modalForm.is_value_type, false)}
               />
               <span className={`text-sm ${modalForm.is_value_type ? "font-semibold" : "text-gray-500"}`}>
                 Value
@@ -493,6 +502,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
                     fixed_expense_type: checked ? "MONTHLY" : "WEEKLY",
                   }))
                 }
+                style={getBlueSwitchStyle(modalForm.fixed_expense_type === "MONTHLY", false)}
               />
               <span className={`text-sm ${modalForm.fixed_expense_type === "MONTHLY" ? "font-semibold" : "text-gray-500"}`}>
                 Monthly
@@ -593,7 +603,7 @@ const ExpenseRow = ({
         >
           <span className="text-xs text-gray-600">Type</span>
           <div className="flex items-center gap-1">
-            <span className={`text-xs ${!expense.is_value_type ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
+            <span className={`text-xs ${!expense.is_value_type ? 'font-semibold text-blue-600' : 'text-gray-400'}`}>
               %
             </span>
             <Switch
@@ -601,8 +611,9 @@ const ExpenseRow = ({
               onChange={onToggleValueType}
               size="small"
               disabled={!expense.is_active}
+              style={getBlueSwitchStyle(!!expense.is_value_type, !expense.is_active)}
             />
-            <span className={`text-xs ${expense.is_value_type ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
+            <span className={`text-xs ${expense.is_value_type ? 'font-semibold text-blue-600' : 'text-gray-400'}`}>
               $
             </span>
           </div>
@@ -615,7 +626,7 @@ const ExpenseRow = ({
         >
           <span className="text-xs text-gray-600">Frequency</span>
           <div className="flex items-center gap-1">
-            <span className={`text-xs ${expense.fixed_expense_type === 'WEEKLY' ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
+            <span className={`text-xs ${expense.fixed_expense_type === 'WEEKLY' ? 'font-semibold text-blue-600' : 'text-gray-400'}`}>
               W
             </span>
             <Switch
@@ -623,8 +634,9 @@ const ExpenseRow = ({
               onChange={(checked) => onToggleExpenseType()}
               size="small"
               disabled={!expense.is_active}
+              style={getBlueSwitchStyle(expense.fixed_expense_type === 'MONTHLY', !expense.is_active)}
             />
-            <span className={`text-xs ${expense.fixed_expense_type === 'MONTHLY' ? 'font-semibold text-orange-600' : 'text-gray-400'}`}>
+            <span className={`text-xs ${expense.fixed_expense_type === 'MONTHLY' ? 'font-semibold text-blue-600' : 'text-gray-400'}`}>
               M
             </span>
           </div>

@@ -923,10 +923,43 @@ const Dashboard = () => {
         title="Close Out Your Day Tutorial"
         open={isTutorialModalVisible}
         onCancel={() => setIsTutorialModalVisible(false)}
-        footer={null}
+        footer={[
+          <Button
+            key="corner"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('growlio:youtubePlayer', {
+                  detail: {
+                    action: 'open',
+                    title: 'Close Out Your Day Tutorial',
+                    embedUrl: 'https://www.youtube.com/embed/iEWn2Atanws?rel=0',
+                  },
+                })
+              );
+              setIsTutorialModalVisible(false);
+            }}
+          >
+            Play in corner
+          </Button>,
+          <Button
+            key="open"
+            type="default"
+            onClick={() => {
+              // Open in a separate tab so user can follow along
+              const watchUrl = 'https://www.youtube.com/watch?v=iEWn2Atanws';
+              window.open(watchUrl, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Open in new tab
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setIsTutorialModalVisible(false)}>
+            Close
+          </Button>,
+        ]}
         width={900}
         centered
         destroyOnClose={true}
+        maskClosable={true}
       >
         <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
           <iframe

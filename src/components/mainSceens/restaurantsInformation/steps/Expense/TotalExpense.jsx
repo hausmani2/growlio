@@ -91,28 +91,43 @@ const TotalExpense = ({ data,  onSave }) => {
             </div>
             
             {/* Total Display */}
-            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <label className="text-base font-semibold text-gray-700">
-                            Total Weekly Expenses:
-                        </label>
-                        <TooltipIcon text={tooltips['total_weekly_expense']} />
-                    </div>
-                    <span className="text-2xl font-bold text-gray-900">
-                        ${weeklyTotal}
-                    </span>
-                </div>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <label className="text-base font-semibold text-gray-700">
-                            Total Monthly Expenses:
+            <div className="bg-gray-50 p-4 rounded-lg flex flex-col gap-3">
+                {/* Monthly (primary) */}
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-2 pt-1">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Total Monthly Expenses
                         </label>
                         <TooltipIcon text={tooltips['total_monthly_expense']} />
                     </div>
-                    <span className="text-2xl font-bold text-gray-900">
-                        ${monthlyTotal}
-                    </span>
+                    <div className="text-right">
+                        <div className="text-3xl font-extrabold text-gray-900 tabular-nums">
+                            ${monthlyTotal}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                            This is your baseline operating cost per month.
+                        </div>
+                    </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-3" />
+
+                {/* Weekly (derived) */}
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-2 pt-1">
+                        <label className="text-sm font-semibold text-gray-700">
+                            Total Weekly Expenses
+                        </label>
+                        <TooltipIcon text={tooltips['total_weekly_expense']} />
+                    </div>
+                    <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900 tabular-nums">
+                            ${weeklyTotal}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                            Weekly is derived: Monthly ÷ 4.33
+                        </div>
+                    </div>
                 </div>
             </div>
             

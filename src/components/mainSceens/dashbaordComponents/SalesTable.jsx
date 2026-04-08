@@ -1919,7 +1919,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               )}
               {salesChannelsConfig.from_app && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Actual Sales - App/Online:</Text>
+                  <Text strong className="text-sm sm:text-base">Actual Sales - App:</Text>
                   <Input
                     type='number'
                     value={Math.round(weekFormData.weeklyTotals.actualSalesAppOnline || 0)}
@@ -2236,7 +2236,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   title: 'Actual Sales - In Store',
                   dataIndex: 'actualSalesInStore',
                   key: 'actualSalesInStore',
-                  width: 150,
+                  width: 180,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
                     const isDisabled = isDayClosed(record) || isFuture;
@@ -2259,10 +2259,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   }
                 }] : []),
                 ...(salesChannelsConfig.from_app ? [{
-                  title: 'Actual Sales - App/Online',
+                  title: 'Actual Sales - App',
                   dataIndex: 'actualSalesAppOnline',
                   key: 'actualSalesAppOnline',
-                  width: 150,
+                  width: 180,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
                     const isDisabled = isDayClosed(record) || isFuture;
@@ -2288,7 +2288,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   title: 'Actual Sales - Online',
                   dataIndex: 'actualSalesOnline',
                   key: 'actualSalesOnline',
-                  width: 150,
+                  width: 180,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
                     const isDisabled = isDayClosed(record) || isFuture;
@@ -2315,7 +2315,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   title: `Actual Sales - ${provider.provider_name}`,
                   dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                   key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                  width: 150,
+                  width: 180,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
                     const isDisabled = isDayClosed(record) || isFuture;
@@ -2341,7 +2341,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   title: 'Net Sales - Actual',
                   dataIndex: 'netSalesActual',
                   key: 'netSalesActual',
-                  width: 150,
+                  width: 180,
                   render: (value, record) => {
                     // Calculate the sum of actual sales for this day (including dynamic providers)
                     // Only include enabled sales channels
@@ -2377,7 +2377,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   ),
                   dataIndex: 'dailyTickets',
                   key: 'dailyTickets',
-                  width: 150,
+                  width: 180,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
                     const isDisabled = isDayClosed(record) || isFuture;
@@ -2414,7 +2414,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   title: 'Sales Variance %',
                   dataIndex: 'salesVariancePct',
                   key: 'salesVariancePct',
-                  width: 150,
+                  width: 180,
                   render: (value, record) => {
                     const budgetedSales = parseFloat(record.budgetedSales) || 0;
 
@@ -2763,11 +2763,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               title: 'Actual Sales - In Store',
                               dataIndex: 'actualSalesInStore',
                               key: 'actualSalesInStore',
-                              width: 150,
+                              width: 180,
                               render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
                             }] : []),
                             ...(salesChannelsConfig.from_app ? [{
-                              title: 'Actual Sales - App/Online',
+                              title: 'Actual Sales - App',
                               dataIndex: 'actualSalesAppOnline',
                               key: 'actualSalesAppOnline',
                               width: 150,
@@ -2872,7 +2872,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               ),
                               dataIndex: 'averageDailyTicket',
                               key: 'averageDailyTicket',
-                              width: 150,
+                              width: 180,
                               render: (value, record) => {
                                 // Only include enabled sales channels
                                 let netSales = 0;
@@ -2942,7 +2942,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </div>
 
                 <div>
-                  <Text strong>Actual Sales - App / On Line:</Text>
+                  <Text strong>Actual Sales - App:</Text>
                   <Input
                     value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
                     className="mt-1"
@@ -2980,7 +2980,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 <div>
                   <Text strong>Net Sales - Actual:</Text>
                   <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                    (Calculated: In Store + App/Online + Providers)
+                    (Calculated: In Store + App + Online + Providers)
                   </Text>
                   <Input
                     value={`${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
