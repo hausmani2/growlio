@@ -644,7 +644,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
             />
           </div>
         )}
-        <div className={`flex-1 min-h-0 overflow-auto bg-gray-100`}>
+        <div
+          className="flex-1 min-h-0 overflow-auto bg-gray-100"
+          data-app-scroll-container="true"
+        >
           <Content className={`px-2 sm:px-4 py-2 sm:py-1  w-full ${className}`}>
             <ImpersonationBanner />
             {children}
