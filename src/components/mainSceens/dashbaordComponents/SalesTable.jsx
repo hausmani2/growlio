@@ -2785,7 +2785,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               title: `Actual Sales - ${provider.provider_name}`,
                               dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                               key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
-                              width: 150,
+                              width: 180,
                               render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
                             })),
                             {

@@ -24,6 +24,8 @@ const Dashboard = () => {
     fetchDashboardDataIfNeeded,
     fetchDashboardData: fetchDashboardDataFromStore,
     ensureRestaurantId,
+    syncSquarePosData,
+    squareSyncLoading,
     // Date selection from store
     selectedYear,
     selectedMonth,
@@ -46,6 +48,7 @@ const Dashboard = () => {
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
+  const [isSquareSyncRefreshing, setIsSquareSyncRefreshing] = useState(false);
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
@@ -253,6 +256,36 @@ const Dashboard = () => {
       await fetchDashboardData(weekStartDate);
     }
   };
+
+  const handleSquareSyncNow = useCallback(async () => {
+    const restaurantId = await ensureRestaurantId?.();
+    if (!restaurantId) {
+      message.error('Restaurant ID not found. Please complete onboarding first.');
+      return;
+    }
+
+    const { weekStartDate } = getDateSelection();
+    if (!weekStartDate) {
+      message.warning('Please select a week first.');
+      return;
+    }
+
+    setIsSquareSyncRefreshing(true);
+    try {
+      const syncRes = await syncSquarePosData?.(restaurantId);
+      if (!syncRes?.success) return;
+
+      // Force a fresh fetch (bypass cache) once Square sync completes.
+      const weekStartStr = weekStartDate.format('YYYY-MM-DD');
+      const fresh = await fetchDashboardDataFromStore(weekStartStr);
+      setDashboardData(fresh);
+      message.success('Square data synced and dashboard refreshed.');
+    } catch (e) {
+      message.error(e?.message || 'Failed to sync Square data.');
+    } finally {
+      setIsSquareSyncRefreshing(false);
+    }
+  }, [ensureRestaurantId, getDateSelection, syncSquarePosData, fetchDashboardDataFromStore]);
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();
@@ -818,6 +851,15 @@ const Dashboard = () => {
                 onChange={handleWeekPickerChange}
                 allowClear
               />
+              <div className="pt-3 flex justify-end">
+                <Button
+                  onClick={handleSquareSyncNow}
+                  loading={squareSyncLoading || isSquareSyncRefreshing}
+                  disabled={squareSyncLoading || isSquareSyncRefreshing}
+                >
+                  Sync Square Data
+                </Button>
+              </div>
             </div>
           </div>
         </div>

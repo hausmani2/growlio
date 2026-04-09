@@ -16,6 +16,10 @@ const createSquareSlice = (set, get) => ({
   squareMerchantDetail: null,
   merchantDetailLoading: false,
   lastStatusCheck: null,
+
+  // Square sync state (pull latest sales/labor/etc from Square into Growlio)
+  squareSyncLoading: false,
+  squareSyncError: null,
   
   // Actions
   setSquareLoading: (loading) => set({ squareLoading: loading }),
@@ -23,6 +27,8 @@ const createSquareSlice = (set, get) => ({
   setSquareStatus: (status) => set({ squareStatus: status }),
   setSquareConnectionData: (data) => set({ squareConnectionData: data }),
   setSquareMerchantDetail: (data) => set({ squareMerchantDetail: data }),
+  setSquareSyncLoading: (loading) => set({ squareSyncLoading: loading }),
+  setSquareSyncError: (error) => set({ squareSyncError: error }),
   
   /**
    * Initiate Square OAuth connection
@@ -220,6 +226,41 @@ const createSquareSlice = (set, get) => ({
       return { success: false };
     }
   },
+
+  /**
+   * Sync Square POS data into Growlio.
+   * Backend endpoint (GET): /square_pos/sync_data?restaurant_id=123
+   */
+  syncSquarePosData: async (restaurantId = null) => {
+    const restaurantIdToUse =
+      restaurantId ||
+      localStorage.getItem('restaurant_id') ||
+      get()?.restaurantId;
+
+    if (!restaurantIdToUse) {
+      const error = 'Restaurant ID is required to sync Square data';
+      set({ squareSyncLoading: false, squareSyncError: error });
+      message.error(error);
+      return { success: false, error };
+    }
+
+    set({ squareSyncLoading: true, squareSyncError: null });
+
+    try {
+      const response = await apiGet(`/square_pos/sync_data?restaurant_id=${restaurantIdToUse}`);
+      set({ squareSyncLoading: false, squareSyncError: null });
+      return { success: true, data: response.data };
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to sync Square data';
+      set({ squareSyncLoading: false, squareSyncError: errorMessage });
+      message.error(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
   
   /**
    * Disconnect Square integration
@@ -281,7 +322,9 @@ const createSquareSlice = (set, get) => ({
       squareConnectionData: null,
       squareMerchantDetail: null,
       merchantDetailLoading: false,
-      lastStatusCheck: null
+      lastStatusCheck: null,
+      squareSyncLoading: false,
+      squareSyncError: null,
     });
   }
 });
