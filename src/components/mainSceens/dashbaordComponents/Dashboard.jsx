@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, Modal, Button, message } from 'antd';
+import { DatePicker, Card, Row, Col, Typography, Space, Select, Spin, Empty, Modal, Button, Tooltip, message } from 'antd';
 import { CalendarOutlined, DollarOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -26,6 +26,8 @@ const Dashboard = () => {
     ensureRestaurantId,
     syncSquarePosData,
     squareSyncLoading,
+    squareStatus,
+    squareConnectionData,
     // Date selection from store
     selectedYear,
     selectedMonth,
@@ -49,6 +51,7 @@ const Dashboard = () => {
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
   const [isSquareSyncRefreshing, setIsSquareSyncRefreshing] = useState(false);
+  const isSquareConnected = squareStatus === 'connected' || squareConnectionData?.connected === true;
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
@@ -852,13 +855,23 @@ const Dashboard = () => {
                 allowClear
               />
               <div className="pt-3 flex justify-end">
-                <Button
-                  onClick={handleSquareSyncNow}
-                  loading={squareSyncLoading || isSquareSyncRefreshing}
-                  disabled={squareSyncLoading || isSquareSyncRefreshing}
+                <Tooltip
+                  title={
+                    isSquareConnected
+                      ? 'Sync the latest sales and labor data from Square.'
+                      : 'Connect your Square POS account to sync data.'
+                  }
                 >
-                  Sync Square Data
-                </Button>
+                  <span>
+                    <Button
+                      onClick={handleSquareSyncNow}
+                      loading={squareSyncLoading || isSquareSyncRefreshing}
+                      disabled={!isSquareConnected || squareSyncLoading || isSquareSyncRefreshing}
+                    >
+                      Sync Square Data
+                    </Button>
+                  </span>
+                </Tooltip>
               </div>
             </div>
           </div>
