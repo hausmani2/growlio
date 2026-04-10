@@ -95,11 +95,36 @@ const Profile = () => {
         message.success('Password changed successfully');
         passwordForm.resetFields();
       } else {
-        message.error(response.data.message || 'Failed to change password');
+        const serverMessage = response?.data?.message || 'Failed to change password';
+        const serverErrorsRaw = response?.data?.errors;
+        const serverErrors = Array.isArray(serverErrorsRaw)
+          ? serverErrorsRaw.filter(Boolean).map(String)
+          : [];
+
+        if (serverErrors.length > 0) {
+          passwordForm.setFields([
+            { name: 'new_password', errors: serverErrors },
+          ]);
+          message.error(serverMessage);
+        } else {
+          message.error(serverMessage);
+        }
       }
     } catch (error) {
       console.error('Error changing password:', error);
-      message.error('Failed to change password');
+      const data = error?.response?.data;
+      const serverMessage = data?.message || data?.error || 'Failed to change password';
+      const serverErrorsRaw = data?.errors;
+      const serverErrors = Array.isArray(serverErrorsRaw)
+        ? serverErrorsRaw.filter(Boolean).map(String)
+        : [];
+
+      if (serverErrors.length > 0) {
+        passwordForm.setFields([
+          { name: 'new_password', errors: serverErrors },
+        ]);
+      }
+      message.error(serverMessage);
     } finally {
       setPasswordLoading(false);
     }

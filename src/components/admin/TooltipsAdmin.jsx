@@ -8,6 +8,10 @@ const pages = [
   { label: 'Onboarding: Food Cost', value: 'onboarding-food' },
   { label: 'Onboarding: Sales Channels', value: 'onboarding-sales' },
   { label: 'Onboarding: Expense', value: 'onboarding-expense' },
+  { label: 'Profit & Loss Dashboard', value: 'profit-loss-dashboard' },
+  { label: 'Support', value: 'support' },
+  { label: 'Training', value: 'training' },
+  { label: 'Square POS', value: 'square-pos' },
 ];
 
 const TooltipsAdmin = () => {
@@ -125,6 +129,33 @@ const TooltipsAdmin = () => {
           { label: 'Variable Costs', value: 'variable_costs' },
           { label: 'Total Weekly Expense', value: 'total_weekly_expense' },
           { label: 'Total Monthly Expense', value: 'total_monthly_expense' },
+        ];
+      case 'profit-loss-dashboard':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Date & View Controls', value: 'date_controls' },
+          { label: 'Charts', value: 'charts' },
+          { label: 'Table', value: 'table' },
+        ];
+      case 'support':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Contact Form', value: 'contact_form' },
+          { label: 'FAQ', value: 'faq' },
+        ];
+      case 'training':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Budget Dashboard Video', value: 'budget_dashboard_video' },
+          { label: 'How to Use My Budget Video', value: 'how_to_use_budget_video' },
+          { label: 'Enter Weekly Data Video', value: 'enter_weekly_data_video' },
+        ];
+      case 'square-pos':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Get Started', value: 'get_started' },
+          { label: 'Integration Active', value: 'integration_active' },
+          { label: 'Status', value: 'status' },
         ];
       default:
         return [];

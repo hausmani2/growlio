@@ -10,6 +10,10 @@ const pages = [
   { label: 'Onboarding: Sales Channels', value: 'onboarding-sales' },
   { label: 'Onboarding: Expense', value: 'onboarding-expense' },
   { label: 'Report Card', value: 'report-card' },
+  { label: 'Profit & Loss Dashboard', value: 'profit-loss-dashboard' },
+  { label: 'Support', value: 'support' },
+  { label: 'Training', value: 'training' },
+  { label: 'Square POS', value: 'square-pos' },
 ];
 
 const SuperAdminTooltips = () => {
@@ -177,6 +181,33 @@ const SuperAdminTooltips = () => {
           { label: 'Close Out Previous Days button', value: 'close_out_previous_days' },
           { label: 'Close Out Your Day(s) (alias)', value: 'close_out_your_days' },
           { label: 'Close Out Days (alias)', value: 'close_out_days' },
+        ];
+      case 'profit-loss-dashboard':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Date & View Controls', value: 'date_controls' },
+          { label: 'Charts', value: 'charts' },
+          { label: 'Table', value: 'table' },
+        ];
+      case 'support':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Contact Form', value: 'contact_form' },
+          { label: 'FAQ', value: 'faq' },
+        ];
+      case 'training':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Budget Dashboard Video', value: 'budget_dashboard_video' },
+          { label: 'How to Use My Budget Video', value: 'how_to_use_budget_video' },
+          { label: 'Enter Weekly Data Video', value: 'enter_weekly_data_video' },
+        ];
+      case 'square-pos':
+        return [
+          { label: 'Header', value: 'header' },
+          { label: 'Get Started', value: 'get_started' },
+          { label: 'Integration Active', value: 'integration_active' },
+          { label: 'Status', value: 'status' },
         ];
       default:
         return [];

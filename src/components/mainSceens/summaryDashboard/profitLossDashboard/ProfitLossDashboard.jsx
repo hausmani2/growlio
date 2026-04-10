@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import useStore from '../../../../store/store';
 import CalendarUtils from '../../../../utils/CalendarUtils';
 import dayjs from 'dayjs';
+import useTooltips from '../../../../utils/useTooltips';
+import TooltipIcon from '../../../common/TooltipIcon';
 
 import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
@@ -26,6 +28,7 @@ import { printUtils } from '../../../../utils/printUtils';
  */
 const ProfitLossDashboard = () => {
   const navigate = useNavigate();
+  const tooltips = useTooltips('profit-loss-dashboard');
 
   // Get data from the store
   const {
@@ -211,7 +214,10 @@ const ProfitLossDashboard = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
             {/* Left Side - Title and Description */}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-red-600 mb-2">Profit & Loss Dashboard</h1>
+              <h1 className="text-3xl font-bold text-red-600 mb-2">
+                Profit & Loss Dashboard
+                <TooltipIcon text={tooltips?.header} />
+              </h1>
               <p className="text-gray-600 text-lg">Monitor your restaurant's financial performance and track budget vs. actual results</p>
             </div>
 

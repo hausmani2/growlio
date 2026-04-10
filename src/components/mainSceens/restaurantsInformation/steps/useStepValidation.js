@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 
 const useStepValidation = () => {
     const [validationErrors, setValidationErrors] = useState({});
+    const MAX_AVG_HOURLY_RATE = 500;
+    const MIN_AVG_HOURLY_RATE = 1;
 
     const clearFieldError = useCallback((fieldName) => {
         if (validationErrors[fieldName]) {
@@ -84,8 +86,10 @@ const useStepValidation = () => {
         const hourlyRateValue = data.avg_hourly_rate?.toString().trim() || '';
         const hourlyRateNum = hourlyRateValue ? parseFloat(hourlyRateValue) : NaN;
         
-        if (!hourlyRateValue || hourlyRateValue === '' || isNaN(hourlyRateNum) || hourlyRateNum <= 0) {
+        if (!hourlyRateValue || hourlyRateValue === '' || isNaN(hourlyRateNum)) {
             errors.avg_hourly_rate = "Please enter a valid hourly rate";
+        } else if (hourlyRateNum < MIN_AVG_HOURLY_RATE || hourlyRateNum > MAX_AVG_HOURLY_RATE) {
+            errors.avg_hourly_rate = `Hourly rate must be between $${MIN_AVG_HOURLY_RATE} and $${MAX_AVG_HOURLY_RATE}`;
             
         } else {
             

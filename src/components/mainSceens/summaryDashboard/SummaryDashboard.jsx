@@ -167,6 +167,29 @@ const SummaryDashboard = () => {
   const weeklyAverageModalShown = useRef(null);
   const isProcessingWeek = useRef(false);
   const pendingWeeklyAverageRef = useRef(null); // { dateRangeKey, weeklyData }
+  const onboardingGateModalOpenRef = useRef(false);
+
+  const showOnboardingRequiredModal = useCallback(() => {
+    if (onboardingGateModalOpenRef.current) return;
+    onboardingGateModalOpenRef.current = true;
+
+    Modal.confirm({
+      title: 'Complete onboarding to continue',
+      content:
+        'To enter budgeted sales, please complete onboarding first so we can set up your restaurant details correctly.',
+      okText: 'Complete onboarding',
+      cancelText: 'Not now',
+      centered: true,
+      maskClosable: true,
+      onOk: () => {
+        navigate('/onboarding');
+      },
+      onCancel: () => {},
+      afterClose: () => {
+        onboardingGateModalOpenRef.current = false;
+      },
+    });
+  }, [navigate]);
 
   // Fetch dashboard summary data for selected date range
   const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
@@ -330,7 +353,7 @@ const SummaryDashboard = () => {
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
     if (!isSetupComplete) {
-      // Don't show projected sales entry until setup is complete.
+      showOnboardingRequiredModal();
       return;
     }
     // Ensure we have a valid date range before opening the modal

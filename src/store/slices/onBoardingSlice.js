@@ -676,9 +676,25 @@ const createOnBoardingSlice = (set, get) => ({
             return { success: true, data: response.data };
         } catch (error) {
             console.error('API Error Details:', error);
-            
-            const errorMessage = error.response?.data?.message ||
-                                error.response?.data?.error ||
+
+            const data = error?.response?.data;
+            const extractFieldError = (obj, field) => {
+                const v = obj?.[field];
+                if (!v) return null;
+                if (typeof v === 'string') return v;
+                if (Array.isArray(v) && v.length > 0) return String(v[0]);
+                return null;
+            };
+
+            const fieldLevel =
+                extractFieldError(data, 'avg_hourly_rate') ||
+                extractFieldError(data, 'labour_goal') ||
+                extractFieldError(data, 'labor_record_method');
+
+            const errorMessage =
+                                fieldLevel ||
+                                data?.message ||
+                                data?.error ||
                                 error.message ||
                                 `Failed to save ${stepName}. Please try again.`;
             

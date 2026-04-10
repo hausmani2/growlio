@@ -104,6 +104,8 @@ const LaborInformationWrapperContent = () => {
     // Function to handle save and continue
     const handleSaveAndContinue = async () => {
         try {
+            const MAX_AVG_HOURLY_RATE = 500;
+            const MIN_AVG_HOURLY_RATE = 1;
 
             // Step 1: Validate form
             const validationResult = validateStep('Labor Information', laborData);
@@ -123,6 +125,11 @@ const LaborInformationWrapperContent = () => {
             // Trim and parse avg_hourly_rate to ensure it's a valid number
             const hourlyRateValue = laborData.avg_hourly_rate?.toString().trim() || '';
             const hourlyRateNum = hourlyRateValue ? parseFloat(hourlyRateValue) : 0;
+
+            if (hourlyRateNum < MIN_AVG_HOURLY_RATE || hourlyRateNum > MAX_AVG_HOURLY_RATE) {
+                message.error(`Average hourly rate must be between $${MIN_AVG_HOURLY_RATE} and $${MAX_AVG_HOURLY_RATE}.`);
+                return { success: false, error: 'Hourly rate out of range' };
+            }
             
             const stepData = {
                 labour_goal: laborData.labour_goal,

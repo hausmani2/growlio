@@ -4,6 +4,8 @@ import { ShoppingOutlined } from '@ant-design/icons';
 import SquareConnectButton from './SquareConnectButton';
 import SquareStatusDisplay from './SquareStatusDisplay';
 import useStore from '../../store/store';
+import useTooltips from '../../utils/useTooltips';
+import TooltipIcon from '../common/TooltipIcon';
 
 const { Paragraph } = Typography;
 
@@ -14,6 +16,7 @@ const { Paragraph } = Typography;
 const SquareIntegration = ({ restaurantId, className = '' }) => {
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
   const squareStatus = useStore((state) => state.squareStatus);
+  const tooltips = useTooltips('square-pos');
   
   const restaurantIdToUse = restaurantId || localStorage.getItem('restaurant_id');
   
@@ -38,6 +41,7 @@ const SquareIntegration = ({ restaurantId, className = '' }) => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-orange-600 mb-2">
               Square POS Integration
+              <TooltipIcon text={tooltips?.header} />
             </h1>
             <p className="text-gray-600 text-lg">
               Connect your Square Point of Sale system to sync sales data, process payments, 

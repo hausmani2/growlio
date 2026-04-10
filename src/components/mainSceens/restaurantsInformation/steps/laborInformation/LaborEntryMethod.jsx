@@ -109,6 +109,8 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
     };
 
     const tooltips = useTooltips('onboarding-labor');
+    const MAX_AVG_HOURLY_RATE = 500;
+    const MIN_AVG_HOURLY_RATE = 1;
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -139,17 +141,43 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             value={data.avg_hourly_rate || ''}
                             onChange={(e) => {
                                 const value = e.target.value.trim();
+                                // Keep the raw input but prevent obviously invalid extremes.
+                                if (value === '') {
+                                    updateData('avg_hourly_rate', '');
+                                    return;
+                                }
+                                const num = parseFloat(value);
+                                if (Number.isNaN(num)) {
+                                    updateData('avg_hourly_rate', value);
+                                    return;
+                                }
+                                if (num > MAX_AVG_HOURLY_RATE) {
+                                    updateData('avg_hourly_rate', String(MAX_AVG_HOURLY_RATE));
+                                    return;
+                                }
+                                if (num < 0) {
+                                    updateData('avg_hourly_rate', '0');
+                                    return;
+                                }
                                 updateData('avg_hourly_rate', value);
                             }}
                             onBlur={(e) => {
                                 // Ensure value is properly formatted on blur
                                 const value = e.target.value.trim();
-                                if (value && !isNaN(parseFloat(value)) && parseFloat(value) > 0) {
-                                    updateData('avg_hourly_rate', value);
+                                if (value && !isNaN(parseFloat(value))) {
+                                    const num = parseFloat(value);
+                                    if (num > MAX_AVG_HOURLY_RATE) {
+                                        updateData('avg_hourly_rate', String(MAX_AVG_HOURLY_RATE));
+                                        return;
+                                    }
+                                    if (num > 0) {
+                                        updateData('avg_hourly_rate', value);
+                                    }
                                 }
                             }}
                             status={errors.avg_hourly_rate ? 'error' : ''}
-                            min="0"
+                            min={MIN_AVG_HOURLY_RATE}
+                            max={MAX_AVG_HOURLY_RATE}
                             step="0.01"
                         />
                         {data.avg_hourly_rate && (
@@ -160,6 +188,11 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                     </div>
                     {errors.avg_hourly_rate && (
                         <span className="text-red-500 text-xs mt-1">{errors.avg_hourly_rate}</span>
+                    )}
+                    {!errors.avg_hourly_rate && (
+                        <span className="text-gray-500 text-xs mt-1">
+                            Enter a value between ${MIN_AVG_HOURLY_RATE} and ${MAX_AVG_HOURLY_RATE}.
+                        </span>
                     )}
                 </div>
                 

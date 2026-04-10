@@ -65,22 +65,9 @@ const OnboardingWrapper = () => {
         setIsChecking(true);
 
         try {
-            // STEP 1: Call restaurant-simulation API FIRST (GET)
-            try {
-                const simulationResult = await getRestaurantSimulation();
-                if (simulationResult.success && simulationResult.data) {
-                    if (simulationResult.data.restaurant_simulation === true) {
-                        setSelectedOption('profitability');
-                    } else if (simulationResult.data.restaurant_simulation === false) {
-                        setSelectedOption('simulation');
-                    }
-                }
-            } catch (error) {
-                console.error("❌ [OnboardingWrapper] handleSubmit - Error fetching restaurant simulation:", error);
-                // Continue even if this fails
-            }
-            
-            // STEP 2: Update restaurant simulation based on selected option (POST)
+            // IMPORTANT: Do NOT override `selectedOption` here.
+            // User selection should remain the source of truth to avoid UI highlighting the wrong option.
+            // STEP 1: Update restaurant simulation based on selected option (POST)
             // profitability (first option) = false, simulation (second option) = true
             const restaurantSimulationValue = selectedOption === 'simulation';
             
@@ -93,7 +80,7 @@ const OnboardingWrapper = () => {
                 return;
             }
             
-            // STEP 3: NOW call restaurants-onboarding API to check if restaurant exists
+            // STEP 2: NOW call restaurants-onboarding API to check if restaurant exists
             try {
                 const restaurantResult = await getRestaurantOnboarding();
                 
@@ -121,7 +108,7 @@ const OnboardingWrapper = () => {
                 // Continue with normal flow if check fails
             }
             
-            // STEP 4: If no restaurant exists, proceed with normal flow based on selected option
+            // STEP 3: If no restaurant exists, proceed with normal flow based on selected option
             if (selectedOption === 'profitability') {
                 // Navigate to profitability score page
                 navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
@@ -309,9 +296,9 @@ const OnboardingWrapper = () => {
                     const result = await getRestaurantSimulation();
                     if (result.success && result.data) {
                         if (result.data.restaurant_simulation === true) {
-                            setSelectedOption('profitability');
-                        } else if (result.data.restaurant_simulation === false) {
                             setSelectedOption('simulation');
+                        } else if (result.data.restaurant_simulation === false) {
+                            setSelectedOption('profitability');
                         }
                     }
                 } catch (error) {

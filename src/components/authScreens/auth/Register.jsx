@@ -5,10 +5,12 @@ import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button, Spin, Checkbox, Tooltip } from 'antd';
+import { Input, message, Button, Spin, Checkbox, Tooltip, Modal, Tabs } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
-import DisclaimerModal from './DisclaimerModal';
 import growlioLogo from "../../../assets/svgs/growlio-logo.png"
+import TermsOfService from '../../legal/TermsOfService';
+import PrivacyPolicy from '../../legal/PrivacyPolicy';
+import DataProcessingAgreement from '../../legal/DataProcessingAgreement';
 
 const Register = () => {
   const [form, setForm] = useState({ 
@@ -20,7 +22,8 @@ const Register = () => {
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [activeLegalTab, setActiveLegalTab] = useState('terms');
   
   // Zustand store hooks
   const { 
@@ -158,15 +161,6 @@ const Register = () => {
 
   const isFormValid = form.full_name && form.email && form.username && form.password && disclaimerAccepted;
   const isLoading = loading || isSubmitting;
-
-  const handleDisclaimerAccept = () => {
-    setDisclaimerAccepted(true);
-    setShowDisclaimerModal(false);
-  };
-
-  const handleDisclaimerModalClose = () => {
-    setShowDisclaimerModal(false);
-  };
 
   return (
     <div className="w-full max-w-md">
@@ -318,55 +312,68 @@ const Register = () => {
           <div 
             className="bg-gray-50 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
             onClick={() => {
-              if (!disclaimerAccepted) {
-                // If not checked, open modal and auto-check
-                setShowDisclaimerModal(true);
-                setDisclaimerAccepted(true);
-              }
+              setIsLegalModalOpen(true);
             }}
           >
             <div className="flex items-start gap-3">
-            <Tooltip title={disclaimerAccepted ? "Terms and Conditions accepted" : "Click to read Terms and Conditions"}>
+            <Tooltip title={disclaimerAccepted ? "Accepted" : "Please review and accept"}>
               <Checkbox
                 checked={disclaimerAccepted}
-                onChange={(e) => {
-                  e.stopPropagation(); // Prevent div click when clicking checkbox directly
-                  if (!disclaimerAccepted) {
-                    // If not checked, open modal and auto-check
-                    setShowDisclaimerModal(true);
-                    setDisclaimerAccepted(true);
-                  }
-                  // If already checked, do nothing (disabled)
-                }}
-                disabled={disclaimerAccepted}
                 className="mt-1"
+                onClick={(e) => {
+                  // Open agreements modal when checkbox is clicked.
+                  // Acceptance happens via the modal "I Agree" action.
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIsLegalModalOpen(true);
+                }}
               />
                           </Tooltip>
 
               <div className="flex-1">
                 <p className={`text-sm leading-relaxed ${disclaimerAccepted ? 'text-gray-500' : 'text-gray-700'}`}>
-                To proceed, you must read the {' '}
-                <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent div click
-                      setShowDisclaimerModal(true);
-                    }}
-                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
-                  >
-                    Privacy Policy
-                  </button>
-                  {' '}&{' '}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent div click
-                      setShowDisclaimerModal(true);
-                    }}
-                    className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
-                  >
-                    Terms and Conditions
-                  </button>
+                To Proceed, you agree to Growlio’s{' '}
+                <Link
+                  to="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLegalTab('terms');
+                    setIsLegalModalOpen(true);
+                  }}
+                  className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                >
+                  Terms &amp; Conditions
+                </Link>
+                ,{' '}
+                <Link
+                  to="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLegalTab('privacy');
+                    setIsLegalModalOpen(true);
+                  }}
+                  className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                >
+                  Privacy Policy
+                </Link>
+                , and{' '}
+                <Link
+                  to="/dpa"
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLegalTab('dpa');
+                    setIsLegalModalOpen(true);
+                  }}
+                  className="text-orange-600 font-semibold hover:text-orange-700 transition-colors duration-200 underline"
+                >
+                  Data Processing Agreement
+                </Link>
                  
                 </p>
                 </div>
@@ -413,12 +420,71 @@ const Register = () => {
         </p>
       </div>
 
-      <DisclaimerModal
-        isOpen={showDisclaimerModal}
-        onClose={handleDisclaimerModalClose}
-        onAccept={handleDisclaimerAccept}
-        title="Terms and Conditions"
-      />
+      <Modal
+        title="Growlio Agreements"
+        open={isLegalModalOpen}
+        onCancel={() => setIsLegalModalOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsLegalModalOpen(false)}>
+            Close
+          </Button>,
+          <Button
+            key="accept"
+            type="primary"
+            onClick={() => {
+              setDisclaimerAccepted(true);
+              setIsLegalModalOpen(false);
+            }}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700"
+          >
+            I Agree
+          </Button>,
+        ]}
+        width={980}
+        centered
+        destroyOnClose
+        styles={{ body: { paddingTop: 8 } }}
+      >
+        <Tabs
+          activeKey={activeLegalTab}
+          onChange={(key) => setActiveLegalTab(key)}
+          items={[
+            {
+              key: 'terms',
+              label: 'Terms & Conditions',
+              children: (
+                <div className="max-h-[65vh] overflow-auto pr-2">
+                  <TermsOfService variant="modal" />
+                </div>
+              ),
+            },
+            {
+              key: 'privacy',
+              label: 'Privacy Policy',
+              children: (
+                <div className="max-h-[65vh] overflow-auto pr-2">
+                  <PrivacyPolicy variant="modal" />
+                </div>
+              ),
+            },
+            {
+              key: 'dpa',
+              label: 'Data Processing Agreement',
+              children: (
+                <div className="max-h-[65vh] overflow-auto pr-2">
+                  <DataProcessingAgreement variant="modal" />
+                </div>
+              ),
+            },
+          ]}
+        />
+        <div className="mt-3 text-xs text-gray-500">
+          You can also open each document in a new tab: <Link to="/terms" target="_blank" rel="noreferrer">Terms</Link>{' '}
+          | <Link to="/privacy" target="_blank" rel="noreferrer">Privacy</Link>{' '}
+          | <Link to="/dpa" target="_blank" rel="noreferrer">DPA</Link>
+        </div>
+      </Modal>
+
     </div>
   );
 };

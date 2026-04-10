@@ -327,10 +327,19 @@ const SimulationOnboarding = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      const MIN_AVG_HOURLY_RATE = 1;
+      const MAX_AVG_HOURLY_RATE = 500;
+
       // Ensure simulation mode is enabled before saving.
       const ok = await ensureSimulationModeEnabled();
       if (!ok) {
         message.error('Simulation mode is not enabled for this account yet. Please try again.');
+        return;
+      }
+
+      const avgHourlyRate = Number(formData.laborinformation?.avgHourlyRate);
+      if (!Number.isFinite(avgHourlyRate) || avgHourlyRate < MIN_AVG_HOURLY_RATE || avgHourlyRate > MAX_AVG_HOURLY_RATE) {
+        message.error(`Average hourly rate must be between $${MIN_AVG_HOURLY_RATE} and $${MAX_AVG_HOURLY_RATE}.`);
         return;
       }
 
@@ -403,7 +412,7 @@ const SimulationOnboarding = () => {
         "Labour Information": {
           status: true,
           data: {
-            avg_hourly_rate: formData.laborinformation?.avgHourlyRate || 0
+            avg_hourly_rate: avgHourlyRate
           }
         },
         "Expenses": {

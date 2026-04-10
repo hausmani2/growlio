@@ -11,12 +11,15 @@ import {
 } from '@ant-design/icons';
 import { Input, Button, Form, message, Card, Collapse, Row, Col } from 'antd';
 import useStore from '../../../store/store';
+import useTooltips from '../../../utils/useTooltips';
+import TooltipIcon from '../../common/TooltipIcon';
 
 const { TextArea } = Input;
 const { Panel } = Collapse;
 
 const SupportPage = () => {
   const [form] = Form.useForm();
+  const tooltips = useTooltips('support');
   
   // Get user and restaurant data from store
   const user = useStore((state) => state.user);
@@ -167,6 +170,7 @@ const SupportPage = () => {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-orange-600 mb-2">
               Support
+              <TooltipIcon text={tooltips?.header} />
             </h1>
             <p className="text-gray-600 text-lg">
               Get in touch with our team for any questions, technical support, or guidance on maximizing your Growlio experience

@@ -507,8 +507,23 @@ const createSimulationSlice = (set, get) => ({
         isOnboardingComplete: isOnboardingComplete
       };
     } catch (error) {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.response?.data?.error || 
+      const data = error?.response?.data;
+      const extractFieldError = (obj, field) => {
+        const v = obj?.[field];
+        if (!v) return null;
+        if (typeof v === 'string') return v;
+        if (Array.isArray(v) && v.length > 0) return String(v[0]);
+        return null;
+      };
+
+      const fieldLevel =
+        extractFieldError(data, 'avg_hourly_rate') ||
+        extractFieldError(data, 'avgHourlyRate');
+
+      const errorMessage =
+                          fieldLevel ||
+                          data?.message || 
+                          data?.error || 
                           error.message || 
                           'Failed to save onboarding data';
       

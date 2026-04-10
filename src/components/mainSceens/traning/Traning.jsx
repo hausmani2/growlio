@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
+import useTooltips from '../../../utils/useTooltips';
+import TooltipIcon from '../../common/TooltipIcon';
 
 const TRAINING_VIDEOS = {
   budgetDashboard: {
@@ -23,6 +25,7 @@ const TRAINING_VIDEOS = {
 const Training = () => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [activeVideoKey, setActiveVideoKey] = useState('budgetDashboard');
+  const tooltips = useTooltips('training');
 
   const activeVideo = useMemo(
     () => TRAINING_VIDEOS[activeVideoKey] || TRAINING_VIDEOS.budgetDashboard,
@@ -37,6 +40,7 @@ const Training = () => {
             <div className="flex items-center gap-2 mb-2">
               <h1 className="text-3xl font-bold text-orange-600">
                 Training
+                <TooltipIcon text={tooltips?.header} />
               </h1>
               <button
                 onClick={() => {

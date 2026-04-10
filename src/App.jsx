@@ -59,6 +59,9 @@ import PosLocations from './components/mainSceens/posDetails/PosLocations';
 import PosPayments from './components/mainSceens/posDetails/PosPayments';
 import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
 import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
+import TermsOfService from './components/legal/TermsOfService';
+import PrivacyPolicy from './components/legal/PrivacyPolicy';
+import DataProcessingAgreement from './components/legal/DataProcessingAgreement';
 
 // Smart redirect component that checks simulation status and restaurant onboarding
 const RootRedirect = () => {
@@ -320,6 +323,9 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/congratulations" element={<Congratulations />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/dpa" element={<DataProcessingAgreement />} />
         
         {/* Square OAuth Callback - Public route for OAuth redirect */}
         <Route path="/square/callback" element={<SquareCallbackHandler />} />

@@ -4,6 +4,7 @@ import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, 
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
@@ -12,6 +13,7 @@ import { useGuidance } from '../../../contexts/GuidanceContext';
 const { Title, Text } = Typography;
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
+  const navigate = useNavigate();
   // Guidance hook for data guidance - safe to use even without provider (returns defaults)
   const { startDataGuidance, hasSeenDataGuidance, isDataGuidanceActive } = useGuidance();
   
@@ -28,6 +30,34 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     submitWeeklyAverageData,
     weeklyAverageLoading
   } = useStore();
+
+  const isOnBoardingCompleted = useStore((s) => s.isOnBoardingCompleted);
+  const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
+  const isSetupComplete =
+    isOnBoardingCompleted === true ||
+    restaurantOnboardingData?.restaurants?.[0]?.onboarding_complete === true ||
+    restaurantOnboardingData?.data?.restaurants?.[0]?.onboarding_complete === true;
+
+  const onboardingGateModalOpenRef = useRef(false);
+  const showOnboardingRequiredModal = () => {
+    if (onboardingGateModalOpenRef.current) return;
+    onboardingGateModalOpenRef.current = true;
+
+    Modal.confirm({
+      title: 'Complete onboarding to continue',
+      content:
+        'To add actual weekly sales, please complete onboarding first so we can set up your restaurant details correctly.',
+      okText: 'Complete onboarding',
+      cancelText: 'Not now',
+      centered: true,
+      maskClosable: true,
+      onOk: () => navigate('/onboarding'),
+      onCancel: () => {},
+      afterClose: () => {
+        onboardingGateModalOpenRef.current = false;
+      },
+    });
+  };
 
   // Helper function to extract provider name from field name
   // e.g., "actual_sales_grubhub" -> "Grubhub", "actual_sales_door_dash" -> "Door Dash"
@@ -1103,6 +1133,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Handle weekly data modal - Directly open modal without checking for weekly average data
   const showAddWeeklyModal = async () => {
+    if (!isSetupComplete) {
+      showOnboardingRequiredModal();
+      return;
+    }
     if (!selectedDate) {
       message.warning('Please select a date first.');
       return;

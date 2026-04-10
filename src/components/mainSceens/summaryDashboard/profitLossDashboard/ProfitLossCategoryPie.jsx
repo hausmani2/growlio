@@ -259,7 +259,6 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
       <div className="mt-3 text-sm text-gray-600">
         <p>
           <span className="font-medium text-red-600"> Red</span>: Labor Actual; 
-          <span className="font-medium text-red-800"> Dark Red</span>: Labor Budget; 
           <span className="font-medium text-blue-600"> Blue</span>: Food Cost; 
           <span className="font-medium text-yellow-600"> Yellow</span>: Operating Expenses; 
           <span className="font-medium text-purple-600"> Purple</span>: Third-Party Fees;

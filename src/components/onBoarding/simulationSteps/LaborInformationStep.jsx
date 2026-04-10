@@ -4,6 +4,8 @@ import { InputNumber, message } from 'antd';
 const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }) => {
   const [errors, setErrors] = useState({});
   const [avgHourlyRate, setAvgHourlyRate] = useState(data?.avgHourlyRate || 0);
+  const MIN_AVG_HOURLY_RATE = 1;
+  const MAX_AVG_HOURLY_RATE = 500;
 
   useEffect(() => {
     updateData({
@@ -18,7 +20,9 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
     const newErrors = {};
     
     if (!avgHourlyRate || avgHourlyRate <= 0) {
-      newErrors.avgHourlyRate = 'Average Hourly Rate is required and must be greater than 0';
+      newErrors.avgHourlyRate = 'Please enter a valid average hourly rate.';
+    } else if (avgHourlyRate < MIN_AVG_HOURLY_RATE || avgHourlyRate > MAX_AVG_HOURLY_RATE) {
+      newErrors.avgHourlyRate = `Average hourly rate must be between $${MIN_AVG_HOURLY_RATE} and $${MAX_AVG_HOURLY_RATE}.`;
     }
     
     setErrors(newErrors);
@@ -57,12 +61,19 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
             placeholder="0.00"
             value={avgHourlyRate}
             onChange={(value) => {
-              setAvgHourlyRate(value || 0);
+              // Guard against extremely large values; validation also enforces range.
+              const num = typeof value === 'number' ? value : Number(value);
+              if (!Number.isFinite(num)) {
+                setAvgHourlyRate(0);
+              } else {
+                setAvgHourlyRate(num > MAX_AVG_HOURLY_RATE ? MAX_AVG_HOURLY_RATE : num);
+              }
               if (errors.avgHourlyRate) {
                 setErrors(prev => ({ ...prev, avgHourlyRate: '' }));
               }
             }}
-            min={0}
+            min={MIN_AVG_HOURLY_RATE}
+            max={MAX_AVG_HOURLY_RATE}
             step={0.01}
             precision={2}
             className={`w-full h-11 ${errors.avgHourlyRate ? 'border-red-500' : ''}`}
@@ -74,7 +85,7 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
             <p className="text-red-500 text-xs mt-1">{errors.avgHourlyRate}</p>
           )}
           <p className="text-xs text-gray-500 mt-1">
-            This represents the average hourly rate across all staff roles
+            Enter a value between ${MIN_AVG_HOURLY_RATE} and ${MAX_AVG_HOURLY_RATE}.
           </p>
         </div>
       </div>
