@@ -22,7 +22,7 @@ export default function TermsOfService({ variant = 'page' }) {
           <Paragraph>
             <Text strong>Company:</Text> Growlio, LLC
             <br />
-            <Text strong>Website:</Text> www.growlio.ai
+            <Text strong>Website:</Text> app.growlio.ai
             <br />
             <Text strong>Contact:</Text> support@growlio.ai
           </Paragraph>
@@ -231,7 +231,7 @@ export default function TermsOfService({ variant = 'page' }) {
           <Paragraph>
             <Text strong>Email:</Text> support@growlio.ai
             <br />
-            <Text strong>Website:</Text> www.growlio.ai
+            <Text strong>Website:</Text> app.growlio.ai
             <br />
             <Text strong>Company:</Text> Growlio, LLC
           </Paragraph>

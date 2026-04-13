@@ -502,7 +502,7 @@ const ExpenseWrapperContent = () => {
                 <OnboardingBreadcrumb
                     currentStep="Operating Expenses"
                     description="When running a restaurant, it's important to understand your cost structure—especially when calculating your break-even point and managing cash flow."
-                    heading="Operating Expenses=" description2=" Non-negotiable. Always plan for them."
+                    heading="Operating Expenses=" description2=" Operating expenses are everything you pay to run the business—except food and labor."
                 />
 
             </div>

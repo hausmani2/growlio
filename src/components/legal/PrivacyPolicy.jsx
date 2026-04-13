@@ -20,7 +20,7 @@ export default function PrivacyPolicy({ variant = 'page' }) {
           <Paragraph>
             <Text strong>Company:</Text> Growlio, LLC
             <br />
-            <Text strong>Website:</Text> www.growlio.ai
+            <Text strong>Website:</Text> app.growlio.ai
             <br />
             <Text strong>Contact:</Text> support@growlio.ai
           </Paragraph>
@@ -96,7 +96,7 @@ export default function PrivacyPolicy({ variant = 'page' }) {
           <Paragraph>
             support@growlio.ai
             <br />
-            www.growlio.ai
+            app.growlio.ai
             <br />
             Growlio, LLC
           </Paragraph>
