@@ -62,7 +62,7 @@ const VariableCostDetailDropdown = ({
   const expandedSectionBorder = isThemedExpanded ? 'border-white/30' : 'border-gray-200';
 
   const dropdownContent = (
-    <div className="w-72 p-4 bg-white rounded-lg shadow-xl border border-gray-200">
+    <div className="w-72 p-4 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[500px] overflow-y-auto thin-scrollbar">
       <div className="space-y-3">
         {/* Header */}
         <div className="text-center pb-2 border-b border-gray-200">

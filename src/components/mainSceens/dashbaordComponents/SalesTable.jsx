@@ -2791,28 +2791,48 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               dataIndex: 'budgetedSales',
                               key: 'budgetedSales',
                               width: 120,
-                              render: (value) => <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                              }
                             },
                             ...(salesChannelsConfig.in_store ? [{
                               title: 'Actual Sales - In Store',
                               dataIndex: 'actualSalesInStore',
                               key: 'actualSalesInStore',
                               width: 180,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                              }
                             }] : []),
                             ...(salesChannelsConfig.from_app ? [{
                               title: 'Actual Sales - App',
                               dataIndex: 'actualSalesAppOnline',
                               key: 'actualSalesAppOnline',
                               width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                              }
                             }] : []),
                             ...(salesChannelsConfig.online ? [{
                               title: 'Actual Sales - Online',
                               dataIndex: 'actualSalesOnline',
                               key: 'actualSalesOnline',
                               width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                              }
                             }] : []),
                             // Dynamic Provider Columns
                             ...providers.map(provider => ({
@@ -2820,7 +2840,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               dataIndex: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                               key: `actualSales${provider.provider_name.replace(/\s+/g, '')}`,
                               width: 180,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                              }
                             })),
                             {
                               title: 'Net Sales - Actual',
@@ -2828,6 +2853,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               key: 'netSalesActual',
                               width: 150,
                               render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
                                 // Calculate the sum of actual sales for this day (including dynamic providers)
                                 // Only include enabled sales channels
                                 let calculatedNetSales = 0;
@@ -2863,7 +2891,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               dataIndex: 'dailyTickets',
                               key: 'dailyTickets',
                               width: 150,
-                              render: (value) => <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(0)}</Text>
+                              render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
+                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>{(parseFloat(value) || 0).toFixed(0)}</Text>;
+                              }
                             },
                             {
                               title: ' Sales Variance %',
@@ -2871,6 +2904,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               key: 'actualSalesBudget',
                               width: 150,
                               render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
                                 const budgetedSales = parseFloat(record.budgetedSales) || 0;
                                 
                                 // Only include enabled sales channels
@@ -2908,6 +2944,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               key: 'averageDailyTicket',
                               width: 180,
                               render: (value, record) => {
+                                if (record.restaurant_open === 0) {
+                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                }
                                 // Only include enabled sales channels
                                 let netSales = 0;
                                 if (salesChannelsConfig.in_store) {

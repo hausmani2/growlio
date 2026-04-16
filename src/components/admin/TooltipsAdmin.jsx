@@ -137,6 +137,19 @@ const TooltipsAdmin = () => {
           { label: 'Charts', value: 'charts' },
           { label: 'Table', value: 'table' },
         ];
+      case 'report-card':
+        return [
+          { label: 'Generic Goal Tooltip', value: 'goal' },
+          { label: 'Labor Goal Tooltip', value: 'labor_goal' },
+          { label: 'COGs Goal Tooltip', value: 'cogs_goal' },
+          { label: 'Rent Goal Tooltip', value: 'rent_goal' },
+          { label: 'Labor Metric Tooltip', value: 'labor' },
+          { label: 'COGs Metric Tooltip', value: 'cogs' },
+          { label: 'Rent Metric Tooltip', value: 'rent' },
+          { label: 'Close Out Previous Days button', value: 'close_out_previous_days' },
+          { label: 'Close Out Your Day(s) (alias)', value: 'close_out_your_days' },
+          { label: 'Close Out Days (alias)', value: 'close_out_days' },
+        ];
       case 'support':
         return [
           { label: 'Header', value: 'header' },

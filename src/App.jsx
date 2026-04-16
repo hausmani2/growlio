@@ -14,6 +14,7 @@ import SuperAdminLoginPage from './components/authScreens/SuperAdminLoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
 import Congratulations from './components/authScreens/auth/Congratulations';
 import ForgotPassword from './components/authScreens/auth/ForgotPassword';
+import VerifyEmail from './components/authScreens/auth/VerifyEmail';
 import SimulationOnboarding from './components/onBoarding/SimulationOnboarding';
 import SimulationDashboard from './components/simulation/SimulationDashboard';
 import SimulationRestaurantInfo from './components/simulation/SimulationRestaurantInfo';
@@ -322,6 +323,7 @@ function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/authentication/verify-email/:token/" element={<VerifyEmail />} />
         <Route path="/congratulations" element={<Congratulations />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />

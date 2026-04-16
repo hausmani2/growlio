@@ -108,10 +108,13 @@ const GuidanceOverlay = () => {
             setIsDataGuidanceActive(false);
             await apiPost('/authentication/user/guidance-status/', {
               has_seen_user_guidance: true,
-              has_seen_user_guidance_data: false
+              has_seen_user_guidance_data: true
             });
             if (context.setHasSeenGuidance) {
               context.setHasSeenGuidance(true);
+            }
+            if (context.setHasSeenDataGuidance) {
+              context.setHasSeenDataGuidance(true);
             }
             setTimeout(() => {
               sessionStorage.setItem('guidance_navigate_to_dashboard', 'true');
@@ -123,6 +126,9 @@ const GuidanceOverlay = () => {
               setIsDataGuidanceActive(false);
               if (context.setHasSeenGuidance) {
                 context.setHasSeenGuidance(true);
+              }
+              if (context.setHasSeenDataGuidance) {
+                context.setHasSeenDataGuidance(true);
               }
               return;
             }
@@ -158,6 +164,19 @@ const GuidanceOverlay = () => {
           // Last dashboard popup - navigate to profit_loss page
           try {
             setIsDataGuidanceActive(false);
+            try {
+              const currentStatus = await apiGet('/authentication/user/guidance-status/');
+              await apiPost('/authentication/user/guidance-status/', {
+                has_seen_user_guidance: currentStatus.data?.has_seen_user_guidance ?? true,
+                has_seen_user_guidance_data: true,
+              });
+            } catch (e) {
+              // If posting fails (or 401), still proceed with navigation.
+            }
+
+            if (context.setHasSeenDataGuidance) {
+              context.setHasSeenDataGuidance(true);
+            }
             setTimeout(() => {
               sessionStorage.setItem('guidance_navigate_to_profit_loss', 'true');
               navigate('/dashboard/profit-loss');

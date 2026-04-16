@@ -211,7 +211,7 @@ api.interceptors.response.use(
         case 403:
           // Forbidden
           if (!shouldSuppressError) {
-            message.error('Access forbidden. You do not have permission to perform this action.');
+            console.error('Access forbidden:', error.response.data);
           }
           console.error('Access forbidden');
           break;

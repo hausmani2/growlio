@@ -746,7 +746,10 @@ const SummaryDashboard = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on <span className="text-purple-600">How to Use My Budget</span>
+              Watch a tutorial on <span className="text-purple-600 cursor-pointer hover:text-purple-700"  onClick={() => {
+                setActiveBudgetVideoKey('useBudget');
+                setIsVideoModalVisible(true);
+              }}>How to Use My Budget</span>
             </p>
             <button
               onClick={() => {

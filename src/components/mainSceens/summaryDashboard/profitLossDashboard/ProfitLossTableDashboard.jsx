@@ -1827,7 +1827,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               )}
             </div>
             {isExpanded && !isClosed && (
-              <div className="p-3 bg-white space-y-2">
+              <div className="p-3 bg-white space-y-2 max-h-64 overflow-y-auto thin-scrollbar">
                 {variableCosts.map((cost, index) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm text-gray-700">{cost.name || `Operating Expense ${index + 1}`}</span>

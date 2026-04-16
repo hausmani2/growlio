@@ -66,7 +66,7 @@ const SquareCallbackHandler = () => {
   };
   
   const handleGoToSettings = () => {
-    navigate('/dashboard/settings');
+    navigate('/dashboard/square');
   };
   
   if (processing) {
@@ -98,7 +98,7 @@ const SquareCallbackHandler = () => {
               Go to Dashboard
             </Button>,
             <Button key="settings" onClick={handleGoToSettings}>
-              View Settings
+              View Square POS Details
             </Button>
           ]}
         />

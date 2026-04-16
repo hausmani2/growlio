@@ -13,6 +13,8 @@ import { DownOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { getOnboardingProgress } from "../../utils/onboardingUtils";
+import TooltipIcon from "../common/TooltipIcon";
+import useTooltips from "../../utils/useTooltips";
 
 const { RangePicker } = DatePicker;
 
@@ -192,7 +194,34 @@ const ScoreDonut = ({ score = 0, size = 200, gradeLabel = null, grade = null }) 
   );
 };
 
-const MiniGauge = ({ label, goal, value, amount, deltaPct, percentage }) => {
+const normalizeMetricKey = (raw) => {
+  const v = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+
+  if (!v) return null;
+  if (v === 'cog' || v === 'cogs' || v === 'co_gs' || v === 'coGs') return 'cogs';
+  if (v === 'labor' || v === 'labour') return 'labor';
+  return v;
+};
+
+const getMetricTooltipText = (tooltipsMap, metricKey) => {
+  const key = normalizeMetricKey(metricKey);
+  if (!key) return tooltipsMap?.goal;
+
+  // Prefer metric-specific keys, but keep backward-compatible fallbacks.
+  return (
+    tooltipsMap?.[`${key}_goal`] ||
+    tooltipsMap?.[`${key}_goals`] ||
+    tooltipsMap?.[`${key}_target`] ||
+    tooltipsMap?.[`${key}`] ||
+    tooltipsMap?.goal
+  );
+};
+
+const MiniGauge = ({ label, metricKey, tooltipsMap, goal, value, amount, deltaPct, percentage }) => {
   // percentage prop is actually the score value
   const scoreValue = percentage !== undefined && percentage !== null 
     ? clamp(Number(percentage) || 0, 0, 100)
@@ -214,9 +243,9 @@ const MiniGauge = ({ label, goal, value, amount, deltaPct, percentage }) => {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="text-base font-semibold text-gray-900 flex items-center gap-1">
+      <div className="text-base font-semibold text-gray-900 flex items-center gap-1" >
         GOAL {g}%
-        <InfoCircleOutlined className="text-gray-400" />
+        <TooltipIcon text={getMetricTooltipText(tooltipsMap, metricKey || label)} />
       </div>
 
       <div className="relative mt-2">
@@ -276,6 +305,7 @@ const ReportCard = ({
   showSetupCompletePopup = false,
 }) => {
   const navigate = useNavigate();
+  const tooltips = useTooltips('report-card');
   const [isNextStepsModalOpen, setIsNextStepsModalOpen] = useState(false);
   const [isReportCardInfoModalOpen, setIsReportCardInfoModalOpen] = useState(false);
   const [isSetupCompleteModalOpen, setIsSetupCompleteModalOpen] = useState(false);
@@ -572,6 +602,8 @@ const ReportCard = ({
           <div className="flex flex-wrap items-center justify-center gap-2">
             <MiniGauge
               label="Labor"
+              metricKey="labor"
+              tooltipsMap={tooltips}
               goal={goals.labor}
               value={metrics.labor?.value}
               percentage={metrics.labor?.percentage}
@@ -580,6 +612,8 @@ const ReportCard = ({
             />
             <MiniGauge
               label="COGs"
+              metricKey="cogs"
+              tooltipsMap={tooltips}
               goal={goals.cogs}
               value={metrics.cogs?.value}
               percentage={metrics.cogs?.percentage}
@@ -588,6 +622,8 @@ const ReportCard = ({
             />
             <MiniGauge
               label="Rent"
+              metricKey="rent"
+              tooltipsMap={tooltips}
               goal={goals.rent}
               value={metrics.rent?.value}
               percentage={metrics.rent?.percentage}

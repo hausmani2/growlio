@@ -211,9 +211,16 @@ const createAuthSlice = (set, get) => {
         
         if (error.response?.data) {
           const errorData = error.response.data;
+
+          if (errorData.requires_verification) {
+            const emailText = errorData.email ? ` for ${errorData.email}` : '';
+            errorMessage =
+              errorData.message ||
+              `Please verify your email address${emailText} before logging in.`;
+          }
           
           // Handle non_field_errors format
-          if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          else if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
             errorMessage = errorData.non_field_errors[0];
           }
           // Handle message format

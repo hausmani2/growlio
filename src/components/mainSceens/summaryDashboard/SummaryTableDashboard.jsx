@@ -236,7 +236,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     { key: 'labour', label: 'Labor Budget', type: 'currency', bgColor: 'bg-yellow-100' },
     { key: 'hours', label: 'Hours', type: 'number', bgColor: 'bg-yellow-100' },
     { key: 'average_hourly_rate', label: 'Avg Hourly Rate', type: 'currency', bgColor: 'bg-yellow-100' },
-    { key: 'food_cost', label: 'COGs Budget', type: 'currency', bgColor: 'bg-purple-100' },
+    { key: 'food_cost', label: 'COGS Budget', type: 'currency', bgColor: 'bg-purple-100' },
     { key: 'operating_expenses', label: 'Operating Expenses', type: 'currency', bgColor: 'bg-blue-100' },
     { key: 'budgeted_profit_loss', label: 'Profit/Loss', type: 'currency', bgColor: 'bg-white' },
   ], []);
@@ -271,11 +271,14 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       
       // Average hourly rate should be the same value (not a sum) - use first day's value
       if (category.key === 'average_hourly_rate') {
-        if (tableData.length > 0) {
-          const firstEntry = tableData[0];
-          const dateKey = firstEntry.month_start || firstEntry.date || firstEntry.day || 'N/A';
-          total = processedData[category.key]?.[dateKey] || 0;
-        }
+        const firstNonZeroRate = tableData.reduce((foundValue, entry) => {
+          if (foundValue > 0) return foundValue;
+          const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
+          const rate = processedData[category.key]?.[dateKey] || 0;
+          return rate > 0 ? rate : foundValue;
+        }, 0);
+
+        total = firstNonZeroRate;
       } else {
         tableData.forEach(entry => {
           const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
@@ -362,6 +365,33 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     }
   }, []);
 
+  const resolveRestaurantOpen = useCallback((entry) => {
+    const candidates = [
+      entry?.restaurant_open,
+      entry?.restaurantOpen,
+      entry?.['Sales Performance']?.restaurant_open,
+      entry?.sales_performance?.restaurant_open,
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'boolean') {
+        return value ? 1 : 0;
+      }
+
+      if (typeof value === 'number') {
+        return value === 0 ? 0 : 1;
+      }
+
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === '0' || normalized === 'false') return 0;
+        if (normalized === '1' || normalized === 'true') return 1;
+      }
+    }
+
+    return 1;
+  }, []);
+
   // Table data source - Redesigned: dates as rows, categories as columns
   // Moved before generateCSV to fix initialization order
   const tableDataSource = useMemo(() => {
@@ -387,6 +417,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       const rowData = {
         key: `day-${dateKey}-${index}`,
         day: `${dateInfo.day} ${dateInfo.shortDate}`, // Format: "Mon 12/8"
+        restaurant_open: resolveRestaurantOpen(entry),
       };
       
       // Add category values
@@ -415,7 +446,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     });
     
     return [...rows, totalRow];
-  }, [tableData, categories, processedData, formatDateForDisplay, totals]);
+  }, [tableData, categories, processedData, formatDateForDisplay, totals, resolveRestaurantOpen]);
 
   // CSV generation - Updated for new table structure
   const generateCSV = useCallback(() => {
@@ -495,7 +526,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           actualSalesInStore: parseNumericValue(entry.actual_sales_in_store),
           actualSalesAppOnline: parseNumericValue(entry.actual_sales_app_online),
           dailyTickets: parseNumericValue(entry.daily_tickets),
-          restaurant_open: entry.restaurant_open === 1 || entry.restaurant_open === true ? 1 : 0,
+          restaurant_open: resolveRestaurantOpen(entry),
           // Add any other fields that might be present, but ensure date is a dayjs object
           ...Object.fromEntries(
             Object.entries(entry).filter(([key, value]) => key !== 'date' && key !== 'day')
@@ -508,7 +539,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     
     setSelectedWeekForEdit(weekData);
     setIsEditModalVisible(true);
-  }, [tableData, parseNumericValue]);
+  }, [tableData, parseNumericValue, resolveRestaurantOpen]);
 
   // Handle edit modal close
   const handleEditModalClose = useCallback(() => {
@@ -560,8 +591,17 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       align: 'center',
       render: (value, record) => {
         const isTotalRow = record.key === 'total';
+        const isClosedRow = !isTotalRow && record.restaurant_open === 0;
         const bgColor = isTotalRow ? 'bg-orange-400' : category.bgColor;
         const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
+
+        if (isClosedRow) {
+          return (
+            <div className="bg-gray-100 px-3 py-2 text-gray-400 text-sm italic">
+              Closed
+            </div>
+          );
+        }
         
         let displayValue = value;
         if (category.type === 'currency') {
@@ -695,15 +735,23 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
             <tbody>
               {tableDataSource.map((row) => {
                 const isTotalRow = row.key === 'total';
+                const isClosedRow = !isTotalRow && row.restaurant_open === 0;
                 return (
                   <tr
                     key={row.key}
-                    className={isTotalRow ? 'bg-orange-400 font-bold' : 'hover:bg-gray-50'}
+                    className={
+                      isTotalRow
+                        ? 'bg-orange-400 font-bold'
+                        : isClosedRow
+                          ? 'bg-gray-50 opacity-70'
+                          : 'hover:bg-gray-50'
+                    }
                   >
                     {tableColumns.map((col) => {
                       const value = row[col.dataIndex];
                       const category = categories.find(c => c.key === col.key);
                       const isTotalRow = row.key === 'total';
+                      const isClosedRow = !isTotalRow && row.restaurant_open === 0;
                       const bgColor = isTotalRow ? 'bg-orange-400' : (category?.bgColor || 'bg-white');
                       const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
                       
@@ -712,9 +760,29 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                         return (
                           <td
                             key={col.key}
-                            className="bg-white px-3 py-2 border border-gray-200 text-left text-sm font-semibold text-gray-800"
+                            className={`px-3 py-2 border border-gray-200 text-left text-sm font-semibold ${
+                              isClosedRow ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-800'
+                            }`}
                           >
-                            {value}
+                            <div className="flex items-center gap-2">
+                              <span>{value}</span>
+                              {isClosedRow && (
+                                <span className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500">
+                                  CLOSED
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (isClosedRow) {
+                        return (
+                          <td
+                            key={col.key}
+                            className="bg-gray-100 px-3 py-2 border border-gray-200 text-center text-sm italic text-gray-400"
+                          >
+                            Closed
                           </td>
                         );
                       }
@@ -763,18 +831,32 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
         <div className="space-y-2">
           {tableDataSource.map((row) => {
             const isTotalRow = row.key === 'total';
+            const isClosedRow = !isTotalRow && row.restaurant_open === 0;
             return (
               <Card 
                 key={row.key} 
                 size="small" 
-                className={`shadow-sm !mb-2 ${isTotalRow ? 'bg-orange-400' : ''}`}
+                className={`shadow-sm !mb-2 ${isTotalRow ? 'bg-orange-400' : isClosedRow ? 'bg-gray-50 opacity-70' : ''}`}
               >
-                <div className={`font-semibold mb-2 ${isTotalRow ? 'text-white' : 'text-gray-800'}`}>
-                  {row.day}
+                <div className={`font-semibold mb-2 flex items-center gap-2 ${isTotalRow ? 'text-white' : isClosedRow ? 'text-gray-500' : 'text-gray-800'}`}>
+                  <span>{row.day}</span>
+                  {isClosedRow && (
+                    <span className="text-xs px-2 py-1 rounded bg-gray-200 text-gray-500">
+                      CLOSED
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {categories.map((category) => {
                     const value = row[category.key] || 0;
+                    if (isClosedRow) {
+                      return (
+                        <div key={category.key} className="flex justify-between text-xs">
+                          <span className="text-gray-500">{category.label}</span>
+                          <span className="text-gray-400 italic">Closed</span>
+                        </div>
+                      );
+                    }
                     const bgColor = isTotalRow ? 'bg-orange-400' : category.bgColor;
                     const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
                     

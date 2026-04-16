@@ -308,6 +308,17 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     });
   };
 
+  const getBudgetedLaborDollarsForDay = (laborHoursBudget, explicitBudgetedLaborDollars) => {
+    const parsedBudgetedDollars = parseFloat(explicitBudgetedLaborDollars);
+    if (Number.isFinite(parsedBudgetedDollars) && parsedBudgetedDollars > 0) {
+      return parsedBudgetedDollars;
+    }
+
+    const parsedBudgetHours = parseFloat(laborHoursBudget) || 0;
+    const averageHourlyRate = parseFloat(getAverageHourlyRate()) || 0;
+    return parsedBudgetHours * averageHourlyRate;
+  };
+
   // Function to get net sales for a specific date from dashboard data
   const getNetSalesForDate = (date) => {
     if (!dashboardData?.daily_entries) return 0;
@@ -361,10 +372,15 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         return {
           key: `day-${entry.date}`,
           date: dayjs(entry.date),
-          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          dayName: dayjs(entry.date).format('dddd'),
           laborHoursBudget: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.labor_hours_budget) || 0) : 0,
           laborHoursActual: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.labor_hours_actual) || 0) : 0,
-          budgetedLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.budgeted_labor_dollars) || 0) : 0,
+          budgetedLaborDollars: isRestaurantOpen
+            ? getBudgetedLaborDollarsForDay(
+                entry['Labor Performance']?.labor_hours_budget,
+                entry['Labor Performance']?.budgeted_labor_dollars
+              )
+            : 0,
           actualLaborDollars: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.actual_labor_dollars) || 0) : 0,
           dailyLaborRate: parseFloat(entry['Labor Performance']?.daily_labor_rate) || 0,
           dailyLaborPercentage: isRestaurantOpen ? (parseFloat(entry['Labor Performance']?.daily_labour_percent) || 0) : 0,
@@ -386,10 +402,10 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           return existingEntry || {
             key: `day-${day.date.format('YYYY-MM-DD')}`,
             date: day.date,
-            dayName: day.dayName.toLowerCase(),
+            dayName: day.dayName,
             laborHoursBudget: 0,
             laborHoursActual: 0,
-            budgetedLaborDollars: 0,
+            budgetedLaborDollars: getBudgetedLaborDollarsForDay(0, 0),
             actualLaborDollars: 0,
             dailyLaborRate: 0,
             dailyLaborPercentage: 0,
@@ -586,7 +602,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         dayName: currentDate.format('dddd'),
         laborHoursBudget: 0,
         laborHoursActual: 0,
-        budgetedLaborDollars: 0,
+        budgetedLaborDollars: getBudgetedLaborDollarsForDay(0, 0),
         actualLaborDollars: 0,
         dailyLaborRate: parseFloat(weeklyTotals.daily_labor_rate) || getAverageHourlyRate(),
         dailyLaborPercentage: 0,
@@ -1199,6 +1215,9 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                             pagination={false}
                             size="small"
                             rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                            rowClassName={(record) => (
+                              record.restaurantOpen === false ? 'opacity-60 bg-gray-50' : ''
+                            )}
                             scroll={{ x: 'max-content' }}
                             summary={(pageData) => {
                               const weekTotals = pageData.reduce((acc, record) => ({
@@ -1270,15 +1289,17 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 fixed: 'left',
                                 render: (text, record) => (
                                   <div>
-                                    <div className="font-medium text-sm sm:text-base">{text}</div>
+                                    <div className="font-medium flex items-center gap-2">
+                                      {text}
+                                      {record.restaurantOpen === false && (
+                                        <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-600">
+                                          CLOSED
+                                        </span>
+                                      )}
+                                    </div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
-                                    {record.restaurantOpen === false && (
-                                      <div style={{ fontSize: '10px', color: '#ff4d4f', fontWeight: 'bold' }}>
-                                        CLOSED
-                                      </div>
-                                    )}
                                   </div>
                                 )
                               },
@@ -1291,7 +1312,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text className="text-sm sm:text-base">{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
+                                  return <Text>{(parseFloat(value) || 0).toFixed(1)} hrs</Text>;
                                 }
                               },
                               // Conditionally show Labor Hours - Actual based on labor_record_method
@@ -1313,7 +1334,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                       color: isOverBudget ? '#d32f2f' : '#1890ff',
                                       padding: '2px 6px', 
                                       borderRadius: '3px' 
-                                    }} className="text-sm sm:text-base">
+                                    }}>
                                       {actual.toFixed(1)} hrs
                                     </Text>
                                   );
@@ -1328,7 +1349,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   if (record.restaurantOpen === false) {
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
-                                  return <Text className="text-sm sm:text-base">${(parseFloat(value) || 0).toFixed(2)}</Text>;
+                                  return <Text>${(parseFloat(value) || 0).toFixed(2)}</Text>;
                                 }
                               },
                               // Conditionally show Actual Labor $ based on labor_record_method
@@ -1350,7 +1371,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                       color: isOverBudget ? '#d32f2f' : '#1890ff',
                                       padding: '2px 6px', 
                                       borderRadius: '3px' 
-                                    }} className="text-sm sm:text-base">
+                                    }}>
                                       ${actual.toFixed(2)}
                                     </Text>
                                   );
@@ -1368,7 +1389,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   const actualLabor = parseFloat(record.actualLaborDollars) || 0;
                                   const actualHours = parseFloat(record.laborHoursActual) || 0;
                                   const hourlyRate = actualHours > 0 ? (actualLabor / actualHours) : 0;
-                                  return <Text className='bg-blue-200 p-1 rounded-md text-sm sm:text-base'>${hourlyRate.toFixed(2)}/hr</Text>;
+                                  return <Text className='bg-blue-200 p-1 rounded-md'>${hourlyRate.toFixed(2)}/hr</Text>;
                                 }
                               },
                               {
@@ -1393,7 +1414,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   }, 0);
                                   
                                   const cumulativeAvgRate = cumulativeHours > 0 ? (cumulativeLabor / cumulativeHours) : 0;
-                                  return <Text className='bg-green-200 p-1 rounded-md text-sm sm:text-base'>${cumulativeAvgRate.toFixed(2)}/hr</Text>;
+                                  return <Text className='bg-green-200 p-1 rounded-md'>${cumulativeAvgRate.toFixed(2)}/hr</Text>;
                                 }
                               },
                               {
@@ -1409,7 +1430,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   const actualLabor = parseFloat(record.actualLaborDollars) || 0;
                                   const netSales = getNetSalesForDate(record.date);
                                   const dailyPercentage = netSales > 0 ? ((actualLabor / netSales) * 100) : 0;
-                                  return <Text className="text-sm sm:text-base" style={{ 
+                                  return <Text style={{ 
                                     backgroundColor: '#e8f5e8', 
                                     color: '#2e7d32',
                                     padding: '2px 6px', 
@@ -1440,7 +1461,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   });
                                   
                                   const weeklyPercentage = cumulativeSales > 0 ? ((cumulativeLabor / cumulativeSales) * 100) : 0;
-                                  return <Text className="text-sm sm:text-base" style={{ 
+                                  return <Text style={{ 
                                     backgroundColor: '#fff3e0', 
                                     color: '#f57c00',
                                     padding: '2px 6px', 

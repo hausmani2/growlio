@@ -832,6 +832,23 @@ export const GuidanceProvider = ({ children }) => {
         // Regular guidance: allow ALL active popups for this page.
         // The "admin_access/guidance-popups" endpoint is already the source of truth.
         // A popup will still only render if a DOM element exists with data-guidance="<popup.key>".
+        const onboardingBasicInformationOrder = {
+          step_navigation_bar: 0,
+          step_1_basic_information: 1,
+          step_2_sales_channels: 2,
+          step_3_labor_information: 3,
+          step_4_food_cost_details: 4,
+          step_5_expense: 5,
+        };
+        const budgetPageOrder = {
+          sidebar_budget: 0,
+          sidebar_dashboard: 1,
+          'sidebar_profit-loss': 2,
+          sidebar_onboarding: 3,
+          summary_table: 4,
+          week_selector: 5,
+        };
+
         const filteredPopups = allPopups
           .filter((popup) => acceptablePages.includes(popup.page) && popup.is_active === true)
           .map((popup) =>
@@ -839,6 +856,34 @@ export const GuidanceProvider = ({ children }) => {
             popup.key === 'sidebar_profit_loss' ? { ...popup, key: 'sidebar_profit-loss' } : popup
           )
           .sort((a, b) => {
+            if (pageName === 'onboarding_basic_information') {
+              const aRank = onboardingBasicInformationOrder[a.key];
+              const bRank = onboardingBasicInformationOrder[b.key];
+              const hasExplicitRank = Number.isInteger(aRank) || Number.isInteger(bRank);
+
+              if (hasExplicitRank) {
+                const normalizedARank = Number.isInteger(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+                const normalizedBRank = Number.isInteger(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+                if (normalizedARank !== normalizedBRank) {
+                  return normalizedARank - normalizedBRank;
+                }
+              }
+            }
+
+            if (pageName === 'budget') {
+              const aRank = budgetPageOrder[a.key];
+              const bRank = budgetPageOrder[b.key];
+              const hasExplicitRank = Number.isInteger(aRank) || Number.isInteger(bRank);
+
+              if (hasExplicitRank) {
+                const normalizedARank = Number.isInteger(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+                const normalizedBRank = Number.isInteger(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+                if (normalizedARank !== normalizedBRank) {
+                  return normalizedARank - normalizedBRank;
+                }
+              }
+            }
+
             // Keep important popups in sensible order when present
             if (a.key === 'summary_table' && b.key !== 'summary_table') return -1;
             if (b.key === 'summary_table' && a.key !== 'summary_table') return 1;

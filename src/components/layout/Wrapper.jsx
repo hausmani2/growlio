@@ -302,7 +302,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     {
       key: 'dashboard-summary',
       icon: <FaChartLine />,
-      label: 'Dashboard',
+      label: 'Dashboards',
       children: [
         {
           key: 'budget',
@@ -319,7 +319,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'profit-loss',
           icon: <ArrowUpOutlined />,
-          label: 'Your Budget Vs. Actual',
+          label: 'Profit & Loss',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
       ],

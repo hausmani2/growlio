@@ -252,7 +252,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         return {
           key: `day-${entry.date}`,
           date: dayjs(entry.date),
-          dayName: dayjs(entry.date).format('dddd').toLowerCase(),
+          dayName: dayjs(entry.date).format('dddd'),
           budget: isRestaurantOpen ? (entry['COGS Performance']?.cogs_budget || 0) : 0,
           actual: isRestaurantOpen ? (entry['COGS Performance']?.cogs_actual || 0) : 0,
           weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0,
@@ -274,7 +274,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           return existingEntry || {
             key: `day-${day.date.format('YYYY-MM-DD')}`,
             date: day.date,
-            dayName: day.dayName.toLowerCase(),
+            dayName: day.dayName,
             budget: 0,
             actual: 0,
             weeklyRemainingCog: 0,
@@ -781,7 +781,26 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   }
                 },
                 {
-                  title: 'Actual',
+                  title: 'COGS Budget',
+                  dataIndex: 'budget',
+                  key: 'budget',
+                  width: 150,
+                  render: (value, record) => {
+                    if (record.restaurantOpen === false) {
+                      return (
+                        <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>
+                      );
+                    }
+
+                    return (
+                      <Text strong style={{ color: '#1890ff' }}>
+                        ${(parseFloat(value) || 0).toFixed(2)}
+                      </Text>
+                    );
+                  }
+                },
+                {
+                  title: 'COGS Actual',
                   dataIndex: 'actual',
                   key: 'actual',
                   width: 150,
@@ -901,6 +920,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                             pagination={false}
                             size="small"
                             rowKey={(record) => record.key || `day-${record.date?.format('YYYY-MM-DD')}`}
+                            rowClassName={(record) => (
+                              record.restaurantOpen === false ? 'opacity-60 bg-gray-50' : ''
+                            )}
                             scroll={{ x: 'max-content' }}
                             summary={(pageData) => {
                               const weekTotals = pageData.reduce((acc, record) => ({
@@ -939,15 +961,17 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 fixed: 'left',
                                 render: (text, record) => (
                                   <div>
-                                    <div className="font-medium">{text}</div>
+                                    <div className="font-medium flex items-center gap-2">
+                                      {text}
+                                      {record.restaurantOpen === false && (
+                                        <span className="text-xs px-2 py-1 rounded bg-red-100 text-red-600">
+                                          CLOSED
+                                        </span>
+                                      )}
+                                    </div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                       {record.date.format('MMM DD, YYYY')}
                                     </div>
-                                    {record.restaurantOpen === false && (
-                                      <div style={{ fontSize: '10px', color: '#ff4d4f', fontWeight: 'bold' }}>
-                                        CLOSED
-                                      </div>
-                                    )}
                                   </div>
                                 )
                               },

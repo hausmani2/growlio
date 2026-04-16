@@ -14,18 +14,18 @@ import FixedExpensesTable from './FixedExpenseTable';
 import NetProfitTable from './NetProfitTable';
 import RestaurantInfoCard from './RestaurantInfoCard';
 import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
+import SyncModal from '../../SyncModal';
+import usePosSync from '../../../hooks/usePosSync';
 
 const { Title } = Typography;
 const { Option } = Select;
 
 const Dashboard = () => {
   // Store integration for date selection persistence
-  const { 
+  const {
     fetchDashboardDataIfNeeded,
     fetchDashboardData: fetchDashboardDataFromStore,
     ensureRestaurantId,
-    syncSquarePosData,
-    squareSyncLoading,
     squareStatus,
     squareConnectionData,
     // Date selection from store
@@ -50,7 +50,6 @@ const Dashboard = () => {
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
-  const [isSquareSyncRefreshing, setIsSquareSyncRefreshing] = useState(false);
   const isSquareConnected = squareStatus === 'connected' || squareConnectionData?.connected === true;
 
   // Restaurant goals functionality
@@ -122,28 +121,28 @@ const Dashboard = () => {
   // Fetch dashboard data for the selected week
   const fetchDashboardData = async (weekStartDate) => {
     if (!weekStartDate) return;
-    
+
     setDashboardLoading(true);
     setDashboardMessage(null);
-    
+
     try {
       const data = await fetchDashboardDataIfNeeded(weekStartDate.format('YYYY-MM-DD'));
-      
+
       // If no data returned (null), this means no restaurant ID was found
       if (!data) {
         setDashboardData(null);
         setDashboardMessage('Please complete your onboarding setup first to view dashboard data.');
         return;
       }
-      
+
       // Check if the response indicates no data found
       // API response format: {"status":"success","message":"No weekly dashboard found","data":null}
-      const isNoDataResponse = data && 
-                               data.status === "success" && 
-                               (data.message === "No weekly dashboard found" || 
-                                data.message === "No weekly dashboard found for the given criteria.") &&
-                               data.data === null;
-      
+      const isNoDataResponse = data &&
+        data.status === "success" &&
+        (data.message === "No weekly dashboard found" ||
+          data.message === "No weekly dashboard found for the given criteria.") &&
+        data.data === null;
+
       if (isNoDataResponse) {
         setDashboardData(null);
         setDashboardMessage(data.message);
@@ -164,41 +163,41 @@ const Dashboard = () => {
   // Process week selection - Check for data first, then weekly average
   const processWeekSelection = useCallback(async (weekStartDate) => {
     if (!weekStartDate) return;
-    
+
     const startDate = weekStartDate.format('YYYY-MM-DD');
     const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
     const dateRangeKey = `${startDate}-${endDate}`;
-    
+
     // Prevent duplicate processing
     if (isProcessingWeek.current === dateRangeKey) {
       return;
     }
-    
+
     // Mark as processing
     isProcessingWeek.current = dateRangeKey;
-    
+
     // Reset modal states for new date range
     setIsWeeklyAverageDataPopupVisible(false);
     setWeeklyAveragePopupData(null);
-    
+
     try {
       // Step 1: Fetch dashboard data and check if selected week has data
       const data = await fetchDashboardDataIfNeeded(startDate);
-      
+
       // Check if response indicates no data found
       // API response format: {"status":"success","message":"No weekly dashboard found","data":null}
-      const isNoDataResponse = data && 
-                               data.status === "success" && 
-                               (data.message === "No weekly dashboard found" || 
-                                data.message === "No weekly dashboard found for the given criteria.") &&
-                               data.data === null;
-      
+      const isNoDataResponse = data &&
+        data.status === "success" &&
+        (data.message === "No weekly dashboard found" ||
+          data.message === "No weekly dashboard found for the given criteria.") &&
+        data.data === null;
+
       // Check if selected week has valid data (data exists and is not null)
-      const hasData = data && 
-                     data.status === "success" && 
-                     data.data !== null &&
-                     !isNoDataResponse;
-      
+      const hasData = data &&
+        data.status === "success" &&
+        data.data !== null &&
+        !isNoDataResponse;
+
       // Update dashboard data state
       if (hasData) {
         setDashboardData(data);
@@ -207,14 +206,14 @@ const Dashboard = () => {
         isProcessingWeek.current = null;
         return;
       }
-      
+
       // Step 2: Selected week has no data - check for 3 previous weeks data
       // Only proceed if we confirmed there's no data for this week
       // NOTE: Weekly Average Data modal is disabled for Close Out Your Day(s) page
       if (isNoDataResponse) {
         setDashboardData(null);
         setDashboardMessage(data.message || "No weekly dashboard found");
-        
+
         // Weekly average modal is disabled for Close Out Your Day(s) page
         // Users should manually enter data instead
         weeklyAverageModalShown.current = dateRangeKey;
@@ -260,43 +259,24 @@ const Dashboard = () => {
     }
   };
 
-  const handleSquareSyncNow = useCallback(async () => {
-    const restaurantId = await ensureRestaurantId?.();
-    if (!restaurantId) {
-      message.error('Restaurant ID not found. Please complete onboarding first.');
-      return;
-    }
+  const handlePosDashboardRefresh = useCallback((freshData) => {
+    setDashboardData(freshData);
+    setDashboardMessage(null);
+  }, []);
 
-    const { weekStartDate } = getDateSelection();
-    if (!weekStartDate) {
-      message.warning('Please select a week first.');
-      return;
-    }
-
-    setIsSquareSyncRefreshing(true);
-    try {
-      const syncRes = await syncSquarePosData?.(restaurantId);
-      if (!syncRes?.success) return;
-
-      // Force a fresh fetch (bypass cache) once Square sync completes.
-      const weekStartStr = weekStartDate.format('YYYY-MM-DD');
-      const fresh = await fetchDashboardDataFromStore(weekStartStr);
-      setDashboardData(fresh);
-      message.success('Square data synced and dashboard refreshed.');
-    } catch (e) {
-      message.error(e?.message || 'Failed to sync Square data.');
-    } finally {
-      setIsSquareSyncRefreshing(false);
-    }
-  }, [ensureRestaurantId, getDateSelection, syncSquarePosData, fetchDashboardDataFromStore]);
+  const { startSync: handleSquareSyncNow, isSyncing: isPosSyncing, syncStatus: posSyncStatus } = usePosSync({
+    getRestaurantId: ensureRestaurantId,
+    getWeekStart: () => getDateSelection()?.weekStartDate,
+    onDashboardData: handlePosDashboardRefresh,
+  });
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();
   const calendarDateRange = selectedWeekStartDate
     ? [
-        dayjs(selectedWeekStartDate).subtract(3, 'week').startOf('week'),
-        dayjs(selectedWeekStartDate).subtract(1, 'week').endOf('week'),
-      ]
+      dayjs(selectedWeekStartDate).subtract(3, 'week').startOf('week'),
+      dayjs(selectedWeekStartDate).subtract(1, 'week').endOf('week'),
+    ]
     : null;
 
   // Handle weekly average data popup actions
@@ -307,34 +287,34 @@ const Dashboard = () => {
         const startDate = weekStartDate.format('YYYY-MM-DD');
         const endDate = weekStartDate.endOf('week').format('YYYY-MM-DD');
         const dateRangeKey = `${startDate}-${endDate}`;
-        
+
         // Set loading state
         setIsAutoAverageLoading(true);
-        
+
         // Close modal immediately to prevent duplicate clicks
         setIsWeeklyAverageDataPopupVisible(false);
-        
+
         // Submit the previous 3 weeks data via POST API (same endpoint)
         const response = await submitWeeklyAverageData(null, startDate, endDate, {
           use_previous_data: true
         });
-        
+
         // Check if API response indicates success
         // API response format: {"message": "Processed 1 weekly entries.", "entries": [...]}
-        const isSuccess = response && 
-                         (response.message?.includes('Processed') || 
-                          response.entries?.length > 0);
-        
+        const isSuccess = response &&
+          (response.message?.includes('Processed') ||
+            response.entries?.length > 0);
+
         if (isSuccess && response.entries && response.entries.length > 0) {
           // Extract week_start from the response
           const createdEntry = response.entries[0];
           const responseWeekStart = createdEntry.week_start;
-          
+
           // Mark as shown so it doesn't show again
           weeklyAverageModalShown.current = dateRangeKey;
-          
+
           message.success('Previous 3 weeks data applied successfully! 🎉');
-          
+
           // Wait a moment for the backend to process, then fetch the dashboard data for the created week
           setTimeout(async () => {
             if (responseWeekStart) {
@@ -342,16 +322,16 @@ const Dashboard = () => {
               const createdWeekStartDate = dayjs(responseWeekStart);
               const createdWeekEndDate = createdWeekStartDate.endOf('week');
               const createdWeekKey = `${createdWeekStartDate.format('YYYY-MM-DD')}_${createdWeekEndDate.format('YYYY-MM-DD')}`;
-              
+
               // Update selected date and week in store
               setSelectedDate(createdWeekStartDate);
               setSelectedYear(createdWeekStartDate.year());
               setSelectedMonth(createdWeekStartDate.month() + 1);
               setSelectedWeek(createdWeekKey);
-              
+
               // Update week picker value
               setWeekPickerValue(createdWeekStartDate);
-              
+
               // Update available weeks
               setAvailableWeeks([{
                 key: createdWeekKey,
@@ -360,29 +340,29 @@ const Dashboard = () => {
                 endDate: createdWeekEndDate.format('YYYY-MM-DD'),
                 data: null
               }]);
-              
+
               // Wait a bit more for backend to fully process
               await new Promise(resolve => setTimeout(resolve, 500));
-              
+
               // Force fresh fetch from store (bypasses cache) - this updates the store
               let freshData = await fetchDashboardDataFromStore(responseWeekStart);
-              
+
               // Check if we got valid data
-              const hasValidData = freshData && 
-                                 freshData.status === "success" && 
-                                 freshData.data !== null &&
-                                 !(freshData.message === "No weekly dashboard found" || 
-                                   freshData.message === "No weekly dashboard found for the given criteria.");
-              
+              const hasValidData = freshData &&
+                freshData.status === "success" &&
+                freshData.data !== null &&
+                !(freshData.message === "No weekly dashboard found" ||
+                  freshData.message === "No weekly dashboard found for the given criteria.");
+
               if (!hasValidData) {
                 // If still no data, wait longer and try again
                 await new Promise(resolve => setTimeout(resolve, 500));
                 freshData = await fetchDashboardDataFromStore(responseWeekStart);
               }
-              
+
               // Also use local fetchDashboardData to ensure local state is updated
               await fetchDashboardData(createdWeekStartDate);
-              
+
               // Final refresh to ensure all components are updated
               await refreshDashboardData();
             } else {
@@ -390,7 +370,7 @@ const Dashboard = () => {
               await refreshDashboardData();
               await fetchDashboardData(weekStartDate);
             }
-            
+
             // Clear loading state after data is populated
             setIsAutoAverageLoading(false);
           }, 800);
@@ -434,7 +414,7 @@ const Dashboard = () => {
   const handleMonthChange = (month) => {
     setSelectedMonth(month);
     setSelectedWeek(null);
-    
+
     if (selectedYear) {
       fetchCalendarData(selectedYear, month);
     }
@@ -447,7 +427,7 @@ const Dashboard = () => {
     // Find the selected week data and set the date to the start of the week
     if (availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === weekKey);
-      
+
       if (selectedWeekData) {
         const weekStartDate = dayjs(selectedWeekData.startDate);
         setSelectedDate(weekStartDate);
@@ -544,32 +524,32 @@ const Dashboard = () => {
       try {
         // Check if we already have a selected year in the store
         const { selectedYear: storeSelectedYear, selectedMonth: storeSelectedMonth } = getDateSelection();
-        
+
         let yearToUse = storeSelectedYear;
         let monthToUse = storeSelectedMonth;
-        
+
         // If no year/month in store, use current date
         if (!yearToUse) {
           yearToUse = dayjs().year();
           setSelectedYear(yearToUse);
         }
-        
+
         if (!monthToUse) {
           monthToUse = dayjs().month() + 1; // dayjs months are 0-indexed
           setSelectedMonth(monthToUse);
         }
-        
+
         // Only clear selected week if we're initializing with current month
         // This prevents clearing a valid selection when navigating back
         const currentDate = dayjs();
         const currentYear = currentDate.year();
         const currentMonth = currentDate.month() + 1;
-        
+
         if (yearToUse === currentYear && monthToUse === currentMonth) {
           // Only clear if we're viewing the current month, to allow auto-selection of current week
           setSelectedWeek(null);
         }
-        
+
         // Fetch calendar data for the month
         await fetchCalendarData(yearToUse, monthToUse);
 
@@ -591,10 +571,10 @@ const Dashboard = () => {
         setSelectedWeek(weekKey);
         setSelectedDate(weekStart);
         await fetchDashboardData(weekStart);
-        
+
         // Fetch restaurant goals
         await fetchRestaurantGoals();
-        
+
       } catch (error) {
         console.error('Error initializing dashboard:', error);
       }
@@ -602,18 +582,18 @@ const Dashboard = () => {
 
     const fetchRestaurantGoals = async () => {
       try {
-        
+
         const restaurantId = await ensureRestaurantId();
-        
+
         if (!restaurantId) {
           console.warn('⚠️ No restaurant ID available, cannot fetch goals');
           return;
         }
-        
+
         // Always fetch fresh data on page load/reload
         // Don't skip if data exists - we want fresh data on reload
         const result = await getRestaurentGoal(restaurantId);
-        
+
         if (result) {
           if (result.restaurant_days && Array.isArray(result.restaurant_days)) {
           } else {
@@ -623,9 +603,9 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error('❌ Restaurant goals error:', error.message);
-        
-        if (error.message.includes('Restaurant ID is required') || 
-            error.message.includes('Restaurant goals not found')) {
+
+        if (error.message.includes('Restaurant ID is required') ||
+          error.message.includes('Restaurant goals not found')) {
           console.warn('⚠️ Restaurant goals not available:', error.message);
         }
       }
@@ -637,20 +617,20 @@ const Dashboard = () => {
   // Handle navigation context from Summary Dashboard with improved state management
   useEffect(() => {
     const navigationContext = localStorage.getItem('dashboardNavigationContext');
-    
+
     if (navigationContext) {
       try {
         const context = JSON.parse(navigationContext);
-        
+
         // Set the selected date, year, and month
         if (context.selectedDate) {
           const targetDate = dayjs(context.selectedDate);
           const targetYear = targetDate.year();
           const targetMonth = targetDate.month() + 1; // dayjs months are 0-indexed
-          
+
           setSelectedYear(targetYear);
           setSelectedMonth(targetMonth);
-          
+
           // Fetch calendar data for the target month
           fetchCalendarData(targetYear, targetMonth).then(() => {
             // After calendar data is loaded, set the selected week
@@ -659,10 +639,10 @@ const Dashboard = () => {
             }
           });
         }
-        
+
         // Clear the navigation context
         localStorage.removeItem('dashboardNavigationContext');
-        
+
       } catch (error) {
         console.error('Error processing navigation context:', error);
         localStorage.removeItem('dashboardNavigationContext');
@@ -675,32 +655,32 @@ const Dashboard = () => {
     if (availableWeeks.length > 0 && !selectedWeek) {
       const currentDate = dayjs();
       const currentMonth = currentDate.month() + 1; // dayjs months are 0-indexed
-      
-      
-      
+
+
+
       // Check if current month is the same as selected month
       if (selectedMonth === currentMonth) {
         // If same month, find the week that contains the current date
         const currentWeek = availableWeeks.find(week => {
           const weekStart = dayjs(week.startDate);
           const weekEnd = dayjs(week.endDate);
-          
-          
-          // Check if current date is between week start and end (inclusive)
-          return currentDate.isSame(weekStart, 'day') || 
-                 currentDate.isSame(weekEnd, 'day') || 
-                 (currentDate.isAfter(weekStart, 'day') && currentDate.isBefore(weekEnd, 'day'));
-        });
-        
 
-        
+
+          // Check if current date is between week start and end (inclusive)
+          return currentDate.isSame(weekStart, 'day') ||
+            currentDate.isSame(weekEnd, 'day') ||
+            (currentDate.isAfter(weekStart, 'day') && currentDate.isBefore(weekEnd, 'day'));
+        });
+
+
+
         // If current week is found, select it; otherwise fall back to first week
         const weekToSelect = currentWeek || availableWeeks[0];
-        
+
         setSelectedWeek(weekToSelect.key);
       } else {
         // If different month, select the first week
-        
+
         setSelectedWeek(availableWeeks[0].key);
       }
     }
@@ -710,11 +690,11 @@ const Dashboard = () => {
   useEffect(() => {
     if (selectedWeek && availableWeeks.length > 0) {
       const selectedWeekData = availableWeeks.find(week => week.key === selectedWeek);
-      
-      
+
+
       if (selectedWeekData) {
         const weekStartDate = dayjs(selectedWeekData.startDate);
-        
+
         setSelectedDate(weekStartDate);
         // Process week selection (checks for data first, then weekly average)
         processWeekSelection(weekStartDate);
@@ -792,14 +772,14 @@ const Dashboard = () => {
                   <span className="text-2xl">📊</span>
                 </div>
                 <h3 className="text-xl font-bold text-blue-800">
-                We Found Your Last 3 Weeks of Data
+                  We Found Your Last 3 Weeks of Data
                 </h3>
               </div>
               <p className="text-blue-700 text-base leading-relaxed mb-4">
-              Good News: Because you've entered your actual sales and labor data for the past 3 weeks {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')}, the Auto feature is now active.
+                Good News: Because you've entered your actual sales and labor data for the past 3 weeks {calendarDateRange?.[0]?.format('MMM DD, YYYY')} - {calendarDateRange?.[1]?.format('MMM DD, YYYY')}, the Auto feature is now active.
               </p>
               <p className="text-yellow-700 text-md leading-relaxed mb-4">When you choose Auto, Growlio will automatically create a budget a for you using your daily averages over the previous 3 weeks. You'll still have full control to review, edit and adjust your budget.</p>
-              
+
               <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                 {/* <h4 className="font-semibold text-blue-800 mb-3">Your Options:</h4> */}
                 <ul className="list-disc list-inside space-y-2 text-gray-700">
@@ -838,24 +818,10 @@ const Dashboard = () => {
           </div>
           {/* Right Side - Week Picker */}
           <div className="w-full lg:w-auto" data-guidance="week_selector_help">
-            <div className="min-w-[220px] w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Week</label>
-              <DatePicker
-                picker="week"
-                style={{ width: '100%' }}
-                value={weekPickerValue}
-                format={(value) => {
-                  if (!value) return 'Select week';
-                  const start = dayjs(value).startOf('week');
-                  const end = dayjs(value).endOf('week');
-                  const wk = dayjs(value).week();
-                  return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
-                }}
-                onChange={handleWeekPickerChange}
-                allowClear
-              />
-              <div className="pt-3 flex justify-end">
-                <Tooltip
+            <div className="min-w-[220px] w-full flex items-center gap-2">
+              <div className="flex flex-col">
+                  <label htmlFor="sync-square-data" className="text-sm font-medium text-gray-700 mb-1">Sync Data</label>
+                  <Tooltip
                   title={
                     isSquareConnected
                       ? 'Sync the latest sales and labor data from Square.'
@@ -864,15 +830,45 @@ const Dashboard = () => {
                 >
                   <span>
                     <Button
+                      size="medium"
+                      type="default"
+                      data-testid="sync-pos-button"
                       onClick={handleSquareSyncNow}
-                      loading={squareSyncLoading || isSquareSyncRefreshing}
-                      disabled={!isSquareConnected || squareSyncLoading || isSquareSyncRefreshing}
+                      loading={isPosSyncing}
+                      disabled={!isSquareConnected || isPosSyncing}
+                      className="border-gray-200 bg-white text-gray-700 hover:!border-gray-300 hover:!bg-gray-50 hover:!text-gray-900"
                     >
-                      Sync Square Data
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={`inline-block h-2 w-2 rounded-full ${
+                            isSquareConnected ? 'bg-green-500' : 'bg-red-500'
+                          }`}
+                        />
+                        <span>Sync POS Data</span>
+                      </span>
                     </Button>
                   </span>
                 </Tooltip>
               </div>
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Week</label>
+                <DatePicker
+                  picker="week"
+                  style={{ width: '100%' }}
+                  value={weekPickerValue}
+                  format={(value) => {
+                    if (!value) return 'Select week';
+                    const start = dayjs(value).startOf('week');
+                    const end = dayjs(value).endOf('week');
+                    const wk = dayjs(value).week();
+                    return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
+                  }}
+                  onChange={handleWeekPickerChange}
+                  allowClear
+                />
+              </div>
+
             </div>
           </div>
         </div>
@@ -885,10 +881,10 @@ const Dashboard = () => {
 
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {/* Debug Component - Remove this in production */}
-            
+
             {/* Restaurant Information Card */}
             <RestaurantInfoCard />
-            
+
             {/* Only show dashboard components when a week is selected and dashboard data is available */}
             {selectedWeek && dashboardData ? (
               <>
@@ -918,15 +914,15 @@ const Dashboard = () => {
                   refreshDashboardData={refreshDashboardData}
                   dashboardLoading={dashboardLoading}
                 />
-                <CogsTable 
-                  selectedDate={getDateSelection().weekStartDate} 
-                  weekDays={getWeekDays()} 
+                <CogsTable
+                  selectedDate={getDateSelection().weekStartDate}
+                  weekDays={getWeekDays()}
                   dashboardData={dashboardData}
                   refreshDashboardData={refreshDashboardData}
                 />
-                <LabourTable 
-                  selectedDate={getDateSelection().weekStartDate} 
-                  weekDays={getWeekDays()} 
+                <LabourTable
+                  selectedDate={getDateSelection().weekStartDate}
+                  weekDays={getWeekDays()}
                   dashboardData={dashboardData}
                   refreshDashboardData={refreshDashboardData}
                 />
@@ -955,8 +951,8 @@ const Dashboard = () => {
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
-                      !selectedWeek 
-                        ? "Please select a week to view dashboard data." 
+                      !selectedWeek
+                        ? "Please select a week to view dashboard data."
                         : dashboardMessage || "No dashboard data available for the selected week."
                     }
                   />
@@ -1033,6 +1029,7 @@ const Dashboard = () => {
           />
         </div>
       </Modal>
+      <SyncModal open={isPosSyncing || posSyncStatus === 'pending'} />
     </div>
   );
 };

@@ -5,7 +5,7 @@ import SubTrack from '../../assets/svgs/Subtract.svg';
 const TooltipIcon = ({ text }) => {
   if (!text) return null;
   return (
-    <span className="ml-2 align-middle inline-block">
+    <span className="ml-2 align-middle inline-block mb-0.5">
       <Tooltip placement="bottomLeft" title={text}>
         <img src={SubTrack} alt="SubTrack" className="inline-block align-middle w-4 h-4" aria-describedby=":r2b:" />
       </Tooltip>
