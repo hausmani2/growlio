@@ -199,6 +199,7 @@ const SquareCallbackHandler = () => {
           if (completionHandledRef.current) return;
           completionHandledRef.current = true;
           cleanupRealtimeResources();
+          setIsStartingSync(false);
           message.success('Sync completed successfully');
           navigate('/dashboard', { replace: true });
         },
@@ -214,6 +215,7 @@ const SquareCallbackHandler = () => {
           if (merchantStatus?.isCompleted) {
             completionHandledRef.current = true;
             cleanupRealtimeResources();
+            setIsStartingSync(false);
             message.success('Sync completed successfully');
             navigate('/dashboard', { replace: true });
           }
@@ -222,17 +224,26 @@ const SquareCallbackHandler = () => {
         }
       }, 10000);
 
-      await triggerPosSync(restaurantIdForSync);
+      const syncStartResponse = await triggerPosSync(restaurantIdForSync);
+
+      // Backend may return `{ status: "sync_started" }` meaning work continues asynchronously.
+      // Keep the modal open until websocket/poll reports completed.
+      if (
+        syncStartResponse?.status &&
+        String(syncStartResponse.status).toLowerCase() !== 'sync_started'
+      ) {
+        // If backend returns an unexpected terminal state, stop loader.
+        // (Completion path will still close it if sync completes quickly.)
+      }
     } catch (error) {
       cleanupRealtimeResources();
+      setIsStartingSync(false);
       const msg =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
         error?.message ||
         'Failed to start sync.';
       message.error(msg);
-    } finally {
-      setIsStartingSync(false);
     }
   }, [
     cleanupRealtimeResources,

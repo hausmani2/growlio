@@ -83,6 +83,7 @@ const PosLocations = () => {
           if (completionHandledRef.current) return;
           completionHandledRef.current = true;
           cleanupRealtimeResources();
+          setIsStartingSync(false);
           message.success('Sync completed successfully');
           navigate('/dashboard', { replace: true });
         },
@@ -98,6 +99,7 @@ const PosLocations = () => {
           if (merchantStatus?.isCompleted) {
             completionHandledRef.current = true;
             cleanupRealtimeResources();
+            setIsStartingSync(false);
             message.success('Sync completed successfully');
             navigate('/dashboard', { replace: true });
           }
@@ -109,14 +111,13 @@ const PosLocations = () => {
       await triggerPosSync(restaurantId);
     } catch (e) {
       cleanupRealtimeResources();
+      setIsStartingSync(false);
       const msg =
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         e?.message ||
         'Failed to start sync.';
       message.error(msg);
-    } finally {
-      setIsStartingSync(false);
     }
   }, [cleanupRealtimeResources, navigate, restaurantId, selectedLocationId]);
 
