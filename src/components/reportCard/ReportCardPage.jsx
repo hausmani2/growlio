@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ReportCard, SetupProgressCard, YourGradeCard, DailyPerformanceCard } from "./index";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
-import { message } from "antd";
+import { Button, message } from "antd";
 import { getOnboardingProgress } from "../../utils/onboardingUtils";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -268,6 +268,8 @@ const ReportCardPage = () => {
   return (
     <div className="w-full mx-auto">
       <div className="w-full flex flex-col gap-3">
+       
+
         <div data-guidance="meet_lio_report_card">
           <ReportCard
             score={score}
@@ -282,6 +284,30 @@ const ReportCardPage = () => {
             showSetupCompletePopup={isOnboardingComplete}
           />
         </div>
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on the <span className="text-purple-600">Report Card</span>
+            </p>
+            <Button
+              type="default"
+              className="text-blue-600 hover:!text-blue-800 transition-colors font-medium text-base border border-blue-600"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('growlio:youtubePlayer', {
+                    detail: {
+                      action: 'open',
+                      title: 'Report Card Tutorial',
+                      embedUrl: 'https://www.youtube.com/embed/XexAdO4ocK0?rel=0',
+                    },
+                  })
+                );
+              }}
+            >
+              Watch Video
+            </Button>
+          </div>
+        </div>vv
         
         {/* Show Daily Performance Card when onboarding is complete */}
         {isOnboardingComplete ? (

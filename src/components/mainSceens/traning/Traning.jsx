@@ -19,6 +19,11 @@ const TRAINING_VIDEOS = {
     title: 'How To Enter My Weekly Data',
     modalTitle: 'Enter Weekly Data Tutorial',
     embedUrl: 'https://www.youtube.com/embed/iEWn2Atanws?rel=0'
+  },
+  reportCard: {
+    title: 'Report Card Tutorial',
+    modalTitle: 'Report Card Tutorial',
+    embedUrl: 'https://www.youtube.com/embed/XexAdO4ocK0?rel=0'
   }
 };
 
@@ -63,6 +68,26 @@ const Training = () => {
       </div>
 
       <div className="space-y-4">
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on the <span className="text-purple-600">Report Card</span>
+            </p>
+            <button
+              onClick={() => {
+                setActiveVideoKey('reportCard');
+                setIsVideoModalVisible(true);
+              }}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
+              title="Watch Report Card Tutorial"
+              aria-label="Watch Report Card Tutorial"
+              type="button"
+            >
+              Watch Video
+            </button>
+          </div>
+        </div>
+
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">

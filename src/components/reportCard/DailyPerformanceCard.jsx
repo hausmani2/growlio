@@ -307,7 +307,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
           className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center"
           aria-label="Close out previous days"
         >
-          Close Out Previous Days
+          Close Out previous days
         </button>
       </Tooltip>
 
