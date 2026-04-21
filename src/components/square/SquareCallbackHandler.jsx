@@ -20,6 +20,10 @@ const SquareCallbackHandler = () => {
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationsError, setLocationsError] = useState(null);
   const [locations, setLocations] = useState([]);
+  // We must send backend `id` in payload field named `location_id`.
+  // Backend response contains both:
+  // - `id` (number, our DB id)
+  // - `location_id` (string, Square location id)
   const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [isStartingSync, setIsStartingSync] = useState(false);
   
@@ -131,19 +135,20 @@ const SquareCallbackHandler = () => {
 
       const normalized = (Array.isArray(list) ? list : []).map((loc) => ({
         ...loc,
-        // Backend locations list sometimes returns `id` (not `location_id`).
-        // We normalize to always have a `location_id` field for selection + payload.
-        location_id: loc?.location_id ?? loc?.id ?? loc?.locationId ?? null,
-        id: loc?.id ?? loc?.location_id ?? loc?.locationId ?? null,
+        // Keep both ids:
+        // - `id`: backend DB id (number) -> USE THIS FOR payload
+        // - `location_id`: Square location id (string) -> display only
+        id: loc?.id ?? null,
+        location_id: loc?.location_id ?? loc?.locationId ?? null,
         name: loc?.name ?? loc?.business_name ?? loc?.location_name ?? 'Location',
         sync_enabled: Boolean(loc?.sync_enabled ?? loc?.syncEnabled ?? false),
       }));
 
       setLocations(normalized);
       if (!selectedLocationId) {
-        const firstEnabled = normalized.find((l) => l.sync_enabled && l.location_id);
-        const first = firstEnabled || normalized.find((l) => l.location_id);
-        if (first?.location_id) setSelectedLocationId(first.location_id);
+        const firstEnabled = normalized.find((l) => l.sync_enabled && l.id);
+        const first = firstEnabled || normalized.find((l) => l.id);
+        if (first?.id) setSelectedLocationId(first.id);
       }
     } catch (error) {
       const msg =
@@ -267,7 +272,7 @@ const SquareCallbackHandler = () => {
         key: 'select',
         width: 90,
         render: (_, record) => {
-          const id = record?.location_id ?? record?.id;
+          const id = record?.id;
           return (
             <input
               type="radio"
@@ -288,7 +293,7 @@ const SquareCallbackHandler = () => {
           <div>
             <div className="font-medium text-gray-900">{value || 'Location'}</div>
             <div className="text-xs text-gray-500">
-              ID: {record?.id ?? record?.location_id ?? '—'}
+              ID: {record?.id ?? '—'} • Square: {record?.location_id ?? '—'}
             </div>
           </div>
         ),
