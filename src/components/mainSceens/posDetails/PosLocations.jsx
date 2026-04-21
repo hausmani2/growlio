@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, message, Typography } from 'antd';
+import { Alert, Button, Card, Modal, Table, message, Typography } from 'antd';
 import useStore from '../../../store/store';
-import GenericDataTable from '../../common/GenericDataTable';
 import PageHeaderSection from '../../common/PageHeaderSection';
 import { apiPatch, apiPost } from '../../../utils/axiosInterceptors';
 import { getMerchantSyncStatus, triggerPosSync } from '../../../services/posApi';
@@ -15,8 +14,9 @@ const PosLocations = () => {
   const loading = useStore((s) => s.posLocationsLoading);
   const error = useStore((s) => s.posLocationsError);
   const locations = useStore((s) => s.posLocations);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
   const [isStartingSync, setIsStartingSync] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
@@ -47,18 +47,12 @@ const PosLocations = () => {
     return () => cleanupRealtimeResources();
   }, [cleanupRealtimeResources]);
 
-  useEffect(() => {
-    if (selectedLocationId) return;
-    const first = (locations || []).find((l) => l?.id);
-    if (first?.id) setSelectedLocationId(first.id);
-  }, [locations, selectedLocationId]);
-
-  const startSyncFlow = useCallback(async () => {
+  const startSyncFlow = useCallback(async (locationId) => {
     if (!restaurantId) {
       message.error('Restaurant ID not found. Please select a restaurant first.');
       return;
     }
-    if (!selectedLocationId) {
+    if (!locationId) {
       message.error('Please select a location first.');
       return;
     }
@@ -71,7 +65,7 @@ const PosLocations = () => {
       await apiPatch('/square_pos/locations/update-sync/', {
         locations: [
           {
-            location_id: selectedLocationId,
+            location_id: locationId,
             sync_enabled: true,
           },
         ],
@@ -119,26 +113,10 @@ const PosLocations = () => {
         'Failed to start sync.';
       message.error(msg);
     }
-  }, [cleanupRealtimeResources, navigate, restaurantId, selectedLocationId]);
+  }, [cleanupRealtimeResources, navigate, restaurantId]);
 
   const columns = useMemo(
     () => [
-      {
-        title: 'Select',
-        key: 'select',
-        width: 90,
-        render: (_, record) => (
-          <input
-            type="radio"
-            name="square-location"
-            checked={String(selectedLocationId || '') === String(record?.id || '')}
-            onChange={() => setSelectedLocationId(record?.id)}
-            disabled={!record?.id}
-            aria-label={`Select location ${record?.name || ''}`}
-          />
-        ),
-      },
-      { title: 'Location ID', dataIndex: 'id', key: 'id', width: 200 },
       { title: 'Name', dataIndex: 'name', key: 'name', width: 240 },
       { title: 'Status', dataIndex: 'status', key: 'status', width: 120 },
       { title: 'Timezone', dataIndex: 'timezone', key: 'timezone', width: 180 },
@@ -167,6 +145,36 @@ const PosLocations = () => {
   return (
     <div className="w-full">
       <SyncModal open={isStartingSync} />
+      <Modal
+        title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
+        open={isLocationModalOpen}
+        onCancel={() => setIsLocationModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsLocationModalOpen(false)} disabled={isStartingSync}>
+            Close
+          </Button>,
+          <Button
+            key="sync"
+            type="primary"
+            onClick={() => startSyncFlow(selectedLocation?.id)}
+            disabled={!selectedLocation?.id || isStartingSync}
+          >
+            Sync for this location
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <div className="space-y-2 text-sm">
+          <div>
+            <span className="text-gray-500">Status:</span>{' '}
+            <span className="font-medium text-gray-900">{selectedLocation?.status ?? '—'}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Timezone:</span>{' '}
+            <span className="font-medium text-gray-900">{selectedLocation?.timezone ?? '—'}</span>
+          </div>
+        </div>
+      </Modal>
       <PageHeaderSection
         title="Locations"
         description="Square locations connected to this restaurant."
@@ -175,27 +183,40 @@ const PosLocations = () => {
       <Card className="shadow-lg border border-gray-100" bodyStyle={{ padding: 16 }}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <Typography.Text className="text-gray-600">
-            Select a location and enable sync to pull your latest Square data.
+            Click a location to sync data for it.
           </Typography.Text>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => fetchPosLocations?.({ silent: true })} disabled={loading || isStartingSync}>
               Refresh
             </Button>
-            <Button type="primary" onClick={startSyncFlow} disabled={!selectedLocationId || isStartingSync}>
-              Enable Sync & Sync Now
-            </Button>
           </div>
         </div>
-        <div>
-          <GenericDataTable
-            rowKey={(r) => r?.id}
-            columns={columns}
-            dataSource={locations || []}
-            loading={loading}
-            error={error}
-            pagination={false}
-          />
-        </div>
+        {error ? (
+          <div className="mb-3">
+            <Alert type="error" showIcon message="Something went wrong" description={error} />
+          </div>
+        ) : null}
+        <Table
+          rowKey={(r) => r?.id}
+          columns={columns}
+          dataSource={locations || []}
+          loading={loading}
+          pagination={false}
+          scroll={{ x: 900 }}
+          onRow={(record) => ({
+            onClick: () => {
+              if (!record?.id) return;
+              setSelectedLocation(record);
+              setIsLocationModalOpen(true);
+            },
+          })}
+          rowClassName={(record) =>
+            record?.id ? 'cursor-pointer' : ''
+          }
+          locale={{
+            emptyText: error ? 'Failed to load data.' : 'No data found.',
+          }}
+        />
       </Card>
     </div>
   );

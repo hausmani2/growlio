@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Spin, Result, Button, Table, Typography, message } from 'antd';
+import { Spin, Result, Button, Modal, Table, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import useStore from '../../store/store';
 import { apiGet, apiPatch, apiPost } from '../../utils/axiosInterceptors';
@@ -22,9 +22,10 @@ const SquareCallbackHandler = () => {
   const [locations, setLocations] = useState([]);
   // We must send backend `id` in payload field named `location_id`.
   // Backend response contains both:
-  // - `id` (number, our DB id)
-  // - `location_id` (string, Square location id)
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  // - `id` (number, our DB id) -> send this
+  // - `location_id` (string, Square location id) -> display only
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isStartingSync, setIsStartingSync] = useState(false);
   
   const handleSquareCallback = useStore((state) => state.handleSquareCallback);
@@ -145,11 +146,6 @@ const SquareCallbackHandler = () => {
       }));
 
       setLocations(normalized);
-      if (!selectedLocationId) {
-        const firstEnabled = normalized.find((l) => l.sync_enabled && l.id);
-        const first = firstEnabled || normalized.find((l) => l.id);
-        if (first?.id) setSelectedLocationId(first.id);
-      }
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
@@ -160,7 +156,7 @@ const SquareCallbackHandler = () => {
     } finally {
       setLocationsLoading(false);
     }
-  }, [restaurantIdForLocations, selectedLocationId]);
+  }, [restaurantIdForLocations]);
 
   useEffect(() => {
     if (result === 'success') {
@@ -168,12 +164,12 @@ const SquareCallbackHandler = () => {
     }
   }, [loadLocations, result]);
 
-  const startSyncFlow = useCallback(async () => {
+  const startSyncFlow = useCallback(async (locationId) => {
     if (!restaurantIdForSync) {
       message.error('Restaurant ID not found. Please login and retry.');
       return;
     }
-    if (!selectedLocationId) {
+    if (!locationId) {
       message.error('Please select a location first.');
       return;
     }
@@ -186,7 +182,7 @@ const SquareCallbackHandler = () => {
       await apiPatch('/square_pos/locations/update-sync/', {
         locations: [
           {
-            location_id: selectedLocationId,
+            location_id: locationId,
             sync_enabled: true,
           },
         ],
@@ -249,7 +245,6 @@ const SquareCallbackHandler = () => {
     cleanupRealtimeResources,
     navigate,
     restaurantIdForSync,
-    selectedLocationId,
   ]);
   
   const handleGoToDashboard = () => {
@@ -279,24 +274,6 @@ const SquareCallbackHandler = () => {
   if (result === 'success') {
     const columns = [
       {
-        title: 'Select',
-        key: 'select',
-        width: 90,
-        render: (_, record) => {
-          const id = record?.id;
-          return (
-            <input
-              type="radio"
-              name="square-location"
-              checked={String(selectedLocationId || '') === String(id || '')}
-              onChange={() => setSelectedLocationId(id)}
-              disabled={!id}
-              aria-label={`Select location ${record?.name || ''}`}
-            />
-          );
-        },
-      },
-      {
         title: 'Location',
         dataIndex: 'name',
         key: 'name',
@@ -325,12 +302,38 @@ const SquareCallbackHandler = () => {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="w-full max-w-4xl px-4">
           <SyncModal open={isStartingSync} />
+          <Modal
+            title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
+            open={isLocationModalOpen}
+            onCancel={() => setIsLocationModalOpen(false)}
+            footer={[
+              <Button key="close" onClick={() => setIsLocationModalOpen(false)} disabled={isStartingSync}>
+                Close
+              </Button>,
+              <Button
+                key="sync"
+                type="primary"
+                onClick={() => startSyncFlow(selectedLocation?.id)}
+                disabled={!selectedLocation?.id || isStartingSync}
+              >
+                Sync for this location
+              </Button>,
+            ]}
+            destroyOnClose
+          >
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-gray-500">Square Location:</span>{' '}
+                <span className="font-medium text-gray-900">{selectedLocation?.location_id ?? '—'}</span>
+              </div>
+            </div>
+          </Modal>
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
             <Result
               status="success"
               icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
               title="Square POS Connected Successfully!"
-              subTitle="Select a location to enable syncing, then we’ll sync your data and take you to Close Out Your Day(s)."
+              subTitle="Click a location to sync your Square data, then we’ll take you to Close Out Your Day(s)."
             />
 
             <div className="mt-4">
@@ -351,24 +354,19 @@ const SquareCallbackHandler = () => {
                 dataSource={locations}
                 pagination={false}
                 size="middle"
+                onRow={(record) => ({
+                  onClick: () => {
+                    if (!record?.id) return;
+                    setSelectedLocation(record);
+                    setIsLocationModalOpen(true);
+                  },
+                })}
+                rowClassName={(record) => (record?.id ? 'cursor-pointer' : '')}
               />
 
               <div className="mt-4 flex flex-wrap gap-2 justify-end">
                 <Button onClick={loadLocations} disabled={locationsLoading || isStartingSync}>
                   Refresh Locations
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={startSyncFlow}
-                  disabled={!selectedLocationId || isStartingSync}
-                >
-                  Enable Sync & Sync Now
-                </Button>
-                <Button onClick={handleGoToSettings} disabled={isStartingSync}>
-                  View Square POS Details
-                </Button>
-                <Button onClick={handleGoToDashboard} disabled={isStartingSync}>
-                  Skip for now
                 </Button>
               </div>
             </div>
