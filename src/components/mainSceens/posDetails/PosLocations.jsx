@@ -117,6 +117,20 @@ const PosLocations = () => {
 
   const columns = useMemo(
     () => [
+      {
+        title: '',
+        key: 'sync_enabled_indicator',
+        width: 40,
+        render: (_, record) => (
+          <span
+            className={`inline-block h-2.5 w-2.5 rounded-full ${
+              record?.sync_enabled ? 'bg-green-500' : 'border border-gray-300 bg-white'
+            }`}
+            aria-label={record?.sync_enabled ? 'Sync enabled' : 'Sync not enabled'}
+            title={record?.sync_enabled ? 'Sync enabled' : 'Sync not enabled'}
+          />
+        ),
+      },
       { title: 'Name', dataIndex: 'name', key: 'name', width: 240 },
       { title: 'Status', dataIndex: 'status', key: 'status', width: 120 },
       { title: 'Timezone', dataIndex: 'timezone', key: 'timezone', width: 180 },
