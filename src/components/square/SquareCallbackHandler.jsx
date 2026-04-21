@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Spin, Result, Button, Table, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import useStore from '../../store/store';
-import { apiGet, apiPost } from '../../utils/axiosInterceptors';
+import { apiGet, apiPatch, apiPost } from '../../utils/axiosInterceptors';
 import { getMerchantSyncStatus, triggerPosSync } from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
@@ -175,7 +175,7 @@ const SquareCallbackHandler = () => {
     cleanupRealtimeResources();
 
     try {
-      await apiPost('/square_pos/locations/update-sync/', {
+      await apiPatch('/square_pos/locations/update-sync/', {
         locations: [
           {
             location_id: selectedLocationId,

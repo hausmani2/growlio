@@ -3,7 +3,7 @@ import { Button, Card, message, Typography } from 'antd';
 import useStore from '../../../store/store';
 import GenericDataTable from '../../common/GenericDataTable';
 import PageHeaderSection from '../../common/PageHeaderSection';
-import { apiPost } from '../../../utils/axiosInterceptors';
+import { apiPatch, apiPost } from '../../../utils/axiosInterceptors';
 import { getMerchantSyncStatus, triggerPosSync } from '../../../services/posApi';
 import { createPosSyncWebSocket } from '../../../services/websocket';
 import SyncModal from '../../SyncModal';
@@ -68,7 +68,7 @@ const PosLocations = () => {
     cleanupRealtimeResources();
 
     try {
-      await apiPost('/square_pos/locations/update-sync/', {
+      await apiPatch('/square_pos/locations/update-sync/', {
         locations: [
           {
             location_id: selectedLocationId,
