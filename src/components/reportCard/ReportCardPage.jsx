@@ -307,7 +307,7 @@ const ReportCardPage = () => {
               Watch Video
             </Button>
           </div>
-        </div>vv
+        </div>
         
         {/* Show Daily Performance Card when onboarding is complete */}
         {isOnboardingComplete ? (
