@@ -131,7 +131,10 @@ const SquareCallbackHandler = () => {
 
       const normalized = (Array.isArray(list) ? list : []).map((loc) => ({
         ...loc,
+        // Backend locations list sometimes returns `id` (not `location_id`).
+        // We normalize to always have a `location_id` field for selection + payload.
         location_id: loc?.location_id ?? loc?.id ?? loc?.locationId ?? null,
+        id: loc?.id ?? loc?.location_id ?? loc?.locationId ?? null,
         name: loc?.name ?? loc?.business_name ?? loc?.location_name ?? 'Location',
         sync_enabled: Boolean(loc?.sync_enabled ?? loc?.syncEnabled ?? false),
       }));
@@ -264,7 +267,7 @@ const SquareCallbackHandler = () => {
         key: 'select',
         width: 90,
         render: (_, record) => {
-          const id = record?.location_id;
+          const id = record?.location_id ?? record?.id;
           return (
             <input
               type="radio"
@@ -285,7 +288,7 @@ const SquareCallbackHandler = () => {
           <div>
             <div className="font-medium text-gray-900">{value || 'Location'}</div>
             <div className="text-xs text-gray-500">
-              ID: {record?.location_id ?? '—'}
+              ID: {record?.id ?? record?.location_id ?? '—'}
             </div>
           </div>
         ),
