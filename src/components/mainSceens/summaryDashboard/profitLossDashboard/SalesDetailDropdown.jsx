@@ -36,13 +36,27 @@ const SalesDetailDropdown = ({
   // Note: sales_actual comes directly from API response, not calculated
   // Only fixed_costs and variable_costs arrays should be summed
 
+  const getFirstNumeric = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === '') continue;
+      const parsed = parseFloat(value);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
   // Calculate values - handle different possible field names
   const salesBudget = parseFloat(salesData.sales_budget) || 0;
   
   // Get sales_actual directly from API response (not calculated)
   const salesActual = parseFloat(salesData.sales_actual) || 0;
-  const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
-  const onlineSales = parseFloat(salesData.online_sales) || 0;
+  const appOnlineSales = getFirstNumeric(salesData.app_online_sales, salesData.app_sales);
+  const onlineSales = getFirstNumeric(
+    salesData.online_sales,
+    salesData.online_sale,
+    salesData.online_order_sales,
+    salesData.online_ordering_sales
+  );
   
   // Handle third party sales using utility functions with percentage support
   // Check if third-party sales data is nested or at root level
@@ -114,7 +128,15 @@ const SalesDetailDropdown = ({
         percentageField = `percentage_${fieldName}`;
       }
       
-      const percentageValue = salesData[percentageField];
+      const percentageValue =
+        fieldName === 'online_sales'
+          ? getFirstNumeric(
+              salesData.percentage_online_sales,
+              salesData.percentage_online_sale,
+              salesData.percentage_online_order_sales,
+              salesData.percentage_online_ordering_sales
+            )
+          : salesData[percentageField];
       
       if (percentageValue !== undefined && percentageValue !== null && percentageValue !== 'None') {
         return formatPercentage(parseFloat(percentageValue));
@@ -232,15 +254,13 @@ const SalesDetailDropdown = ({
               </div>
 
               {/* Online Sales - Single Level (No Expandable) */}
-              {(onlineSales !== 0 || salesData?.online_sales !== '' && salesData?.online_sales !== null && salesData?.online_sales !== undefined) && (
-                <div className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
-                  <div className="flex items-center gap-2">
-                    <MobileOutlined className="text-gray-600 text-xs" />
-                    <Text className="text-xs font-medium text-gray-700">Online Sales:</Text>
-                  </div>
-                  <Text className="text-xs font-semibold">{formatValue(onlineSales, 'online_sales')}</Text>
+              <div className={`flex items-center justify-between p-2 ${expandedInnerCardBg} rounded border ${expandedInnerCardBorder}`}>
+                <div className="flex items-center gap-2">
+                  <MobileOutlined className="text-gray-600 text-xs" />
+                  <Text className="text-xs font-medium text-gray-700">Online Sales:</Text>
                 </div>
-              )}
+                <Text className="text-xs font-semibold">{formatValue(onlineSales, 'online_sales')}</Text>
+              </div>
 
               {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (

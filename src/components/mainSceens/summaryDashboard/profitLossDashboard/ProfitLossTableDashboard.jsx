@@ -1276,7 +1276,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render period summary - Optimized for performance
   const renderWeeklySummary = useCallback((categoryKey, totals) => {
     switch (categoryKey) {
-      case 'sales_budget':
+      case 'sales_actual':
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="text-center">
@@ -1299,7 +1299,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
             </div>
           </div>
         );
-      case 'labour':
+      case 'labour_actual':
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="text-center">
@@ -1323,29 +1323,29 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
           </div>
         );
       case 'food_cost_actual':
-        return 
-        // (
-        //   <div className="grid grid-cols-2 gap-3">
-        //     <div className="text-center">
-        //       <div className="text-xs text-gray-600">Total Food Cost Budget</div>
-        //       <div className="text-sm font-bold text-blue-900">{formatValue(totals.food_cost, 'food_cost')}</div>
-        //     </div>
-        //     <div className="text-center">
-        //       <div className="text-xs text-gray-600">Total Food Cost Actual</div>
-        //       <div className="text-sm font-bold text-green-900">{formatValue(totals.food_cost_actual, 'food_cost_actual')}</div>
-        //     </div>
-        //   </div>
-        // );
-       case 'variableCost':
-         return
-        //   (
-        //    <div className="text-center">
-        //      <div className="text-xs text-gray-600">Total Variable Cost</div>
-        //      <div className="text-sm font-bold text-blue-900">
-        //        {printFormat === 'percentage' ? formatValue(totals.variable_costs_percent, 'variableCost') : formatValue(totals.variable_costs, 'variableCost')}
-        //      </div>
-        //    </div>
-        //  );
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="text-center">
+              <div className="text-xs text-gray-600">Total Food Cost Budget</div>
+              <div className="text-sm font-bold text-blue-900">{formatValue(totals.food_cost, 'food_cost')}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-gray-600">Total Food Cost Actual</div>
+              <div className="text-sm font-bold text-green-900">{formatValue(totals.food_cost_actual, 'food_cost_actual')}</div>
+            </div>
+          </div>
+        );
+      case 'variableCost':
+        return (
+          <div className="text-center">
+            <div className="text-xs text-gray-600">Total Operating Expenses</div>
+            <div className="text-sm font-bold text-blue-900">
+              {printFormat === 'percentage'
+                ? formatValue(totals.variable_costs_percent, 'variableCost')
+                : formatValue(totals.variable_costs, 'variableCost')}
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -1370,10 +1370,23 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
   // Render sales details
   const renderSalesDetails = useCallback((salesData) => {
     const isClosed = isDayClosed(salesData);
+    const getFirstNumeric = (...values) => {
+      for (const value of values) {
+        if (value === null || value === undefined || value === '') continue;
+        const parsed = parseFloat(value);
+        if (!Number.isNaN(parsed)) return parsed;
+      }
+      return 0;
+    };
     const salesBudget = parseFloat(salesData.sales_budget) || 0;
     const salesActual = parseFloat(salesData.sales_actual) || 0;
-    const appOnlineSales = parseFloat(salesData.app_online_sales) || 0;
-    const onlineSales = parseFloat(salesData.online_sales) || 0;
+    const appOnlineSales = getFirstNumeric(salesData.app_online_sales, salesData.app_sales);
+    const onlineSales = getFirstNumeric(
+      salesData.online_sales,
+      salesData.online_sale,
+      salesData.online_order_sales,
+      salesData.online_ordering_sales
+    );
     const tickets = parseFloat(salesData.tickets) || 0;
     const avgTicket = parseFloat(salesData.average_ticket) || (tickets > 0 ? salesActual / tickets : 0);
     const amtOverUnder = parseFloat(salesData.sales_amount) || 0;
@@ -1462,20 +1475,25 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
               </div>
 
               {/* Online Sales */}
-              {(onlineSales !== 0 || (salesData?.online_sales !== '' && salesData?.online_sales !== null && salesData?.online_sales !== undefined)) && (
-                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600 text-xs">🌐</span>
-                    <span className="text-xs font-medium text-gray-700">Online Sales:</span>
-                  </div>
-                  <span className="text-xs font-semibold">
-                    {printFormat === 'percentage'
-                      ? formatPercentage(parseFloat(salesData?.percentage_online_sales || 0))
-                      : formatCurrency(onlineSales)
-                    }
-                  </span>
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600 text-xs">🌐</span>
+                  <span className="text-xs font-medium text-gray-700">Online Sales:</span>
                 </div>
-              )}
+                <span className="text-xs font-semibold">
+                  {printFormat === 'percentage'
+                    ? formatPercentage(
+                        getFirstNumeric(
+                          salesData?.percentage_online_sales,
+                          salesData?.percentage_online_sale,
+                          salesData?.percentage_online_order_sales,
+                          salesData?.percentage_online_ordering_sales
+                        )
+                      )
+                    : formatCurrency(onlineSales)
+                  }
+                </span>
+              </div>
 
               {/* Third Party Sales - Professional Display */}
               {thirdPartyProviders.length > 0 && (
