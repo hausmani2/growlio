@@ -14,7 +14,13 @@ import { createPosSyncWebSocket } from '../services/websocket';
 const DEFAULT_SOCKET_ERROR_MESSAGE =
   'Realtime updates are temporarily unavailable. Polling will keep checking sync status.';
 
-export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) => {
+export const usePosSync = ({
+  getRestaurantId,
+  getWeekStart,
+  getSyncDateRange,
+  onDashboardData,
+  onSyncCompleted,
+}) => {
   const queryClient = useQueryClient();
   const websocketRef = useRef(null);
   const pollingIntervalRef = useRef(null);
@@ -66,6 +72,7 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
         });
 
         dashboardCallbackRef.current?.(freshDashboardData);
+        onSyncCompleted?.();
         queryClient.invalidateQueries({
           queryKey: ['dashboard', String(restaurantId)],
         });
@@ -83,7 +90,7 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
         }, 0);
       }
     },
-    [cleanupRealtimeResources, markCompleted, queryClient, resetSyncState]
+    [cleanupRealtimeResources, markCompleted, onSyncCompleted, queryClient, resetSyncState]
   );
 
   const checkMerchantStatus = useCallback(
@@ -142,7 +149,8 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
   );
 
   const syncMutation = useMutation({
-    mutationFn: ({ restaurantId }) => triggerPosSync(restaurantId),
+    mutationFn: ({ restaurantId, startDate, endDate }) =>
+      triggerPosSync(restaurantId, { startDate, endDate }),
   });
 
   const startSync = useCallback(async () => {
@@ -167,6 +175,10 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
       return { success: false, reason: 'missing-week' };
     }
 
+    const syncDateRange = getSyncDateRange?.() || {};
+    const startDate = syncDateRange.startDate || normalizedWeekStart;
+    const endDate = syncDateRange.endDate || null;
+
     cleanupRealtimeResources();
     setActiveRestaurantId(restaurantId);
     setSyncError(null);
@@ -175,7 +187,7 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
     startRealtimeListeners(restaurantId, normalizedWeekStart);
 
     try {
-      await syncMutation.mutateAsync({ restaurantId });
+      await syncMutation.mutateAsync({ restaurantId, startDate, endDate });
       checkMerchantStatus(restaurantId, normalizedWeekStart).catch(() => {
         // Polling continues even if the immediate check fails.
       });
@@ -198,6 +210,7 @@ export const usePosSync = ({ getRestaurantId, getWeekStart, onDashboardData }) =
     checkMerchantStatus,
     cleanupRealtimeResources,
     getRestaurantId,
+    getSyncDateRange,
     getWeekStart,
     isSyncing,
     resetSyncState,

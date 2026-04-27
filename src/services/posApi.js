@@ -7,8 +7,16 @@ export const posQueryKeys = {
   dashboard: (restaurantId, weekStart) => ['dashboard', String(restaurantId), weekStart],
 };
 
-export const triggerPosSync = async (restaurantId) => {
-  const response = await apiGet(`/square_pos/sync_data/?restaurant_id=${restaurantId}`);
+export const triggerPosSync = async (restaurantId, options = {}) => {
+  const { startDate, endDate } = options;
+  const query = new URLSearchParams({
+    restaurant_id: String(restaurantId),
+  });
+
+  if (startDate) query.set('start_date', startDate);
+  if (endDate) query.set('end_date', endDate);
+
+  const response = await apiGet(`/square_pos/sync_data/?${query.toString()}`);
   return response.data;
 };
 

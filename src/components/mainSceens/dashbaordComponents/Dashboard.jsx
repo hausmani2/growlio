@@ -47,6 +47,7 @@ const Dashboard = () => {
   const [dashboardMessage, setDashboardMessage] = useState(null);
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
+  const [isPosSyncCompletedModalVisible, setIsPosSyncCompletedModalVisible] = useState(false);
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
@@ -264,11 +265,40 @@ const Dashboard = () => {
     setDashboardMessage(null);
   }, []);
 
+  const handlePosSyncCompleted = useCallback(() => {
+    setIsPosSyncCompletedModalVisible(true);
+  }, []);
+
+  const selectedWeekStart = getDateSelection()?.weekStartDate
+    ? dayjs(getDateSelection().weekStartDate)
+    : null;
+  const isFutureWeekSelected =
+    !!selectedWeekStart && selectedWeekStart.startOf('day').isAfter(dayjs().startOf('day'));
+
   const { startSync: handleSquareSyncNow, isSyncing: isPosSyncing, syncStatus: posSyncStatus } = usePosSync({
     getRestaurantId: ensureRestaurantId,
     getWeekStart: () => getDateSelection()?.weekStartDate,
+    getSyncDateRange: () => {
+      const weekStartDate = getDateSelection()?.weekStartDate;
+      if (!weekStartDate) return null;
+      const start = dayjs(weekStartDate).startOf('week');
+      const end = dayjs(weekStartDate).endOf('week');
+      return {
+        startDate: start.format('YYYY-MM-DD'),
+        endDate: end.format('YYYY-MM-DD'),
+      };
+    },
     onDashboardData: handlePosDashboardRefresh,
+    onSyncCompleted: handlePosSyncCompleted,
   });
+
+  const handleSyncPosClick = useCallback(() => {
+    if (isFutureWeekSelected) {
+      message.warning('Sync is only available for current or past weeks.');
+      return;
+    }
+    handleSquareSyncNow();
+  }, [handleSquareSyncNow, isFutureWeekSelected]);
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();
@@ -833,9 +863,9 @@ const Dashboard = () => {
                       size="medium"
                       type="default"
                       data-testid="sync-pos-button"
-                      onClick={handleSquareSyncNow}
+                      onClick={handleSyncPosClick}
                       loading={isPosSyncing}
-                      disabled={!isSquareConnected || isPosSyncing}
+                      disabled={!isSquareConnected || isPosSyncing || !selectedWeekStart || isFutureWeekSelected}
                       className="border-gray-200 bg-white text-gray-700 hover:!border-gray-300 hover:!bg-gray-50 hover:!text-gray-900"
                     >
                       <span className="inline-flex items-center gap-2">
@@ -866,6 +896,10 @@ const Dashboard = () => {
                   }}
                   onChange={handleWeekPickerChange}
                   allowClear
+                  disabledDate={(current) => {
+                    if (!current) return false;
+                    return current.startOf('week').isAfter(dayjs().startOf('day'));
+                  }}
                 />
               </div>
 
@@ -1030,6 +1064,26 @@ const Dashboard = () => {
         </div>
       </Modal>
       <SyncModal open={isPosSyncing || posSyncStatus === 'pending'} />
+      <Modal
+        title="POS Data Sync Complete"
+        open={isPosSyncCompletedModalVisible}
+        onCancel={() => setIsPosSyncCompletedModalVisible(false)}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setIsPosSyncCompletedModalVisible(false)}
+          >
+            Got it
+          </Button>,
+        ]}
+        centered
+        destroyOnClose
+      >
+        <p className="text-gray-700 mb-0">
+          Your actual Sales and Labor data have been updated successfully. Please add COGS manually.
+        </p>
+      </Modal>
     </div>
   );
 };
