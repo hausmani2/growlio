@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Result, Spin } from 'antd';
+import { Button, Result, Spin } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet } from '../../../utils/axiosInterceptors';
 
@@ -21,10 +21,10 @@ const VerifyEmail = () => {
       try {
         await apiGet(`/authentication/verify-email/${token}/`);
         setStatus('success');
-        setMessage('Email verified successfully. Redirecting to your report card...');
+        setMessage('Email verified successfully. Redirecting to login...');
 
         window.setTimeout(() => {
-          navigate('/dashboard/report-card', { replace: true });
+          navigate('/login', { replace: true });
         }, 1500);
       } catch (error) {
         const statusCode = error?.response?.status;
@@ -67,6 +67,17 @@ const VerifyEmail = () => {
         status={status}
         title={status === 'success' ? 'Email Verified' : 'Verification Failed'}
         subTitle={message}
+        extra={
+          status === 'success' ? (
+            <Button type="primary" onClick={() => navigate('/login', { replace: true })}>
+              Go to Login
+            </Button>
+          ) : (
+            <Button onClick={() => navigate('/signup', { replace: true })}>
+              Create Account Again
+            </Button>
+          )
+        }
       />
     </div>
   );

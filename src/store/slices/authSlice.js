@@ -333,7 +333,9 @@ const createAuthSlice = (set, get) => {
       set(() => ({ loading: true, error: null }));
       
       try {
-        const response = await apiPost('/authentication/register/', formData);
+        const verifyRedirectBase = `${window.location.origin}/authentication/verify-email/`;
+        const registerUrl = `/authentication/register/?redirect_url=${encodeURIComponent(verifyRedirectBase)}`;
+        const response = await apiPost(registerUrl, formData);
         
         // Check if registration response includes a token
         // The response structure is: { status, message, data: { access, refresh, ...userData } }

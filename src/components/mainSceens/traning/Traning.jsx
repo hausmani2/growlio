@@ -20,6 +20,11 @@ const TRAINING_VIDEOS = {
     modalTitle: 'Enter Weekly Data Tutorial',
     embedUrl: 'https://www.youtube.com/embed/iEWn2Atanws?rel=0'
   },
+  operatingExpenses: {
+    title: 'Operating Expenses I Have',
+    modalTitle: 'Operating Expenses Tutorial',
+    embedUrl: 'https://www.youtube.com/embed/XYxZacU_zsk?rel=0'
+  },
   reportCard: {
     title: 'Report Card Tutorial',
     modalTitle: 'Report Card Tutorial',
@@ -141,6 +146,26 @@ const Training = () => {
               className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
               title="Watch Enter Weekly Data Tutorial"
               aria-label="Watch Enter Weekly Data Tutorial"
+              type="button"
+            >
+              Watch Video
+            </button>
+          </div>
+        </div>
+
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on <span className="text-purple-600">Operating Expenses I Have</span>
+            </p>
+            <button
+              onClick={() => {
+                setActiveVideoKey('operatingExpenses');
+                setIsVideoModalVisible(true);
+              }}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
+              title="Watch Operating Expenses Tutorial"
+              aria-label="Watch Operating Expenses Tutorial"
               type="button"
             >
               Watch Video

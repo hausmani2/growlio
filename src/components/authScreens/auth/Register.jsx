@@ -5,7 +5,7 @@ import Message from "../../../assets/svgs/Message_open.svg"
 import Lock from "../../../assets/svgs/lock.svg"
 import User from "../../../assets/svgs/User.svg"
 import { Link } from 'react-router-dom';
-import { Input, message, Button, Spin, Checkbox, Tooltip, Modal, Tabs } from 'antd';
+import { Input, message, Button, Checkbox, Tooltip, Modal, Tabs } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 import TermsOfService from '../../legal/TermsOfService';
@@ -24,6 +24,8 @@ const Register = () => {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [activeLegalTab, setActiveLegalTab] = useState('terms');
+  const [isVerifyEmailModalOpen, setIsVerifyEmailModalOpen] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   
   // Zustand store hooks
   const { 
@@ -134,11 +136,9 @@ const Register = () => {
         setIsSubmitting(false);
         
         if (result.needsLogin) {
-          // No token received - user needs to login
-          message.success('Registration successful! Please login to continue.');
-          setTimeout(() => {
-            navigate('/login');
-          }, 1500);
+          // Registration requires email verification before login.
+          setRegisteredEmail(form.email);
+          setIsVerifyEmailModalOpen(true);
         } else {
           // Token received - user is automatically authenticated
           message.success('Registration successful! Welcome to Growlio!');
@@ -482,6 +482,48 @@ const Register = () => {
           You can also open each document in a new tab: <Link to="/terms" target="_blank" rel="noreferrer">Terms</Link>{' '}
           | <Link to="/privacy" target="_blank" rel="noreferrer">Privacy</Link>{' '}
           | <Link to="/dpa" target="_blank" rel="noreferrer">DPA</Link>
+        </div>
+      </Modal>
+
+      <Modal
+        title="Account created successfully"
+        open={isVerifyEmailModalOpen}
+        onCancel={() => {
+          setIsVerifyEmailModalOpen(false);
+          navigate(`/verify-email?email=${encodeURIComponent(registeredEmail)}`);
+        }}
+        footer={[
+          <Button
+            key="gmail"
+            onClick={() => {
+              window.open('https://mail.google.com/', '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Open Gmail
+          </Button>,
+          <Button
+            key="continue"
+            type="primary"
+            onClick={() => {
+              setIsVerifyEmailModalOpen(false);
+              navigate(`/verify-email?email=${encodeURIComponent(registeredEmail)}`);
+            }}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700"
+          >
+            Continue
+          </Button>,
+        ]}
+        centered
+      >
+        <div className="space-y-2">
+          <p className="text-gray-700">
+            Your account has been created. Please verify your email before signing in.
+          </p>
+          {registeredEmail && (
+            <p className="text-sm text-gray-600">
+              Verification email sent to: <span className="font-semibold text-gray-800">{registeredEmail}</span>
+            </p>
+          )}
         </div>
       </Modal>
 

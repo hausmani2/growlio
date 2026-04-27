@@ -279,7 +279,9 @@ const SalesDataModal = ({
       // Check if there's existing data - if dailyData exists and has entries, it's an edit, not a new entry
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
 
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
+      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
+
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData && hasPreviousWeekData) {
         setShowPopupDelay(true); // Show delay indicator
 
         const popupTimer = setTimeout(() => {
@@ -300,9 +302,15 @@ const SalesDataModal = ({
         // If editing existing data, skip the confirmation modal
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
+      } else if (!hasPreviousWeekData) {
+        // First-time budget flow: no previous week labor data exists yet.
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+        setShowLaborRateConfirmationModal(false);
+        setShowPopupDelay(false);
       }
     }
-  }, [visible, selectedWeekData]);
+  }, [visible, selectedWeekData, dashboardSummaryData]);
 
   // Separate effect for when restaurant goals change (only reinitialize form data, don't fetch API again)
   useEffect(() => {
@@ -318,7 +326,9 @@ const SalesDataModal = ({
       // Only show if there's no existing data (new entry only, not editing)
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
 
-      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed && !hasExistingData) {
+      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
+
+      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed && !hasExistingData && hasPreviousWeekData) {
         // Show the confirmation modal if forward_previous_week_rate is false and it's a new entry
         setShowPopupDelay(true);
 
@@ -343,9 +353,15 @@ const SalesDataModal = ({
         setShowLaborRateInput(false);
         setShowLaborRateConfirmationModal(false);
         setShowPopupDelay(false);
+      } else if (!hasPreviousWeekData) {
+        // No previous week data: skip labor-rate confirmation popup.
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+        setShowLaborRateConfirmationModal(false);
+        setShowPopupDelay(false);
       }
     }
-  }, [restaurantGoals]);
+  }, [restaurantGoals, visible, selectedWeekData, dashboardSummaryData, laborRateConfirmed]);
 
   // Cleanup timeouts and reset refs when component unmounts or modal closes
   useEffect(() => {
@@ -1059,7 +1075,9 @@ const SalesDataModal = ({
       // Only show if there's no existing data (new entry only, not editing)
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
 
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData) {
+      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
+
+      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData && hasPreviousWeekData) {
         setShowPopupDelay(true);
 
         const popupTimer = setTimeout(() => {
@@ -1078,6 +1096,12 @@ const SalesDataModal = ({
         // If editing existing data, skip the confirmation modal
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
+      } else if (!hasPreviousWeekData) {
+        // No previous week data available: do not show confirmation popup.
+        setLaborRateConfirmed(true);
+        setShowLaborRateInput(false);
+        setShowLaborRateConfirmationModal(false);
+        setShowPopupDelay(false);
       }
     } else {
       // User cancelled - close the modal

@@ -98,7 +98,8 @@ const createDashboardSummarySlice = (set, get) => {
                 const responseData = {
                     ...response.data,
                     average_hourly_rate: avgHourlyRateData?.average_hourly_rate || null,
-                    previous_week_average_hourly_rate: avgHourlyRateData?.previous_week_average_hourly_rate || null
+                    previous_week_average_hourly_rate: avgHourlyRateData?.previous_week_average_hourly_rate || null,
+                    is_previous_week_data: avgHourlyRateData?.is_previous_week_data === true
                 };
                 
                 set({ 

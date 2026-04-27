@@ -31,6 +31,7 @@ const ExpenseWrapperContent = () => {
 
     // Operating Expenses disclaimer (shown before guidance starts)
     const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+    const [isOeTutorialModalVisible, setIsOeTutorialModalVisible] = useState(false);
     useEffect(() => {
         const pageIsExpense =
             location.pathname.includes('/onboarding/expense') || location.pathname.includes('/dashboard/expense');
@@ -506,6 +507,50 @@ const ExpenseWrapperContent = () => {
                 />
 
             </div>
+
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-6">
+                <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-base text-orange-600">
+                        Watch a tutorial on <span className="text-purple-600">Operating Expenses I Have</span>
+                    </p>
+                    <button
+                        onClick={() => setIsOeTutorialModalVisible(true)}
+                        className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-sm border border-blue-600 rounded-md px-3 py-2"
+                        title="Watch Operating Expenses Tutorial"
+                        aria-label="Watch Operating Expenses Tutorial"
+                        type="button"
+                    >
+                        Watch Video
+                    </button>
+                </div>
+            </div>
+
+            <Modal
+                title="Operating Expenses Tutorial"
+                open={isOeTutorialModalVisible}
+                onCancel={() => setIsOeTutorialModalVisible(false)}
+                footer={null}
+                width={900}
+                centered
+                destroyOnClose
+            >
+                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+                    <iframe
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            border: 0
+                        }}
+                        src="https://www.youtube.com/embed/XYxZacU_zsk?rel=0"
+                        title="Operating Expenses Tutorial"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    />
+                </div>
+            </Modal>
 
             {/* Content Section */}
             <div className="space-y-6">
