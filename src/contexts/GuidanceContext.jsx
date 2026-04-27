@@ -714,6 +714,9 @@ export const GuidanceProvider = ({ children }) => {
       // Allow backend to configure once (e.g., onboarding_expense) and still display on dashboard expense page.
       const resolvePageNames = (name) => {
         if (name === 'expense') return ['expense', 'onboarding_expense'];
+        // Sidebar anchors are shared across dashboard and budget routes.
+        // Keep backward compatibility for CMS rows saved under either page.
+        if (name === 'budget') return ['budget', 'dashboard'];
         return [name];
       };
       const acceptablePages = resolvePageNames(pageName);
@@ -849,12 +852,22 @@ export const GuidanceProvider = ({ children }) => {
           week_selector: 5,
         };
 
+        const normalizeRegularGuidanceKey = (key) => {
+          const normalized = String(key || '').trim();
+          if (normalized === 'sidebar_profit_loss') return 'sidebar_profit-loss';
+          if (
+            normalized === 'sidebar_close_out_your_day' ||
+            normalized === 'sidebar_close_out_your_days' ||
+            normalized === 'sidebar_close_out_your_day(s)'
+          ) {
+            return 'sidebar_dashboard';
+          }
+          return normalized;
+        };
+
         const filteredPopups = allPopups
           .filter((popup) => acceptablePages.includes(popup.page) && popup.is_active === true)
-          .map((popup) =>
-            // Backward compatibility for older key naming
-            popup.key === 'sidebar_profit_loss' ? { ...popup, key: 'sidebar_profit-loss' } : popup
-          )
+          .map((popup) => ({ ...popup, key: normalizeRegularGuidanceKey(popup.key) }))
           .sort((a, b) => {
             if (pageName === 'onboarding_basic_information') {
               const aRank = onboardingBasicInformationOrder[a.key];
@@ -1342,7 +1355,27 @@ export const GuidanceProvider = ({ children }) => {
           el.getAttribute('data-guidance')
         );
         
-        const validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
+        let validPopups = pagePopups.filter(popup => allElements.includes(popup.key));
+        if (pageName === 'budget' && validPopups.length > 1) {
+          const budgetPageOrder = {
+            sidebar_budget: 0,
+            sidebar_dashboard: 1,
+            'sidebar_profit-loss': 2,
+            sidebar_onboarding: 3,
+            summary_table: 4,
+            week_selector: 5,
+          };
+          validPopups = [...validPopups].sort((a, b) => {
+            const aRank = budgetPageOrder[a.key];
+            const bRank = budgetPageOrder[b.key];
+            const normalizedARank = Number.isInteger(aRank) ? aRank : Number.MAX_SAFE_INTEGER;
+            const normalizedBRank = Number.isInteger(bRank) ? bRank : Number.MAX_SAFE_INTEGER;
+            if (normalizedARank !== normalizedBRank) {
+              return normalizedARank - normalizedBRank;
+            }
+            return a.id - b.id;
+          });
+        }
         debugLog('startGuidance: dom check', {
           pageName,
           popupsFromApi: pagePopups.map((p) => p.key),

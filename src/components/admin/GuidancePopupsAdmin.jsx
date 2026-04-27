@@ -247,6 +247,10 @@ const GuidancePopupsAdmin = () => {
         ];
       case 'budget':
         return [
+          { label: 'Sidebar: Budget', value: 'sidebar_budget' },
+          { label: 'Sidebar: Close Out Your Day(s)', value: 'sidebar_dashboard' },
+          { label: 'Sidebar: Profit & Loss', value: 'sidebar_profit-loss' },
+          { label: 'Sidebar: Your Setup', value: 'sidebar_onboarding' },
           { label: 'Budget Dashboard Title', value: 'budget_dashboard_title' },
           { label: 'Labor Rate Confirmation Title', value: 'labor_rate_confirmation_title' },
           { label: 'Labor Rate Confirmation Message', value: 'labor_rate_confirmation_message' },
