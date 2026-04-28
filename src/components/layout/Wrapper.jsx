@@ -490,7 +490,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'chat',
           icon: <MessageOutlined />,
-          label: 'Chat Assistant',
+          label: 'Your LIO Advisor',
           onClick: () => navigate('/dashboard/chat'),
         }
       ],
