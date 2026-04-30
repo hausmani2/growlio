@@ -79,12 +79,32 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   // }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
   const posEnabled = true;
 
-  const handleSquarePosClick = () => {
+  const checkSquareStatus = useStore((state) => state.checkSquareStatus);
+  const squareStatus = useStore((state) => state.squareStatus);
+  const squareConnectionData = useStore((state) => state.squareConnectionData);
+  const lastSquareStatusRestaurantIdRef = useRef(null);
+
+  const handleSquarePosClick = async () => {
+    const restaurantId = localStorage.getItem('restaurant_id');
+    if (restaurantId) {
+      await checkSquareStatus(restaurantId);
+    }
     navigate('/dashboard/square');
   };
 
-  const squareStatus = useStore((state) => state.squareStatus);
-  const squareConnectionData = useStore((state) => state.squareConnectionData);
+  useEffect(() => {
+    if (!showSidebar) return;
+
+    const restaurantId = localStorage.getItem('restaurant_id');
+    if (!restaurantId) return;
+
+    // Avoid duplicate calls for the same selected restaurant.
+    if (lastSquareStatusRestaurantIdRef.current === restaurantId) return;
+    lastSquareStatusRestaurantIdRef.current = restaurantId;
+
+    checkSquareStatus(restaurantId);
+  }, [showSidebar, checkSquareStatus]);
+
   const isPosConnected = useMemo(() => {
     if (squareStatus === 'connected') return true;
     const connectedFlag = squareConnectionData?.connected;

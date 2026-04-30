@@ -28,6 +28,11 @@ const TotalExpense = ({ data,  onSave }) => {
         
         // Calculate total monthly expenses by converting all expenses to monthly
         const totalMonthlyExpenses = allExpenses.reduce((sum, field) => {
+            const isActive = field.is_active !== undefined ? field.is_active : true;
+            if (!isActive) {
+                return sum;
+            }
+
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
                 field.label.toLowerCase().includes(keyword)
@@ -50,6 +55,11 @@ const TotalExpense = ({ data,  onSave }) => {
 
         // Calculate total weekly expenses by converting all expenses to weekly
         const totalWeeklyExpenses = allExpenses.reduce((sum, field) => {
+            const isActive = field.is_active !== undefined ? field.is_active : true;
+            if (!isActive) {
+                return sum;
+            }
+
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
                 field.label.toLowerCase().includes(keyword)
