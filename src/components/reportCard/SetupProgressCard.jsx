@@ -11,11 +11,16 @@ const ITEM_ROUTES = {
   "Restaurant details": "/dashboard/basic-information",
   "Operating information": "/dashboard/sales-channels",
   "Labor information": "/dashboard/labor-information",
+  "COGS": "/dashboard/food-cost-details",
   "COGs": "/dashboard/food-cost-details",
   "Add third-party delivery info": "/dashboard/third-party-delivery",
   "Go to your budget": "/dashboard/budget",
   "Enter one month of sales and expenses": "/onboarding/profitability",
 };
+
+const formatSetupItemLabel = (label) => (
+  label === "COGs" ? "COGS" : label
+);
 
 /**
  * Matches the "Setup XX% Complete + checklist + right-side illustration" card UI.
@@ -95,7 +100,7 @@ const SetupProgressCard = ({
                         isClickable ? "cursor-pointer hover:text-orange-600 hover:underline transition-colors" : "",
                       ].join(" ")}
                     >
-                      {item.label}
+                      {formatSetupItemLabel(item.label)}
                     </span>
                   </li>
                 );

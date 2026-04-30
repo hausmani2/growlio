@@ -330,6 +330,14 @@ export const DEFAULT_EXPENSES = [
     fixed_expense_type: 'MONTHLY',
     is_active: true
   },
+  {
+    category: 'Advertising and Promotion',
+    is_value_type: true,
+    name: 'Advertising and Marketing',
+    amount: 500,
+    fixed_expense_type: 'MONTHLY',
+    is_active: true
+  },
   
   // Loan
   {

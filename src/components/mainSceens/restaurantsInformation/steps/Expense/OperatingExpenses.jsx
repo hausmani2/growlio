@@ -21,20 +21,66 @@ const clampStrAmount = (v) => {
   return String(v);
 };
 
+const ADVERTISING_MARKETING_NAMES = new Set([
+  "advertising and marketing",
+  "advertising & marketing"
+]);
+const ADVERTISING_PROMOTION_CATEGORY = "Advertising and Promotion";
+const ADVERTISING_MARKETING_NAME = "Advertising and Marketing";
+
+const isAdvertisingMarketingExpense = (expense) => (
+  ADVERTISING_MARKETING_NAMES.has(String(expense?.name || expense?.label || "").trim().toLowerCase())
+);
+
+const getExpenseFieldKey = (field) => (
+  `${String(field?.category || "").trim().toLowerCase()}::${
+    isAdvertisingMarketingExpense(field)
+      ? ADVERTISING_MARKETING_NAME.toLowerCase()
+      : String(field?.label || field?.name || "").trim().toLowerCase()
+  }`
+);
+
+const getDefaultExpenseKey = (expense) => (
+  `${String(expense?.category || "").trim().toLowerCase()}::${
+    isAdvertisingMarketingExpense(expense)
+      ? ADVERTISING_MARKETING_NAME.toLowerCase()
+      : String(expense?.name || "").trim().toLowerCase()
+  }`
+);
+
+const getRequiredDefaultExpenses = () => (
+  DEFAULT_EXPENSES.filter(isAdvertisingMarketingExpense)
+);
+
+const normalizeRequiredExpenseField = (field) => {
+  if (!isAdvertisingMarketingExpense(field)) return field;
+
+  return {
+    ...field,
+    label: ADVERTISING_MARKETING_NAME,
+    category: ADVERTISING_PROMOTION_CATEGORY,
+    is_value_type: true,
+    value: "500",
+    expense_type: "monthly",
+  };
+};
+
+const convertDefaultExpenseToField = (expense, index = 0) => ({
+  id: Date.now() + index + Math.random(),
+  label: expense.name,
+  value: expense.amount ? expense.amount.toString() : "0",
+  key: `dynamic_expense_${Date.now()}_${index}_${Math.random()}`,
+  expense_type: expense.fixed_expense_type === 'MONTHLY' ? 'monthly' : 'weekly',
+  is_active: expense.is_active !== undefined ? expense.is_active : true,
+  is_value_type: expense.is_value_type !== undefined ? expense.is_value_type : true,
+  category: expense.category || 'Other',
+});
+
 /**
  * Convert DEFAULT_EXPENSES format to dynamicFixedFields format
  */
 const convertDefaultExpensesToFields = (defaultExpenses) => {
-  return defaultExpenses.map((expense, index) => ({
-    id: Date.now() + index + Math.random(),
-    label: expense.name,
-    value: expense.amount ? expense.amount.toString() : "0",
-    key: `dynamic_expense_${Date.now()}_${index}_${Math.random()}`,
-    expense_type: expense.fixed_expense_type === 'MONTHLY' ? 'monthly' : 'weekly',
-    is_active: expense.is_active !== undefined ? expense.is_active : true,
-    is_value_type: expense.is_value_type !== undefined ? expense.is_value_type : true,
-    category: expense.category || 'Other',
-  }));
+  return defaultExpenses.map(convertDefaultExpenseToField);
 };
 
 /**
@@ -75,21 +121,35 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
     }
     
     // If we have existing data, ensure all fields have required properties
-    const fieldsWithDefaults = current.map(field => ({
-      ...field,
-      is_active: field.is_active !== undefined ? field.is_active : true,
-      is_value_type: field.is_value_type !== undefined ? field.is_value_type : true,
-      category: field.category || "Other"
-    }));
+    let fieldsWithDefaults = current.map(field => {
+      const normalizedField = normalizeRequiredExpenseField(field);
+      return {
+        ...normalizedField,
+        is_active: normalizedField.is_active !== undefined ? normalizedField.is_active : true,
+        is_value_type: normalizedField.is_value_type !== undefined ? normalizedField.is_value_type : true,
+        category: normalizedField.category || "Other"
+      };
+    });
+
+    const existingKeys = new Set(fieldsWithDefaults.map(getExpenseFieldKey));
+    const missingRequiredDefaults = getRequiredDefaultExpenses()
+      .filter((expense) => !existingKeys.has(getDefaultExpenseKey(expense)))
+      .map((expense, index) => convertDefaultExpenseToField(expense, fieldsWithDefaults.length + index));
+
+    if (missingRequiredDefaults.length > 0) {
+      fieldsWithDefaults = [...fieldsWithDefaults, ...missingRequiredDefaults];
+    }
     
     // Check if any fields need updating
-    const needsUpdate = fieldsWithDefaults.some((field, index) => {
+    const needsUpdate = fieldsWithDefaults.length !== current.length || fieldsWithDefaults.some((field, index) => {
       const original = current[index];
       if (!original) return true;
       return (
         field.is_active !== (original.is_active !== undefined ? original.is_active : true) ||
         field.is_value_type !== (original.is_value_type !== undefined ? original.is_value_type : true) ||
-        field.category !== (original.category || "Other")
+        field.category !== (original.category || "Other") ||
+        field.value !== original.value ||
+        field.expense_type !== original.expense_type
       );
     });
     

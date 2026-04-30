@@ -835,7 +835,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Actual Avg. Daily Labor Rate:</Text>
+                <Text strong className="text-sm sm:text-base">Week to Date Avg. Actual Hourly Rate:</Text>
                 <Input
                   value={`${(() => {
                     const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
@@ -1393,7 +1393,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                 }
                               },
                               {
-                                title: 'Actual Avg. Daily Labor Rate',
+                                title: 'Week to Date Avg. Actual Hourly Rate',
                                 dataIndex: 'dailyLaborRate',
                                 key: 'dailyLaborRate',
                                 width: 180,
@@ -1565,7 +1565,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                 )}
                 
                 <div>
-                  <Text strong className="text-sm sm:text-base">Actual Avg. Daily Labor Rate:</Text>
+                  <Text strong className="text-sm sm:text-base">Week to Date Avg. Actual Hourly Rate:</Text>
                   <Input
                     value={`${(() => {
                       if (weeklyData.length === 0) return '$0.00/hr';

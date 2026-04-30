@@ -48,6 +48,10 @@ const Dashboard = () => {
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
   const [isPosSyncCompletedModalVisible, setIsPosSyncCompletedModalVisible] = useState(false);
+  const tutorialLinkClassName = 'text-purple-600 cursor-pointer hover:text-purple-700 hover:underline';
+  const openOperatingExpensesTutorial = () => {
+        setIsOeTutorialModalVisible(true);
+    };
 
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState(null);
@@ -926,7 +930,15 @@ const Dashboard = () => {
                 <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <p className="font-medium text-base text-orange-600">
-                      Watch a tutorial on <span className="text-purple-600">How To Enter My Weekly Data</span>
+                      Watch a tutorial on{' '}
+                      <button
+                        type="button"
+                        onClick={() => setIsTutorialModalVisible(true)}
+                        className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                        title="Watch Enter Weekly Data Tutorial"
+                      >
+                        How To Enter My Weekly Data
+                      </button>
                     </p>
                     <button
                       onClick={() => setIsTutorialModalVisible(true)}

@@ -28,7 +28,7 @@ const ArrowScribble = ({ className }) => (
 
 const YourGradeCard = ({
   grade = "B",
-  message = "Labor, COGs, and rent are too high.\nReduce to improve your grade.",
+  message = "Labor, COGS, and rent are too high.\nReduce to improve your grade.",
   setupPercent = 33,
   title = "Get the Most Out of Growlio",
   subtitle = "This is a great start! Enter more information to complete setup.",

@@ -723,7 +723,18 @@ const SummaryDashboard = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on how to create a <span className="text-purple-600">Budget Dashboard</span>
+              Watch a tutorial on how to create a{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveBudgetVideoKey('createBudget');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch: How to Create a Budget Dashboard"
+              >
+                Budget Dashboard
+              </button>
             </p>
             <button
               onClick={() => {
@@ -746,10 +757,18 @@ const SummaryDashboard = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on <span className="text-purple-600 cursor-pointer hover:text-purple-700"  onClick={() => {
-                setActiveBudgetVideoKey('useBudget');
-                setIsVideoModalVisible(true);
-              }}>How to Use My Budget</span>
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                onClick={() => {
+                  setActiveBudgetVideoKey('useBudget');
+                  setIsVideoModalVisible(true);
+                }}
+                title="Watch: How to Use My Budget"
+              >
+                How to Use My Budget
+              </button>
             </p>
             <button
               onClick={() => {

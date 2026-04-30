@@ -191,6 +191,7 @@ const ExpenseWrapperContent = () => {
         ]
             .filter(field => field && field.label && field.label.trim() !== '') // Only filter out invalid entries
             .map(field => ({
+                category: field.category || "Other",
                 name: field.label,
                 amount: parseFloat(field.value || 0),
                 expense_type: field.expense_type || field.fixed_expense_type || field.variable_expense_type || "monthly",
@@ -511,7 +512,15 @@ const ExpenseWrapperContent = () => {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 mb-6">
                 <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-base text-orange-600">
-                        Watch a tutorial on <span className="text-purple-600">Operating Expenses I Have</span>
+                        Watch a tutorial on{' '}
+                        <button
+                            type="button"
+                            onClick={() => setIsOeTutorialModalVisible(true)}
+                            className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                            title="Watch Operating Expenses Tutorial"
+                        >
+                            Operating Expenses I Have
+                        </button>
                     </p>
                     <button
                         onClick={() => setIsOeTutorialModalVisible(true)}

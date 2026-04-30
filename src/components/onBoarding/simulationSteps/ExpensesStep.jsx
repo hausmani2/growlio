@@ -5,11 +5,55 @@ import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, formatExpenseForAPI, calculateMon
 
 const { Option } = Select;
 
+const ADVERTISING_MARKETING_NAMES = new Set([
+  'advertising and marketing',
+  'advertising & marketing'
+]);
+const ADVERTISING_PROMOTION_CATEGORY = 'Advertising and Promotion';
+const ADVERTISING_MARKETING_NAME = 'Advertising and Marketing';
+
+const isAdvertisingMarketingExpense = (expense) => (
+  ADVERTISING_MARKETING_NAMES.has(String(expense?.name || '').trim().toLowerCase())
+);
+
+const getExpenseKey = (expense) => (
+  `${String(expense?.category || '').trim().toLowerCase()}::${
+    isAdvertisingMarketingExpense(expense)
+      ? ADVERTISING_MARKETING_NAME.toLowerCase()
+      : String(expense?.name || '').trim().toLowerCase()
+  }`
+);
+
+const normalizeRequiredExpense = (expense) => {
+  if (!isAdvertisingMarketingExpense(expense)) return expense;
+
+  return {
+    ...expense,
+    name: ADVERTISING_MARKETING_NAME,
+    category: ADVERTISING_PROMOTION_CATEGORY,
+    is_value_type: true,
+    amount: 500,
+    fixed_expense_type: 'MONTHLY',
+  };
+};
+
+const getRequiredDefaultExpenses = () => (
+  DEFAULT_EXPENSES.filter(isAdvertisingMarketingExpense)
+);
+
+const mergeRequiredDefaultExpenses = (expenses) => {
+  const current = Array.isArray(expenses) ? expenses.map(normalizeRequiredExpense) : [];
+  const existingKeys = new Set(current.map(getExpenseKey));
+  const missing = getRequiredDefaultExpenses().filter((expense) => !existingKeys.has(getExpenseKey(expense)));
+
+  return missing.length > 0 ? [...current, ...missing] : current;
+};
+
 const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false }) => {
   // Initialize with default expenses if no data provided, or merge with existing data
   const [expenses, setExpenses] = useState(() => {
     if (data && Array.isArray(data) && data.length > 0) {
-      return data;
+      return mergeRequiredDefaultExpenses(data);
     }
     return DEFAULT_EXPENSES;
   });
@@ -34,7 +78,7 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
   // Initialize expenses from data prop when it changes
   useEffect(() => {
     if (data && Array.isArray(data) && data.length > 0 && !hasInitialized) {
-      setExpenses(data);
+      setExpenses(mergeRequiredDefaultExpenses(data));
       setHasInitialized(true);
     } else if (!hasInitialized && (!data || !Array.isArray(data) || data.length === 0)) {
       setHasInitialized(true);

@@ -21,9 +21,9 @@ const getMessageFromScore = (score) => {
   if (score >= 80) {
     return "Great job! Your restaurant is performing well.\nKeep up the excellent work!";
   } else if (score >= 60) {
-    return "You're on the right track!\nFocus on optimizing labor, COGs, and rent to improve your grade.";
+    return "You're on the right track!\nFocus on optimizing labor, COGS, and rent to improve your grade.";
   } else {
-    return "Labor, COGs, and rent are too high.\nReduce to improve your grade.";
+    return "Labor, COGS, and rent are too high.\nReduce to improve your grade.";
   }
 };
 

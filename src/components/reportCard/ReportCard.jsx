@@ -611,7 +611,7 @@ const ReportCard = ({
               deltaPct={metrics.labor?.deltaPct}
             />
             <MiniGauge
-              label="COGs"
+              label="COGS"
               metricKey="cogs"
               tooltipsMap={tooltips}
               goal={goals.cogs}

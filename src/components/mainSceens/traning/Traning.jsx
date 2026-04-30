@@ -76,7 +76,18 @@ const Training = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on the <span className="text-purple-600">Report Card</span>
+              Watch a tutorial on the{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('reportCard');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch Report Card Tutorial"
+              >
+                Report Card
+              </button>
             </p>
             <button
               onClick={() => {
@@ -96,7 +107,18 @@ const Training = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on how to create a <span className="text-purple-600">Budget Dashboard</span>
+              Watch a tutorial on how to create a{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('budgetDashboard');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch Budget Dashboard Tutorial"
+              >
+                Budget Dashboard
+              </button>
             </p>
             <button
               onClick={() => {
@@ -116,7 +138,18 @@ const Training = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on <span className="text-purple-600">How to Use My Budget</span>
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('budgetUse');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch How to Use My Budget Tutorial"
+              >
+                How to Use My Budget
+              </button>
             </p>
             <button
               onClick={() => {
@@ -136,7 +169,18 @@ const Training = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on <span className="text-purple-600">How To Enter My Weekly Data</span>
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('weeklyData');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch Enter Weekly Data Tutorial"
+              >
+                How To Enter My Weekly Data
+              </button>
             </p>
             <button
               onClick={() => {
@@ -156,7 +200,18 @@ const Training = () => {
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on <span className="text-purple-600">Operating Expenses I Have</span>
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('operatingExpenses');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch Operating Expenses Tutorial"
+              >
+                Operating Expenses I Have
+              </button>
             </p>
             <button
               onClick={() => {
