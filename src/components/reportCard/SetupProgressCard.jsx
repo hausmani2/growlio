@@ -12,15 +12,13 @@ const ITEM_ROUTES = {
   "Operating information": "/dashboard/sales-channels",
   "Labor information": "/dashboard/labor-information",
   "COGS": "/dashboard/food-cost-details",
-  "COGs": "/dashboard/food-cost-details",
   "Add third-party delivery info": "/dashboard/third-party-delivery",
   "Go to your budget": "/dashboard/budget",
   "Enter one month of sales and expenses": "/onboarding/profitability",
 };
 
-const formatSetupItemLabel = (label) => (
-  label === "COGs" ? "COGS" : label
-);
+/** Normalize legacy typo and map to route/display key */
+const normalizeSetupLabel = (label) => (label === "COGs" ? "COGS" : label);
 
 /**
  * Matches the "Setup XX% Complete + checklist + right-side illustration" card UI.
@@ -46,7 +44,7 @@ const SetupProgressCard = ({
 
   const handleItemClick = (item) => {
     // Use route from item object, or fallback to ITEM_ROUTES
-    const route = item.route || ITEM_ROUTES[item.label];
+    const route = item.route || ITEM_ROUTES[normalizeSetupLabel(item.label)];
     if (route) {
       navigate(route);
     }
@@ -77,7 +75,7 @@ const SetupProgressCard = ({
                   ? item.isCompleted 
                   : stepNum < currentIdx;
                 const isCurrent = !isDone && stepNum === currentIdx;
-                const hasRoute = item.route || ITEM_ROUTES[item.label];
+                const hasRoute = item.route || ITEM_ROUTES[normalizeSetupLabel(item.label)];
                 const isClickable = hasRoute && !isDone;
 
                 return (
@@ -100,7 +98,7 @@ const SetupProgressCard = ({
                         isClickable ? "cursor-pointer hover:text-orange-600 hover:underline transition-colors" : "",
                       ].join(" ")}
                     >
-                      {formatSetupItemLabel(item.label)}
+                      {normalizeSetupLabel(item.label)}
                     </span>
                   </li>
                 );

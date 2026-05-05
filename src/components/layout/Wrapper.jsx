@@ -384,7 +384,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         {
           key: 'food-cost-details',
           // icon: <MdOutlineFoodBank  />,
-          label: 'COGs',
+          label: 'COGS',
           onClick: () => navigate('/dashboard/food-cost-details'),
         },
         {

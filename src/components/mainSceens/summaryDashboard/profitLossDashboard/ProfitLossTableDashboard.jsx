@@ -278,7 +278,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       key: 'food_cost_actual', 
       label: 'Food Cost', 
       type: 'currency',
-      bgColor: 'bg-purple-100', // COGs Budget color from budget table
+      bgColor: 'bg-purple-100', // COGS Budget color from budget table
       hasDetails: true,
       detailLabel: 'Food Cost Details',
       detailFields: [

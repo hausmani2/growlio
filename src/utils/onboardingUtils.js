@@ -81,7 +81,7 @@ export const SETUP_ITEMS = [
     order: 7,
   },
   {
-    label: 'COGs',
+    label: 'COGS',
     key: RESTAURANT_STATUS_KEYS.FOOD_COST_DETAILS,
     route: '/dashboard/food-cost-details',
     order: 8,

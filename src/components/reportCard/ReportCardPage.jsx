@@ -194,11 +194,6 @@ const ReportCardPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
-  // Show loading while fetching data
-  if (salesInformationSummaryLoading && !summaryData) {
-    return <LoadingSpinner message="Loading report card..." />;
-  }
-
   // Extract and map data from API response
   // API response structure: { restaurant_id, start_date, end_date, summary: { sales, expenses, labour, cogs, profit, overall_score, grade } }
   const apiSummary = summaryData?.summary || summaryData;
@@ -288,6 +283,11 @@ const ReportCardPage = () => {
   const openTutorialInNewTab = useCallback(() => {
     window.open(REPORT_CARD_TUTORIAL.watchUrl, '_blank', 'noopener,noreferrer');
   }, []);
+
+  // Keep hooks execution order stable across renders.
+  if (salesInformationSummaryLoading && !summaryData) {
+    return <LoadingSpinner message="Loading report card..." />;
+  }
 
   return (
     <div className="w-full mx-auto">

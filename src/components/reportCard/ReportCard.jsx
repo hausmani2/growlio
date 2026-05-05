@@ -720,19 +720,6 @@ const ReportCard = ({
           <p className="text-base text-gray-700 leading-relaxed mb-4">
             Complete your setup below, then open the Budget on your dashboard to start building your budget. Growlio will guide your next actions.
           </p>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <Button
-              type="link"
-              onClick={() => {
-                setIsNextStepsModalOpen(false);
-                navigate(nextSetupRoute);
-              }}
-              className="p-0 text-orange-600 hover:text-orange-700 font-semibold text-base"
-              icon={<ArrowRightOutlined />}
-            >
-              {nextSetupLabel}
-            </Button>
-          </div>
         </div>
       </Modal>
 
