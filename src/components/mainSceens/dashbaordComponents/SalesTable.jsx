@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -11,6 +11,54 @@ import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 import { useGuidance } from '../../../contexts/GuidanceContext';
 const { Title, Text } = Typography;
+
+function isDayClosedForWtd(record) {
+  if (!record) return true;
+  if (typeof record.restaurant_open === 'boolean') {
+    return !record.restaurant_open;
+  }
+  return record.restaurant_open === 0;
+}
+
+function getDayNetActualSalesForWtd(record, providersList) {
+  if (!record) return 0;
+  let net = parseFloat(record.actualSalesInStore) || 0;
+  net += parseFloat(record.actualSalesAppOnline) || 0;
+  net += parseFloat(record.actualSalesOnline) || 0;
+  (providersList || []).forEach((provider) => {
+    const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
+    net += parseFloat(record[providerKey]) || 0;
+  });
+  return net;
+}
+
+/**
+ * Week-to-date % vs budget: sum actual and budget only for open days where net actual sales > 0.
+ */
+function computeWtdActualVsBudgetVariance(dailyData, providersList) {
+  if (!dailyData?.length) {
+    return { percent: null, display: 'N/A', isNA: true, color: '#666' };
+  }
+  let actualWTD = 0;
+  let budgetWTD = 0;
+  for (const record of dailyData) {
+    if (isDayClosedForWtd(record)) continue;
+    const dayNet = getDayNetActualSalesForWtd(record, providersList);
+    if (dayNet <= 0) continue;
+    actualWTD += dayNet;
+    budgetWTD += parseFloat(record.budgetedSales) || 0;
+  }
+  if (budgetWTD === 0) {
+    return { percent: null, display: 'N/A', isNA: true, color: '#666' };
+  }
+  const pct = ((actualWTD - budgetWTD) / budgetWTD) * 100;
+  return {
+    percent: pct,
+    display: pct.toFixed(1),
+    isNA: false,
+    color: pct < 0 ? '#ff4d4f' : '#52c41a'
+  };
+}
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
   const navigate = useNavigate();
@@ -316,6 +364,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     actualSalesAppOnline: 0,
     actualSalesOnline: 0,
     netSalesActual: 0,
+    actualVsBudgetSales: 0,
     dailyTickets: 0,
     averageDailyTicket: 0,
     // Dynamic provider fields will be added here
@@ -333,6 +382,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   // });
 
   const [weeklyData, setWeeklyData] = useState([]);
+  const wtdActualVsBudgetVariance = useMemo(
+    () => computeWtdActualVsBudgetVariance(weeklyData[0]?.dailyData, providerList),
+    [weeklyData, providerList]
+  );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingWeek, setEditingWeek] = useState(null);
   const [dataNotFound, setDataNotFound] = useState(false);
@@ -372,6 +425,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: 0,
         actualSalesOnline: 0,
         netSalesActual: 0,
+        actualVsBudgetSales: 0,
         dailyTickets: 0,
         averageDailyTicket: 0
       });
@@ -381,6 +435,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesAppOnline: 0,
         actualSalesOnline: 0,
         netSalesActual: 0,
+        actualVsBudgetSales: 0,
         dailyTickets: 0,
         averageDailyTicket: 0
       });
@@ -737,7 +792,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             actual_sales_app_online: Math.round(weeklyGoals.actualSalesAppOnline || 0),
             actual_sales_online: Math.round(weeklyGoals.actualSalesOnline || 0),
             net_sales_actual: Math.round(weeklyGoals.netSalesActual || 0),
-            actual_vs_budget_sales: (weeklyGoals.actualVsBudgetSales || 0),
+            actual_vs_budget_sales: (() => {
+              const wtdVar = computeWtdActualVsBudgetVariance(completeDailyData, providerList);
+              return wtdVar.percent != null ? wtdVar.percent : 0;
+            })(),
             daily_tickets: ensureWholeNumberTickets(weeklyGoals.dailyTickets),
             average_daily_ticket: Math.round(weeklyGoals.averageDailyTicket || 0),
             // Add dynamic provider fields to weekly data
@@ -1088,7 +1146,17 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         ? calculateAverageDailyTicket(calculatedTotals.netSalesActual, calculatedTotals.dailyTickets)
         : 0;
 
+      const wtdVar = computeWtdActualVsBudgetVariance(dailyData, mergedProviders);
+      calculatedTotals.actualVsBudgetSales = wtdVar.percent != null ? wtdVar.percent : 0;
+
       setWeeklyTotals(calculatedTotals);
+
+      if (dashboardData['Sales Performance']) {
+        setWeeklyGoals((prev) => ({
+          ...prev,
+          actualVsBudgetSales: calculatedTotals.actualVsBudgetSales
+        }));
+      }
     }
   };
 
@@ -1318,6 +1386,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           actualSalesAppOnline: weekData.weeklyTotals.actualSalesAppOnline || 0,
           actualSalesOnline: weekData.weeklyTotals.actualSalesOnline || 0,
           netSalesActual: weekData.weeklyTotals.netSalesActual || 0,
+          actualVsBudgetSales: weekData.weeklyTotals.actualVsBudgetSales || 0,
           dailyTickets: weekData.weeklyTotals.dailyTickets || 0,
           averageDailyTicket: weekData.weeklyTotals.averageDailyTicket || 0,
           ...providerList.reduce((acc, provider) => {
@@ -1341,6 +1410,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualSalesInStore: 0,
         actualSalesAppOnline: 0,
         netSalesActual: 0,
+        actualVsBudgetSales: 0,
         dailyTickets: 0,
         averageDailyTicket: 0
       };
@@ -1420,6 +1490,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           });
         }
       }
+
+      const wtdSubmit = computeWtdActualVsBudgetVariance(completeDailyData, providerList);
+      finalTotals.actualVsBudgetSales = wtdSubmit.percent != null ? wtdSubmit.percent : 0;
       
       // Transform data to API format - only save the current week's daily data
       const transformedData = {
@@ -1634,6 +1707,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         dailyTickets: 0,
         averageDailyTicket: 0,
         netSalesActual: 0,
+        actualVsBudgetSales: 0,
         // Dynamic provider fields will be added here
       }
     });
@@ -1838,6 +1912,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       totals.averageDailyTicket = totals.dailyTickets > 0
         ? calculateAverageDailyTicket(totals.netSalesActual, totals.dailyTickets)
         : 0;
+
+      const wtdVar = computeWtdActualVsBudgetVariance(dailyData, providerList);
+      totals.actualVsBudgetSales = wtdVar.percent != null ? wtdVar.percent : 0;
 
       return totals;
     };
@@ -3065,27 +3142,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 </div>
 
                 <div>
-                  <Text strong>Actual vs Budget Sales (% Over/Under):</Text>
+                  <Text strong>Week-to-Date Actual vs Budget Sales (% Over/Under):</Text>
                   <Input
-                    value={(() => {
-                      const budgetedSales = weeklyTotals.budgetedSales || 0;
-                      const netSales = weeklyTotals.netSalesActual || 0;
-                      if (budgetedSales === 0) return 0;
-                      return ((netSales - budgetedSales) / budgetedSales * 100).toFixed(1);
-                    })()}
+                    value={wtdActualVsBudgetVariance.display}
                     className="mt-1"
                     disabled
                     style={{
-                      color: (() => {
-                        const budgetedSales = weeklyTotals.budgetedSales || 0;
-                        const netSales = weeklyTotals.netSalesActual || 0;
-                        if (budgetedSales === 0) return '#666';
-                        const percentage = ((netSales - budgetedSales) / budgetedSales * 100);
-                        return percentage < 0 ? '#ff4d4f' : '#52c41a';
-                      })(),
+                      color: wtdActualVsBudgetVariance.color,
                       backgroundColor: '#fff7ed',
                     }}
-                    prefix="%"
+                    prefix={wtdActualVsBudgetVariance.isNA ? undefined : '%'}
                   />
                 </div>
 

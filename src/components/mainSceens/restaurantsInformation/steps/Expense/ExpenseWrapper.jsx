@@ -138,6 +138,12 @@ const ExpenseWrapperContent = () => {
                 // Calculate total expense - convert all to monthly for consistent calculation
                 const WEEKS_PER_MONTH = 4.33;
                 const totalExpense = dynamicExpenses.reduce((sum, field) => {
+                    // Skip inactive expenses
+                    const isActive = field.is_active !== undefined ? field.is_active : true;
+                    if (!isActive) {
+                        return sum;
+                    }
+
                     // Skip percentage fields (royalty/brand and fund) from total calculation
                     const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
                     const labelLower = field.label.toLowerCase();

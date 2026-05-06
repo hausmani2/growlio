@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Row, Col, Typography, Progress, Button, Space, Spin, Alert } from 'antd';
 import {
   Chart as ChartJS,
@@ -25,7 +25,64 @@ import useStore from '../../../store/store';
 import useRestaurantGoals from '../../../hooks/useRestaurantGoals';
 import { useNavigate } from 'react-router-dom';
 
-// Custom plugin to draw labels inside pie chart slices without extra deps
+// Match SummaryTableDashboard fixed-cost fallbacks so totals align with "Your Budget For The Week" TOTAL row.
+const parseNumericLikeTable = (value) => {
+  if (value === null || value === undefined || value === 'None' || value === '') return 0;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const getEntryFixedCostBudget = (entry) => {
+  if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.fixed_cost_total);
+  }
+  if (entry.budgeted_fixed_cost_total !== undefined && entry.budgeted_fixed_cost_total !== null && entry.budgeted_fixed_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.budgeted_fixed_cost_total);
+  }
+  if (Array.isArray(entry.fixed_costs)) {
+    return entry.fixed_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
+  }
+  if (Array.isArray(entry.fixed_costs_budget)) {
+    return entry.fixed_costs_budget.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
+  }
+  if (entry.fixed_cost_budget !== undefined && entry.fixed_cost_budget !== null && entry.fixed_cost_budget !== 'None') {
+    return parseNumericLikeTable(entry.fixed_cost_budget);
+  }
+  return parseNumericLikeTable(entry.fixed_cost);
+};
+
+const EXPENSE_PIE_PALETTE = {
+  labor_budget: { bg: '#6366f1', border: '#4f46e5' },
+  food_cost: { bg: '#ef4444', border: '#dc2626' },
+  expenses: { bg: '#22c55e', border: '#16a34a' },
+};
+
+const SLICE_INSIDE_LINE_SETS = [
+  ['Labor Budget'],
+  ['Food Cost', '(COGS)'],
+  ['Operational', 'Expense'],
+];
+
+const getEntryVariableCostBudget = (entry) => {
+  if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.variable_cost_total);
+  }
+  if (entry.budgeted_variable_cost_total !== undefined && entry.budgeted_variable_cost_total !== null && entry.budgeted_variable_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.budgeted_variable_cost_total);
+  }
+  if (Array.isArray(entry.variable_costs)) {
+    return entry.variable_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
+  }
+  if (Array.isArray(entry.variable_costs_budget)) {
+    return entry.variable_costs_budget.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
+  }
+  if (entry.variable_cost_budget !== undefined && entry.variable_cost_budget !== null && entry.variable_cost_budget !== 'None') {
+    return parseNumericLikeTable(entry.variable_cost_budget);
+  }
+  return parseNumericLikeTable(entry.variable_cost);
+};
+
+// Custom plugin: multi-line labels inside slices (avoids clipping long names like "Operational Expense")
 const SliceLabelsPlugin = {
   id: 'sliceLabels',
   afterDatasetsDraw(chart, args, pluginOptions) {
@@ -33,26 +90,41 @@ const SliceLabelsPlugin = {
     const dataset = chart.data?.datasets?.[0];
     if (!dataset) return;
     const meta = chart.getDatasetMeta(0);
-    const total = (dataset.data || []).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+    const rawValues = (dataset.data || []).map((v) => Math.abs(Number(v) || 0));
+    const total = rawValues.reduce((a, b) => a + b, 0) || 1;
+    const opts = pluginOptions || chart.options?.plugins?.sliceLabels || {};
+    const lineSets = opts.lineSets || SLICE_INSIDE_LINE_SETS;
+    const font = opts.font || '600 10px Inter, system-ui, -apple-system, Segoe UI, Roboto';
+    const lineHeight = opts.lineHeight ?? 12;
+
     ctx.save();
     meta.data.forEach((arc, index) => {
-      const value = Number(dataset.data[index]) || 0;
+      const value = rawValues[index] || 0;
       if (!value) return;
       const percentage = (value / total) * 100;
-      // Skip very small slices to avoid overlap
       if (percentage < 3) return;
-      const label = chart.data?.labels?.[index] || '';
+
       const props = arc.getProps(['startAngle', 'endAngle', 'innerRadius', 'outerRadius', 'x', 'y'], true);
       const angle = (props.startAngle + props.endAngle) / 2;
-      const r = props.innerRadius + (props.outerRadius - props.innerRadius) * 0.6;
+      const r = props.innerRadius + (props.outerRadius - props.innerRadius) * 0.55;
       const x = props.x + Math.cos(angle) * r;
       const y = props.y + Math.sin(angle) * r;
-      ctx.fillStyle = pluginOptions?.color || '#fff';
-      ctx.font = pluginOptions?.font || 'bold 11px Inter, system-ui, -apple-system, Segoe UI, Roboto';
+
+      const fallbackLabel = String(chart.data?.labels?.[index] || '').replace(/\n/g, ' ');
+      const linesFromOpt = Array.isArray(lineSets?.[index]) ? lineSets[index].filter(Boolean) : null;
+      const textLines = linesFromOpt?.length ? [...linesFromOpt, `${percentage.toFixed(1)}%`] : [`${fallbackLabel}`, `${percentage.toFixed(1)}%`];
+
+      ctx.fillStyle = opts.color || '#fff';
+      ctx.font = font;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const text = `${label} ${percentage.toFixed(1)}%`;
-      ctx.fillText(text, x, y);
+
+      const blockH = (textLines.length - 1) * lineHeight;
+      let yCursor = y - blockH / 2;
+      textLines.forEach((line) => {
+        ctx.fillText(line, x, yCursor);
+        yCursor += lineHeight;
+      });
     });
     ctx.restore();
   }
@@ -79,12 +151,8 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const navigate = useNavigate();
   const [chartData, setChartData] = useState([]);
   const [summaryData, setSummaryData] = useState({});
-  const [dynamicCategories, setDynamicCategories] = useState([]);
   const [weekRange, setWeekRange] = useState('');
-  const fetchBudgetAllocationSummary = useStore((s) => s.fetchBudgetAllocationSummary);
   const restaurantGoals = useStore((s) => s.restaurantGoals);
-  const lastFetchKeyRef = useRef('');
-  const fetchDebounceRef = useRef(null);
   
   // Restaurant goals functionality - using custom hook for professional handling
   // This ensures goals API is called when budget dashboard mounts
@@ -158,38 +226,24 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
       const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
       
-      // Calculate operational expense (combining fixed and variable costs)
-      let fixedCostsBudget = 0;
+      // Operational expense (budget): same field fallbacks as SummaryTableDashboard TOTAL row
+      const fixedCostsBudget = getEntryFixedCostBudget(entry);
+      const variableCostsBudget = getEntryVariableCostBudget(entry);
+      const operationalExpenseBudget = fixedCostsBudget + variableCostsBudget;
+
+      // Actuals: support array or scalar shapes from API
       let fixedCostsActual = 0;
-      let variableCostsBudget = 0;
       let variableCostsActual = 0;
-      
-      if (Array.isArray(entry.fixed_costs_budget)) {
-        fixedCostsBudget = entry.fixed_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
-      } else if (entry.fixed_cost_budget) {
-        fixedCostsBudget = parseFloat(entry.fixed_cost_budget) || 0;
-      }
-      
       if (Array.isArray(entry.fixed_costs_actual)) {
         fixedCostsActual = entry.fixed_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
       } else if (entry.fixed_cost_actual) {
         fixedCostsActual = parseFloat(entry.fixed_cost_actual) || 0;
       }
-      
-      if (Array.isArray(entry.variable_costs_budget)) {
-        variableCostsBudget = entry.variable_costs_budget.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
-      } else if (entry.variable_cost_budget) {
-        variableCostsBudget = parseFloat(entry.variable_cost_budget) || 0;
-      }
-      
       if (Array.isArray(entry.variable_costs_actual)) {
         variableCostsActual = entry.variable_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
       } else if (entry.variable_cost_actual) {
         variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
       }
-      
-      // Combine fixed and variable costs into operational expense
-      const operationalExpenseBudget = fixedCostsBudget + variableCostsBudget;
       const operationalExpenseActual = fixedCostsActual + variableCostsActual;
       
       // Use the pre-calculated profit/loss values from the data if available
@@ -232,7 +286,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       }
     }
 
-    // Calculate summary data
+    // Calculate summary data (pie chart uses these totals so it stays in sync with the budget table)
     const summary = {
       totalSalesBudget: processedData.reduce((sum, item) => sum + item.salesBudget, 0),
       totalSalesActual: processedData.reduce((sum, item) => sum + item.salesActual, 0),
@@ -240,57 +294,13 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       totalFoodCostActual: processedData.reduce((sum, item) => sum + item.foodCostActual, 0),
       totalLaborBudget: processedData.reduce((sum, item) => sum + item.laborBudget, 0),
       totalLaborActual: processedData.reduce((sum, item) => sum + item.laborActual, 0),
+      totalOperationalExpenseBudget: processedData.reduce((sum, item) => sum + item.operationalExpenseBudget, 0),
+      totalOperationalExpenseActual: processedData.reduce((sum, item) => sum + item.operationalExpenseActual, 0),
       totalProfit: processedData.reduce((sum, item) => sum + item.profit, 0)
     };
 
     setSummaryData(summary);
   }, [dashboardData]);
-
-  // Note: Removed Profit/Loss category fetch here to avoid overwriting Budget pie data.
-
-  // 2b) Fetch budget allocation summary for Total Budget pie (only Budget page)
-  useEffect(() => {
-    const start = startDate;
-    const end = endDate;
-    if (!start || !end) return;
-    const key = `budget|${start}|${end}`;
-    if (lastFetchKeyRef.current === key) return;
-    lastFetchKeyRef.current = key;
-    fetchBudgetAllocationSummary(start, end).then((res) => {
-      if (res) {
-        const baseCats = Array.isArray(res.categories) ? res.categories : [];
-        const labor = baseCats.find((c) => c.key === 'labor_budget');
-        const food = baseCats.find((c) => c.key === 'food_cost');
-        const expenses = baseCats.find((c) => c.key === 'expenses');
-        const saleCost = baseCats.find((c) => c.key === 'sale_cost');
-        
-        // Use expenses for operational expense, or combine fixed/variable if they exist (backward compatibility)
-        const fixed = baseCats.find((c) => c.key === 'fixed');
-        const variable = baseCats.find((c) => c.key === 'variable');
-        const operationalExpenseValue = expenses 
-          ? Number(expenses.value || 0)
-          : Number(fixed?.value || 0) + Number(variable?.value || 0);
-        
-        const categories = [
-          { key: 'sales_budget', label: 'Sales Budget', value: Number(res.sales_budget || 0) },
-          { key: 'labor_budget', label: 'Labor Budget', value: Number(labor?.value || 0) },
-          { key: 'food_cost', label: 'Food Cost', value: Number(food?.value || 0) },
-          { key: 'expenses', label: 'Operational Expense', value: operationalExpenseValue },
-        ];
-        
-        // Include sale_cost if it exists in the response
-        if (saleCost) {
-          categories.push({
-            key: 'sale_cost',
-            label: saleCost.label || 'Sale Cost',
-            value: Number(saleCost.value || 0)
-          });
-        }
-        
-        setDynamicCategories(categories);
-      }
-    });
-  }, [startDate, endDate, fetchBudgetAllocationSummary]);
 
   // Calculate progress percentages
   const progressData = useMemo(() => {
@@ -456,66 +466,67 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     };
   }, [summaryData]);
 
-  // Build categories for Total Budget allocation pie (Labor, Food, Operational Expense) - excluding Sales Budget
-  const computedCategories = dynamicCategories.length
-    ? dynamicCategories.filter(category => category.key !== 'sales_budget')
-    : [];
+  // Pie slices: same dollar totals as the budget table TOTAL row (Labor + COGS + Operating Expenses only)
+  const computedCategories = useMemo(() => {
+    const labor = Math.max(0, Number(summaryData.totalLaborBudget) || 0);
+    const food = Math.max(0, Number(summaryData.totalFoodCostBudget) || 0);
+    const ops = Math.max(0, Number(summaryData.totalOperationalExpenseBudget) || 0);
+    return [
+      { key: 'labor_budget', label: 'Labor Budget', value: labor },
+      { key: 'food_cost', label: 'Food Cost (COGS)', value: food },
+      { key: 'expenses', label: 'Operational Expense', value: ops },
+    ];
+  }, [
+    summaryData.totalLaborBudget,
+    summaryData.totalFoodCostBudget,
+    summaryData.totalOperationalExpenseBudget,
+  ]);
 
-  // Themed colors (matching orange brand) for budget categories (not profit/loss)
-  const palette = {
-    sales_budget: { bg: '#f97316', border: '#ea580c' }, // orange
-    labor_budget: { bg: '#6366f1', border: '#4f46e5' }, // indigo
-    food_cost: { bg: '#ef4444', border: '#dc2626' }, // red
-    variable: { bg: '#94a3b8', border: '#64748b' }, // slate
-  };
+  const categoryPieData = useMemo(
+    () => ({
+      labels: computedCategories.map((c) => c.label),
+      datasets: [
+        {
+          data: computedCategories.map((c) => Number(c.value) || 0),
+          backgroundColor: computedCategories.map((c) => EXPENSE_PIE_PALETTE[c.key].bg),
+          borderColor: computedCategories.map((c) => EXPENSE_PIE_PALETTE[c.key].border),
+          borderWidth: 2,
+        },
+      ],
+    }),
+    [computedCategories]
+  );
 
-  const fallback = { bg: '#22c55e', border: '#16a34a' }; // green fallback
-  const backgroundColors = computedCategories.map(c => (palette[c.key]?.bg) || fallback.bg);
-  const borderColors = computedCategories.map(c => (palette[c.key]?.border) || fallback.border);
-
-  // Ensure at least minimal slice for very small values
-  const categoryPieData = {
-    labels: computedCategories.map((c) => c.label),
-    datasets: [
-      {
-        data: computedCategories.map((c) => {
-          const v = Math.abs(Number(c.value) || 0);
-          return v === 0 ? 0.0001 : v;
-        }),
-        backgroundColor: backgroundColors,
-        borderColor: borderColors,
-        borderWidth: 2,
+  const categoryPieOptions = useMemo(() => {
+    const rawTotal =
+      computedCategories.reduce((sum, c) => sum + (Math.abs(Number(c.value)) || 0), 0) || 1;
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const idx = context.dataIndex;
+              const value = Number(computedCategories[idx]?.value) || 0;
+              const percentage = ((Math.abs(value) / rawTotal) * 100).toFixed(1);
+              const sign = value >= 0 ? '+' : '-';
+              return `${context.label}: ${sign}${formatCurrency(Math.abs(value))} (${percentage}%)`;
+            },
+          },
+        },
+        sliceLabels: {
+          color: '#ffffff',
+          font: '600 10px Inter, system-ui, -apple-system, Segoe UI, Roboto',
+          lineHeight: 12,
+          lineSets: SLICE_INSIDE_LINE_SETS,
+        },
       },
-    ],
-  };
-
-  const categoryPieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom',
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context) {
-            const idx = context.dataIndex;
-            const signedValues = computedCategories.map((c) => c.value);
-            const total = context.dataset.data.reduce((a, b) => a + b, 0) || 1;
-            const value = signedValues[idx];
-            const percentage = ((context.parsed / total) * 100).toFixed(1);
-            const sign = value >= 0 ? '+' : '-';
-            return `${context.label}: ${sign}${formatCurrency(Math.abs(value))} (${percentage}%)`;
-          }
-        }
-      },
-      // options for our custom slice label plugin
-      sliceLabels: {
-        color: '#ffffff',
-        font: 'bold 11px Inter, system-ui, -apple-system, Segoe UI, Roboto'
-      }
-    }
-  };
+    };
+  }, [computedCategories]);
 
   // Loading state
   if (loading) {
@@ -697,10 +708,14 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
               </div>
             </div>
             <div style={{ height: '300px' }}>
-              <Pie data={categoryPieData} options={categoryPieOptions} />
+              <Pie
+                key={`expense-pie-${summaryData.totalLaborBudget}-${summaryData.totalFoodCostBudget}-${summaryData.totalOperationalExpenseBudget}`}
+                data={categoryPieData}
+                options={categoryPieOptions}
+              />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p>This chart shows how your weekly expenses are allocated across Labor, Food, and Operational Expense.</p>
+              <p>This chart shows how your weekly expenses are allocated across Labor Budget, Food Cost (COGS), and Operational Expense.</p>
             </div>
           </Card>
         </Col>

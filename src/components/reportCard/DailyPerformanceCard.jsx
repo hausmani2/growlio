@@ -150,13 +150,31 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     fetchDailyData(start, end);
   }, [fetchDailyData]);
 
+  // Days that count as "closed" for this week (exclude explicit not-closed rows if API sends them)
+  const closedDayRows = useMemo(() => {
+    if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) return [];
+    return dailyPerformanceData.filter((item) => {
+      if (item == null) return false;
+      if (
+        item.is_closed === false ||
+        item.day_closed === false ||
+        item.is_day_closed === false
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [dailyPerformanceData]);
+
+  const showNoClosedDaysGuidance =
+    !dailyPerformanceLoading &&
+    !dailyPerformanceError &&
+    Array.isArray(dailyPerformanceData) &&
+    closedDayRows.length === 0;
+
   // Transform API data to component format
   const transformedDailyData = useMemo(() => {
-    if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) {
-      return [];
-    }
-
-    return dailyPerformanceData.map((item) => {
+    return closedDayRows.map((item) => {
       const dateObj = dayjs(item.date);
       
       // Convert full day name to short format (e.g., "Monday" -> "Mon")
@@ -184,11 +202,11 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         dateObj: dateObj
       };
     });
-  }, [dailyPerformanceData]);
+  }, [closedDayRows]);
 
   // Generate key findings from data - over on left, under on right
   const keyFindings = useMemo(() => {
-    if (!dailyPerformanceData || !Array.isArray(dailyPerformanceData)) {
+    if (!closedDayRows.length) {
       return { over: [], under: [] };
     }
 
@@ -196,7 +214,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     const under = [];
 
     // Analyze data and generate findings
-    dailyPerformanceData.forEach((item) => {
+    closedDayRows.forEach((item) => {
       // Use full day name (Sunday, Monday, etc.)
       let dayName = item.day || dayjs(item.date).format('dddd');
       // Ensure we have full day name
@@ -260,7 +278,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     });
 
     return { over, under };
-  }, [dailyPerformanceData]);
+  }, [closedDayRows]);
 
   // Handle clicking on a finding - send summary to chat
   const handleFindingClick = useCallback((finding) => {
@@ -355,6 +373,20 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
               showIcon
             />
           </div>
+        ) : showNoClosedDaysGuidance ? (
+          <div className="py-12">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <div className="text-center">
+                  <div>No data available for this week</div>
+                  <div className="mt-2 text-sm font-medium !text-orange-600">
+                    {"Scoring becomes available once you've entered your daily numbers and closed out the day."}
+                  </div>
+                </div>
+              }
+            />
+          </div>
         ) : transformedDailyData.length === 0 ? (
           <div className="py-12">
             <Empty 
@@ -436,6 +468,12 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
               <div className="text-sm text-gray-400 italic">No under-goal items</div>
             )}
           </div>
+
+          {showNoClosedDaysGuidance ? (
+            <div className="md:col-span-2 text-sm font-medium text-orange-600 text-center not-italic">
+              {"Key findings will appear once you've entered your daily numbers and closed out the day."}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
