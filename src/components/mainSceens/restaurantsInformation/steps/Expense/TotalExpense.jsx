@@ -35,7 +35,7 @@ const TotalExpense = ({ data,  onSave }) => {
 
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                field.label.toLowerCase().includes(keyword)
+                String(field?.label || '').toLowerCase().includes(keyword)
             );
             if (isPercentageField) {
                 return sum;
@@ -62,7 +62,7 @@ const TotalExpense = ({ data,  onSave }) => {
 
             // Skip percentage fields (royalty/brand and fund) from total calculation
             const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                field.label.toLowerCase().includes(keyword)
+                String(field?.label || '').toLowerCase().includes(keyword)
             );
             if (isPercentageField) {
                 return sum;

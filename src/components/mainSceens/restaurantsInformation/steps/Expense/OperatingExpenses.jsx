@@ -90,6 +90,8 @@ const convertDefaultExpensesToFields = (defaultExpenses) => {
  */
 const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
+  const [expensePendingDelete, setExpensePendingDelete] = useState(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [modalForm, setModalForm] = useState({
     category: "",
@@ -391,6 +393,24 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
     [data.dynamicFixedFields, data.dynamicVariableFields, updateData]
   );
 
+  const requestDeleteExpense = useCallback((expense) => {
+    setExpensePendingDelete(expense);
+    setIsDeleteConfirmVisible(true);
+  }, []);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteConfirmVisible(false);
+    setExpensePendingDelete(null);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (expensePendingDelete) {
+      deleteExpense(expensePendingDelete);
+    }
+    setIsDeleteConfirmVisible(false);
+    setExpensePendingDelete(null);
+  }, [expensePendingDelete, deleteExpense]);
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -459,7 +479,7 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
                         onToggleExpenseType={() => toggleExpenseType(expense)}
                         onUpdateAmount={(value) => updateExpense(expense, 'amount', value)}
                         onUpdateName={(value) => updateExpense(expense, 'name', value)}
-                        onDelete={() => deleteExpense(expense)}
+                        onDelete={() => requestDeleteExpense(expense)}
                       />
                     );
                   })}
@@ -583,6 +603,26 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
             />
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        title="Delete Expense"
+        open={isDeleteConfirmVisible}
+        onOk={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        okText="Yes, Delete"
+        cancelText={
+          expensePendingDelete?.is_active === false
+            ? "Cancel, leave it turned off"
+            : "Cancel, let me turn it off"
+        }
+        okButtonProps={{ danger: true }}
+      >
+        <p>
+          {expensePendingDelete?.is_active === false
+            ? "Are you sure you want to delete this expense? You can leave it turned off and use it again later."
+            : "Are you sure you want to delete this expense? You can turn it off instead and use it again later."}
+        </p>
       </Modal>
     </div>
   );
