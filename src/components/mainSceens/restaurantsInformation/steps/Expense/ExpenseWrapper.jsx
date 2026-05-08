@@ -109,6 +109,29 @@ const ExpenseWrapperContent = () => {
     const [apiExpenseData, setApiExpenseData] = useState({
         expenses: [],
     });
+    const [lastSavedExpenseRows, setLastSavedExpenseRows] = useState({});
+    const [hasInitializedRowBaseline, setHasInitializedRowBaseline] = useState(false);
+
+    const getComparableExpenseRow = useCallback((field) => ({
+        label: String(field?.label || "").trim(),
+        value: Number(parseFloat(field?.value || 0).toFixed(2)),
+        expense_type: String(field?.expense_type || field?.fixed_expense_type || field?.variable_expense_type || "monthly").toLowerCase(),
+        is_active: field?.is_active !== undefined ? field.is_active : true,
+        is_value_type: field?.is_value_type !== undefined ? field.is_value_type : true,
+        category: String(field?.category || "Other").trim()
+    }), []);
+
+    const buildRowSnapshot = useCallback((sourceData) => {
+        const rows = [
+            ...(sourceData?.dynamicFixedFields || []),
+            ...(sourceData?.dynamicVariableFields || [])
+        ].filter((field) => field?.id !== undefined && field?.id !== null);
+
+        return rows.reduce((acc, field) => {
+            acc[String(field.id)] = getComparableExpenseRow(field);
+            return acc;
+        }, {});
+    }, [getComparableExpenseRow]);
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
@@ -169,10 +192,26 @@ const ExpenseWrapperContent = () => {
                     totalFixedCost: totalExpense.toFixed(2),
                     totalVariableCost: "0.00"
                 }));
+                setLastSavedExpenseRows(
+                    dynamicExpenses.reduce((acc, field) => {
+                        acc[String(field.id)] = getComparableExpenseRow(field);
+                        return acc;
+                    }, {})
+                );
+                setHasInitializedRowBaseline(true);
             }
         }
         // Note: If no data exists, OperatingExpenses component will initialize with defaults
-    }, [completeOnboardingData]);
+    }, [completeOnboardingData, getComparableExpenseRow]);
+
+    useEffect(() => {
+        if (hasInitializedRowBaseline) return;
+        const hasAnyRows = (expenseData.dynamicFixedFields?.length || 0) > 0 || (expenseData.dynamicVariableFields?.length || 0) > 0;
+        if (!hasAnyRows) return;
+
+        setLastSavedExpenseRows(buildRowSnapshot(expenseData));
+        setHasInitializedRowBaseline(true);
+    }, [expenseData, hasInitializedRowBaseline, buildRowSnapshot]);
 
     // Clear error when component mounts
     useEffect(() => {
@@ -328,6 +367,8 @@ const ExpenseWrapperContent = () => {
 
                 // Clear all validation errors on successful save
                 clearAllErrors();
+                setLastSavedExpenseRows(buildRowSnapshot(expenseData));
+                setHasInitializedRowBaseline(true);
 
                 const grandTotal = apiExpenseData.expenses.reduce((sum, cost) => sum + cost.amount, 0);
 
@@ -335,16 +376,14 @@ const ExpenseWrapperContent = () => {
                 if (responseData && responseData.restaurant_id) {
                 }
 
-                // Expenses is the last onboarding step, so always navigate to Sales Data after saving
                 if (isUpdateMode && isOnBoardingCompleted) {
-                    // Update mode AND onboarding is complete: show success message and navigate to Sales Data
+                    // Update mode AND onboarding is complete: stay on Operating Expenses after saving
                     message.success("Expense information updated successfully!");
                 } else {
-                    // Onboarding mode OR new user in update mode: navigate to next step (Sales Data)
+                    // Onboarding mode OR new user in update mode: navigate to next step
                     message.success("Expense information saved successfully!");
+                    navigate('/dashboard/sales-channels');
                 }
-                // After saving expenses in setup, route to Operating Information next.
-                navigate('/dashboard/sales-channels');
             });
 
             if (!result.success) {
@@ -427,6 +466,9 @@ const ExpenseWrapperContent = () => {
                                 updateData={updateExpenseData}
                                 errors={validationErrors}
                                 isFranchise={isFranchise}
+                                onInlineSave={handleSave}
+                                loading={loading}
+                                lastSavedExpenseRows={lastSavedExpenseRows}
                             />
                             <TotalExpense
                                 data={expenseData}
@@ -573,6 +615,9 @@ const ExpenseWrapperContent = () => {
                     updateData={updateExpenseData}
                     errors={validationErrors}
                     isFranchise={isFranchise}
+                    onInlineSave={handleSave}
+                    loading={loading}
+                    lastSavedExpenseRows={lastSavedExpenseRows}
                 />
                 <TotalExpense
                     data={expenseData}

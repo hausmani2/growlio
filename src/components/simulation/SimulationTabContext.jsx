@@ -509,6 +509,8 @@ export const SimulationTabProvider = ({ children }) => {
                             onNext={() => {}}
                             onBack={() => handleTabClick(2)}
                             isFranchise={formData.basicinformation?.isFranchise || false}
+                            onInlineSave={saveCurrentStepData}
+                            isSaving={simulationOnboardingLoading}
                         />
                         <div className="mt-4 flex justify-end">
                             <button

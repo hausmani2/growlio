@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Input, Modal, Switch, InputNumber, Select, Tooltip, message } from "antd";
-import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, SaveOutlined } from "@ant-design/icons";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
 
@@ -88,7 +88,15 @@ const convertDefaultExpensesToFields = (defaultExpenses) => {
  * Internally it still updates `dynamicFixedFields` and `dynamicVariableFields`
  * so existing totals + API mapping keep working.
  */
-const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false }) => {
+const OperatingExpenses = ({
+  data,
+  updateData,
+  errors = {},
+  isFranchise = false,
+  onInlineSave,
+  loading = false,
+  lastSavedExpenseRows = {},
+}) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
   const [expensePendingDelete, setExpensePendingDelete] = useState(null);
@@ -411,6 +419,22 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
     setExpensePendingDelete(null);
   }, [expensePendingDelete, deleteExpense]);
 
+  const isExpenseDirty = useCallback((expense) => {
+    const saved = lastSavedExpenseRows?.[String(expense?.id)];
+    if (!saved) return true;
+
+    const currentComparable = {
+      label: String(expense?.name || "").trim(),
+      value: Number(parseFloat(expense?.amount || 0).toFixed(2)),
+      expense_type: String(expense?.fixed_expense_type || "MONTHLY").toLowerCase(),
+      is_active: expense?.is_active !== undefined ? expense.is_active : true,
+      is_value_type: expense?.is_value_type !== undefined ? expense.is_value_type : true,
+      category: String(expense?.category || "Other").trim(),
+    };
+
+    return JSON.stringify(saved) !== JSON.stringify(currentComparable);
+  }, [lastSavedExpenseRows]);
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -474,11 +498,14 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
                         key={expense.id}
                         expense={expense}
                         isFirstExpense={isGuidanceTarget}
+                        isDirty={isExpenseDirty(expense)}
+                        isSaving={loading}
                         onToggleActive={() => toggleExpenseActive(expense)}
                         onToggleValueType={(checked) => toggleValueType(expense, checked)}
                         onToggleExpenseType={() => toggleExpenseType(expense)}
                         onUpdateAmount={(value) => updateExpense(expense, 'amount', value)}
                         onUpdateName={(value) => updateExpense(expense, 'name', value)}
+                        onSave={onInlineSave}
                         onDelete={() => requestDeleteExpense(expense)}
                       />
                     );
@@ -632,11 +659,14 @@ const OperatingExpenses = ({ data, updateData, errors = {}, isFranchise = false 
 const ExpenseRow = ({ 
   expense, 
   isFirstExpense = false,
+  isDirty = false,
+  isSaving = false,
   onToggleActive, 
   onToggleValueType, 
   onToggleExpenseType, 
   onUpdateAmount,
   onUpdateName,
+  onSave,
   onDelete 
 }) => {
   const isRoyaltyAdFund = String(expense?.category || '').trim().toLowerCase() === 'royalty + ad fund';
@@ -682,17 +712,29 @@ const ExpenseRow = ({
             placeholder="Expense name"
           />
         </div>
-        {!isProtectedFranchiseFee && (
+        <div className="flex items-center gap-2">
           <Button
             type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={onDelete}
+            icon={<SaveOutlined />}
+            onClick={onSave}
             size="small"
+            disabled={!isDirty || isSaving}
+            className={!isDirty || isSaving ? "" : "!text-orange-600 hover:!text-orange-700"}
           >
-            Delete
+            {isSaving ? "Saving..." : "Save"}
           </Button>
-        )}
+          {!isProtectedFranchiseFee && (
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={onDelete}
+              size="small"
+            >
+              Delete
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
