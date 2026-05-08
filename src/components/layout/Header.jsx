@@ -182,9 +182,8 @@ const Header = ({ onMenuClick }) => {
     };
 
     const menuItems = [
-        
-            ...(isSimulationMode ? [] : [{
-            key: '1',
+        {
+            key: 'profile',
             label: (
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Profile</span>
@@ -192,9 +191,19 @@ const Header = ({ onMenuClick }) => {
             ),
             onClick: () => navigate('/dashboard/profile'),
             className: 'hover:bg-gray-50'
-        }]),
+        },
         {
-            key: '2',
+            key: 'plans',
+            label: (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Plans</span>
+                </div>
+            ),
+            onClick: () => navigate('/dashboard/pricing'),
+            className: 'hover:bg-gray-50'
+        },
+        {
+            key: 'logout',
             label: (
                 <div className="flex items-center gap-2 text-red-600">
                     <span className="text-sm font-medium">Logout</span>

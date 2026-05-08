@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Select, InputNumber, Switch, Button, Modal, Input, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, formatExpenseForAPI, calculateMonthlyCost, calculateWeeklyCost } from '../../../utils/simulationUtils';
 
 const { Option } = Select;
@@ -49,7 +49,7 @@ const mergeRequiredDefaultExpenses = (expenses) => {
   return missing.length > 0 ? [...current, ...missing] : current;
 };
 
-const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false }) => {
+const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false, onInlineSave, isSaving = false }) => {
   // Initialize with default expenses if no data provided, or merge with existing data
   const [expenses, setExpenses] = useState(() => {
     if (data && Array.isArray(data) && data.length > 0) {
@@ -59,6 +59,8 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
   });
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+  const [isOeTutorialModalVisible, setIsOeTutorialModalVisible] = useState(false);
   const [modalForm, setModalForm] = useState({
     category: '',
     name: '',
@@ -67,6 +69,29 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
     fixed_expense_type: 'MONTHLY',
     is_active: true
   });
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState([]);
+  const [isInlineSaveInProgress, setIsInlineSaveInProgress] = useState(false);
+  const [hasInitializedSavedSnapshot, setHasInitializedSavedSnapshot] = useState(false);
+
+  // Show the Operating Expenses disclaimer once per session when this step is opened
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('simulation_expense_disclaimer_shown_v1') === 'true') return;
+      sessionStorage.setItem('simulation_expense_disclaimer_shown_v1', 'true');
+    } catch {
+      // ignore storage errors (still show on this mount)
+    }
+    setIsDisclaimerOpen(true);
+  }, []);
+
+  const acknowledgeDisclaimer = useCallback(() => {
+    try {
+      sessionStorage.setItem('simulation_expense_disclaimer_ack_v1', 'true');
+    } catch {
+      // ignore
+    }
+    setIsDisclaimerOpen(false);
+  }, []);
 
   const normalizeExpenseAmount = (amount, isValueType) => {
     const raw = Number(amount ?? 0);
@@ -144,11 +169,11 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
   // Group expenses by category
   const expensesByCategory = useMemo(() => {
     const grouped = {};
-    expenses.forEach(expense => {
+    expenses.forEach((expense, index) => {
       if (!grouped[expense.category]) {
         grouped[expense.category] = [];
       }
-      grouped[expense.category].push(expense);
+      grouped[expense.category].push({ expense, index });
     });
     return grouped;
   }, [expenses]);
@@ -259,15 +284,153 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
     message.success('Expense removed');
   };
 
+  const getComparableExpense = useCallback((expense) => ({
+    category: String(expense?.category || '').trim(),
+    name: String(expense?.name || '').trim(),
+    amount: Number(parseFloat(expense?.amount || 0).toFixed(2)),
+    is_value_type: expense?.is_value_type !== undefined ? expense.is_value_type : true,
+    fixed_expense_type: String(expense?.fixed_expense_type || 'MONTHLY').toUpperCase(),
+    is_active: expense?.is_active !== undefined ? expense.is_active : true,
+  }), []);
+
+  useEffect(() => {
+    if (hasInitializedSavedSnapshot) return;
+    if (!Array.isArray(expenses) || expenses.length === 0) return;
+    setLastSavedSnapshot(expenses.map(getComparableExpense));
+    setHasInitializedSavedSnapshot(true);
+  }, [expenses, getComparableExpense, hasInitializedSavedSnapshot]);
+
+  const isExpenseDirty = useCallback((index) => {
+    const current = expenses[index];
+    if (!current) return false;
+    const saved = lastSavedSnapshot[index];
+    if (!saved) return true;
+    return JSON.stringify(getComparableExpense(current)) !== JSON.stringify(saved);
+  }, [expenses, getComparableExpense, lastSavedSnapshot]);
+
+  const handleInlineSave = useCallback(async () => {
+    if (!onInlineSave || isInlineSaveInProgress || isSaving) return;
+    setIsInlineSaveInProgress(true);
+    try {
+      const saved = await onInlineSave();
+      if (saved) {
+        setLastSavedSnapshot(expenses.map(getComparableExpense));
+      }
+    } finally {
+      setIsInlineSaveInProgress(false);
+    }
+  }, [onInlineSave, isInlineSaveInProgress, isSaving, expenses, getComparableExpense]);
+
   return (
     <div className="space-y-6">
+      {/* Operating Expenses Disclaimer (shown once per session on first visit) */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <span className="text-orange-600 font-bold">ℹ️</span>
+            <span>Operating Expenses Disclaimer</span>
+          </div>
+        }
+        open={isDisclaimerOpen}
+        onCancel={acknowledgeDisclaimer}
+        footer={null}
+        width={720}
+        centered={false}
+        destroyOnClose
+        maskClosable={false}
+        style={{ top: 20 }}
+        zIndex={10050}
+      >
+        <div className="space-y-3">
+          <p className="text-gray-800">
+            These expenses are preloaded as a guide. The amounts shown are not your actual numbers—replace
+            them with your real costs.
+          </p>
+          <ul className="list-disc pl-5 text-gray-700 space-y-1">
+            <li>Only keep the expenses that apply to your restaurant and turn off anything you don’t use.</li>
+            <li>Do not include Labor or Cost of Goods (COGS) here. Growlio calculates those separately.</li>
+            <li>Not sure about an expense? Ask LIO for help.</li>
+          </ul>
+          <div className="pt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={acknowledgeDisclaimer}
+              className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Header / description verbiage (matches Operating Expenses page) */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Expenses</h2>
-        <p className="text-gray-600">
-          Manage your restaurant expenses. Toggle each expense as active/inactive, set as percentage or value, and choose monthly or weekly.
-          By default, all expenses are turned on and expense amounts are estimates and may not reflect current costs.
+        <h2 className="text-2xl font-bold text-orange-600 mb-2">Expenses</h2>
+        <p className="text-gray-600 text-base">
+          When running a restaurant, it's important to understand your cost structure—especially when
+          calculating your break-even point and managing cash flow.
+        </p>
+        <p className="text-orange-600 text-base font-medium mt-1">
+          Operating Expenses=
+          <span className="font-normal text-black">
+            {' '}Operating expenses are everything you pay to run the business—except food and labor.
+          </span>
         </p>
       </div>
+
+      {/* Tutorial Video Banner (matches Operating Expenses page) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-medium text-base text-orange-600">
+            Watch a tutorial on{' '}
+            <button
+              type="button"
+              onClick={() => setIsOeTutorialModalVisible(true)}
+              className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+              title="Watch Operating Expenses Tutorial"
+            >
+              Operating Expenses I Have
+            </button>
+          </p>
+          <button
+            onClick={() => setIsOeTutorialModalVisible(true)}
+            className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-sm border border-blue-600 rounded-md px-3 py-2"
+            title="Watch Operating Expenses Tutorial"
+            aria-label="Watch Operating Expenses Tutorial"
+            type="button"
+          >
+            Watch Video
+          </button>
+        </div>
+      </div>
+
+      {/* Tutorial Video Modal */}
+      <Modal
+        title="Operating Expenses Tutorial"
+        open={isOeTutorialModalVisible}
+        onCancel={() => setIsOeTutorialModalVisible(false)}
+        footer={null}
+        width={900}
+        centered
+        destroyOnClose
+      >
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+          <iframe
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              border: 0
+            }}
+            src="https://www.youtube.com/embed/XYxZacU_zsk?rel=0"
+            title="Operating Expenses Tutorial"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </Modal>
 
       {/* Totals Summary */}
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
@@ -293,21 +456,19 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
           <div key={category} className="bg-white border border-gray-200 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">{category}</h3>
             <div className="space-y-3">
-              {categoryExpenses.map((expense, index) => {
-                const globalIndex = expenses.findIndex(e => 
-                  e.category === expense.category && 
-                  e.name === expense.name
-                );
-                
+              {categoryExpenses.map(({ expense, index: globalIndex }) => {
                 return (
                   <ExpenseRow
                     key={`${expense.category}-${expense.name}-${globalIndex}`}
                     expense={expense}
                     index={globalIndex}
+                    isDirty={isExpenseDirty(globalIndex)}
+                    isSaving={isSaving || isInlineSaveInProgress}
                     onToggleActive={() => toggleExpenseActive(globalIndex)}
                     onToggleValueType={(checked) => toggleValueType(globalIndex, checked)}
                     onToggleExpenseType={() => toggleExpenseType(globalIndex)}
                     onUpdateAmount={(value) => updateExpense(globalIndex, 'amount', value)}
+                    onSave={handleInlineSave}
                     onDelete={() => deleteExpense(globalIndex)}
                   />
                 );
@@ -435,10 +596,13 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false })
 const ExpenseRow = ({ 
   expense, 
   index, 
+  isDirty = false,
+  isSaving = false,
   onToggleActive, 
   onToggleValueType, 
   onToggleExpenseType, 
   onUpdateAmount,
+  onSave,
   onDelete 
 }) => {
   const monthlyCost = calculateMonthlyCost(expense);
@@ -459,15 +623,27 @@ const ExpenseRow = ({
           />
           <span className="font-medium text-gray-800">{expense.name}</span>
         </div>
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={onDelete}
-          size="small"
-        >
-          Delete
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="text"
+            icon={<SaveOutlined />}
+            onClick={onSave}
+            size="small"
+            disabled={!isDirty || isSaving}
+            className={!isDirty || isSaving ? "" : "!text-orange-600 hover:!text-orange-700"}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={onDelete}
+            size="small"
+          >
+            Delete
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
