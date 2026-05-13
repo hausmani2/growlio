@@ -760,6 +760,11 @@ const ReportCard = ({
           <p className="text-base text-gray-700 leading-relaxed mb-3">
             Great work—your restaurant setup is complete. You can now build and track your daily budget in Growlio.
           </p>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+            <p className="text-sm text-gray-700 m-0">
+              <span className="font-semibold">Helpful tip:</span> Look for the "i" icon throughout Growlio - click it anytime for helpful tips and guidance.
+            </p>
+          </div>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <p className="text-sm text-gray-700 m-0">
               Head to <span className="font-semibold">Budget</span> to enter your week, add daily numbers, and see how your choices impact profitability.

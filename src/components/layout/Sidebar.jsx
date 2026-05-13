@@ -12,6 +12,7 @@ import { FaArrowLeftLong } from 'react-icons/fa6';
 const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState(new Set());
+  const [manuallyCollapsedItems, setManuallyCollapsedItems] = useState(new Set());
   const location = useLocation();
 
   const getInitials = (label = '') => {
@@ -90,6 +91,9 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     selectedKey = pathKeyMap[location.pathname];
   }
 
+  const isItemActiveParent = (item) =>
+    !!(item.children && item.children.some((child) => selectedKey === child.key));
+
   // Close sidebar on window resize if desktop
   useEffect(() => {
     const handleResize = () => {
@@ -106,19 +110,20 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   // Auto-expand parent menu items when child is selected
   useEffect(() => {
-    const newExpandedItems = new Set(expandedItems);
-    
-    // Find parent items that should be expanded based on current selection
-    menuItems.forEach(item => {
-      if (item.children && item.children.some(child => selectedKey === child.key)) {
-        newExpandedItems.add(item.key);
-      }
+    setExpandedItems((currentExpandedItems) => {
+      const nextExpandedItems = new Set(currentExpandedItems);
+      let hasChanges = false;
+
+      menuItems.forEach((item) => {
+        if (isItemActiveParent(item) && !manuallyCollapsedItems.has(item.key) && !nextExpandedItems.has(item.key)) {
+          nextExpandedItems.add(item.key);
+          hasChanges = true;
+        }
+      });
+
+      return hasChanges ? nextExpandedItems : currentExpandedItems;
     });
-    
-    if (newExpandedItems.size !== expandedItems.size) {
-      setExpandedItems(newExpandedItems);
-    }
-  }, [selectedKey, menuItems]);
+  }, [selectedKey, menuItems, manuallyCollapsedItems]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -145,14 +150,32 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
   const handleMenuItemClick = (item) => {
     if (item.children) {
-      // Toggle expanded state for items with children
-      const newExpandedItems = new Set(expandedItems);
-      if (newExpandedItems.has(item.key)) {
-        newExpandedItems.delete(item.key);
-      } else {
-        newExpandedItems.add(item.key);
-      }
-      setExpandedItems(newExpandedItems);
+      const isCurrentlyExpanded =
+        expandedItems.has(item.key) || (isItemActiveParent(item) && !manuallyCollapsedItems.has(item.key));
+
+      setExpandedItems((currentExpandedItems) => {
+        const nextExpandedItems = new Set(currentExpandedItems);
+
+        if (isCurrentlyExpanded) {
+          nextExpandedItems.delete(item.key);
+        } else {
+          nextExpandedItems.add(item.key);
+        }
+
+        return nextExpandedItems;
+      });
+
+      setManuallyCollapsedItems((currentCollapsedItems) => {
+        const nextCollapsedItems = new Set(currentCollapsedItems);
+
+        if (isCurrentlyExpanded) {
+          nextCollapsedItems.add(item.key);
+        } else {
+          nextCollapsedItems.delete(item.key);
+        }
+
+        return nextCollapsedItems;
+      });
     } else if (item.onClick) {
       item.onClick();
       // Close mobile sidebar when item is clicked
@@ -165,10 +188,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
   const renderMenuItem = (item, level = 0) => {
     const isSelected = selectedKey === item.key;
     const hasChildren = item.children && item.children.length > 0;
-    
-    // Auto-expand parent if any child is selected
-    const shouldAutoExpand = hasChildren && item.children.some(child => selectedKey === child.key);
-    const isExpanded = expandedItems.has(item.key) || shouldAutoExpand;
+    const hasSelectedChild = hasChildren && isItemActiveParent(item);
+    const isExpanded = expandedItems.has(item.key) || (hasSelectedChild && !manuallyCollapsedItems.has(item.key));
 
     return (
       <div key={item.key} className="relative">
@@ -200,7 +221,9 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
           </span>
           {hasChildren && !collapsed && (
             <DownOutlined 
-              className={`ml-auto text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+              className={`ml-auto text-xs transition-transform duration-200 ${
+                hasSelectedChild ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'
+              } ${isExpanded ? 'rotate-180' : ''}`}
             />
           )}
         </button>

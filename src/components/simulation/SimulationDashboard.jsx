@@ -17,9 +17,16 @@ const PERIOD_OPTIONS = ['daily', 'weekly', 'monthly'];
 
 const generateLaborPercentOptions = () => {
   const options = [];
-  for (let i = 1; i <= 30; i += 1) {
-    const zoneColor = '#52c41a';
-    const zoneLabel = ' (Goal)';
+  for (let i = 1; i <= 35; i += 1) {
+    let zoneColor = '#52c41a';
+    let zoneLabel = ' (Goal)';
+    if (i >= 31 && i <= 32) {
+      zoneColor = '#faad14';
+      zoneLabel = ' (Needs Attention)';
+    } else if (i >= 33) {
+      zoneColor = '#ff4d4f';
+      zoneLabel = ' (Danger)';
+    }
     options.push({
       value: i,
       label: (
@@ -34,7 +41,7 @@ const generateLaborPercentOptions = () => {
 
 const generateCogsPercentOptions = () => {
   const options = [];
-  for (let i = 1; i <= 34; i += 1) {
+  for (let i = 1; i <= 36; i += 1) {
     let zoneColor = '#52c41a';
     let zoneLabel = ' (Goal)';
     if (i >= 32 && i <= 33) {

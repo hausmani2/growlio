@@ -19,7 +19,7 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
     // Generate percentage options from 15% to 50% with zone colors
     const generatePercentageOptions = () => {
         const options = [];
-        for (let i = 1; i <= 34; i++) {
+        for (let i = 1; i <= 36; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             

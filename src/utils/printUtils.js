@@ -545,19 +545,19 @@ export const printUtils = {
         {
           title: 'Sales',
           key: 'sales',
-          accessor: (row) => DataValidator.formatCurrency(row.sales || row.sales_actual || row.sales_budget),
+          accessor: (row) => DataValidator.formatCurrency(row.sales_actual || row.sales || row.sales_budget),
           cellClass: () => 'currency-cell'
         },
         {
           title: 'Labor',
           key: 'labor',
-          accessor: (row) => DataValidator.formatCurrency(row.labour || row.labor_actual || row.labour_budget),
+          accessor: (row) => DataValidator.formatCurrency(row.labour_actual || row.labor_actual || row.labour || row.labour_budget),
           cellClass: () => 'currency-cell'
         },
         {
           title: 'Food Cost',
           key: 'food_cost',
-          accessor: (row) => DataValidator.formatCurrency(row.food_cost || row.food_cost_actual || row.food_cost_budget),
+          accessor: (row) => DataValidator.formatCurrency(row.food_cost_actual || row.food_cost || row.food_cost_budget),
           cellClass: () => 'currency-cell'
         },
         {

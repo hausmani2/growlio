@@ -17,17 +17,17 @@ const LaborInformation = ({ data, updateData, errors = {} }) => {
         updateData('labour_goal', numericValue);
     };
 
-    // Generate percentage options from 15% to 40% with color coding
+    // Generate percentage options with color coding (aligned with simulator zones)
     const generateLaborPercentageOptions = () => {
         const options = [];
-        for (let i = 1; i <= 30; i++) {
+        for (let i = 1; i <= 35; i++) {
             let zoneColor = '';
             let zoneLabel = '';
             
             if (i <= 30) {
                 zoneColor = '#52c41a'; // Green zone (Goal)
                 zoneLabel = '✅ Goal';
-            } else if (i <= 33) {
+            } else if (i <= 32) {
                 zoneColor = '#faad14'; // Yellow zone (Needs Attention)
                 zoneLabel = '⚠️ Needs Attention';
             } else {
