@@ -24,6 +24,7 @@ import {
 import useStore from '../../../store/store';
 import useRestaurantGoals from '../../../hooks/useRestaurantGoals';
 import { useNavigate } from 'react-router-dom';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
 
 // Match SummaryTableDashboard fixed-cost fallbacks so totals align with "Your Budget For The Week" TOTAL row.
 const parseNumericLikeTable = (value) => {
@@ -80,6 +81,22 @@ const getEntryVariableCostBudget = (entry) => {
     return parseNumericLikeTable(entry.variable_cost_budget);
   }
   return parseNumericLikeTable(entry.variable_cost);
+};
+
+const getEntryAverageHourlyRate = (entry) => parseNumericLikeTable(
+  entry.average_hourly_rate ??
+  entry.avg_hourly_rate ??
+  entry.averageHourlyRate
+);
+
+const formatAssumptionPercent = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? `${Math.round(n)}%` : '—';
+};
+
+const formatAssumptionRate = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? `$${n.toFixed(2)}/hr` : '—';
 };
 
 // Custom plugin: multi-line labels inside slices (avoids clipping long names like "Operational Expense")
@@ -153,6 +170,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
   const [summaryData, setSummaryData] = useState({});
   const [weekRange, setWeekRange] = useState('');
   const restaurantGoals = useStore((s) => s.restaurantGoals);
+  const { canCreateBudget } = useRestaurantRole();
   
   // Restaurant goals functionality - using custom hook for professional handling
   // This ensures goals API is called when budget dashboard mounts
@@ -482,6 +500,44 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     summaryData.totalOperationalExpenseBudget,
   ]);
 
+  const budgetAssumptions = useMemo(() => {
+    const entries = Array.isArray(dashboardData?.data)
+      ? dashboardData.data
+      : Array.isArray(dashboardData?.daily_entries)
+        ? dashboardData.daily_entries
+        : Array.isArray(dashboardData)
+          ? dashboardData
+          : [];
+
+    const totalSalesBudget = summaryData.totalSalesBudget || 0;
+    const totalLaborBudget = summaryData.totalLaborBudget || 0;
+    const totalFoodCostBudget = summaryData.totalFoodCostBudget || 0;
+
+    const laborGoalFromBudget = totalSalesBudget > 0
+      ? (totalLaborBudget / totalSalesBudget) * 100
+      : 0;
+    const cogsGoalFromBudget = totalSalesBudget > 0
+      ? (totalFoodCostBudget / totalSalesBudget) * 100
+      : 0;
+    const rateFromBudget = entries.reduce((foundValue, entry) => {
+      if (foundValue > 0) return foundValue;
+      const rate = getEntryAverageHourlyRate(entry);
+      return rate > 0 ? rate : foundValue;
+    }, 0);
+
+    return {
+      laborGoal: parseNumericLikeTable(restaurantGoals?.labour_goal) || laborGoalFromBudget,
+      cogsGoal: parseNumericLikeTable(restaurantGoals?.cogs_goal) || cogsGoalFromBudget,
+      avgHourlyRate: parseNumericLikeTable(restaurantGoals?.avg_hourly_rate) || rateFromBudget,
+    };
+  }, [
+    dashboardData,
+    restaurantGoals,
+    summaryData.totalFoodCostBudget,
+    summaryData.totalLaborBudget,
+    summaryData.totalSalesBudget,
+  ]);
+
   const categoryPieData = useMemo(
     () => ({
       labels: computedCategories.map((c) => c.label),
@@ -737,37 +793,39 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                   <div className="text-xs text-gray-600">Labor % target</div>
                   <div className="text-base font-semibold text-gray-900">
-                    {Number(restaurantGoals?.labour_goal || 0) ? `${Math.round(Number(restaurantGoals.labour_goal))}%` : '—'}
+                    {formatAssumptionPercent(budgetAssumptions.laborGoal)}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                   <div className="text-xs text-gray-600">COGS % target</div>
                   <div className="text-base font-semibold text-gray-900">
-                    {Number(restaurantGoals?.cogs_goal || 0) ? `${Math.round(Number(restaurantGoals.cogs_goal))}%` : '—'}
+                    {formatAssumptionPercent(budgetAssumptions.cogsGoal)}
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                   <div className="text-xs text-gray-600">Avg hourly rate</div>
                   <div className="text-base font-semibold text-gray-900">
-                    {Number(restaurantGoals?.avg_hourly_rate || 0) ? `$${Number(restaurantGoals.avg_hourly_rate).toFixed(2)}/hr` : '—'}
+                    {formatAssumptionRate(budgetAssumptions.avgHourlyRate)}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 justify-end">
-                <Button
-                  icon={<EditOutlined />}
-                  onClick={() => navigate('/dashboard/labor-information')}
-                >
-                  Edit labor & rate
-                </Button>
-                <Button
-                  icon={<EditOutlined />}
-                  onClick={() => navigate('/dashboard/food-cost-details')}
-                >
-                  Edit COGS
-                </Button>
-              </div>
+              {canCreateBudget && (
+                <div className="flex items-center gap-2 justify-end">
+                  <Button
+                    icon={<EditOutlined />}
+                    onClick={() => navigate('/dashboard/labor-information')}
+                  >
+                    Edit labor & rate
+                  </Button>
+                  <Button
+                    icon={<EditOutlined />}
+                    onClick={() => navigate('/dashboard/food-cost-details')}
+                  >
+                    Edit COGS
+                  </Button>
+                </div>
+              )}
             </div>
           </Card>
         </Col>

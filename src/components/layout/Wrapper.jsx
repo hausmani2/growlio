@@ -15,6 +15,7 @@ import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
 import { getIncompleteSetupItems, getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
+import useRestaurantRole from '../../hooks/useRestaurantRole';
 
 /**
  * Wrapper component
@@ -26,6 +27,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const { canManageLocations, canAccessSimulator } = useRestaurantRole();
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
@@ -39,45 +41,45 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
 
   // Subscription / plan gating (POS integration)
-  // Temporarily disabled per request: always show Square POS like normal.
-  // const subscriptionDetails = useStore((state) => state.subscriptionDetails);
-  // const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
-  // const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
-  // const currentPackage = useStore((state) => state.currentPackage);
-  // const hasFetchedSubscriptionRef = useRef(false);
-  // const lastSubscriptionRestaurantIdRef = useRef(null);
-  // const restaurantIdForPlan = localStorage.getItem('restaurant_id');
-  //
-  // useEffect(() => {
-  //   if (!showSidebar) return;
-  //   // If restaurant changes, re-fetch subscription/current for correct gating
-  //   if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
-  //     hasFetchedSubscriptionRef.current = false;
-  //     lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
-  //   }
-  //   if (hasFetchedSubscriptionRef.current) return;
-  //   hasFetchedSubscriptionRef.current = true;
-  //   fetchCurrentSubscriptionDetails?.(false);
-  // }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
-  //
-  // const posEnabled = useMemo(() => {
-  //   const pkg = subscriptionDetails?.package || null;
-  //   const pkgName = (pkg?.name || '').toLowerCase();
-  //   const featureFlag = pkg?.features?.pos_integration;
-  //
-  //   if (pkg) {
-  //     if (pkgName === 'lite') return false;
-  //     if (typeof featureFlag === 'boolean') return featureFlag;
-  //     return ['grow', 'pro'].includes(pkgName);
-  //   }
-  //
-  //   const cpName = (currentPackage?.name || '').toLowerCase();
-  //   if (cpName) return cpName !== 'lite';
-  //
-  //   // If we still don't know, fail closed while loading; otherwise allow.
-  //   return subscriptionDetailsLoading ? false : true;
-  // }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
-  const posEnabled = true;
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const currentPackage = useStore((state) => state.currentPackage);
+  const hasFetchedSubscriptionRef = useRef(false);
+  const lastSubscriptionRestaurantIdRef = useRef(null);
+  const restaurantIdForPlan = localStorage.getItem('restaurant_id');
+
+  useEffect(() => {
+    if (!showSidebar || !restaurantIdForPlan) return;
+
+    // If restaurant changes, re-fetch subscription/current for correct gating.
+    if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
+      hasFetchedSubscriptionRef.current = false;
+      lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
+    }
+
+    if (hasFetchedSubscriptionRef.current) return;
+    hasFetchedSubscriptionRef.current = true;
+    fetchCurrentSubscriptionDetails?.(false);
+  }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
+
+  const posEnabled = useMemo(() => {
+    const getPlanName = (pkg) => String(
+      pkg?.key ||
+      pkg?.name ||
+      pkg?.display_name ||
+      pkg?.package_name ||
+      ''
+    ).trim().toLowerCase();
+
+    const pkg = subscriptionDetails?.package || currentPackage || null;
+    const planName = getPlanName(pkg);
+
+    if (planName) return planName !== 'lite';
+    if (subscriptionDetailsLoading) return false;
+
+    return true;
+  }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
 
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
   const squareStatus = useStore((state) => state.squareStatus);
@@ -93,7 +95,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   };
 
   useEffect(() => {
-    if (!showSidebar) return;
+    if (!showSidebar || !posEnabled) return;
 
     const restaurantId = localStorage.getItem('restaurant_id');
     if (!restaurantId) return;
@@ -344,7 +346,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
-    {
+    ...(canManageLocations ? [{
       key: 'onboarding',
       icon: <UserOutlined />,
       label: 'Your Setup',
@@ -403,7 +405,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
        
      
       ],
-    },
+    }] : []),
     {
       key: 'support',
       icon: <QuestionCircleOutlined />,
@@ -420,7 +422,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     // Simulation Dashboard
     // Always show for regular users in the sidebar.
     // If simulation isn't set up yet, route them to simulation onboarding.
-    ...(isRegularUser ? [
+    ...(isRegularUser && canAccessSimulator ? [
       {
         key: 'simulation-dashboard',
         icon: <FaChartLine />,
@@ -466,7 +468,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,
-      label: 'Square POS',
+      label: 'POS Integration',
       onClick: handleSquarePosClick,
     }] : []),
     ...(posEnabled && isPosConnected ? [{

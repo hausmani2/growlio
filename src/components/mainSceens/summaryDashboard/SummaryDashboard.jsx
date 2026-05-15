@@ -14,6 +14,7 @@ import SalesDataModal from './SalesDataModal';
 import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
 
 
 
@@ -35,6 +36,7 @@ const BUDGET_TUTORIAL_VIDEOS = {
 const SummaryDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canCreateBudget, isOwner, loading: roleLoading } = useRestaurantRole();
 
   // Use local state for calendar to prevent infinite loops
   const [calendarDateRange, setCalendarDateRange] = useState([]);
@@ -136,29 +138,35 @@ const SummaryDashboard = () => {
     componentName: 'SummaryDashboard'
   });
 
+  const getSummaryEntries = useCallback((summary) => {
+    if (Array.isArray(summary?.data)) return summary.data;
+    if (Array.isArray(summary?.daily_entries)) return summary.daily_entries;
+    if (Array.isArray(summary)) return summary;
+    return [];
+  }, []);
+
   // Enhanced data validation function with better logging
   const hasValidData = useCallback(() => {
-    const isValid = dashboardSummaryData?.status === 'success' && 
-                   Array.isArray(dashboardSummaryData?.data) && 
-                   dashboardSummaryData.data.length > 0;
+    const isValid = getSummaryEntries(dashboardSummaryData).length > 0;
     
 
     
     return isValid;
-  }, [dashboardSummaryData]);
+  }, [dashboardSummaryData, getSummaryEntries]);
 
   // Check if budget exists for the selected week
   const hasBudgetForWeek = useCallback(() => {
-    if (!dashboardSummaryData || !dashboardSummaryData.data || !Array.isArray(dashboardSummaryData.data)) {
+    const entries = getSummaryEntries(dashboardSummaryData);
+    if (!entries.length) {
       return false;
     }
     
     // Check if any entry has sales_budget > 0
-    return dashboardSummaryData.data.some(entry => {
+    return entries.some(entry => {
       const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
       return salesBudget > 0;
     });
-  }, [dashboardSummaryData]);
+  }, [dashboardSummaryData, getSummaryEntries]);
 
   // Use refs to prevent infinite loops and duplicate modals
   const [isInitialized, setIsInitialized] = useState(false);
@@ -168,6 +176,7 @@ const SummaryDashboard = () => {
   const isProcessingWeek = useRef(false);
   const pendingWeeklyAverageRef = useRef(null); // { dateRangeKey, weeklyData }
   const onboardingGateModalOpenRef = useRef(false);
+  const readableBudgetFallbackRef = useRef(false);
 
   const showOnboardingRequiredModal = useCallback(() => {
     if (onboardingGateModalOpenRef.current) return;
@@ -196,11 +205,48 @@ const SummaryDashboard = () => {
     if (!startDate || !endDate) return;
 
     try {
-      await fetchDashboardSummary(startDate, endDate, groupBy);
+      return await fetchDashboardSummary(startDate, endDate, groupBy);
     } catch (error) {
       console.error('Error in fetchDashboardSummary:', error);
+      return null;
     }
   }, [fetchDashboardSummary]);
+
+  useEffect(() => {
+    const loadLatestReadableBudget = async () => {
+      if (isOwner || roleLoading || summaryLoading || !isInitialized || hasValidData() || readableBudgetFallbackRef.current) {
+        return;
+      }
+
+      readableBudgetFallbackRef.current = true;
+
+      try {
+        const searchStart = dayjs().subtract(12, 'week').startOf('week').format('YYYY-MM-DD');
+        const searchEnd = dayjs().add(4, 'week').endOf('week').format('YYYY-MM-DD');
+        const response = await fetchDashboardSummary(searchStart, searchEnd, 'daily');
+        const entries = getSummaryEntries(response);
+
+        const budgetEntry = [...entries]
+          .reverse()
+          .find((entry) => Number(entry?.sales_budget || entry?.salesBudget || 0) > 0) || entries[entries.length - 1];
+
+        const budgetDate = budgetEntry?.date || budgetEntry?.day;
+        if (!budgetDate) return;
+
+        const budgetWeekStart = dayjs(budgetDate).startOf('week');
+        const budgetWeekEnd = dayjs(budgetDate).endOf('week');
+
+        lastDateRange.current = null;
+        setWeekPickerValue(budgetWeekStart);
+        setCalendarDateRange([budgetWeekStart, budgetWeekEnd]);
+        await fetchSummaryData(budgetWeekStart.format('YYYY-MM-DD'), budgetWeekEnd.format('YYYY-MM-DD'), groupBy);
+      } catch (error) {
+        console.error('Error loading latest readable budget:', error);
+      }
+    };
+
+    loadLatestReadableBudget();
+  }, [isOwner, roleLoading, summaryLoading, isInitialized, hasValidData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
 
   // Auto-fetch data when calendar dates are set and component is initialized
   useEffect(() => {
@@ -279,10 +325,7 @@ const SummaryDashboard = () => {
       const summaryResponse = await fetchDashboardSummary(startDate, endDate, groupBy);
       
       // Check if selected week has valid data
-      const hasData = summaryResponse && 
-                     summaryResponse.status === 'success' && 
-                     Array.isArray(summaryResponse.data) && 
-                     summaryResponse.data.length > 0;
+      const hasData = getSummaryEntries(summaryResponse).length > 0;
       
       // If week has data, proceed normally (no modals)
       if (hasData) {
@@ -323,7 +366,7 @@ const SummaryDashboard = () => {
         isProcessingWeek.current = null;
       }, 1000);
     }
-  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy]);
+  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
 
   // New: Week Picker change handler (single week selection like Enter Weekly Data)
   const handleWeekPickerChange = useCallback(async (date) => {
@@ -352,6 +395,10 @@ const SummaryDashboard = () => {
 
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
+    if (!canCreateBudget) {
+      message.warning('Your role can view budgets and close days, but cannot create or edit budgets.');
+      return;
+    }
     if (!isSetupComplete) {
       showOnboardingRequiredModal();
       return;
@@ -484,7 +531,7 @@ const SummaryDashboard = () => {
       // Refresh goals when budget page is accessed
       refreshGoals();
     }
-  }, [location.pathname, refreshGoals]);
+  }, [location.pathname]);
 
   // Fetch data when date range changes (but not on initial load)
   useEffect(() => {
@@ -814,8 +861,11 @@ const SummaryDashboard = () => {
                             icon={<PlusOutlined />}
                             onClick={handleShowSalesModal}
                             size="large"
+                            disabled={!canCreateBudget}
                           >
-                            Enter Your Budgets Sales for The week of {calendarDateRange[0]?.format('MMM D')} - {calendarDateRange[1]?.format('MMM D')}
+                            {canCreateBudget
+                              ? `Enter Your Budgets Sales for The week of ${calendarDateRange[0]?.format('MMM D')} - ${calendarDateRange[1]?.format('MMM D')}`
+                              : 'Budget creation is owner/manager only'}
                           </Button>
                         )}
                       </div>

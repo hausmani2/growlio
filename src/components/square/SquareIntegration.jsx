@@ -40,7 +40,7 @@ const SquareIntegration = ({ restaurantId, className = '' }) => {
           {/* Left Side - Title and Description */}
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-orange-600 mb-2">
-              Square POS Integration
+              POS Integration
               <TooltipIcon text={tooltips?.header} />
             </h1>
             <p className="text-gray-600 text-lg">
@@ -66,7 +66,7 @@ const SquareIntegration = ({ restaurantId, className = '' }) => {
               <div className="p-4">
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Get Started</h2>
                 <Paragraph className="text-gray-600 mb-4">
-                  Click the button below to connect your Square POS account. You'll be redirected 
+                  Click the button below to connect your POS account. You'll be redirected 
                   to Square to authorize the connection.
                 </Paragraph>
                 <SquareConnectButton 
@@ -83,7 +83,7 @@ const SquareIntegration = ({ restaurantId, className = '' }) => {
               <div className="p-4">
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Integration Active</h2>
                 <Paragraph className="text-gray-600">
-                  Your Square POS is connected and active. Sales data will be automatically 
+                  Your POS integration is connected and active. Sales data will be automatically 
                   synced to your dashboard.
                 </Paragraph>
               </div>

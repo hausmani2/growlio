@@ -144,9 +144,14 @@ const SalesDataModal = ({
   // Function to fetch restaurant goals if not already available
   const hasFetchedGoalsRef = useRef(false);
   const fetchRestaurantGoals = async () => {
-    // Always try to fetch to ensure we have the latest data
+    const currentGoals = useStore.getState().restaurantGoals || restaurantGoals;
+    const hasRestaurantDays = Array.isArray(currentGoals?.restaurant_days);
+
+    if (hasFetchedGoalsRef.current && hasRestaurantDays) {
+      return currentGoals;
+    }
+
     try {
-      // Always fetch fresh data
       hasFetchedGoalsRef.current = true;
       const goalsData = await getRestaurentGoal();
       
@@ -161,7 +166,6 @@ const SalesDataModal = ({
       return goalsData;
     } catch (error) {
       console.error('❌ Error fetching restaurant goals:', error);
-      hasFetchedGoalsRef.current = false; // Allow retry on error
       return null;
     }
   };

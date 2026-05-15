@@ -1,26 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Space, Divider, message, Modal, Typography, Row, Col, Avatar, Tabs } from 'antd';
-import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined } from '@ant-design/icons';
-import { apiGet, apiPut, apiPost } from '../../../utils/axiosInterceptors';
+import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
+import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
+import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
-import { useNavigate } from 'react-router-dom';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../../../utils/rolePermissions';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 const Profile = () => {
-  const navigate = useNavigate();
   const logout = useStore((state) => state.logout);
   const user = useStore((state) => state.user);
   const setUser = useStore((state) => state.setUser);
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [deleteForm] = Form.useForm();
+  const [memberForm] = Form.useForm();
+  const { restaurantId, isOwner, canManageUsers } = useRestaurantRole();
   
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [memberSaving, setMemberSaving] = useState(false);
+  const [members, setMembers] = useState([]);
+  const [editingMember, setEditingMember] = useState(null);
+  const [isMemberModalVisible, setIsMemberModalVisible] = useState(false);
   
   const [profileData, setProfileData] = useState({
     username: '',
@@ -37,6 +44,12 @@ const Profile = () => {
     fetchProfileData();
   }, []);
 
+  useEffect(() => {
+    if (restaurantId) {
+      fetchMembers();
+    }
+  }, [restaurantId]);
+
   const fetchProfileData = async () => {
     try {
       setProfileLoading(true);
@@ -50,6 +63,7 @@ const Profile = () => {
           email: response.data.data.email,
           username: response.data.data.username,
           role: response.data.data.role,
+          restaurant_role: normalizeRestaurantRole(response.data.data.restaurant_role || response.data.data.role),
         });
         profileForm.setFieldsValue({
           full_name: response.data.data.full_name || ''
@@ -62,6 +76,164 @@ const Profile = () => {
       setProfileLoading(false);
     }
   };
+
+  const fetchMembers = async () => {
+    if (!restaurantId) return;
+
+    try {
+      setMembersLoading(true);
+      const response = await apiGet(`/restaurant_v2/members/?restaurant_id=${restaurantId}`);
+      setMembers(Array.isArray(response.data) ? response.data : response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching members:', error);
+      message.error('Failed to load profile management users');
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const openAddMemberModal = () => {
+    setEditingMember(null);
+    memberForm.resetFields();
+    memberForm.setFieldsValue({
+      full_name: '',
+      email: '',
+      password: '',
+      role: RESTAURANT_ROLES.MANAGER,
+    });
+    setIsMemberModalVisible(true);
+  };
+
+  const openEditMemberModal = (member) => {
+    setEditingMember(member);
+    memberForm.setFieldsValue({
+      full_name: member.full_name,
+      email: member.email,
+      role: normalizeRestaurantRole(member.role),
+      password: '',
+    });
+    setIsMemberModalVisible(true);
+  };
+
+  const handleMemberSave = async (values) => {
+    if (!restaurantId || !canManageUsers) return;
+
+    const payload = {
+      restaurant_id: Number(restaurantId),
+      email: values.email,
+      role: values.role,
+      full_name: values.full_name,
+      ...(values.password ? { password: values.password } : {}),
+    };
+
+    try {
+      setMemberSaving(true);
+      if (editingMember) {
+        await apiPatch(`/restaurant_v2/members/${editingMember.id}/`, payload);
+        message.success('User role updated successfully');
+      } else {
+        await apiPost('/restaurant_v2/members/', payload);
+        message.success('User added successfully');
+      }
+
+      setIsMemberModalVisible(false);
+      setEditingMember(null);
+      memberForm.resetFields();
+      fetchMembers();
+    } catch (error) {
+      console.error('Error saving member:', error);
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || 'Failed to save user';
+      message.error(errorMessage);
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
+  const handleMemberDelete = async (member) => {
+    if (!canManageUsers || normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER) return;
+
+    try {
+      await apiDelete(`/restaurant_v2/members/${member.id}/`);
+      message.success('User removed successfully');
+      fetchMembers();
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      message.error('Failed to remove user');
+    }
+  };
+
+  const roleOptions = [
+    { label: 'Manager', value: RESTAURANT_ROLES.MANAGER },
+    { label: 'Leader', value: RESTAURANT_ROLES.LEADER },
+  ];
+
+  const memberColumns = [
+    {
+      title: 'User',
+      key: 'user',
+      render: (_, member) => (
+        <div>
+          <div className="font-semibold text-gray-800">{member.full_name || member.username || 'N/A'}</div>
+          <div className="text-sm text-gray-500">{member.email}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role) => {
+        const normalizedRole = normalizeRestaurantRole(role);
+        const color = normalizedRole === RESTAURANT_ROLES.OWNER ? 'orange' : normalizedRole === RESTAURANT_ROLES.MANAGER ? 'blue' : 'green';
+        return <Tag color={color}>{normalizedRole.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Permissions',
+      key: 'permissions',
+      render: (_, member) => {
+        const permissions = getRolePermissions(member.role);
+        const labels = [
+          permissions.canManageUsers ? 'Users' : null,
+          permissions.canManageLocations ? 'Locations' : null,
+          permissions.canCreateBudget ? 'Create Budget' : 'View Budget',
+          permissions.canCloseDays ? 'Close Days' : null,
+          permissions.canAccessSimulator ? 'Simulator' : null,
+        ].filter(Boolean);
+        return <span className="text-sm text-gray-600">{labels.join(', ')}</span>;
+      },
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      align: 'right',
+      render: (_, member) => {
+        const memberIsOwner = normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER;
+        if (memberIsOwner) {
+          return <span className="text-sm text-gray-400">Owner cannot be edited or deleted</span>;
+        }
+
+        return (
+          <div className="flex justify-end gap-2">
+            <Button icon={<EditOutlined />} onClick={() => openEditMemberModal(member)} disabled={!canManageUsers}>
+              Edit
+            </Button>
+            <Popconfirm
+              title="Remove this user?"
+              okText="Remove"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => handleMemberDelete(member)}
+              disabled={!canManageUsers}
+            >
+              <Button danger icon={<DeleteOutlined />} disabled={!canManageUsers}>
+                Delete
+              </Button>
+            </Popconfirm>
+          </div>
+        );
+      },
+    },
+  ];
 
   const handleProfileUpdate = async (values) => {
     try {
@@ -280,6 +452,54 @@ const Profile = () => {
             </div>
           </TabPane>
 
+          {/* Profile Management Tab */}
+          <TabPane
+            tab={
+              <span className="flex items-center gap-2">
+                <TeamOutlined />
+                Profile Management
+              </span>
+            }
+            key="profile-management"
+          >
+            <div className="space-y-6">
+              <Card className="shadow-sm border-0 bg-gray-50">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-gray-200 mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-orange-600">Users & Roles</h3>
+                    <p className="text-sm text-gray-600 mb-0">
+                      Owners can add managers and leaders. The original owner cannot be edited or deleted.
+                    </p>
+                  </div>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openAddMemberModal}
+                    disabled={!canManageUsers || !restaurantId}
+                    className="bg-orange-500 hover:bg-orange-600 border-0"
+                  >
+                    Add User
+                  </Button>
+                </div>
+
+                {!isOwner && (
+                  <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    Your role can view this list, but only the restaurant owner can manage users and roles.
+                  </div>
+                )}
+
+                <Table
+                  rowKey="id"
+                  columns={memberColumns}
+                  dataSource={members}
+                  loading={membersLoading}
+                  pagination={false}
+                  scroll={{ x: 900 }}
+                />
+              </Card>
+            </div>
+          </TabPane>
+
           {/* Security Tab */}
           <TabPane 
             tab={
@@ -457,6 +677,101 @@ const Profile = () => {
             </div>
           </Form>
         </div>
+      </Modal>
+
+      <Modal
+        title={editingMember ? 'Edit User Role' : 'Add User'}
+        open={isMemberModalVisible}
+        onCancel={() => {
+          setIsMemberModalVisible(false);
+          setEditingMember(null);
+          memberForm.resetFields();
+        }}
+        footer={null}
+        centered
+        destroyOnClose
+        afterClose={() => {
+          setEditingMember(null);
+          memberForm.resetFields();
+        }}
+      >
+        <Form form={memberForm} layout="vertical" onFinish={handleMemberSave} autoComplete="off" preserve={false}>
+          <Form.Item
+            label="Full Name"
+            name="full_name"
+            rules={[
+              { required: true, message: 'Please enter full name' },
+              {
+                pattern: /^[A-Za-z][A-Za-z\s.'-]*$/,
+                message: 'Full Name can only contain letters, spaces, apostrophes, periods, and hyphens',
+              },
+            ]}
+          >
+            <Input prefix={<UserOutlined />} placeholder="Full name" size="large" autoComplete="off" />
+          </Form.Item>
+
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              { required: true, message: 'Please enter email' },
+              { type: 'email', message: 'Please enter a valid email' },
+            ]}
+          >
+            <Input placeholder="user@example.com" size="large" disabled={!!editingMember} autoComplete="new-email" />
+          </Form.Item>
+
+          <Form.Item
+            label="Role"
+            name="role"
+            rules={[{ required: true, message: 'Please select role' }]}
+          >
+            <Select size="large" options={roleOptions} />
+          </Form.Item>
+
+          {!editingMember && (
+            <Form.Item
+              label="Password"
+              name="password"
+              rules={[
+                { required: true, message: 'Please enter password' },
+                { min: 8, message: 'Password must be at least 8 characters' },
+              ]}
+            >
+              <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" autoComplete="new-password" />
+            </Form.Item>
+          )}
+
+          {editingMember && (
+            <Form.Item
+              label="New Password"
+              name="password"
+              rules={[{ min: 8, message: 'Password must be at least 8 characters' }]}
+            >
+              <Input.Password prefix={<LockOutlined />} placeholder="Leave blank to keep current password" size="large" autoComplete="new-password" />
+            </Form.Item>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                setIsMemberModalVisible(false);
+                setEditingMember(null);
+                memberForm.resetFields();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={memberSaving}
+              className="bg-orange-500 hover:bg-orange-600 border-0"
+            >
+              {editingMember ? 'Save Changes' : 'Add User'}
+            </Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   );

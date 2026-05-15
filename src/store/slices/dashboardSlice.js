@@ -105,8 +105,11 @@ const createDashboardSlice = (set, get) => {
                     lastFetchedDate: weekStart || new Date().toISOString()
                 });
                 
-                // Fetch goals data after dashboard data is loaded
-                await get().fetchGoalsData(restaurantId);
+                // Goals are optional for member roles. Do not let a goals 403 block
+                // Close Out Your Day when dashboard data was fetched successfully.
+                get().fetchGoalsData(restaurantId).catch((goalsError) => {
+                    console.warn('Goals data unavailable; continuing with dashboard data:', goalsError?.message || goalsError);
+                });
                 
                 return response.data;
             } catch (error) {
@@ -230,8 +233,16 @@ const createDashboardSlice = (set, get) => {
                 set({ goalsData: response.data, loading: false });
                 return response.data;
             } catch (error) {
-                set({ error: error.message, loading: false });
-                throw error;
+                const targetRestaurantId = restaurantId || get().restaurantId || localStorage.getItem('restaurant_id');
+                const fallbackGoals = {
+                    restaurant_id: targetRestaurantId,
+                    restaurant_days: [],
+                    __failed: true,
+                    __error: error.message
+                };
+
+                set({ goalsData: fallbackGoals, error: null, loading: false });
+                return fallbackGoals;
             }
         },
 
@@ -680,22 +691,20 @@ const createDashboardSlice = (set, get) => {
             try {
                 const state = get();
                 const storeRestaurantId = state.restaurantId;
-                
-                
-                
-                if (storeRestaurantId) {
-                    
-                    return storeRestaurantId;
-                }
-                
-                // Try localStorage as fallback
+
+                // localStorage is the source of truth after login/restaurant switch.
+                // Member accounts can otherwise keep a stale in-memory restaurant id.
                 const localRestaurantId = localStorage.getItem('restaurant_id');
-                
-                
+
                 if (localRestaurantId) {
-                    
-                    set({ restaurantId: localRestaurantId });
+                    if (String(storeRestaurantId || '') !== String(localRestaurantId)) {
+                        set({ restaurantId: localRestaurantId });
+                    }
                     return localRestaurantId;
+                }
+
+                if (storeRestaurantId) {
+                    return storeRestaurantId;
                 }
                 
                 // Try to get restaurant ID from onboarding slice if available

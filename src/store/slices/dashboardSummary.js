@@ -2,6 +2,30 @@ import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import dayjs from 'dayjs';
 
 const createDashboardSummarySlice = (set, get) => {
+    const normalizeSummaryResponse = (payload) => {
+        const rawData = payload || {};
+        const entries = Array.isArray(rawData?.data)
+            ? rawData.data
+            : Array.isArray(rawData?.daily_entries)
+                ? rawData.daily_entries
+                : Array.isArray(rawData)
+                    ? rawData
+                    : [];
+
+        if (Array.isArray(rawData)) {
+            return {
+                status: 'success',
+                data: rawData,
+            };
+        }
+
+        return {
+            ...rawData,
+            data: entries,
+            daily_entries: Array.isArray(rawData?.daily_entries) ? rawData.daily_entries : entries,
+        };
+    };
+
     return {
         name: 'dashboardSummary',
         dashboardSummaryData: null,
@@ -94,9 +118,11 @@ const createDashboardSummarySlice = (set, get) => {
                     console.error('Error fetching average hourly rate during summary fetch:', error);
                 }
                 
+                const normalizedResponse = normalizeSummaryResponse(response.data);
+
                 // Add average hourly rate data to the response data
                 const responseData = {
-                    ...response.data,
+                    ...normalizedResponse,
                     average_hourly_rate: avgHourlyRateData?.average_hourly_rate || null,
                     previous_week_average_hourly_rate: avgHourlyRateData?.previous_week_average_hourly_rate || null,
                     is_previous_week_data: avgHourlyRateData?.is_previous_week_data === true

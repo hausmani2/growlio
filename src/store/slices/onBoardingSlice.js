@@ -1834,7 +1834,7 @@ const createOnBoardingSlice = (set, get) => ({
                                          Array.isArray(state.restaurantGoals.restaurant_days);
             
             // If we have valid data with restaurant_days and restaurant ID matches, return cached data
-            if (hasValidRestaurantDays && (!restaurantId || !finalRestaurantId || state.restaurantGoals.restaurant_id === finalRestaurantId)) {
+            if (hasValidRestaurantDays && (!restaurantId || !finalRestaurantId || String(state.restaurantGoals.restaurant_id) === String(finalRestaurantId))) {
                 return state.restaurantGoals;
             }
             
@@ -1891,13 +1891,20 @@ const createOnBoardingSlice = (set, get) => ({
                 errorMessage = error.message;
             }
             
+            const fallbackGoals = {
+                restaurant_id: finalRestaurantId,
+                restaurant_days: [],
+                __failed: true,
+                __error: errorMessage
+            };
+
             set(() => ({
                 restaurantGoalsLoading: false,
-                restaurantGoalsError: errorMessage,
-                restaurantGoals: null
+                restaurantGoalsError: null,
+                restaurantGoals: fallbackGoals
             }));
             
-            return null;
+            return fallbackGoals;
         }
     },
 

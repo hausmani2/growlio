@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { apiGet } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
+import { normalizeSuperAdminUsersResponse } from '../../../utils/superAdminUsers';
 
 const { Text } = Typography;
 
@@ -64,13 +65,13 @@ const SimpleUserTable = () => {
       }).toString();
       
       const res = await apiGet(`/authentication/users/?${params}`);
-      const incoming = res.data.results || res.data || [];
+      const { users: incoming, total } = normalizeSuperAdminUsersResponse(res.data);
       setUsers(incoming);
       setPagination(prev => ({
         ...prev,
         current: page,
         pageSize: pageSize,
-        total: res.data.count || res.data.length || 0
+        total
       }));
     } catch (error) {
       message.error('Error loading users');

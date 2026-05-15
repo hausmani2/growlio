@@ -16,6 +16,7 @@ import RestaurantInfoCard from './RestaurantInfoCard';
 import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
 import SyncModal from '../../SyncModal';
 import usePosSync from '../../../hooks/usePosSync';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -59,7 +60,8 @@ const Dashboard = () => {
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
- 
+  const { isLeader, loading: roleLoading } = useRestaurantRole();
+
   // Weekly average data functionality
   const {
     checkWeeklyAverageData,
@@ -73,6 +75,7 @@ const Dashboard = () => {
   const [weeklyAveragePopupData, setWeeklyAveragePopupData] = useState(null);
   const weeklyAverageModalShown = useRef(null);
   const isProcessingWeek = useRef(false);
+  const hasInitializedDashboardRef = useRef(false);
   const [isAutoAverageLoading, setIsAutoAverageLoading] = useState(false);
 
   // Note: Redirection logic is handled by ProtectedRoutes.jsx
@@ -554,6 +557,9 @@ const Dashboard = () => {
 
   // Professional initialization with proper state management
   useEffect(() => {
+    if (hasInitializedDashboardRef.current || roleLoading) return;
+    hasInitializedDashboardRef.current = true;
+
     const initializeDashboard = async () => {
       try {
         // Check if we already have a selected year in the store
@@ -606,8 +612,10 @@ const Dashboard = () => {
         setSelectedDate(weekStart);
         await fetchDashboardData(weekStart);
 
-        // Fetch restaurant goals
-        await fetchRestaurantGoals();
+        // Leader can close days from dashboard data; goals endpoint can be restricted for leaders.
+        if (!roleLoading && !isLeader) {
+          await fetchRestaurantGoals();
+        }
 
       } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -646,7 +654,7 @@ const Dashboard = () => {
     };
 
     initializeDashboard();
-  }, []); // Only run once on mount
+  }, [isLeader, roleLoading]); // Run once after role is resolved
 
   // Handle navigation context from Summary Dashboard with improved state management
   useEffect(() => {
@@ -859,7 +867,7 @@ const Dashboard = () => {
                   title={
                     isSquareConnected
                       ? 'Sync the latest sales and labor data from Square.'
-                      : 'Connect your Square POS account to sync data.'
+                      : 'Connect your POS Integration account to sync data.'
                   }
                 >
                   <span>
