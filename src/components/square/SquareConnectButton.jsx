@@ -41,7 +41,7 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '' }) => {
           className="w-full"
           size="large"
         >
-          Square POS Connected
+          POS Integration Connected
         </Button>
       ) : (
         <Button
@@ -53,7 +53,7 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '' }) => {
           className="w-full"
           size="large"
         >
-          {isConnecting ? 'Connecting to Square...' : 'Connect Square POS'}
+          {isConnecting ? 'Connecting to Square...' : 'Connect POS Integration'}
         </Button>
       )}
       

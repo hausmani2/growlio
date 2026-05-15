@@ -95,7 +95,12 @@ const Profile = () => {
   const openAddMemberModal = () => {
     setEditingMember(null);
     memberForm.resetFields();
-    memberForm.setFieldsValue({ role: RESTAURANT_ROLES.MANAGER });
+    memberForm.setFieldsValue({
+      full_name: '',
+      email: '',
+      password: '',
+      role: RESTAURANT_ROLES.MANAGER,
+    });
     setIsMemberModalVisible(true);
   };
 
@@ -685,8 +690,12 @@ const Profile = () => {
         footer={null}
         centered
         destroyOnClose
+        afterClose={() => {
+          setEditingMember(null);
+          memberForm.resetFields();
+        }}
       >
-        <Form form={memberForm} layout="vertical" onFinish={handleMemberSave}>
+        <Form form={memberForm} layout="vertical" onFinish={handleMemberSave} autoComplete="off" preserve={false}>
           <Form.Item
             label="Full Name"
             name="full_name"
@@ -698,7 +707,7 @@ const Profile = () => {
               },
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Full name" size="large" />
+            <Input prefix={<UserOutlined />} placeholder="Full name" size="large" autoComplete="off" />
           </Form.Item>
 
           <Form.Item
@@ -709,7 +718,7 @@ const Profile = () => {
               { type: 'email', message: 'Please enter a valid email' },
             ]}
           >
-            <Input placeholder="user@example.com" size="large" disabled={!!editingMember} />
+            <Input placeholder="user@example.com" size="large" disabled={!!editingMember} autoComplete="new-email" />
           </Form.Item>
 
           <Form.Item
@@ -729,7 +738,7 @@ const Profile = () => {
                 { min: 8, message: 'Password must be at least 8 characters' },
               ]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" />
+              <Input.Password prefix={<LockOutlined />} placeholder="Password" size="large" autoComplete="new-password" />
             </Form.Item>
           )}
 
@@ -739,7 +748,7 @@ const Profile = () => {
               name="password"
               rules={[{ min: 8, message: 'Password must be at least 8 characters' }]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="Leave blank to keep current password" size="large" />
+              <Input.Password prefix={<LockOutlined />} placeholder="Leave blank to keep current password" size="large" autoComplete="new-password" />
             </Form.Item>
           )}
 

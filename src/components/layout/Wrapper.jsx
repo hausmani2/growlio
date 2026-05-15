@@ -41,45 +41,45 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
 
   // Subscription / plan gating (POS integration)
-  // Temporarily disabled per request: always show Square POS like normal.
-  // const subscriptionDetails = useStore((state) => state.subscriptionDetails);
-  // const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
-  // const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
-  // const currentPackage = useStore((state) => state.currentPackage);
-  // const hasFetchedSubscriptionRef = useRef(false);
-  // const lastSubscriptionRestaurantIdRef = useRef(null);
-  // const restaurantIdForPlan = localStorage.getItem('restaurant_id');
-  //
-  // useEffect(() => {
-  //   if (!showSidebar) return;
-  //   // If restaurant changes, re-fetch subscription/current for correct gating
-  //   if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
-  //     hasFetchedSubscriptionRef.current = false;
-  //     lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
-  //   }
-  //   if (hasFetchedSubscriptionRef.current) return;
-  //   hasFetchedSubscriptionRef.current = true;
-  //   fetchCurrentSubscriptionDetails?.(false);
-  // }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
-  //
-  // const posEnabled = useMemo(() => {
-  //   const pkg = subscriptionDetails?.package || null;
-  //   const pkgName = (pkg?.name || '').toLowerCase();
-  //   const featureFlag = pkg?.features?.pos_integration;
-  //
-  //   if (pkg) {
-  //     if (pkgName === 'lite') return false;
-  //     if (typeof featureFlag === 'boolean') return featureFlag;
-  //     return ['grow', 'pro'].includes(pkgName);
-  //   }
-  //
-  //   const cpName = (currentPackage?.name || '').toLowerCase();
-  //   if (cpName) return cpName !== 'lite';
-  //
-  //   // If we still don't know, fail closed while loading; otherwise allow.
-  //   return subscriptionDetailsLoading ? false : true;
-  // }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
-  const posEnabled = true;
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
+  const currentPackage = useStore((state) => state.currentPackage);
+  const hasFetchedSubscriptionRef = useRef(false);
+  const lastSubscriptionRestaurantIdRef = useRef(null);
+  const restaurantIdForPlan = localStorage.getItem('restaurant_id');
+
+  useEffect(() => {
+    if (!showSidebar || !restaurantIdForPlan) return;
+
+    // If restaurant changes, re-fetch subscription/current for correct gating.
+    if (lastSubscriptionRestaurantIdRef.current !== restaurantIdForPlan) {
+      hasFetchedSubscriptionRef.current = false;
+      lastSubscriptionRestaurantIdRef.current = restaurantIdForPlan;
+    }
+
+    if (hasFetchedSubscriptionRef.current) return;
+    hasFetchedSubscriptionRef.current = true;
+    fetchCurrentSubscriptionDetails?.(false);
+  }, [showSidebar, fetchCurrentSubscriptionDetails, restaurantIdForPlan]);
+
+  const posEnabled = useMemo(() => {
+    const getPlanName = (pkg) => String(
+      pkg?.key ||
+      pkg?.name ||
+      pkg?.display_name ||
+      pkg?.package_name ||
+      ''
+    ).trim().toLowerCase();
+
+    const pkg = subscriptionDetails?.package || currentPackage || null;
+    const planName = getPlanName(pkg);
+
+    if (planName) return planName !== 'lite';
+    if (subscriptionDetailsLoading) return false;
+
+    return true;
+  }, [subscriptionDetails, currentPackage, subscriptionDetailsLoading]);
 
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
   const squareStatus = useStore((state) => state.squareStatus);
@@ -95,7 +95,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   };
 
   useEffect(() => {
-    if (!showSidebar) return;
+    if (!showSidebar || !posEnabled) return;
 
     const restaurantId = localStorage.getItem('restaurant_id');
     if (!restaurantId) return;
@@ -468,7 +468,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,
-      label: 'Square POS',
+      label: 'POS Integration',
       onClick: handleSquarePosClick,
     }] : []),
     ...(posEnabled && isPosConnected ? [{

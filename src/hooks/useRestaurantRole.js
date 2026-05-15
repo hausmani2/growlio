@@ -6,17 +6,20 @@ import { getRolePermissions, normalizeRestaurantRole } from '../utils/rolePermis
 const useRestaurantRole = () => {
   const user = useStore((state) => state.user);
   const setUser = useStore((state) => state.setUser);
-  const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState([]);
 
   const restaurantId = localStorage.getItem('restaurant_id');
+  const [loading, setLoading] = useState(!!restaurantId);
   const storedRole = user?.restaurant_role || user?.role;
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchRole = async () => {
-      if (!restaurantId) return;
+      if (!restaurantId) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);

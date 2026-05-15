@@ -73,7 +73,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
           borderColor: 'border-green-200',
           badgeClass: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
           text: 'Connected',
-          description: 'Square POS is connected and ready to use. Your sales data will be automatically synced.',
+          description: 'POS Integration is connected and ready to use. Your sales data will be automatically synced.',
           statusColor: 'success'
         };
       case 'connecting':
@@ -84,7 +84,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
           borderColor: 'border-blue-200',
           badgeClass: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
           text: 'Connecting...',
-          description: 'Establishing secure connection with Square POS. Please wait...',
+          description: 'Establishing secure connection with POS Integration. Please wait...',
           statusColor: 'processing'
         };
       case 'error':
@@ -107,7 +107,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
           borderColor: 'border-gray-200',
           badgeClass: 'bg-gradient-to-r from-gray-400 to-slate-400 text-white',
           text: 'Not Connected',
-          description: 'Square POS is not connected. Connect to enable Square features and sync sales data.',
+          description: 'POS Integration is not connected. Connect to enable POS features and sync sales data.',
           statusColor: 'default'
         };
     }
@@ -143,7 +143,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
           </div>
           <div>
             <Title level={4} className="!mb-0 !text-xl font-bold text-gray-900">
-              Square POS Status
+              POS Integration Status
             </Title>
             <Text type="secondary" className="text-sm">
               Integration connection status
@@ -153,7 +153,7 @@ const SquareStatusDisplay = ({ restaurantId, showRefresh = true, className = '' 
         <div className="flex items-center gap-2">
           {isConnected && (
             <Popconfirm
-              title="Disconnect Square POS?"
+              title="Disconnect POS Integration?"
               description="This will disconnect your Square integration for this restaurant."
               okText="Disconnect"
               cancelText="Cancel"

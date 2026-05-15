@@ -15,6 +15,7 @@ import {
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
 import api from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
+import { normalizeSuperAdminUsersResponse } from '../../../utils/superAdminUsers';
 
 const roleOptions = [
   { label: 'Admin', value: 'ADMIN' },
@@ -107,7 +108,21 @@ const SuperAdminUserManagement = () => {
       user.role === 'USER' && !user.is_staff && !user.is_superuser
     ).length;
     
-    return { adminCount, regularUserCount };
+    const restaurantPlans = new Map();
+    users.forEach((user) => {
+      if (!user.restaurant_id) return;
+      const planKey = String(user.plan_key || user.plan_display_name || 'unknown').toLowerCase();
+      if (restaurantPlans.has(user.restaurant_id)) return;
+      restaurantPlans.set(user.restaurant_id, planKey);
+    });
+
+    const planCounts = Array.from(restaurantPlans.values()).reduce((counts, planKey) => {
+      const key = ['lite', 'grow', 'pro'].includes(planKey) ? planKey : 'other';
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, { lite: 0, grow: 0, pro: 0, other: 0 });
+
+    return { adminCount, regularUserCount, planCounts };
   }, [users]);
 
   const fetchUsers = async (page = 1, pageSize = 10, searchQuery = '') => {
@@ -119,13 +134,13 @@ const SuperAdminUserManagement = () => {
         ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
       }).toString();
       const res = await apiGet(`/authentication/users/?${params}`);
-      const incoming = res.data.results || res.data || [];
+      const { users: incoming, total } = normalizeSuperAdminUsersResponse(res.data);
       setUsers(incoming);
       setPagination(prev => ({
         ...prev,
         current: page,
         pageSize: pageSize,
-        total: res.data.count || res.data.length || 0
+        total
       }));
     } catch (err) {
       message.error('Failed to load users');
@@ -331,6 +346,19 @@ const SuperAdminUserManagement = () => {
       ),
     },
     {
+      title: 'Restaurant',
+      key: 'restaurant',
+      width: 220,
+      render: (_, record) => (
+        <div>
+          <div className="font-medium text-gray-900">{record.restaurant_name || '-'}</div>
+          {record.plan_display_name && (
+            <div className="text-xs text-gray-500">Plan: {record.plan_display_name}</div>
+          )}
+        </div>
+      ),
+    },
+    {
       title: 'Full Name',
       dataIndex: 'full_name',
       key: 'full_name',
@@ -460,7 +488,8 @@ const SuperAdminUserManagement = () => {
       if (values.role && values.role !== 'USER') {
         // Get the created user and update role
         const res = await apiGet('/authentication/users/');
-        const created = res.data.find((u) => u.email === values.email);
+        const { users: createdUsers } = normalizeSuperAdminUsersResponse(res.data);
+        const created = createdUsers.find((u) => u.email === values.email);
         if (created) {
           await apiPut(`/authentication/users/${created.id}/role/`, { role: values.role });
         }
@@ -512,7 +541,28 @@ const SuperAdminUserManagement = () => {
           </div>
           
           {/* Right Side - User Statistics */}
-          <div className="flex flex-row gap-3">
+          <div className="flex flex-wrap gap-3 justify-start lg:justify-end">
+            <div className="flex items-center p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200 min-w-[120px]">
+              <div className="ml-1 flex-1">
+                <p className="text-xs font-medium text-gray-600 mb-0.5">Lite</p>
+                <p className="text-xl font-bold text-orange-900">{userCounts.planCounts.lite}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-200 min-w-[120px]">
+              <div className="ml-1 flex-1">
+                <p className="text-xs font-medium text-gray-600 mb-0.5">Grow</p>
+                <p className="text-xl font-bold text-blue-900">{userCounts.planCounts.grow}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center p-3 bg-gradient-to-r from-purple-50 to-fuchsia-50 rounded-lg border border-purple-200 min-w-[120px]">
+              <div className="ml-1 flex-1">
+                <p className="text-xs font-medium text-gray-600 mb-0.5">Pro</p>
+                <p className="text-xl font-bold text-purple-900">{userCounts.planCounts.pro}</p>
+              </div>
+            </div>
+
             <div className="flex items-center p-3 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200 min-w-[140px]">
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">

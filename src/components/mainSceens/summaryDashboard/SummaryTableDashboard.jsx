@@ -4,6 +4,7 @@ import { PrinterOutlined, DownloadOutlined, EditOutlined } from '@ant-design/ico
 import dayjs from 'dayjs';
 import SalesDataModal from './SalesDataModal';
 import useStore from '../../../store/store';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
 
 const { Title, Text } = Typography;
 
@@ -13,6 +14,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
   const [dataTimestamp, setDataTimestamp] = useState(Date.now());
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedWeekForEdit, setSelectedWeekForEdit] = useState(null);
+  const { canCreateBudget } = useRestaurantRole();
 
   // Plan gating (Lite should not show Export Data)
   const subscriptionDetails = useStore((state) => state.subscriptionDetails);
@@ -485,6 +487,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
 
   // Edit handler
   const handleEdit = useCallback(() => {
+    if (!canCreateBudget) return;
+
     if (!tableData || tableData.length === 0) {
       return;
     }
@@ -539,7 +543,7 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     
     setSelectedWeekForEdit(weekData);
     setIsEditModalVisible(true);
-  }, [tableData, parseNumericValue, resolveRestaurantOpen]);
+  }, [canCreateBudget, tableData, parseNumericValue, resolveRestaurantOpen]);
 
   // Handle edit modal close
   const handleEditModalClose = useCallback(() => {
@@ -683,15 +687,17 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           </h2>
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button 
-            icon={<EditOutlined />} 
-            onClick={handleEdit}
-            size="middle"
-            disabled={!hasData}
-            className="h-9 px-4 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
-          >
-            <span className="hidden sm:inline">Edit Budget</span>
-          </Button>
+          {canCreateBudget && (
+            <Button 
+              icon={<EditOutlined />} 
+              onClick={handleEdit}
+              size="middle"
+              disabled={!hasData}
+              className="h-9 px-4 bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 font-normal rounded-lg flex items-center gap-2"
+            >
+              <span className="hidden sm:inline">Edit Budget</span>
+            </Button>
+          )}
           <Button 
             icon={<PrinterOutlined />} 
             onClick={handlePrint}
@@ -895,13 +901,15 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       </div>
 
       {/* Edit Sales Data Modal */}
-      <SalesDataModal
-        visible={isEditModalVisible}
-        onCancel={handleEditModalClose}
-        selectedWeekData={selectedWeekForEdit}
-        onDataSaved={handleEditDataSaved}
-        autoOpenFromSummary={true}
-      />
+      {canCreateBudget && (
+        <SalesDataModal
+          visible={isEditModalVisible}
+          onCancel={handleEditModalClose}
+          selectedWeekData={selectedWeekForEdit}
+          onDataSaved={handleEditDataSaved}
+          autoOpenFromSummary={true}
+        />
+      )}
 
     </Card>
   );

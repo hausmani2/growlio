@@ -36,7 +36,7 @@ const BUDGET_TUTORIAL_VIDEOS = {
 const SummaryDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { canCreateBudget } = useRestaurantRole();
+  const { canCreateBudget, isOwner, loading: roleLoading } = useRestaurantRole();
 
   // Use local state for calendar to prevent infinite loops
   const [calendarDateRange, setCalendarDateRange] = useState([]);
@@ -138,29 +138,35 @@ const SummaryDashboard = () => {
     componentName: 'SummaryDashboard'
   });
 
+  const getSummaryEntries = useCallback((summary) => {
+    if (Array.isArray(summary?.data)) return summary.data;
+    if (Array.isArray(summary?.daily_entries)) return summary.daily_entries;
+    if (Array.isArray(summary)) return summary;
+    return [];
+  }, []);
+
   // Enhanced data validation function with better logging
   const hasValidData = useCallback(() => {
-    const isValid = dashboardSummaryData?.status === 'success' && 
-                   Array.isArray(dashboardSummaryData?.data) && 
-                   dashboardSummaryData.data.length > 0;
+    const isValid = getSummaryEntries(dashboardSummaryData).length > 0;
     
 
     
     return isValid;
-  }, [dashboardSummaryData]);
+  }, [dashboardSummaryData, getSummaryEntries]);
 
   // Check if budget exists for the selected week
   const hasBudgetForWeek = useCallback(() => {
-    if (!dashboardSummaryData || !dashboardSummaryData.data || !Array.isArray(dashboardSummaryData.data)) {
+    const entries = getSummaryEntries(dashboardSummaryData);
+    if (!entries.length) {
       return false;
     }
     
     // Check if any entry has sales_budget > 0
-    return dashboardSummaryData.data.some(entry => {
+    return entries.some(entry => {
       const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
       return salesBudget > 0;
     });
-  }, [dashboardSummaryData]);
+  }, [dashboardSummaryData, getSummaryEntries]);
 
   // Use refs to prevent infinite loops and duplicate modals
   const [isInitialized, setIsInitialized] = useState(false);
@@ -170,7 +176,7 @@ const SummaryDashboard = () => {
   const isProcessingWeek = useRef(false);
   const pendingWeeklyAverageRef = useRef(null); // { dateRangeKey, weeklyData }
   const onboardingGateModalOpenRef = useRef(false);
-  const leaderBudgetFallbackRef = useRef(false);
+  const readableBudgetFallbackRef = useRef(false);
 
   const showOnboardingRequiredModal = useCallback(() => {
     if (onboardingGateModalOpenRef.current) return;
@@ -208,17 +214,17 @@ const SummaryDashboard = () => {
 
   useEffect(() => {
     const loadLatestReadableBudget = async () => {
-      if (canCreateBudget || summaryLoading || !isInitialized || hasValidData() || leaderBudgetFallbackRef.current) {
+      if (isOwner || roleLoading || summaryLoading || !isInitialized || hasValidData() || readableBudgetFallbackRef.current) {
         return;
       }
 
-      leaderBudgetFallbackRef.current = true;
+      readableBudgetFallbackRef.current = true;
 
       try {
         const searchStart = dayjs().subtract(12, 'week').startOf('week').format('YYYY-MM-DD');
         const searchEnd = dayjs().add(4, 'week').endOf('week').format('YYYY-MM-DD');
         const response = await fetchDashboardSummary(searchStart, searchEnd, 'daily');
-        const entries = Array.isArray(response?.data) ? response.data : [];
+        const entries = getSummaryEntries(response);
 
         const budgetEntry = [...entries]
           .reverse()
@@ -240,7 +246,7 @@ const SummaryDashboard = () => {
     };
 
     loadLatestReadableBudget();
-  }, [canCreateBudget, summaryLoading, isInitialized, hasValidData, fetchDashboardSummary, fetchSummaryData, groupBy]);
+  }, [isOwner, roleLoading, summaryLoading, isInitialized, hasValidData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
 
   // Auto-fetch data when calendar dates are set and component is initialized
   useEffect(() => {
@@ -319,10 +325,7 @@ const SummaryDashboard = () => {
       const summaryResponse = await fetchDashboardSummary(startDate, endDate, groupBy);
       
       // Check if selected week has valid data
-      const hasData = summaryResponse && 
-                     summaryResponse.status === 'success' && 
-                     Array.isArray(summaryResponse.data) && 
-                     summaryResponse.data.length > 0;
+      const hasData = getSummaryEntries(summaryResponse).length > 0;
       
       // If week has data, proceed normally (no modals)
       if (hasData) {
@@ -363,7 +366,7 @@ const SummaryDashboard = () => {
         isProcessingWeek.current = null;
       }, 1000);
     }
-  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy]);
+  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
 
   // New: Week Picker change handler (single week selection like Enter Weekly Data)
   const handleWeekPickerChange = useCallback(async (date) => {

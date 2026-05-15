@@ -11,7 +11,7 @@ const pages = [
   { label: 'Profit & Loss Dashboard', value: 'profit-loss-dashboard' },
   { label: 'Support', value: 'support' },
   { label: 'Training', value: 'training' },
-  { label: 'Square POS', value: 'square-pos' },
+  { label: 'POS Integration', value: 'square-pos' },
 ];
 
 const TooltipsAdmin = () => {

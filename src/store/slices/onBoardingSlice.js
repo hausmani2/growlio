@@ -1900,7 +1900,7 @@ const createOnBoardingSlice = (set, get) => ({
 
             set(() => ({
                 restaurantGoalsLoading: false,
-                restaurantGoalsError: errorMessage,
+                restaurantGoalsError: null,
                 restaurantGoals: fallbackGoals
             }));
             

@@ -346,7 +346,7 @@ const SquareCallbackHandler = () => {
             <Result
               status="success"
               icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-              title="Square POS Connected Successfully!"
+              title="POS Integration Connected Successfully!"
               subTitle="Click a location to sync your Square data, then we’ll take you to Close Out Your Day(s)."
             />
 

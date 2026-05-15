@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/axiosInterceptors';
+import { normalizeSuperAdminUsersResponse } from '../../utils/superAdminUsers';
 import { 
   isImpersonating, 
   getImpersonatedUser, 
@@ -187,14 +188,16 @@ const createSuperAdminSlice = (set, get) => {
         // The axios interceptor will automatically use the correct token
         const response = await apiGet(`/authentication/users/?page=${page}&limit=${limit}&ordering=-created_date`);
         
+        const { users, total } = normalizeSuperAdminUsersResponse(response.data);
+
         set(() => ({ 
-          allUsers: response.data.results || response.data,
-          usersTotal: response.data.count || response.data.length,
+          allUsers: users,
+          usersTotal: total,
           loading: false,
           error: null 
         }));
         
-        return { success: true, data: response.data.results || response.data };
+        return { success: true, data: users };
       } catch (error) {
         console.error('Error fetching all users:', error);
         const errorMessage = error.response?.data?.message || 'Failed to fetch users';
