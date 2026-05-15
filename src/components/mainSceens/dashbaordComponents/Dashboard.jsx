@@ -59,7 +59,7 @@ const Dashboard = () => {
 
   // Restaurant goals functionality
   const { getRestaurentGoal, restaurantGoals, restaurantGoalsLoading, restaurantGoalsError } = useStore();
-
+ 
   // Weekly average data functionality
   const {
     checkWeeklyAverageData,
