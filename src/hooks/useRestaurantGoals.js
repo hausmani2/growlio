@@ -133,6 +133,8 @@ const useRestaurantGoals = ({
     return allDays.filter(day => !openDays.includes(day.toLowerCase()));
   }, [getOpenDays]);
 
+  const refreshGoals = useCallback(() => fetchGoals(true), [fetchGoals]);
+
   // Auto-fetch on mount if enabled
   useEffect(() => {
     if (autoFetch) {
@@ -149,7 +151,7 @@ const useRestaurantGoals = ({
     
     // Actions
     fetchGoals,
-    refreshGoals: () => fetchGoals(true),
+    refreshGoals,
     
     // Utilities
     isDayOpen,

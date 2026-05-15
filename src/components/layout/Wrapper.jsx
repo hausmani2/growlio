@@ -15,6 +15,7 @@ import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
 import { getIncompleteSetupItems, getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
+import useRestaurantRole from '../../hooks/useRestaurantRole';
 
 /**
  * Wrapper component
@@ -26,6 +27,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const { canManageLocations, canAccessSimulator } = useRestaurantRole();
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
@@ -344,7 +346,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
-    {
+    ...(canManageLocations ? [{
       key: 'onboarding',
       icon: <UserOutlined />,
       label: 'Your Setup',
@@ -403,7 +405,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
        
      
       ],
-    },
+    }] : []),
     {
       key: 'support',
       icon: <QuestionCircleOutlined />,
@@ -420,7 +422,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     // Simulation Dashboard
     // Always show for regular users in the sidebar.
     // If simulation isn't set up yet, route them to simulation onboarding.
-    ...(isRegularUser ? [
+    ...(isRegularUser && canAccessSimulator ? [
       {
         key: 'simulation-dashboard',
         icon: <FaChartLine />,
