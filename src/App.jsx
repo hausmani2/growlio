@@ -60,6 +60,8 @@ import PosOrders from './components/mainSceens/posDetails/PosOrders';
 import PosLocations from './components/mainSceens/posDetails/PosLocations';
 import PosPayments from './components/mainSceens/posDetails/PosPayments';
 import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
+import PosIntegrationsPage from './components/mainSceens/posIntegrations/PosIntegrationsPage';
+import SuperAdminPosIntegrations from './components/superadmin/components/SuperAdminPosIntegrations';
 import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
 import TermsOfService from './components/legal/TermsOfService';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
@@ -379,6 +381,7 @@ function App() {
           <Route path="/dashboard/pos/locations" element={<Wrapper showSidebar={true} children={<PosLocations />} />} />
           <Route path="/dashboard/pos/payments" element={<Wrapper showSidebar={true} children={<PosPayments />} />} />
           <Route path="/dashboard/pos/timecards" element={<Wrapper showSidebar={true} children={<PosTimecards />} />} />
+          <Route path="/dashboard/pos-integrations" element={<Wrapper showSidebar={true} children={<PosIntegrationsPage />} />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
         <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />
@@ -399,6 +402,7 @@ function App() {
           <Route path="/superadmin/tooltips" element={<Wrapper showSidebar={true} children={<SuperAdminTooltips />} />} />
           <Route path="/superadmin/faq" element={<Wrapper showSidebar={true} children={<FaqWrapper />} />} />
           <Route path="/superadmin/superadmin-chat" element={<Wrapper showSidebar={true} children={<ChatPage />} className="!p-0 !h-full relative" />} />          <Route path="/superadmin/guidance-popups" element={<Wrapper showSidebar={true} children={<GuidancePopupsAdmin />} />} />
+          <Route path="/superadmin/pos-integrations" element={<Wrapper showSidebar={true} children={<SuperAdminPosIntegrations />} />} />
 
         </Route>
 

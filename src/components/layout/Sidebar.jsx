@@ -57,6 +57,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/support': 'support',
     '/dashboard/training': 'training',
     '/dashboard/pricing': 'pricing',
+    '/dashboard/pos-integrations': 'pos-integrations',
     '/dashboard/square': 'square',
     '/dashboard/pos/orders': 'pos-orders',
     '/dashboard/pos/locations': 'pos-locations',
@@ -80,14 +81,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/superadmin/faq': 'superadmin-faq',
     '/superadmin/superadmin-chat': 'superadmin-chat',
     '/superadmin/guidance-popups': 'superadmin-guidance-popups',
+    '/superadmin/pos-integrations': 'superadmin-pos-integrations',
   };
   
   // Determine selected key based on current path
   let selectedKey = pathKeyMap[location.pathname] || 'dashboard';
   
   // If we're on a dashboard sub-page, also mark the parent as selected
-  if (location.pathname === '/dashboard/budget' || location.pathname === '/dashboard/profit-loss') {
-    // For dashboard sub-pages, we want to show the parent as expanded and the child as selected
+  if (
+    location.pathname === '/dashboard/budget' ||
+    location.pathname === '/dashboard/profit-loss' ||
+    location.pathname === '/dashboard/pos-integrations'
+  ) {
     selectedKey = pathKeyMap[location.pathname];
   }
 

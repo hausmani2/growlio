@@ -13,6 +13,7 @@ import createPlansSlice from './slices/plansSlice';
 import createSquareSlice from './slices/squareSlice';
 import createSquarePosDetailsSlice from './slices/squarePosDetailsSlice';
 import createSimulationSlice from './slices/simulationSlice';
+import createPosIntegrationsSlice from './slices/posIntegrationsSlice';
 
 
 const useStore = create(
@@ -32,6 +33,7 @@ const useStore = create(
         ...createSquareSlice(set, get),
         ...createSquarePosDetailsSlice(set, get),
         ...createSimulationSlice(set, get),
+        ...createPosIntegrationsSlice(set, get),
 
       
         
