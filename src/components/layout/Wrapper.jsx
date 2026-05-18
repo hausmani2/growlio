@@ -465,6 +465,18 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     //   label: 'Pricing',
     //   onClick: () => navigate('/dashboard/pricing'),
     // },
+    {
+      key: 'pos',
+      icon: <ShoppingOutlined />,
+      label: 'POS',
+      children: [
+        {
+          key: 'pos-integrations',
+          label: 'POS Integrations',
+          onClick: () => navigate('/dashboard/pos-integrations'),
+        },
+      ],
+    },
     ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,
@@ -580,7 +592,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Tooltips',
           onClick: () => navigate('/superadmin/tooltips'),
         },
-       
+        {
+          key: 'superadmin-pos-integrations',
+          icon: <ShoppingOutlined />,
+          label: 'POS Integrations',
+          onClick: () => navigate('/superadmin/pos-integrations'),
+        },
         {
           key: 'superadmin-guidance-popups',
           icon: <BellOutlined />,
