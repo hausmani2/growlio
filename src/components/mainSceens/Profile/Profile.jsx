@@ -464,6 +464,49 @@ const Profile = () => {
           >
             <div className="space-y-6">
               <Card className="shadow-sm border-0 bg-gray-50">
+                <h3 className="text-xl font-bold text-orange-600 mb-1">3 levels</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  There are three roles. Each role has a fixed set of access for your location.
+                </p>
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={8}>
+                    <div className="h-full rounded-lg border border-orange-100 bg-orange-50/60 p-4">
+                      <div className="mb-2">
+                        <Tag color="orange">OWNER</Tag>
+                      </div>
+                      <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-gray-700">
+                        <li>Full access to location. Can add locations, users, and do everything else.</li>
+                        <li>Access to Simulator.</li>
+                      </ul>
+                    </div>
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <div className="h-full rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                      <div className="mb-2">
+                        <Tag color="blue">MANAGER</Tag>
+                      </div>
+                      <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-gray-700">
+                        <li>Create Budget</li>
+                        <li>Close Days</li>
+                        <li>Access to Simulator</li>
+                      </ul>
+                    </div>
+                  </Col>
+                  <Col xs={24} md={8}>
+                    <div className="h-full rounded-lg border border-green-100 bg-green-50/60 p-4">
+                      <div className="mb-2">
+                        <Tag color="green">LEADER</Tag>
+                      </div>
+                      <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-gray-700">
+                        <li>View Budget</li>
+                        <li>Close Days</li>
+                      </ul>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+
+              <Card className="shadow-sm border-0 bg-gray-50">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-gray-200 mb-6">
                   <div>
                     <h3 className="text-xl font-bold text-orange-600">Users & Roles</h3>

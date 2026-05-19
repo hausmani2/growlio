@@ -3,6 +3,11 @@ import { Modal, Form, InputNumber, Button, Typography, Divider, Alert, Spin, mes
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import useStore from '../../../store/store';
 import FeaturesTable from './FeaturesTable';
+import {
+  formatPrice,
+  getMaxLocationsCap,
+  getPlanDescription,
+} from '../../../utils/packageDisplay';
 
 const { Title, Text } = Typography;
 
@@ -21,9 +26,11 @@ const PlanSelectionModal = ({
     if (visible && plan) {
       // Reset form and set initial value when modal opens
       // For free plans, use max_locations; for paid plans, start with 1
-      const initialValue = (plan.price_per_location === 0 || (plan.price_per_location === null && plan.max_locations === 1))
-        ? (plan.max_locations && plan.max_locations < 9999 ? plan.max_locations : 1)
-        : 1;
+      const maxCap = getMaxLocationsCap(plan);
+      const initialValue =
+        plan.price_per_location === 0 || (plan.price_per_location === null && maxCap === 1)
+          ? maxCap ?? 1
+          : 1;
       form.resetFields();
       form.setFieldsValue({
         number_of_locations: initialValue
@@ -89,14 +96,18 @@ const PlanSelectionModal = ({
     }
   };
 
-  const formatPrice = (price) => {
-    if (price === undefined || price === null) return 'Custom';
-    if (price === 0) return 'Free';
-    return `$${parseFloat(price).toFixed(0)}`;
-  };
+  const isUpgrade =
+    currentPlan &&
+    plan.price_per_location != null &&
+    currentPlan.price_per_location != null &&
+    plan.price_per_location > currentPlan.price_per_location;
+  const isDowngrade =
+    currentPlan &&
+    plan.price_per_location != null &&
+    currentPlan.price_per_location != null &&
+    plan.price_per_location < currentPlan.price_per_location;
 
-  const isUpgrade = currentPlan && plan.price && currentPlan.price && plan.price > currentPlan.price;
-  const isDowngrade = currentPlan && plan.price && currentPlan.price && plan.price < currentPlan.price;
+  const maxLocationsCap = plan ? getMaxLocationsCap(plan) : 1;
 
   return (
     <Modal
@@ -120,10 +131,10 @@ const PlanSelectionModal = ({
             <div className="flex items-center justify-between">
               <div>
                 <Title level={4} className="!mb-1 !text-orange-900">
-                  {plan.name}
+                  {plan.display_name || plan.name}
                 </Title>
                 <Text className="text-orange-700">
-                  {plan.description || 'Premium subscription plan'}
+                  {getPlanDescription(plan) || 'Premium subscription plan'}
                 </Text>
               </div>
               <div className="text-right">
@@ -161,12 +172,12 @@ const PlanSelectionModal = ({
           )}
 
           {/* Features Section */}
-          {plan.features && plan.features.length > 0 && (
+          {plan.features && Object.keys(plan.features).length > 0 && (
             <div className="mb-6">
               <Title level={5} className="!mb-3">
                 Plan Features
               </Title>
-              <FeaturesTable features={plan.features} />
+              <FeaturesTable plan={plan} />
             </div>
           )}
 
@@ -178,9 +189,10 @@ const PlanSelectionModal = ({
             layout="vertical"
             onFinish={handleSubmit}
             initialValues={{
-              number_of_locations: (plan.price_per_location === 0 || (plan.price_per_location === null && plan.max_locations === 1))
-                ? (plan.max_locations && plan.max_locations < 9999 ? plan.max_locations : 1)
-                : 1
+              number_of_locations:
+                plan.price_per_location === 0 || (plan.price_per_location === null && maxLocationsCap === 1)
+                  ? maxLocationsCap ?? 1
+                  : 1,
             }}
           >
             <Form.Item
@@ -195,31 +207,29 @@ const PlanSelectionModal = ({
               rules={[
                 { required: true, message: 'Please enter the number of locations' },
                 { type: 'number', min: 1, message: 'Number of locations must be at least 1' },
-                { 
+                {
                   validator: (_, value) => {
-                    const maxValue = plan.max_locations && plan.max_locations < 9999 ? plan.max_locations : 100;
+                    const maxValue = maxLocationsCap ?? 100;
                     if (value === null || value === undefined || value === '') {
                       return Promise.reject(new Error('Please enter the number of locations'));
                     }
                     if (value < 1) {
                       return Promise.reject(new Error('Number of locations must be at least 1'));
                     }
-                    if (value > maxValue) {
-                      return Promise.reject(new Error(
-                        plan.max_locations && plan.max_locations < 9999 
-                          ? `Number of locations cannot exceed ${plan.max_locations} for this plan`
-                          : 'Number of locations cannot exceed 100'
-                      ));
+                    if (maxLocationsCap != null && value > maxValue) {
+                      return Promise.reject(
+                        new Error(`Number of locations cannot exceed ${maxLocationsCap} for this plan`)
+                      );
                     }
                     return Promise.resolve();
-                  }
+                  },
                 }
               ]}
               help={
                 plan.price_per_location === 0
-                  ? `This free plan is limited to ${plan.max_locations && plan.max_locations < 9999 ? plan.max_locations : 1} location${(plan.max_locations && plan.max_locations < 9999 && plan.max_locations > 1) ? 's' : ''}.`
-                  : plan.max_locations && plan.max_locations < 9999
-                  ? `This plan allows up to ${plan.max_locations} location${plan.max_locations > 1 ? 's' : ''}`
+                  ? `This free plan is limited to ${maxLocationsCap ?? 1} location${maxLocationsCap > 1 ? 's' : ''}.`
+                  : maxLocationsCap != null
+                  ? `This plan allows up to ${maxLocationsCap} location${maxLocationsCap > 1 ? 's' : ''}`
                   : 'Enter the total number of restaurant locations for this subscription'
               }
             >
@@ -231,10 +241,9 @@ const PlanSelectionModal = ({
                 controls={true}
                 keyboard={true}
                 style={{ width: '100%' }}
-                disabled={plan.price_per_location === 0 || (plan.price_per_location === null && plan.max_locations === 1)}
+                disabled={plan.price_per_location === 0 || (plan.price_per_location === null && maxLocationsCap === 1)}
                 onChange={(value) => {
-                  // Limit controls to max, but allow typing any value for validation
-                  const maxValue = plan.max_locations && plan.max_locations < 9999 ? plan.max_locations : 100;
+                  const maxValue = maxLocationsCap ?? 100;
                   // Only limit if using controls (not typing)
                   if (value !== null && value !== undefined && value > maxValue) {
                     // Don't prevent typing, but trigger validation to show error

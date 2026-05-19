@@ -17,6 +17,7 @@ import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
 import SyncModal from '../../SyncModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -153,7 +154,7 @@ const Dashboard = () => {
 
       if (isNoDataResponse) {
         setDashboardData(null);
-        setDashboardMessage(data.message);
+        setDashboardMessage(CLOSE_OUT_NO_BUDGET_MESSAGE);
       } else {
         // Data exists - populate it
         setDashboardData(data);
@@ -220,7 +221,7 @@ const Dashboard = () => {
       // NOTE: Weekly Average Data modal is disabled for Close Out Your Day(s) page
       if (isNoDataResponse) {
         setDashboardData(null);
-        setDashboardMessage(data.message || "No weekly dashboard found");
+        setDashboardMessage(CLOSE_OUT_NO_BUDGET_MESSAGE);
 
         // Weekly average modal is disabled for Close Out Your Day(s) page
         // Users should manually enter data instead

@@ -404,7 +404,14 @@ const useStore = create(
           }));
         }
       }),
-      { name: 'growlio-store' }
+      {
+        name: 'growlio-store',
+        // Subscription packages must always come from the API (avoid stale pricing after refresh).
+        partialize: (state) => {
+          const { packages, currentPackage, ...rest } = state;
+          return rest;
+        },
+      }
     )
   )
 );

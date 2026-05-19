@@ -9,6 +9,7 @@ import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
+import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 import { useGuidance } from '../../../contexts/GuidanceContext';
 const { Title, Text } = Typography;
 
@@ -2698,7 +2699,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             {dataNotFound || areAllValuesZero(weeklyData) ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No sales data found for the selected period."
+                description={
+                  dataNotFound
+                    ? CLOSE_OUT_NO_BUDGET_MESSAGE
+                    : 'No sales data found for the selected period.'
+                }
                 className="py-8"
               />
             ) : (
@@ -3064,7 +3069,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             {dataNotFound ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No sales data available for this period."
+                description={CLOSE_OUT_NO_BUDGET_MESSAGE}
                 className="py-4"
               />
             ) : (
