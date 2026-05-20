@@ -13,8 +13,28 @@ const { Title, Text } = Typography;
 // Helper function to format numbers properly and avoid floating-point precision issues
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') return 0;
-  const num = parseFloat(value);
+  const num = typeof value === 'string'
+    ? parseFloat(value.replace(/[$,%\s,]/g, ''))
+    : parseFloat(value);
   return isNaN(num) ? 0 : Math.round(num * 100) / 100; // Round to 2 decimal places
+};
+
+const getWeeklyNetSalesFromDashboard = (dashboardData) => {
+  const cogsWeeklyNetSales = formatNumber(dashboardData?.["COGS Performance"]?.weekly_net_sales);
+  if (cogsWeeklyNetSales > 0) return cogsWeeklyNetSales;
+
+  const salesWeeklyNetSales = formatNumber(dashboardData?.["Sales Performance"]?.net_sales_actual);
+  if (salesWeeklyNetSales > 0) return salesWeeklyNetSales;
+
+  return formatNumber(
+    dashboardData?.daily_entries?.reduce((sum, entry) => {
+      const dailyNetSales =
+        formatNumber(entry?.['Sales Performance']?.daily_net_sales) ||
+        formatNumber(entry?.['Sales Performance']?.net_sales_actual) ||
+        formatNumber(entry?.['COGS Performance']?.daily_net_sales);
+      return sum + dailyNetSales;
+    }, 0) || 0
+  );
 };
 
 const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
@@ -213,8 +233,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       const firstDailyEntry = dashboardData.daily_entries?.[0];
       const weeklyRemainingFromDaily = firstDailyEntry?.["COGS Performance"]?.weekly_remaining_cog;
       
-      // Extract weekly net sales from COGS Performance
-      const weeklyNetSales = formatNumber(cogsPerformance?.weekly_net_sales || 0);
+      // Extract weekly net sales, falling back to Sales Performance and daily sales totals.
+      const weeklyNetSales = getWeeklyNetSalesFromDashboard(dashboardData);
       
       const weeklyTotals = {
         cogsBudget: formatNumber(cogsPerformance?.cogs_budget || 0),
@@ -253,9 +273,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           key: `day-${entry.date}`,
           date: dayjs(entry.date),
           dayName: dayjs(entry.date).format('dddd'),
-          budget: isRestaurantOpen ? (entry['COGS Performance']?.cogs_budget || 0) : 0,
-          actual: isRestaurantOpen ? (entry['COGS Performance']?.cogs_actual || 0) : 0,
-          weeklyRemainingCog: entry['COGS Performance']?.weekly_remaining_cog || 0,
+          budget: isRestaurantOpen ? formatNumber(entry['COGS Performance']?.cogs_budget || 0) : 0,
+          actual: isRestaurantOpen ? formatNumber(entry['COGS Performance']?.cogs_actual || 0) : 0,
+          weeklyRemainingCog: formatNumber(entry['COGS Performance']?.weekly_remaining_cog || 0),
           netSales: dailyNetSales,
           restaurantOpen: isRestaurantOpen
         };
@@ -515,9 +535,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     const initialWeeklySalesBudget = dashboardData?.["Sales Performance"]?.sales_budget != null
       ? formatNumber(dashboardData["Sales Performance"].sales_budget)
       : 0;
-    const initialWeeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
-      ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
-      : 0;
+    const initialWeeklyNetSales = getWeeklyNetSalesFromDashboard(dashboardData);
     const initialCogsActual = dashboardData?.["COGS Performance"]?.cogs_actual != null
       ? formatNumber(dashboardData["COGS Performance"].cogs_actual)
       : 0;
@@ -546,9 +564,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         ? formatNumber(dashboardData["Sales Performance"].sales_budget)
         : 0;
       // Get weekly net sales and weekly cogs actual from dashboard data (API)
-      const weeklyNetSales = dashboardData?.["COGS Performance"]?.weekly_net_sales 
-        ? formatNumber(dashboardData["COGS Performance"].weekly_net_sales) 
-        : 0;
+      const weeklyNetSales = getWeeklyNetSalesFromDashboard(dashboardData);
       const cogsActualFromApi = dashboardData?.["COGS Performance"]?.cogs_actual != null
         ? formatNumber(dashboardData["COGS Performance"].cogs_actual)
         : 0;
@@ -695,9 +711,10 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                  <Text strong className="text-sm sm:text-base">Percentage COGS to Date:</Text>
                  <Input
                    value={`${(() => {
-                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
-                     const weeklyNetSales = formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0);
-                     return weeklyNetSales > 0 ? ((totalActual / weeklyNetSales) * 100).toFixed(1) : '0.0';
+                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + formatNumber(day.actual), 0);
+                     const currentSalesToDate = weekFormData.dailyData.reduce((sum, day) => sum + formatNumber(day.netSales), 0);
+                     const netSales = currentSalesToDate || formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0);
+                     return netSales > 0 ? ((totalActual / netSales) * 100).toFixed(1) : '0.0';
                    })()}%`}
                    className="mt-1"
                    disabled
