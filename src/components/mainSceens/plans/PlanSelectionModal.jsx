@@ -128,24 +128,24 @@ const PlanSelectionModal = ({
         <div className="py-4">
           {/* Plan Summary */}
           <div className="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
                 <Title level={4} className="!mb-1 !text-orange-900">
                   {plan.display_name || plan.name}
                 </Title>
-                <Text className="text-orange-700">
+                <Text className="text-orange-700 block leading-relaxed">
                   {getPlanDescription(plan) || 'Premium subscription plan'}
                 </Text>
               </div>
-              <div className="text-right">
-                <Text className="text-2xl font-bold text-orange-900">
+              <div className="text-right flex-shrink-0">
+                <Text className="text-2xl font-bold text-orange-900 whitespace-nowrap block">
                   {formatPrice(plan.price_per_location)}
                 </Text>
                 {plan.price_per_location !== undefined && plan.price_per_location > 0 && (
-                  <Text className="text-orange-700 block text-sm">/location/month</Text>
+                  <Text className="text-orange-700 block text-sm whitespace-nowrap">/location/month</Text>
                 )}
                 {plan.price_per_location === 0 && (
-                  <Text className="text-orange-700 block text-sm">Forever</Text>
+                  <Text className="text-orange-700 block text-sm whitespace-nowrap">Forever</Text>
                 )}
               </div>
             </div>
