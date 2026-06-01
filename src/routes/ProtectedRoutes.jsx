@@ -1014,6 +1014,7 @@ const ProtectedRoutes = () => {
 
   // Route path checks - be specific to avoid conflicts
   const isOnboardingMainPath = location.pathname === ONBOARDING_ROUTES.ONBOARDING;
+  const isOnboardingPlansPath = location.pathname === ONBOARDING_ROUTES.PLANS;
   const isOnboardingPath = location.pathname.includes('/onboarding');
   const isCompleteStepsPath = location.pathname.includes('/complete');
   const isProfitabilityPath = location.pathname === '/profitability' || location.pathname.includes('/onboarding/profitability');
@@ -1161,7 +1162,7 @@ const ProtectedRoutes = () => {
     // If restaurant exists, block access to /onboarding page
     // User must go to /onboarding/score instead
     if (isOnboardingMainPath) {
-      return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
+      return <Navigate to={ONBOARDING_ROUTES.PLANS} replace />;
     }
     
     // CRITICAL: If onboarding is complete, block congratulations page and redirect to dashboard
@@ -1174,7 +1175,7 @@ const ProtectedRoutes = () => {
     }
     
     // Allow score, profitability, and congratulations pages (only if onboarding not complete)
-    if (isScorePath || isProfitabilityPath || isCongratulationsPath) {
+    if (isOnboardingPlansPath || isScorePath || isProfitabilityPath || isCongratulationsPath) {
       return <Outlet />;
     }
     
@@ -1226,8 +1227,8 @@ const ProtectedRoutes = () => {
       return <LoadingSpinner message="Checking your setup..." />;
     }
     
-    // Allow ONLY the main onboarding page to create restaurant
-    if (isOnboardingMainPath) {
+    // Allow the main onboarding page and plan selection before the profitability score.
+    if (isOnboardingMainPath || isOnboardingPlansPath) {
       return <Outlet />;
     }
     

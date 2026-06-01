@@ -5,6 +5,7 @@ import { useTabHook } from "../../useTabHook";
 import { useLocation } from 'react-router-dom';
 import TooltipIcon from "../../../../common/TooltipIcon";
 import useTooltips from "../../../../../utils/useTooltips";
+import { formatCurrency } from "../../../../../utils/formatUtils";
 
 
 const TotalExpense = ({ data,  onSave }) => {
@@ -80,8 +81,8 @@ const TotalExpense = ({ data,  onSave }) => {
             }
         }, 0);
 
-        const weeklyTotal = totalWeeklyExpenses.toFixed(2);
-        const monthlyTotal = totalMonthlyExpenses.toFixed(2);
+        const weeklyTotal = formatCurrency(totalWeeklyExpenses);
+        const monthlyTotal = formatCurrency(totalMonthlyExpenses);
 
         return { weeklyTotal, monthlyTotal };
     }, [data.dynamicVariableFields, data.dynamicFixedFields]);
@@ -112,7 +113,7 @@ const TotalExpense = ({ data,  onSave }) => {
                     </div>
                     <div className="text-right">
                         <div className="text-3xl font-extrabold text-gray-900 tabular-nums">
-                            ${monthlyTotal}
+                            {monthlyTotal}
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                             This is your baseline operating cost per month.
@@ -132,7 +133,7 @@ const TotalExpense = ({ data,  onSave }) => {
                     </div>
                     <div className="text-right">
                         <div className="text-2xl font-bold text-gray-900 tabular-nums">
-                            ${weeklyTotal}
+                            {weeklyTotal}
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                             Weekly is derived: Monthly ÷ 4.33

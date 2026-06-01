@@ -241,7 +241,7 @@ const Header = ({ onMenuClick }) => {
                     <img src={growlioLogo} alt="Growlio Logo" className="w-32 mx-auto" />
                 </div>
                 
-                {/* I Own A Restaurant Dashboard Button - Only for simulation users WITHOUT regular restaurants */}
+                {/* Switch To Restaurant Dashboard Button - Only for simulation users WITHOUT regular restaurants */}
                 {shouldShowRestaurantButton && (
                     <Button
                         type="primary"
@@ -249,7 +249,7 @@ const Header = ({ onMenuClick }) => {
                         className="bg-orange-600 hover:bg-orange-700 border-0 shadow-md hover:shadow-lg transition-all duration-200 ml-2"
                         size="small"
                     >
-                        I Own A Restaurant Dashboard
+                        Switch To Restaurant Dashboard
                     </Button>
                 )}
             </div>

@@ -10,6 +10,7 @@
  */
 export const ONBOARDING_ROUTES = {
   ONBOARDING: '/onboarding',
+  PLANS: '/onboarding/plans',
   SCORE: '/onboarding/score',
   SIMULATION: '/onboarding/simulation',
   PROFITABILITY: '/onboarding/profitability',
@@ -364,6 +365,7 @@ export const getOnboardingRedirectRoute = ({
   if (hasRestaurant && !hasOneMonthSalesInfo) {
     // User can access score page or profitability (NOT /onboarding)
     const allowedPaths = [
+      ONBOARDING_ROUTES.PLANS,
       ONBOARDING_ROUTES.SCORE,
       ONBOARDING_ROUTES.PROFITABILITY,
       ONBOARDING_ROUTES.CONGRATULATIONS,

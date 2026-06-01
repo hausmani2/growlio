@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Row, Col, Spin, message, Typography } from 'antd';
+import { Button, Card, Row, Col, Spin, message, Modal, Typography } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -8,7 +8,18 @@ import PlanSelectionModal from './PlanSelectionModal';
 
 const { Text } = Typography;
 
-const PlansPage = () => {
+const isFreePlan = (plan) => (
+  plan?.price_per_location === 0 ||
+  String(plan?.name || plan?.display_name || plan?.key || '').toLowerCase().includes('free') ||
+  String(plan?.name || plan?.display_name || plan?.key || '').toLowerCase().includes('lite')
+);
+
+const PlansPage = ({
+  onboardingMode = false,
+  onContinue,
+  title = 'Subscription Plans',
+  subtitle = "Choose the plan that best fits your restaurant's needs",
+}) => {
   const {
     packages,
     currentPackage,
@@ -32,8 +43,11 @@ const PlansPage = () => {
       setIsLoading(true);
 
       try {
-        const currentPackageResult = await getCurrentPackage(true);
         const packagesResult = await fetchPackages(true);
+        const restaurantId = localStorage.getItem('restaurant_id');
+        const currentPackageResult = restaurantId
+          ? await getCurrentPackage(true)
+          : { success: false, data: null };
 
         if (cancelled) return;
 
@@ -64,9 +78,22 @@ const PlansPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [location.pathname, fetchPackages, getCurrentPackage, setCurrentPackage]);
+  }, [location.pathname, fetchPackages, getCurrentPackage, setCurrentPackage, onboardingMode]);
 
   const handlePlanClick = (plan) => {
+    const restaurantId = localStorage.getItem('restaurant_id');
+
+    if (onboardingMode && !restaurantId) {
+      if (isFreePlan(plan)) return;
+
+      Modal.info({
+        title: 'Upgrade after restaurant setup',
+        content: 'Your account will start on the free plan. After your restaurant is created, you can upgrade from this Plans page at any time.',
+        okText: 'Got it',
+      });
+      return;
+    }
+
     setSelectedPlan(plan);
     setIsModalVisible(true);
   };
@@ -112,6 +139,8 @@ const PlansPage = () => {
   }
 
   const packagesArray = Array.isArray(packages) ? packages : [];
+  const defaultFreePlan = packagesArray.find(isFreePlan);
+  const displayCurrentPlan = currentPackage || packagesArray.find((p) => p.is_current) || (onboardingMode ? defaultFreePlan : null);
 
   if (!packagesArray.length) {
     return (
@@ -130,14 +159,14 @@ const PlansPage = () => {
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-gray-200">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-orange-600 mb-2">Subscription Plans</h1>
+            <h1 className="text-3xl font-bold text-orange-600 mb-2">{title}</h1>
             <p className="text-gray-600 text-lg">
-              Choose the plan that best fits your restaurant&apos;s needs
+              {subtitle}
             </p>
           </div>
 
           {(() => {
-            const currentPlan = currentPackage || packagesArray.find((p) => p.is_current);
+            const currentPlan = displayCurrentPlan;
             return (
               currentPlan && (
                 <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg px-5 py-2 flex items-center gap-3 shadow-md">
@@ -167,6 +196,8 @@ const PlansPage = () => {
         {packagesArray.map((plan) => {
           const isCurrentPlan = currentPackage
             ? currentPackage.id === plan.id
+            : onboardingMode && defaultFreePlan
+            ? defaultFreePlan.id === plan.id
             : Boolean(plan.is_current);
           const isPopular =
             plan.is_popular ||
@@ -199,6 +230,24 @@ const PlansPage = () => {
           );
         })}
       </Row>
+
+      {onboardingMode && (
+        <div className="sticky bottom-0 z-10 -mx-2 bg-white/95 backdrop-blur border-t border-gray-200 px-2 py-4">
+          <div className="mx-auto flex max-w-5xl flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <Text className="text-gray-600">
+              You&apos;ll start on the free plan by default. You can upgrade after your restaurant is set up.
+            </Text>
+            <Button
+              type="primary"
+              size="large"
+              onClick={onContinue}
+              className="h-12 px-8 text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0 shadow-lg hover:shadow-xl"
+            >
+              Continue with Free Plan
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedPlan && (
         <PlanSelectionModal

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Select, InputNumber, Switch, Button, Modal, Input, message } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, formatExpenseForAPI, calculateMonthlyCost, calculateWeeklyCost } from '../../../utils/simulationUtils';
+import { formatCurrency } from '../../../utils/formatUtils';
 
 const { Option } = Select;
 
@@ -438,13 +439,13 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false, o
           <div>
             <p className="text-sm text-gray-600">Total Monthly Cost</p>
             <p className="text-2xl font-bold text-orange-600">
-              ${totals.monthly.toFixed(2)}
+              {formatCurrency(totals.monthly)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Total Weekly Cost</p>
             <p className="text-2xl font-bold text-orange-600">
-              ${totals.weekly.toFixed(2)}
+              {formatCurrency(totals.weekly)}
             </p>
           </div>
         </div>

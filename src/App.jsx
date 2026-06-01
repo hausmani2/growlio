@@ -21,6 +21,7 @@ import SimulationDashboard from './components/simulation/SimulationDashboard';
 import SimulationRestaurantInfo from './components/simulation/SimulationRestaurantInfo';
 import ResetPassword from './components/authScreens/auth/ResetPassword';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
+import OnboardingPlansPage from './components/onBoarding/OnboardingPlansPage';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
 import CompleteSteps from './components/mainSceens/restaurantsInformation/CompleteSteps';
 import Wrapper from './components/layout/Wrapper';
@@ -343,6 +344,7 @@ function App() {
          <Route path="/" element={<RootRedirect />} />
           <Route path="/onboarding" element={<OnboardingWrapper />} />
           <Route path="/onboarding/setup" element={<OnboardingWrapper />} />
+          <Route path="/onboarding/plans" element={<OnboardingPlansPage />} />
           <Route path="/onboarding/simulation" element={<SimulationOnboarding />} />
           <Route path="/simulation/dashboard" element={<Wrapper showSidebar={true} children={<SimulationDashboard />} />} />
           <Route path="/simulation/basic-information" element={<Wrapper showSidebar={true} children={<SimulationRestaurantInfo />} />} />
