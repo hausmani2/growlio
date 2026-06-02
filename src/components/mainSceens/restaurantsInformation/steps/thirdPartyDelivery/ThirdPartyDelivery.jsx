@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Select, Modal } from "antd";
+import { Select, Modal, Switch } from "antd";
 import PrimaryButton from "../../../../buttons/Buttons";
 
 const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
@@ -80,6 +80,22 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
     updateData("providers", updatedProviders);
   };
 
+  const isEnabled = !!data?.third_party;
+
+  // Toggle third-party delivery on/off
+  const handleToggle = (checked) => {
+    updateData("third_party", checked);
+    if (!checked) {
+      // Off → clear all providers
+      updateData("providers", []);
+    } else if ((data?.providers || []).length === 0) {
+      // On → start with one empty provider row to prompt the user
+      updateData("providers", [
+        { id: Date.now() + Math.random(), providerName: "", providerFee: "" },
+      ]);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
       <div className="mb-4">
@@ -89,6 +105,19 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
         </div>
       </div>
 
+      <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-4 py-3">
+        <div>
+          <div className="text-xs font-semibold text-gray-700">
+            Do you use third-party delivery?
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            Turn on to add delivery providers and their fees.
+          </div>
+        </div>
+        <Switch checked={isEnabled} onChange={handleToggle} />
+      </div>
+
+      {isEnabled && (
       <div className="mt-5">
         <div className="text-xs font-semibold text-gray-700 mb-3">
           Third-Party Provider Details
@@ -166,6 +195,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

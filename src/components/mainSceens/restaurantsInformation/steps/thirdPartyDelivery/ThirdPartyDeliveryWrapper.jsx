@@ -162,37 +162,44 @@ const ThirdPartyDeliveryWrapperContent = () => {
   };
 
   const handleSave = async () => {
+    const isThirdPartyEnabled = !!thirdPartyData.third_party;
+
     // Check if there are any valid providers (with both name and fee)
     const validProviders = thirdPartyData.providers?.filter((p) => p.providerName && p.providerFee) || [];
-    const hasProviders = validProviders.length > 0;
-    
-    // If no providers, we still need to validate (but allow empty providers)
-    const isValid = hasProviders ? validateStep("Third Party", {
-      third_party: true,
-      providers: thirdPartyData.providers,
-    }) : true; // Allow saving with no providers
 
-    if (!isValid) {
-      const firstError = Object.values(validationErrors)[0];
-      message.error(firstError);
-      return false;
+    if (isThirdPartyEnabled) {
+      // Toggle ON → at least one valid provider is compulsory
+      if (validProviders.length === 0) {
+        message.error("Please add at least one provider with a name and fee, or turn off third-party delivery.");
+        return false;
+      }
+
+      const isValid = validateStep("Third Party", {
+        third_party: true,
+        providers: thirdPartyData.providers,
+      });
+
+      if (!isValid) {
+        const firstError = Object.values(validationErrors)[0];
+        message.error(firstError);
+        return false;
+      }
     }
 
     // Prepare step data
     const stepData = {
-      third_party: hasProviders, // Set to false if no providers, true if providers exist
+      third_party: isThirdPartyEnabled, // false when toggle is off, true when on
       providers: [], // Always send providers array
     };
 
-    // Only include providers that have both name and fee filled
-    if (hasProviders) {
-      const providersForAPI = validProviders.map((p) => ({
+    // Only include providers when third-party is enabled
+    if (isThirdPartyEnabled) {
+      stepData.providers = validProviders.map((p) => ({
         provider_name: p.providerName,
         provider_fee: parseInt(p.providerFee, 10),
       }));
-      stepData.providers = providersForAPI;
     }
-    // If no providers exist, stepData.providers remains as empty array [] and third_party is false
+    // When toggle is off, third_party is false and providers stays as an empty array []
 
     const result = await submitStepData("Third Party", stepData, () => {
       // Always show success message
