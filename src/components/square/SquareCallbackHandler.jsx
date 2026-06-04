@@ -126,7 +126,11 @@ const SquareCallbackHandler = () => {
     setLocationsLoading(true);
     setLocationsError(null);
     try {
-      const response = await apiGet(`/square_pos/locations/?restaurant_id=${restaurantIdForLocations}`);
+      const growlioLocationId = localStorage.getItem('selected_location_id');
+      const locationQuery = growlioLocationId ? `&location_id=${growlioLocationId}` : '';
+      const response = await apiGet(
+        `/square_pos/locations/?restaurant_id=${restaurantIdForLocations}${locationQuery}`
+      );
       const payload = response?.data?.data || response?.data;
       const list =
         payload?.locations ||

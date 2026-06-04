@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
-import { Dropdown, Menu, Modal, Button, message } from 'antd';
+import { Dropdown, Menu, Modal, Button, message, Select } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
 
 const getInitials = (name = '') => {
@@ -25,6 +25,10 @@ const Header = ({ onMenuClick }) => {
     const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
     const updateRestaurantSimulation = useStore((state) => state.updateRestaurantSimulation);
     const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
+    const locations = useStore((state) => state.locations);
+    const selectedLocationId = useStore((state) => state.selectedLocationId);
+    const fetchLocations = useStore((state) => state.fetchLocations);
+    const changeLocation = useStore((state) => state.changeLocation);
     
     const [isSimulationMode, setIsSimulationMode] = useState(false);
     const [showRestaurantModal, setShowRestaurantModal] = useState(false);
@@ -223,6 +227,26 @@ const Header = ({ onMenuClick }) => {
     // Regular users who can also simulate should NOT see this button
     const shouldShowRestaurantButton = isSimulationMode && !hasRegularRestaurants;
 
+    useEffect(() => {
+        const loadLocations = async () => {
+            const isOnSimulationRoute = location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation');
+            if (isOnSimulationRoute || isSimulationMode) return;
+            if (!hasRegularRestaurants && !restaurantOnboardingData?.restaurants?.length) return;
+            try {
+                await fetchLocations();
+            } catch (error) {
+                console.warn('[Header] Could not load locations:', error);
+            }
+        };
+        loadLocations();
+    }, [
+        fetchLocations,
+        hasRegularRestaurants,
+        isSimulationMode,
+        location.pathname,
+        restaurantOnboardingData,
+    ]);
+
     return (
         <header className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white border-b border-gray-200 shadow-sm">
             {/* Left side - Hamburger menu and logo */}
@@ -254,8 +278,20 @@ const Header = ({ onMenuClick }) => {
                 )}
             </div>
 
-            {/* Right side - User Info */}
+            {/* Right side - Location + User Info */}
             <div className="flex items-center gap-3">
+                {!isSimulationMode && locations?.length > 0 && (
+                    <Select
+                        className="min-w-[140px] max-w-[220px]"
+                        value={selectedLocationId ?? undefined}
+                        placeholder="Location"
+                        options={locations.map((loc) => ({
+                            value: loc.id,
+                            label: loc.name || `Location ${loc.id}`,
+                        }))}
+                        onChange={(value) => changeLocation(value)}
+                    />
+                )}
                 {/* Avatar with initials */}
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-orange-300 bg-orange-100 text-orange-700 font-bold text-sm sm:text-base shadow-sm">
                     {getInitials(name)}

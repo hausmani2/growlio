@@ -5,7 +5,7 @@ import RestaurantWrapper from './steps/basicInformation/RestaurantWrapper';
 import FoodCostWrapper from './steps/foodCostDetails/FoodCostWrapper';
 import LaborInformationWrapper from './steps/laborInformation/LaborInformationWrapper';
 import { TabContext } from './context/TabContext';
-import SalesChannelsWrapper from './steps/salesChannels/SalesChannelsWrapper';
+import { SalesChannelsWrapperContent } from './steps/salesChannels/SalesChannelsWrapper';
 import ExpenseWrapper from './steps/Expense/ExpenseWrapper';
 import useStore from '../../../store/store';
 import useStepNavigation from './hooks/useStepNavigation';
@@ -399,7 +399,7 @@ export const TabProvider = ({ children }) => {
             case 0:
                 return <RestaurantWrapper />;
             case 1:
-                return <SalesChannelsWrapper />;
+                return <SalesChannelsWrapperContent />;
             case 2:
                 return <LaborInformationWrapper />;
             case 3:

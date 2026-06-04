@@ -48,6 +48,21 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const hasFetchedSubscriptionRef = useRef(false);
   const lastSubscriptionRestaurantIdRef = useRef(null);
   const restaurantIdForPlan = localStorage.getItem('restaurant_id');
+  const selectedLocationId = useStore((state) => state.selectedLocationId);
+  const refreshCurrentPage = useStore((state) => state.refreshCurrentPage);
+
+  const isOnSimulationRoute =
+    location.pathname.startsWith('/simulation') ||
+    location.pathname.startsWith('/onboarding/simulation');
+
+  // Refetch only the active page when location changes or user navigates.
+  useEffect(() => {
+    if (!showSidebar || isOnSimulationRoute || !selectedLocationId) return;
+    const timer = window.setTimeout(() => {
+      refreshCurrentPage(location.pathname);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [showSidebar, location.pathname, selectedLocationId, refreshCurrentPage, isOnSimulationRoute]);
 
   useEffect(() => {
     if (!showSidebar || !restaurantIdForPlan) return;

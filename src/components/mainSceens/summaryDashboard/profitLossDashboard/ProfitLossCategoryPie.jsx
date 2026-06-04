@@ -84,6 +84,31 @@ const ProfitLossCategoryPie = ({ startDate, endDate }) => {
     });
   }, [startDate, endDate, fetchProfitLossCategorySummary]);
 
+  useEffect(() => {
+    const refetchForLocation = () => {
+      if (!startDate || !endDate) return;
+      lastKey.current = '';
+      fetchProfitLossCategorySummary(startDate, endDate).then((res) => {
+        if (!res) return;
+        const payloadCategories = res.categories || [];
+        const subcategories = res.subcategories || {};
+        setCategories(payloadCategories);
+        setSignedValues(payloadCategories.map((c) => c.value));
+        setDetailedBreakdowns({
+          sales: subcategories.sales || [],
+          labor: subcategories.labor || [],
+          food: subcategories.food || [],
+          expenses: subcategories.expenses || [],
+          third_party_fees: subcategories.third_party_fees || [],
+          fixed_expenses: subcategories.fixed_expenses || [],
+          variable_expenses: subcategories.variable_expenses || [],
+        });
+      });
+    };
+    window.addEventListener('growlio:location-changed', refetchForLocation);
+    return () => window.removeEventListener('growlio:location-changed', refetchForLocation);
+  }, [startDate, endDate, fetchProfitLossCategorySummary]);
+
   // Get current data based on selected view
   const currentData = useMemo(() => {
     let data = [];

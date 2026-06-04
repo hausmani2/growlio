@@ -336,8 +336,8 @@ function App() {
         
         {/* Square OAuth Callback - Public route for OAuth redirect */}
         <Route path="/square/callback" element={<SquareCallbackHandler />} />
-
     
+
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoutes />}>

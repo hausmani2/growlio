@@ -7,6 +7,7 @@ const createOnBoardingSlice = (set, get) => ({
     onboardingLoading: false,
     onboardingError: null,
     onboardingData: null,
+    lastLoadedOnboardingLocationId: null,
     
     // Complete onboarding data structure
     completeOnboardingData: {
@@ -144,6 +145,51 @@ const createOnBoardingSlice = (set, get) => ({
     },
     
     setIsOnBoardingCompleted: (isOnBoardingCompleted) => set({ isOnBoardingCompleted }),
+
+    /** Clear per-location setup steps so the next fetch reflects the selected location. */
+    resetLocationScopedOnboardingSteps: () => {
+        const current = get().completeOnboardingData;
+        if (!current) return;
+        set({
+            lastLoadedOnboardingLocationId: null,
+            completeOnboardingData: {
+                ...current,
+                'Labor Information': {
+                    status: false,
+                    data: {
+                        goal: '',
+                        needs_attention: '',
+                        danger: '',
+                        labour_goal: 0,
+                        avg_hourly_rate: 0,
+                        labor_record_method: 'daily_hours_costs',
+                        daily_ticket_count: false,
+                        forward_previous_week_rate: false,
+                    },
+                },
+                'Food Cost Details': {
+                    status: false,
+                    data: { cogs_goal: '', delivery_days: [] },
+                },
+                'Sales Channels': {
+                    status: false,
+                    data: { in_store: true, online: false, from_app: false },
+                },
+                'Third Party': {
+                    status: false,
+                    data: { third_party: false, providers: [] },
+                },
+                Expense: {
+                    status: false,
+                    data: { expenses: [], fixed_costs: [], variable_costs: [] },
+                },
+                'Sales Information': {
+                    status: false,
+                    data: [],
+                },
+            },
+        });
+    },
     
     // Update temporary form data for a specific step
     updateTempFormData: (stepName, formSection, field, value) => {
@@ -485,7 +531,13 @@ const createOnBoardingSlice = (set, get) => ({
         
         try {
             const currentData = get().completeOnboardingData;
-            const response = await apiPost('/restaurant_v2/onboarding/', currentData);
+            const locationId = typeof get().getSelectedLocationId === 'function'
+                ? await get().getSelectedLocationId()
+                : get().selectedLocationId;
+            const response = await apiPost('/restaurant_v2/onboarding/', {
+                ...currentData,
+                ...(locationId ? { location_id: locationId } : {}),
+            });
             
             
             // Check if the response status is 200 (success)
@@ -570,6 +622,13 @@ const createOnBoardingSlice = (set, get) => ({
             // Add restaurant_id to payload if it exists (for updates)
             if (existingRestaurantId) {
                 payload.restaurant_id = existingRestaurantId;
+            }
+
+            const locationId = typeof get().getSelectedLocationId === 'function'
+                ? await get().getSelectedLocationId()
+                : get().selectedLocationId;
+            if (locationId) {
+                payload.location_id = locationId;
             }
             
             // Always use POST endpoint, restaurant_id in payload determines create vs update
@@ -712,7 +771,13 @@ const createOnBoardingSlice = (set, get) => ({
         set(() => ({ onboardingLoading: true, onboardingError: null }));
         
         try {
-            const response = await apiPost('/restaurant_v2/onboarding/', onboardingData);
+            const locationId = typeof get().getSelectedLocationId === 'function'
+                ? await get().getSelectedLocationId()
+                : get().selectedLocationId;
+            const response = await apiPost('/restaurant_v2/onboarding/', {
+                ...onboardingData,
+                ...(locationId ? { location_id: locationId } : {}),
+            });
             
             set(() => ({ 
                 isOnBoardingCompleted: true,
@@ -767,33 +832,41 @@ const createOnBoardingSlice = (set, get) => ({
         }
     },
     
+    onboardingLoadSeq: 0,
+
     // Load existing onboarding data from API and populate forms
     loadExistingOnboardingData: async (forceRefresh = false) => {
         const state = get();
-        
-        // Prevent multiple concurrent calls - if already loading, return the existing promise
-        if (state.onboardingLoading) {
-            // Wait for the existing request to complete
-            return new Promise((resolve) => {
+
+        const waitForOnboardingIdle = () =>
+            new Promise((resolve) => {
+                if (!get().onboardingLoading) {
+                    resolve();
+                    return;
+                }
                 const checkInterval = setInterval(() => {
-                    const currentState = get();
-                    if (!currentState.onboardingLoading) {
+                    if (!get().onboardingLoading) {
                         clearInterval(checkInterval);
-                        // Return the current data if available
-                        resolve({
-                            success: true,
-                            data: currentState.completeOnboardingData,
-                            message: 'Data already loaded'
-                        });
+                        resolve();
                     }
-                }, 100);
-                
-                // Timeout after 15 seconds
+                }, 50);
                 setTimeout(() => {
                     clearInterval(checkInterval);
-                    resolve({ success: false, message: 'Request timeout' });
+                    resolve();
                 }, 15000);
             });
+
+        // If a request is in flight: non-forced callers reuse the result; forced callers wait then fetch.
+        if (state.onboardingLoading) {
+            if (!forceRefresh) {
+                await waitForOnboardingIdle();
+                return {
+                    success: true,
+                    data: get().completeOnboardingData,
+                    message: 'Data already loaded',
+                };
+            }
+            await waitForOnboardingIdle();
         }
         
         // Check if we already have complete data loaded (prevent unnecessary calls)
@@ -814,7 +887,14 @@ const createOnBoardingSlice = (set, get) => ({
             }
         }
         
-        set(() => ({ onboardingLoading: true, onboardingError: null }));
+        const loadSeq = (get().onboardingLoadSeq || 0) + 1;
+        let requestedLocationId = get().selectedLocationId ?? null;
+
+        set(() => ({
+            onboardingLoading: true,
+            onboardingError: null,
+            onboardingLoadSeq: loadSeq,
+        }));
         
         try {
             // First, ensure we have a restaurant ID
@@ -836,7 +916,18 @@ const createOnBoardingSlice = (set, get) => ({
                 setTimeout(() => reject(new Error('Request timeout')), 15000)
             );
             
-            const apiPromise = apiGet('/restaurant_v2/onboarding/');
+            const locationId = typeof get().getSelectedLocationId === 'function'
+                ? await get().getSelectedLocationId()
+                : get().selectedLocationId;
+            requestedLocationId = locationId ?? null;
+            const restaurantIdParam = get().getRestaurantId?.() || localStorage.getItem('restaurant_id');
+            const onboardingParams = new URLSearchParams();
+            if (restaurantIdParam) onboardingParams.set('restaurant_id', restaurantIdParam);
+            if (locationId) onboardingParams.set('location_id', locationId);
+            const onboardingQs = onboardingParams.toString();
+            const apiPromise = apiGet(
+                `/restaurant_v2/onboarding/${onboardingQs ? `?${onboardingQs}` : ''}`
+            );
             const response = await Promise.race([apiPromise, timeoutPromise]);
             const apiData = response.data;
             
@@ -1055,12 +1146,19 @@ const createOnBoardingSlice = (set, get) => ({
                 
             });
             
-            // Update the store with the loaded data
-            
+            // Discard stale responses when the user switched location mid-request.
+            if (get().onboardingLoadSeq !== loadSeq) {
+                return {
+                    success: false,
+                    message: 'Stale onboarding response discarded',
+                };
+            }
+
             set(() => ({
                 completeOnboardingData: updatedOnboardingData,
+                lastLoadedOnboardingLocationId: requestedLocationId,
                 onboardingLoading: false,
-                onboardingError: null
+                onboardingError: null,
             }));
             
             // Return information about completed and incomplete steps
@@ -1111,10 +1209,13 @@ const createOnBoardingSlice = (set, get) => ({
                 errorMessage = error.message;
             }
             
-            set(() => ({ 
-                onboardingLoading: false, 
-                onboardingError: shouldSetError ? errorMessage : null 
-            }));
+            if (get().onboardingLoadSeq === loadSeq) {
+                set(() => ({ 
+                    onboardingLoading: false, 
+                    onboardingError: shouldSetError ? errorMessage : null,
+                    lastLoadedOnboardingLocationId: requestedLocationId,
+                }));
+            }
             
             // Don't throw error, return failure result instead
             return { 
@@ -1865,8 +1966,10 @@ const createOnBoardingSlice = (set, get) => ({
                 return null;
             }
 
-            const url = `/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`;
-            const response = await apiGet(url);
+            const goalsUrl = await get().appendLocationToUrl(
+                `/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`
+            );
+            const response = await apiGet(goalsUrl);
             
             
             set(() => ({

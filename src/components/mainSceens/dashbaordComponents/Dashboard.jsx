@@ -244,6 +244,27 @@ const Dashboard = () => {
     }
   }, [checkWeeklyAverageData, fetchDashboardDataIfNeeded]);
 
+  const storeDashboardData = useStore((state) => state.dashboardData);
+
+  useEffect(() => {
+    if (storeDashboardData === null) {
+      setDashboardData(null);
+      return;
+    }
+    const isNoDataResponse =
+      storeDashboardData.status === 'success' &&
+      (storeDashboardData.message === 'No weekly dashboard found' ||
+        storeDashboardData.message === 'No weekly dashboard found for the given criteria.') &&
+      storeDashboardData.data === null;
+    if (isNoDataResponse) {
+      setDashboardData(null);
+      setDashboardMessage(CLOSE_OUT_NO_BUDGET_MESSAGE);
+    } else {
+      setDashboardData(storeDashboardData);
+      setDashboardMessage(storeDashboardData.message || null);
+    }
+  }, [storeDashboardData]);
+
   // Let guidance system know Sales/Labor/COGS tables are mounted (data-guidance anchors exist)
   const hadTablesForGuidanceRef = useRef(false);
   useEffect(() => {

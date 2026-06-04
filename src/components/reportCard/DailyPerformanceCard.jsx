@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
 import { CalendarOutlined, FlagOutlined, CheckOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { DatePicker, Spin, Empty, Alert, Popover, Tooltip } from "antd";
@@ -112,6 +112,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     dailyPerformanceError,
     setPendingChatMessage
   } = useStore();
+  const selectedLocationId = useStore((s) => s.selectedLocationId);
 
   // Week picker state - initialize with current week
   const [weekPickerValue, setWeekPickerValue] = useState(dayjs());
@@ -139,6 +140,16 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     setWeekPickerValue(dayjs());
     fetchDailyData(startOfWeek, endOfWeek);
   }, [fetchDailyData]);
+
+  const skipInitialLocationRefetch = useRef(true);
+  useEffect(() => {
+    if (skipInitialLocationRefetch.current) {
+      skipInitialLocationRefetch.current = false;
+      return;
+    }
+    if (!selectedLocationId || !dateRange?.[0] || !dateRange?.[1]) return;
+    fetchDailyData(dateRange[0], dateRange[1]);
+  }, [selectedLocationId]);
 
   // Handle week picker change
   const handleWeekPickerChange = useCallback((date) => {

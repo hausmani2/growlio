@@ -35,8 +35,10 @@ const ProfitLossDashboard = () => {
     dashboardSummaryData,
     loading: summaryLoading,
     error: summaryError,
-    fetchDashboardSummary
+    fetchDashboardSummary,
+    fetchProfitLossCategorySummary,
   } = useStore();
+  const selectedLocationId = useStore((s) => s.selectedLocationId);
 
   // Use local state for calendar to prevent infinite loops
   const [calendarDateRange, setCalendarDateRange] = useState([]);
@@ -187,6 +189,23 @@ const ProfitLossDashboard = () => {
       }
     }
   }, [calendarDateRange, groupBy, fetchSummaryData]);
+
+  const skipInitialLocationRefetch = useRef(true);
+  useEffect(() => {
+    if (skipInitialLocationRefetch.current) {
+      skipInitialLocationRefetch.current = false;
+      return;
+    }
+    if (!selectedLocationId || calendarDateRange.length !== 2) return;
+    if (groupBy === 'annual') {
+      fetchSummaryData(calendarDateRange[0], calendarDateRange[1], groupBy);
+      return;
+    }
+    const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+    const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+    fetchSummaryData(startDate, endDate, groupBy);
+    fetchProfitLossCategorySummary?.(startDate, endDate).catch(() => {});
+  }, [selectedLocationId]);
 
 
 

@@ -14,6 +14,7 @@ import createSquareSlice from './slices/squareSlice';
 import createSquarePosDetailsSlice from './slices/squarePosDetailsSlice';
 import createSimulationSlice from './slices/simulationSlice';
 import createPosIntegrationsSlice from './slices/posIntegrationsSlice';
+import createLocationSlice from './slices/locationSlice';
 
 
 const useStore = create(
@@ -34,6 +35,7 @@ const useStore = create(
         ...createSquarePosDetailsSlice(set, get),
         ...createSimulationSlice(set, get),
         ...createPosIntegrationsSlice(set, get),
+        ...createLocationSlice(set, get),
 
       
         

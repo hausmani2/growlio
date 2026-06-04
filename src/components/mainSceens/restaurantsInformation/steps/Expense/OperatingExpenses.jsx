@@ -91,6 +91,8 @@ const convertDefaultExpensesToFields = (defaultExpenses) => {
 const OperatingExpenses = ({
   data,
   updateData,
+  locationId = null,
+  suppressDefaultInit = false,
   errors = {},
   isFranchise = false,
   onInlineSave,
@@ -101,6 +103,10 @@ const OperatingExpenses = ({
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
   const [expensePendingDelete, setExpensePendingDelete] = useState(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+
+  useEffect(() => {
+    setHasInitialized(false);
+  }, [locationId]);
   const [modalForm, setModalForm] = useState({
     category: "",
     name: "",
@@ -118,7 +124,7 @@ const OperatingExpenses = ({
 
   // Initialize with default expenses if no data exists - do this immediately on mount
   useEffect(() => {
-    if (hasInitialized) return;
+    if (hasInitialized || suppressDefaultInit) return;
     
     const current = Array.isArray(data.dynamicFixedFields) ? data.dynamicFixedFields : [];
     
@@ -168,7 +174,7 @@ const OperatingExpenses = ({
     }
     
     setHasInitialized(true);
-  }, [data.dynamicFixedFields, updateData, hasInitialized]);
+  }, [data.dynamicFixedFields, updateData, hasInitialized, suppressDefaultInit]);
 
   // Franchise: ensure royalty & brand fields exist in expense list
   useEffect(() => {

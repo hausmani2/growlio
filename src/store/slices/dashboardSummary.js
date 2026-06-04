@@ -33,7 +33,21 @@ const createDashboardSummarySlice = (set, get) => {
         error: null,
         lastFetchedDateRange: null,
         lastFetchedGroupBy: null,
+        lastFetchedSummaryLocationId: null,
+        /** Preserved across location changes so refresh uses the user's selected range. */
+        activeSummaryRange: null,
         currentViewMode: 'weekly', // Add view mode tracking
+
+        setActiveSummaryRange: (startDate, endDate, groupBy = 'daily') => {
+            if (!startDate || !endDate) return;
+            set({
+                activeSummaryRange: {
+                    start: startDate,
+                    end: endDate,
+                    groupBy: groupBy || 'daily',
+                },
+            });
+        },
 
         // Actions
         setLoading: (loading) => set({ loading }),
@@ -65,10 +79,17 @@ const createDashboardSummarySlice = (set, get) => {
                 
                 // Build URL with new parameters
                 let url = '/restaurant/dashboard-summary/';
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+
                 let params = { 
                     restaurant_id: targetRestaurantId,
                     group_by: groupBy
                 };
+                if (locationId) {
+                    params.location_id = locationId;
+                }
                 
                 // For annual mode, use start_year and end_year instead of start_date and end_date
                 if (groupBy === 'annual') {
@@ -128,11 +149,18 @@ const createDashboardSummarySlice = (set, get) => {
                     is_previous_week_data: avgHourlyRateData?.is_previous_week_data === true
                 };
                 
+                const activeLocationId = await get().getSelectedLocationId?.();
                 set({ 
                     dashboardSummaryData: responseData, 
                     loading: false,
                     lastFetchedDateRange: `${startDate}-${endDate}`,
                     lastFetchedGroupBy: groupBy,
+                    lastFetchedSummaryLocationId: activeLocationId ?? null,
+                    activeSummaryRange: {
+                        start: startDate,
+                        end: endDate,
+                        groupBy: groupBy || 'daily',
+                    },
                     currentViewMode: groupBy === 'weekly' ? 'weekly' : 'daily'
                 });
                 
@@ -159,11 +187,13 @@ const createDashboardSummarySlice = (set, get) => {
                 }
 
                 let url = '/restaurant_v2/profit-loss-summary/';
-                const params = new URLSearchParams({
-                    restaurant_id: targetRestaurantId,
-                    start_date: startDate,
-                    end_date: endDate,
-                }).toString();
+                const params = new URLSearchParams(
+                    await get().withLocationParams({
+                        restaurant_id: targetRestaurantId,
+                        start_date: startDate,
+                        end_date: endDate,
+                    })
+                ).toString();
                 url += `?${params}`;
                 const response = await apiGet(url);
                 
@@ -203,11 +233,13 @@ const createDashboardSummarySlice = (set, get) => {
                 }
 
                 let url = '/restaurant_v2/budget-allocation-summary/';
-                const params = new URLSearchParams({
-                    restaurant_id: targetRestaurantId,
-                    start_date: startDate,
-                    end_date: endDate,
-                }).toString();
+                const params = new URLSearchParams(
+                    await get().withLocationParams({
+                        restaurant_id: targetRestaurantId,
+                        start_date: startDate,
+                        end_date: endDate,
+                    })
+                ).toString();
                 url += `?${params}`;
                 const response = await apiGet(url);
                 
@@ -276,8 +308,21 @@ const createDashboardSummarySlice = (set, get) => {
 
         // Check if data needs to be refreshed
         shouldRefreshSummaryData: (startDate, endDate, groupBy = 'daily') => {
-            const { lastFetchedDateRange, lastFetchedGroupBy, dashboardSummaryData } = get();
+            const {
+                lastFetchedDateRange,
+                lastFetchedGroupBy,
+                lastFetchedSummaryLocationId,
+                selectedLocationId,
+                dashboardSummaryData,
+            } = get();
             if (!dashboardSummaryData || !lastFetchedDateRange || !lastFetchedGroupBy) return true;
+
+            if (
+                selectedLocationId &&
+                lastFetchedSummaryLocationId !== selectedLocationId
+            ) {
+                return true;
+            }
             
             const currentRange = `${startDate}-${endDate}`;
             return lastFetchedDateRange !== currentRange || lastFetchedGroupBy !== groupBy;

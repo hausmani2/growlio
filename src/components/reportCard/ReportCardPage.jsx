@@ -53,6 +53,7 @@ const ReportCardPage = () => {
     restaurantOnboardingData,
     restaurantOnboardingDataTimestamp
   } = useStore();
+  const selectedLocationId = useStore((s) => s.selectedLocationId);
   const hasFetchedRef = useRef(false); // Prevent multiple API calls
   const hasFetchedOnboardingRef = useRef(false); // Prevent multiple onboarding API calls
   
@@ -194,6 +195,17 @@ const ReportCardPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 
+  const skipInitialLocationRefetch = useRef(true);
+  useEffect(() => {
+    if (skipInitialLocationRefetch.current) {
+      skipInitialLocationRefetch.current = false;
+      return;
+    }
+    if (!selectedLocationId || !dateRange?.[0] || !dateRange?.[1]) return;
+    hasFetchedRef.current = false;
+    fetchSummaryData(dateRange[0], dateRange[1]);
+  }, [selectedLocationId]);
+
   // Extract and map data from API response
   // API response structure: { restaurant_id, start_date, end_date, summary: { sales, expenses, labour, cogs, profit, overall_score, grade } }
   const apiSummary = summaryData?.summary || summaryData;
@@ -284,9 +296,18 @@ const ReportCardPage = () => {
     window.open(REPORT_CARD_TUTORIAL.watchUrl, '_blank', 'noopener,noreferrer');
   }, []);
 
+  const showInitialLoading =
+    salesInformationSummaryLoading &&
+    !summaryData &&
+    !salesInformationSummaryError;
+
   // Keep hooks execution order stable across renders.
-  if (salesInformationSummaryLoading && !summaryData) {
-    return <LoadingSpinner message="Loading report card..." />;
+  if (showInitialLoading) {
+    return (
+      <div className="w-full min-h-[40vh] flex items-center justify-center">
+        <LoadingSpinner message="Loading report card..." />
+      </div>
+    );
   }
 
   return (

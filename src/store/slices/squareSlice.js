@@ -5,6 +5,16 @@ import { message } from 'antd';
  * Square POS Integration Slice
  * Manages Square OAuth connection, status, and integration state
  */
+const appendGrowlioLocation = async (get, url) => {
+  if (typeof get().appendLocationToUrl === 'function') {
+    return get().appendLocationToUrl(url);
+  }
+  const locationId = await get().getSelectedLocationId?.();
+  if (!locationId) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}location_id=${locationId}`;
+};
+
 const createSquareSlice = (set, get) => ({
   name: 'square',
   
@@ -47,7 +57,11 @@ const createSquareSlice = (set, get) => ({
     
     try {
       // Call the backend to get the Square OAuth authorization URL
-      const response = await apiGet(`/square_pos/connect/?restaurant_id=${restaurantId}`);
+      const connectUrl = await appendGrowlioLocation(
+        get,
+        `/square_pos/connect/?restaurant_id=${restaurantId}`
+      );
+      const response = await apiGet(connectUrl);
       
       const data = response.data?.data || response.data;
       const authUrl = data?.url;
@@ -147,7 +161,11 @@ const createSquareSlice = (set, get) => ({
     set({ squareLoading: true, squareError: null });
     
     try {
-      const response = await apiGet(`/square_pos/${restaurantIdToUse}/status/`);
+      const statusUrl = await appendGrowlioLocation(
+        get,
+        `/square_pos/${restaurantIdToUse}/status/`
+      );
+      const response = await apiGet(statusUrl);
       
       const data = response.data?.data || response.data;
       const isConnected = data?.connected || data?.status === 'connected' || false;
@@ -208,7 +226,11 @@ const createSquareSlice = (set, get) => ({
     set({ merchantDetailLoading: true });
     
     try {
-      const response = await apiGet(`/square_pos/merchant-detail/?restaurant_id=${restaurantIdToUse}`);
+      const merchantUrl = await appendGrowlioLocation(
+        get,
+        `/square_pos/merchant-detail/?restaurant_id=${restaurantIdToUse}`
+      );
+      const response = await apiGet(merchantUrl);
       const data = response.data?.merchant ?? response.data?.data?.merchant ?? response.data?.data ?? response.data;
       
       set({ 
@@ -247,7 +269,11 @@ const createSquareSlice = (set, get) => ({
     set({ squareSyncLoading: true, squareSyncError: null });
 
     try {
-      const response = await apiGet(`/square_pos/sync_data?restaurant_id=${restaurantIdToUse}`);
+      const syncUrl = await appendGrowlioLocation(
+        get,
+        `/square_pos/sync_data?restaurant_id=${restaurantIdToUse}`
+      );
+      const response = await apiGet(syncUrl);
       set({ squareSyncLoading: false, squareSyncError: null });
       return { success: true, data: response.data };
     } catch (error) {
@@ -283,7 +309,11 @@ const createSquareSlice = (set, get) => ({
     try {
       // Assuming there's a disconnect endpoint
       // If not, you may need to add this endpoint to your backend
-      const response = await apiPost(`/square_pos/${restaurantIdToUse}/disconnect/`);
+      const disconnectUrl = await appendGrowlioLocation(
+        get,
+        `/square_pos/${restaurantIdToUse}/disconnect/`
+      );
+      const response = await apiPost(disconnectUrl);
       
       set({ 
         squareLoading: false,

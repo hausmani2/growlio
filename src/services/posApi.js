@@ -15,13 +15,19 @@ export const triggerPosSync = async (restaurantId, options = {}) => {
 
   if (startDate) query.set('start_date', startDate);
   if (endDate) query.set('end_date', endDate);
+  const locationId = localStorage.getItem('selected_location_id');
+  if (locationId) query.set('location_id', locationId);
 
   const response = await apiGet(`/square_pos/sync_data/?${query.toString()}`);
   return response.data;
 };
 
 export const getMerchantDetail = async (restaurantId) => {
-  const response = await apiGet(`/square_pos/merchant-detail/?restaurant_id=${restaurantId}`);
+  const locationId = localStorage.getItem('selected_location_id');
+  const locationQuery = locationId ? `&location_id=${locationId}` : '';
+  const response = await apiGet(
+    `/square_pos/merchant-detail/?restaurant_id=${restaurantId}${locationQuery}`
+  );
   return response.data;
 };
 
@@ -42,8 +48,10 @@ export const getMerchantSyncStatus = async (restaurantId) => {
 };
 
 export const getDashboardData = async ({ restaurantId, weekStart }) => {
+  const locationId = localStorage.getItem('selected_location_id');
+  const locationQuery = locationId ? `&location_id=${locationId}` : '';
   const response = await apiGet(
-    `/restaurant/dashboard/?restaurant_id=${restaurantId}&week_start=${weekStart}`
+    `/restaurant/dashboard/?restaurant_id=${restaurantId}&week_start=${weekStart}${locationQuery}`
   );
 
   return response.data;

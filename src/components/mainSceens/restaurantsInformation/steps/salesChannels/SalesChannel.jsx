@@ -8,7 +8,7 @@ import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
 import { Input, Select } from 'antd';
 
-const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false }) => {
+const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loading = false, hideSectionTitle = false }) => {
     const location = useLocation();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
@@ -43,13 +43,11 @@ const SalesChannel = ({ data, updateData, errors = {}, onSaveAndContinue, loadin
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-            {/* Header Section */}
-            <div className="mb-6" >
-                <h3 className="text-xl font-bold text-orange-600 mb-2">Operating Information</h3>
-                {/* <p className="text-gray-600 text-sm">
-                    Define your active sales channels to accurately track your restaurant's financial performance.
-                </p> */}
-            </div>
+            {!hideSectionTitle && (
+                <div className="mb-6">
+                    <h3 className="text-xl font-bold text-orange-600 mb-2">Operating Information</h3>
+                </div>
+            )}
             
             {/* Form Fields */}
             <div className="space-y-4">

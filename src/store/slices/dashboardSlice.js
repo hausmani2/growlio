@@ -9,7 +9,9 @@ const createDashboardSlice = (set, get) => {
         loading: false,
         error: null,
         restaurantId: null,
-        lastFetchedDate: null, // Track when data was last fetched
+        lastFetchedDate: null,
+        lastFetchedLocationId: null,
+        lastGoalsLocationId: null,
         
         // Date selection state for persistence across tabs
         selectedDate: null,
@@ -82,8 +84,15 @@ const createDashboardSlice = (set, get) => {
                     return null;
                 }
                 
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+
                 let url = '/restaurant/dashboard/';
                 let params = { restaurant_id: restaurantId };
+                if (locationId) {
+                    params.location_id = locationId;
+                }
                 
                 if (weekStart) {
                     params.week_start = weekStart;
@@ -99,10 +108,12 @@ const createDashboardSlice = (set, get) => {
                 const response = await apiGet(url);
                 
                 
+                const activeLocationId = await get().getSelectedLocationId?.();
                 set({ 
                     dashboardData: response.data, 
                     loading: false,
-                    lastFetchedDate: weekStart || new Date().toISOString()
+                    lastFetchedDate: weekStart || new Date().toISOString(),
+                    lastFetchedLocationId: activeLocationId ?? null,
                 });
                 
                 // Goals are optional for member roles. Do not let a goals 403 block
@@ -121,15 +132,19 @@ const createDashboardSlice = (set, get) => {
 
         // Check if data needs to be refreshed
         shouldRefreshData: (weekStart) => {
-            const { lastFetchedDate, dashboardData } = get();
-            
+            const { lastFetchedDate, dashboardData, lastFetchedLocationId, selectedLocationId } = get();
             
             if (!dashboardData || !lastFetchedDate) {
-                
+                return true;
+            }
+
+            if (
+                selectedLocationId &&
+                lastFetchedLocationId !== selectedLocationId
+            ) {
                 return true;
             }
             
-            // If weekStart is provided, check if it matches the last fetched date
             if (weekStart) {
                 // Use a more reliable week comparison that doesn't depend on dayjs week start configuration
                 // Compare the actual dates directly instead of using startOf('week')
@@ -207,10 +222,16 @@ const createDashboardSlice = (set, get) => {
                 });
             }
             
-            // Check if we already have goals data loaded
+            const activeLocationId = await get().getSelectedLocationId?.();
+
             if (currentState.goalsData) {
-                // Verify it's for the correct restaurant if restaurantId is provided
-                if (!restaurantId || currentState.goalsData.restaurant_id === restaurantId) {
+                const sameRestaurant =
+                    !restaurantId ||
+                    currentState.goalsData.restaurant_id === restaurantId;
+                const sameLocation =
+                    !activeLocationId ||
+                    currentState.lastGoalsLocationId === activeLocationId;
+                if (sameRestaurant && sameLocation) {
                     return currentState.goalsData;
                 }
             }
@@ -228,9 +249,16 @@ const createDashboardSlice = (set, get) => {
                     return null;
                 }
                 
-                const url = `/restaurant/goals/?restaurant_id=${targetRestaurantId}`;
+                const goalsUrl = await get().appendLocationToUrl(
+                    `/restaurant/goals/?restaurant_id=${targetRestaurantId}`
+                );
+                const url = goalsUrl;
                 const response = await apiGet(url);
-                set({ goalsData: response.data, loading: false });
+                set({
+                    goalsData: response.data,
+                    loading: false,
+                    lastGoalsLocationId: activeLocationId ?? null,
+                });
                 return response.data;
             } catch (error) {
                 const targetRestaurantId = restaurantId || get().restaurantId || localStorage.getItem('restaurant_id');
@@ -241,7 +269,12 @@ const createDashboardSlice = (set, get) => {
                     __error: error.message
                 };
 
-                set({ goalsData: fallbackGoals, error: null, loading: false });
+                set({
+                    goalsData: fallbackGoals,
+                    error: null,
+                    loading: false,
+                    lastGoalsLocationId: activeLocationId ?? null,
+                });
                 return fallbackGoals;
             }
         },
@@ -418,10 +451,15 @@ const createDashboardSlice = (set, get) => {
                         return null;
                     }
                     
+                    const locationId = typeof get().getSelectedLocationId === 'function'
+                        ? await get().getSelectedLocationId()
+                        : get().selectedLocationId;
+
                     // Add restaurant_id to the new payload format
                     const payloadWithRestaurantId = {
                         ...dashboardData,
-                        restaurant_id: restaurantId
+                        restaurant_id: restaurantId,
+                        ...(locationId ? { location_id: locationId } : {}),
                     };
                     
                     const response = await apiPost('/restaurant/dashboard/', payloadWithRestaurantId);
@@ -446,11 +484,16 @@ const createDashboardSlice = (set, get) => {
                     return null;
                 }
 
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+                const locationQuery = locationId ? `&location_id=${locationId}` : '';
+
                 // First, get existing data to merge with new data
                 let existingData = {};
                 try {
                     const weekStart = dashboardData.week_start || dashboardData.month;
-                    const existingResponse = await apiGet(`/restaurant/dashboard/?restaurant_id=${restaurantId}&week_start=${weekStart}`);
+                    const existingResponse = await apiGet(`/restaurant/dashboard/?restaurant_id=${restaurantId}&week_start=${weekStart}${locationQuery}`);
                     if (existingResponse.data) {
                         existingData = existingResponse.data;
                     }
@@ -469,14 +512,16 @@ const createDashboardSlice = (set, get) => {
                     // For sales-only payload, use the simplified structure
                     mergedData = {
                         ...dashboardData,
-                        restaurant_id: restaurantId
+                        restaurant_id: restaurantId,
+                        ...(locationId ? { location_id: locationId } : {}),
                     };
                 } else {
                     // For full dashboard payload, merge with existing data and add default sections
                     mergedData = {
                         ...existingData,
                         ...dashboardData,
-                        restaurant_id: restaurantId
+                        restaurant_id: restaurantId,
+                        ...(locationId ? { location_id: locationId } : {}),
                     };
 
                     // Ensure all required sections have at least default values

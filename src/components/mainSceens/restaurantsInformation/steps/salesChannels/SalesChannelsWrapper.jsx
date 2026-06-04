@@ -10,11 +10,127 @@ import { useNavigate, useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import SalesDays from "./SalesDays";
+import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocationReload";
+
+const DEFAULT_SALES_CHANNELS_STATE = {
+    in_store: true,
+    online: false,
+    from_app: false,
+    third_party: false,
+    providers: [],
+    posSystem: '',
+    posSystemOther: '',
+    separateOnlineOrdering: false,
+    posForEmployeeHours: false,
+    thirdPartyOrdersToPos: false,
+    selectedDays: {
+        Sunday: true,
+        Monday: true,
+        Tuesday: true,
+        Wednesday: true,
+        Thursday: true,
+        Friday: true,
+        Saturday: true
+    }
+};
+
+const mapSalesChannelsFromStore = (salesChannelsInfoData) => {
+    if (!salesChannelsInfoData?.data) {
+        return DEFAULT_SALES_CHANNELS_STATE;
+    }
+
+    const data = salesChannelsInfoData.data;
+    const allOpen = {
+        Sunday: true,
+        Monday: true,
+        Tuesday: true,
+        Wednesday: true,
+        Thursday: true,
+        Friday: true,
+        Saturday: true
+    };
+    const allClosed = {
+        Sunday: false,
+        Monday: false,
+        Tuesday: false,
+        Wednesday: false,
+        Thursday: false,
+        Friday: false,
+        Saturday: false
+    };
+
+    const stepCompleted = salesChannelsInfoData?.status === true;
+    let selectedDays = allOpen;
+
+    if (Array.isArray(data.restaurant_days)) {
+        if (data.restaurant_days.length === 0 && !stepCompleted) {
+            selectedDays = allOpen;
+        } else {
+            selectedDays = { ...allClosed };
+            if (data.restaurant_days.length > 0) {
+                data.restaurant_days.forEach((day) => {
+                    const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+                    if (Object.prototype.hasOwnProperty.call(selectedDays, dayName)) {
+                        selectedDays[dayName] = true;
+                    }
+                });
+            }
+        }
+    }
+
+    let processedProviders = [];
+    if (data.providers && Array.isArray(data.providers)) {
+        const seenProviderNames = new Set();
+        processedProviders = data.providers
+            .map((provider, index) => {
+                let providerFee = provider.provider_fee || provider.providerFee || '';
+                if (providerFee && !isNaN(providerFee)) {
+                    providerFee = parseInt(providerFee, 10).toString();
+                }
+                const providerName = provider.provider_name || provider.providerName || '';
+                return {
+                    id: provider.id || `provider-${index}-${providerName}`,
+                    providerName,
+                    providerFee,
+                };
+            })
+            .filter((provider) => {
+                const key = provider.providerName.trim().toLowerCase();
+                if (!key || seenProviderNames.has(key)) return false;
+                seenProviderNames.add(key);
+                return true;
+            });
+    }
+
+    return {
+        in_store: data.in_store !== undefined ? data.in_store : true,
+        online: data.online !== undefined ? data.online : false,
+        from_app: data.from_app !== undefined ? data.from_app : false,
+        third_party: data.third_party !== undefined ? data.third_party : false,
+        providers: processedProviders,
+        posSystem: data.pos_system !== undefined && data.pos_system !== null
+            ? data.pos_system
+            : (data.posSystem !== undefined && data.posSystem !== null ? data.posSystem : ''),
+        posSystemOther: data.pos_system_other !== undefined && data.pos_system_other !== null
+            ? data.pos_system_other
+            : (data.posSystemOther !== undefined && data.posSystemOther !== null ? data.posSystemOther : ''),
+        separateOnlineOrdering: data.separate_online_ordering !== undefined
+            ? data.separate_online_ordering
+            : (data.separateOnlineOrdering !== undefined ? data.separateOnlineOrdering : false),
+        posForEmployeeHours: data.pos_for_employee_hours !== undefined
+            ? data.pos_for_employee_hours
+            : (data.posForEmployeeHours !== undefined ? data.posForEmployeeHours : false),
+        thirdPartyOrdersToPos: data.third_party_orders_to_pos !== undefined
+            ? data.third_party_orders_to_pos
+            : (data.thirdPartyOrdersToPos !== undefined ? data.thirdPartyOrdersToPos : false),
+        selectedDays
+    };
+};
 
 const SalesChannelsWrapperContent = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted, loadExistingOnboardingData } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateStep } = useStepValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
 
@@ -26,144 +142,36 @@ const SalesChannelsWrapperContent = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
-    // Load existing onboarding data when opening "Your Setup" menu item
-    const hasLoadedRef = useRef(false);
+    const {
+        selectedLocationId,
+        isLoadingLocationData,
+    } = useSetupPageLocationReload(isUpdateMode);
+    const lastLoadedOnboardingLocationId = useStore(
+        (s) => s.lastLoadedOnboardingLocationId
+    );
+    const salesChannelsStep = completeOnboardingData["Sales Channels"];
+
+    const [salesChannelsData, setSalesChannelsData] = useState(DEFAULT_SALES_CHANNELS_STATE);
+
+    const skipLocalResetRef = useRef(true);
     useEffect(() => {
-        const loadData = async () => {
-            if (isUpdateMode && !hasLoadedRef.current) {
-                hasLoadedRef.current = true;
-                try {
-                    // Call GET API to fetch onboarding data (force refresh to get latest data)
-                    await loadExistingOnboardingData(true);
-                } catch (error) {
-                    console.error('Error loading onboarding data:', error);
-                    hasLoadedRef.current = false; // Allow retry on error
-                }
-            }
-        };
-        
-        loadData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdateMode]);
-
-    // State for Sales Channels
-    const [salesChannelsData, setSalesChannelsData] = useState({
-        in_store: true,
-        online: false,
-        from_app: false,
-        third_party: false,
-        providers: [],
-        posSystem: '',
-        posSystemOther: '',
-        separateOnlineOrdering: false,
-        posForEmployeeHours: false,
-        thirdPartyOrdersToPos: false,
-        selectedDays: {
-            Sunday: true,
-            Monday: true,
-            Tuesday: true,
-            Wednesday: true,
-            Thursday: true,
-            Friday: true,
-            Saturday: true
+        if (skipLocalResetRef.current) {
+            skipLocalResetRef.current = false;
+            return;
         }
-    });
+        if (!selectedLocationId) return;
+        setSalesChannelsData(DEFAULT_SALES_CHANNELS_STATE);
+    }, [selectedLocationId]);
 
-    // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
-        
-        const salesChannelsInfoData = completeOnboardingData["Sales Channels"];
-        
-        if (salesChannelsInfoData && salesChannelsInfoData.data) {
-            const data = salesChannelsInfoData.data;
-
-            // Handle restaurant days - `restaurant_days` from API contains OPEN days.
-            // IMPORTANT:
-            // - If API returns restaurant_days: [] (explicit empty array), treat as "all closed".
-            // - If API does NOT provide restaurant_days (undefined/null), default to "all open" for better UX.
-            const allOpen = {
-                Sunday: true,
-                Monday: true,
-                Tuesday: true,
-                Wednesday: true,
-                Thursday: true,
-                Friday: true,
-                Saturday: true
-            };
-            const allClosed = {
-                Sunday: false,
-                Monday: false,
-                Tuesday: false,
-                Wednesday: false,
-                Thursday: false,
-                Friday: false,
-                Saturday: false
-            };
-
-            // If the step hasn't been completed yet, default to all open for new users.
-            const stepCompleted = salesChannelsInfoData?.status === true;
-            let selectedDays = allOpen;
-
-            if (Array.isArray(data.restaurant_days)) {
-                // Explicit array provided by API.
-                // If populated -> those days open, others closed.
-                // If empty:
-                // - completed step => user intentionally saved "all closed"
-                // - incomplete step => treat as "not configured yet" and default to all open
-                if (data.restaurant_days.length === 0 && !stepCompleted) {
-                    selectedDays = allOpen;
-                } else {
-                    selectedDays = { ...allClosed };
-                    if (data.restaurant_days.length > 0) {
-                        data.restaurant_days.forEach(day => {
-                            const dayName = day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
-                            if (Object.prototype.hasOwnProperty.call(selectedDays, dayName)) {
-                                selectedDays[dayName] = true;
-                            }
-                        });
-                    }
-                }
-            }
-
-            setSalesChannelsData(prev => {
-                
-                // Process providers data to ensure proper format and IDs
-                let processedProviders = [];
-                if (data.providers && Array.isArray(data.providers)) {
-                    processedProviders = data.providers.map((provider, index) => {
-                        // Ensure provider fee is an integer
-                        let providerFee = provider.provider_fee || provider.providerFee || '';
-                        if (providerFee && !isNaN(providerFee)) {
-                            providerFee = parseInt(providerFee, 10).toString();
-                        }
-                        
-                        return {
-                            id: provider.id || Date.now() + index + Math.random(), // Ensure unique ID
-                            providerName: provider.provider_name || provider.providerName || '',
-                            providerFee: providerFee
-                        };
-                    });
-                }
-                
-                const newState = {
-                    ...prev,
-                    in_store: data.in_store !== undefined ? data.in_store : true,
-                    online: data.online !== undefined ? data.online : false,
-                    from_app: data.from_app !== undefined ? data.from_app : false,
-                    third_party: data.third_party !== undefined ? data.third_party : false,
-                    providers: processedProviders,
-                    posSystem: data.pos_system !== undefined && data.pos_system !== null ? data.pos_system : (data.posSystem !== undefined && data.posSystem !== null ? data.posSystem : ''),
-                    posSystemOther: data.pos_system_other !== undefined && data.pos_system_other !== null ? data.pos_system_other : (data.posSystemOther !== undefined && data.posSystemOther !== null ? data.posSystemOther : ''),
-                    separateOnlineOrdering: data.separate_online_ordering !== undefined ? data.separate_online_ordering : (data.separateOnlineOrdering !== undefined ? data.separateOnlineOrdering : false),
-                    posForEmployeeHours: data.pos_for_employee_hours !== undefined ? data.pos_for_employee_hours : (data.posForEmployeeHours !== undefined ? data.posForEmployeeHours : false),
-                    thirdPartyOrdersToPos: data.third_party_orders_to_pos !== undefined ? data.third_party_orders_to_pos : (data.thirdPartyOrdersToPos !== undefined ? data.thirdPartyOrdersToPos : false),
-                    selectedDays: selectedDays
-                };
-                return newState;
-            });
-        } else {
+        if (
+            !selectedLocationId ||
+            lastLoadedOnboardingLocationId !== selectedLocationId
+        ) {
+            return;
         }
-    }, [completeOnboardingData]);
+        setSalesChannelsData(mapSalesChannelsFromStore(salesChannelsStep));
+    }, [salesChannelsStep, lastLoadedOnboardingLocationId, selectedLocationId]);
 
 
     // Clear error when component mounts
@@ -295,111 +303,44 @@ const SalesChannelsWrapperContent = () => {
         }
     };
 
-    // Show loading spinner overlay when loading
-    if (loading) {
+    if ((isUpdateMode && isLoadingLocationData && !loading) || loading) {
         return (
-            <div className="relative">
-                <div className="absolute inset-0 bg-white bg-opacity-90 z-50 flex items-center justify-center">
-                    <LoadingSpinner 
-                        message="Saving sales channels..." 
-                        size="medium" 
-                        subtext="Please wait while we save your changes..."
-                        showSubtext={true}
-                    />
-                </div>
-                <div className="opacity-50 pointer-events-none">
-                    <div className="flex flex-col gap-6">
-                        {isUpdateMode && (
-                            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <h3 className="text-lg font-semibold text-blue-800 mb-2">Update Mode</h3>
-                                <p className="text-blue-700">
-                                    You are updating your sales channels. Changes will be saved when you click "Save & Continue".
-                                </p>
-                            </div>
-                        )}
-
-                        <SalesDays
-                            data={salesChannelsData}
-                            updateData={updateSalesChannelsData}
-                            errors={validationErrors}
-                        />
-
-                        <SalesChannel
-                            data={salesChannelsData}
-                            updateData={updateSalesChannelsData}
-                            errors={validationErrors}
-                            onSaveAndContinue={handleSaveAndContinue}
-                            loading={loading}
-                        />
-
-                        <POSInformation
-                            data={salesChannelsData}
-                            updateData={updateSalesChannelsData}
-                            errors={validationErrors}
-                            onSaveAndContinue={handleSaveAndContinue}
-                            loading={loading}
-                        />
-
-                        <div className="flex justify-end gap-3 mt-8 pt-6">
-                            <button
-                                onClick={() => {
-                                    
-                                    navigate('/dashboard/labor-information');
-                                }}
-                                disabled={loading}
-                                className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                                    loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
-                                }`}
-                            >
-                                Skip
-                            </button>
-                            {isUpdateMode && (
-                                <button
-                                    onClick={handleSaveAndContinue}
-                                    disabled={loading}
-                                    className={`bg-orange-500 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'
-                                    }`}
-                                >
-                                    {loading && (
-                                        <div className="animate-spin rounded-full border-b-2 border-white h-4 w-4"></div>
-                                    )}
-                                    Save Changes
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+            <div className="w-full min-h-[320px] flex items-center justify-center py-16">
+                <LoadingSpinner
+                    message={
+                        loading
+                            ? 'Saving operating information...'
+                            : 'Loading operating information...'
+                    }
+                    size="medium"
+                    subtext={
+                        loading
+                            ? 'Please wait while we save your changes...'
+                            : 'Fetching data for the selected location'
+                    }
+                    showSubtext={true}
+                />
             </div>
         );
     }
 
-    return (
-        <div className="w-full mx-auto">
-            {/* Header Section with same styling as dashboard */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-                <OnboardingBreadcrumb 
-                    currentStep="Operating Information"
-                    description="Configure your restaurant's operating information including sales channels and POS details."
-                />
-            </div>
-
+    const formSections = (
+        <>
             <SalesDays
                 data={salesChannelsData}
                 updateData={updateSalesChannelsData}
                 errors={validationErrors}
             />
 
-            {/* Content Section */}
             <SalesChannel
                 data={salesChannelsData}
                 updateData={updateSalesChannelsData}
                 errors={validationErrors}
                 onSaveAndContinue={handleSaveAndContinue}
                 loading={loading}
+                hideSectionTitle={isUpdateMode}
             />
 
-            {/* POS Information Section */}
             <POSInformation
                 data={salesChannelsData}
                 updateData={updateSalesChannelsData}
@@ -410,9 +351,7 @@ const SalesChannelsWrapperContent = () => {
 
             <div className="flex justify-end gap-3 mt-8 pt-6">
                 <button
-                    onClick={() => {
-                        navigate('/dashboard/labor-information');
-                    }}
+                    onClick={() => navigate('/dashboard/labor-information')}
                     disabled={loading}
                     className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
                         loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
@@ -435,6 +374,20 @@ const SalesChannelsWrapperContent = () => {
                     </button>
                 )}
             </div>
+        </>
+    );
+
+    return (
+        <div className="w-full mx-auto">
+            {/* Header Section with same styling as dashboard */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+                <OnboardingBreadcrumb 
+                    currentStep="Operating Information"
+                    description="Configure your restaurant's operating information including sales channels and POS details."
+                />
+            </div>
+
+            {formSections}
         </div>
     );
 };
@@ -447,4 +400,5 @@ const SalesChannelsWrapper = () => {
     );
 };
 
+export { SalesChannelsWrapperContent };
 export default SalesChannelsWrapper;

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { message, Modal, Select } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import OperatingExpenses from "./OperatingExpenses";
@@ -12,17 +12,24 @@ import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import PrimaryButton from "../../../../buttons/Buttons";
 import { useGuidance } from "../../../../../contexts/GuidanceContext";
+import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocationReload";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { startExpenseGuidance, dismissGuidanceUIOnly } = useGuidance();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, loadExistingOnboardingData, isOnBoardingCompleted } = useStore();
+    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, isOnBoardingCompleted } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
 
-    // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
+    const {
+        selectedLocationId,
+        isLoadingLocationData,
+    } = useSetupPageLocationReload(isUpdateMode);
+    const lastLoadedOnboardingLocationId = useStore(
+        (s) => s.lastLoadedOnboardingLocationId
+    );
     
     // Scroll to top when component mounts
     useEffect(() => {
@@ -62,55 +69,32 @@ const ExpenseWrapperContent = () => {
         startExpenseGuidance?.();
     }, [startExpenseGuidance]);
 
-    // Load existing expense data on mount if in update mode
-    // Use ref to prevent multiple calls
-    const hasLoadedRef = useRef(false);
-    useEffect(() => {
-        const loadExpenseData = async () => {
-            if (isUpdateMode && !hasLoadedRef.current) {
-                // Check if we already have expense data loaded
-                const expenseInfoData = completeOnboardingData["Expense"];
-                if (expenseInfoData && expenseInfoData.data && (expenseInfoData.data.expenses?.length > 0 || expenseInfoData.data.fixed_costs?.length > 0 || expenseInfoData.data.variable_costs?.length > 0)) {
-                    // Data already loaded, skip API call
-                    hasLoadedRef.current = true;
-                    return;
-                }
-                
-                hasLoadedRef.current = true;
-                try {
-                    // Load onboarding data which includes Expense information (force refresh to get latest data)
-                    await loadExistingOnboardingData(true);
-                } catch (error) {
-                    console.error('Error loading expense data:', error);
-                    hasLoadedRef.current = false; // Allow retry on error
-                }
-            }
-        };
-        
-        loadExpenseData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdateMode]);
+    const emptyExpenseState = useMemo(() => ({
+        totalFixedCost: "0.00",
+        totalVariableCost: "0.00",
+        dynamicFixedFields: [],
+        dynamicVariableFields: [],
+    }), []);
 
     // Get is_franchise data from Basic Information
     const isFranchise = completeOnboardingData["Basic Information"]?.data?.locations?.[0]?.is_franchise || false;
 
-    // State for expense data - only dynamic fields
-    const [expenseData, setExpenseData] = useState({
-        totalFixedCost: "0.00",
-        totalVariableCost: "0.00",
-
-        // Dynamic fields
-        dynamicFixedFields: [],
-        dynamicVariableFields: []
-    });
-
-
-    // API-ready expense data
-    const [apiExpenseData, setApiExpenseData] = useState({
-        expenses: [],
-    });
+    const [expenseData, setExpenseData] = useState(emptyExpenseState);
+    const [apiExpenseData, setApiExpenseData] = useState({ expenses: [] });
     const [lastSavedExpenseRows, setLastSavedExpenseRows] = useState({});
     const [hasInitializedRowBaseline, setHasInitializedRowBaseline] = useState(false);
+
+    const skipLocalResetRef = useRef(true);
+    useEffect(() => {
+        if (skipLocalResetRef.current) {
+            skipLocalResetRef.current = false;
+            return;
+        }
+        if (!selectedLocationId) return;
+        setExpenseData(emptyExpenseState);
+        setLastSavedExpenseRows({});
+        setHasInitializedRowBaseline(false);
+    }, [selectedLocationId, emptyExpenseState]);
 
     const getComparableExpenseRow = useCallback((field) => ({
         label: String(field?.label || "").trim(),
@@ -133,76 +117,89 @@ const ExpenseWrapperContent = () => {
         }, {});
     }, [getComparableExpenseRow]);
 
-    // Load saved data when component mounts or when completeOnboardingData changes
-    useEffect(() => {
-        const expenseInfoData = completeOnboardingData["Expense"];
-
-        if (expenseInfoData && expenseInfoData.data) {
-            const data = expenseInfoData.data;
-
-            // Load all expenses (support both new format 'expenses' and old format 'fixed_costs'/'variable_costs')
-            const allCosts = data.expenses || [
-                ...(data.fixed_costs || []),
-                ...(data.variable_costs || [])
-            ];
-
-            if (allCosts.length > 0) {
-                const dynamicExpenses = allCosts.map((cost, index) => ({
-                    id: cost.id || Date.now() + index, // Preserve API ID if available
-                    label: cost.name,
-                    value: cost.amount ? cost.amount.toString() : "0",
-                    key: `dynamic_expense_${cost.id || Date.now()}_${index}`,
-                    expense_type: cost.expense_type || cost.fixed_expense_type || cost.variable_expense_type || "monthly",
-                    is_active: cost.is_active !== undefined ? cost.is_active : true,
-                    is_value_type: cost.is_value_type !== undefined ? cost.is_value_type : true,
-                    category: cost.category || "Other"
-                }));
-
-                // Calculate total expense - convert all to monthly for consistent calculation
-                const WEEKS_PER_MONTH = 4.33;
-                const totalExpense = dynamicExpenses.reduce((sum, field) => {
-                    const isActive = field.is_active !== undefined ? field.is_active : true;
-                    if (!isActive) {
-                        return sum;
-                    }
-
-                    // Skip percentage fields (royalty/brand and fund) from total calculation
-                    const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
-                    const labelLower = field.label.toLowerCase();
-                    const isPercentageField = royaltyFields.some(fieldName => labelLower.includes(fieldName));
-
-                    if (isPercentageField) {
-                        return sum;
-                    }
-                    
-                    const fieldValue = parseFloat(field.value || 0);
-                    if (field.expense_type === 'weekly') {
-                        // Convert weekly to monthly: weekly * 4.33
-                        return sum + (fieldValue * WEEKS_PER_MONTH);
-                    } else {
-                        // Already monthly
-                        return sum + fieldValue;
-                    }
-                }, 0);
-
-                setExpenseData(prev => ({
-                    ...prev,
-                    dynamicFixedFields: dynamicExpenses,
-                    dynamicVariableFields: [], // No longer using variable fields
-                    totalFixedCost: totalExpense.toFixed(2),
-                    totalVariableCost: "0.00"
-                }));
-                setLastSavedExpenseRows(
-                    dynamicExpenses.reduce((acc, field) => {
-                        acc[String(field.id)] = getComparableExpenseRow(field);
-                        return acc;
-                    }, {})
-                );
-                setHasInitializedRowBaseline(true);
-            }
+    const applyExpenseDataFromStore = useCallback(() => {
+        if (
+            !selectedLocationId ||
+            lastLoadedOnboardingLocationId !== selectedLocationId
+        ) {
+            return;
         }
-        // Note: If no data exists, OperatingExpenses component will initialize with defaults
-    }, [completeOnboardingData, getComparableExpenseRow]);
+
+        const expenseInfoData = completeOnboardingData["Expense"];
+        if (!expenseInfoData?.data) {
+            return;
+        }
+
+        const data = expenseInfoData.data;
+        const allCosts = data.expenses || [
+            ...(data.fixed_costs || []),
+            ...(data.variable_costs || []),
+        ];
+
+        if (allCosts.length === 0) {
+            setExpenseData(emptyExpenseState);
+            setLastSavedExpenseRows({});
+            setHasInitializedRowBaseline(false);
+            return;
+        }
+
+        const dynamicExpenses = allCosts.map((cost, index) => ({
+            id: cost.id || `loc-${selectedLocationId}-${index}`,
+            label: cost.name,
+            value: cost.amount != null ? String(cost.amount) : "0",
+            key: `dynamic_expense_${cost.id || selectedLocationId}_${index}`,
+            expense_type:
+                cost.expense_type ||
+                cost.fixed_expense_type ||
+                cost.variable_expense_type ||
+                "monthly",
+            is_active: cost.is_active !== undefined ? cost.is_active : true,
+            is_value_type: cost.is_value_type !== undefined ? cost.is_value_type : true,
+            category: cost.category || "Other",
+        }));
+
+        const WEEKS_PER_MONTH = 4.33;
+        const totalExpense = dynamicExpenses.reduce((sum, field) => {
+            const isActive = field.is_active !== undefined ? field.is_active : true;
+            if (!isActive) return sum;
+
+            const royaltyFields = ["royalty", "brand and fund", "brand/ad fund"];
+            const labelLower = field.label.toLowerCase();
+            if (royaltyFields.some((name) => labelLower.includes(name))) {
+                return sum;
+            }
+
+            const fieldValue = parseFloat(field.value || 0);
+            if (field.expense_type === "weekly") {
+                return sum + fieldValue * WEEKS_PER_MONTH;
+            }
+            return sum + fieldValue;
+        }, 0);
+
+        setExpenseData({
+            dynamicFixedFields: dynamicExpenses,
+            dynamicVariableFields: [],
+            totalFixedCost: totalExpense.toFixed(2),
+            totalVariableCost: "0.00",
+        });
+        setLastSavedExpenseRows(
+            dynamicExpenses.reduce((acc, field) => {
+                acc[String(field.id)] = getComparableExpenseRow(field);
+                return acc;
+            }, {})
+        );
+        setHasInitializedRowBaseline(true);
+    }, [
+        completeOnboardingData,
+        emptyExpenseState,
+        getComparableExpenseRow,
+        lastLoadedOnboardingLocationId,
+        selectedLocationId,
+    ]);
+
+    useEffect(() => {
+        applyExpenseDataFromStore();
+    }, [applyExpenseDataFromStore]);
 
     useEffect(() => {
         if (hasInitializedRowBaseline) return;
@@ -435,6 +432,19 @@ const ExpenseWrapperContent = () => {
         }
     };
 
+    if (isUpdateMode && isLoadingLocationData && !loading) {
+        return (
+            <div className="w-full min-h-[320px] flex items-center justify-center py-16">
+                <LoadingSpinner
+                    message="Loading operating expenses..."
+                    size="medium"
+                    subtext="Fetching data for the selected location"
+                    showSubtext={true}
+                />
+            </div>
+        );
+    }
+
     // Show loading spinner overlay when loading
     if (loading) {
         return (
@@ -462,6 +472,12 @@ const ExpenseWrapperContent = () => {
                         {/* Content Section */}
                         <div className="space-y-6">
                             <OperatingExpenses
+                                key={selectedLocationId ?? 'expense'}
+                                locationId={selectedLocationId}
+                                suppressDefaultInit={
+                                    isLoadingLocationData ||
+                                    lastLoadedOnboardingLocationId !== selectedLocationId
+                                }
                                 data={expenseData}
                                 updateData={updateExpenseData}
                                 errors={validationErrors}
@@ -611,6 +627,12 @@ const ExpenseWrapperContent = () => {
             {/* Content Section */}
             <div className="space-y-6">
                 <OperatingExpenses
+                    key={selectedLocationId ?? 'expense'}
+                    locationId={selectedLocationId}
+                    suppressDefaultInit={
+                        isLoadingLocationData ||
+                        lastLoadedOnboardingLocationId !== selectedLocationId
+                    }
                     data={expenseData}
                     updateData={updateExpenseData}
                     errors={validationErrors}

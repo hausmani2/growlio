@@ -11,6 +11,7 @@ const createSalesInformationSlice = (set, get) => ({
     salesInformationSummaryLoading: false,
     salesInformationSummaryError: null,
     salesInformationSummaryLastFetch: null, // Track when summary was last fetched
+    activeReportCardRange: null,
     // Daily performance data
     dailyPerformanceData: null,
     dailyPerformanceLoading: false,
@@ -32,7 +33,18 @@ const createSalesInformationSlice = (set, get) => ({
         }));
         
         try {
-            const response = await apiGet('/restaurant_v2/sales-information/');
+            const restaurantId = get().restaurantId || localStorage.getItem('restaurant_id');
+            const queryParams = await get().withLocationParams(
+                restaurantId ? { restaurant: restaurantId } : {}
+            );
+            const qs = new URLSearchParams(
+                Object.entries(queryParams).reduce((acc, [k, v]) => {
+                    if (v != null && v !== '') acc[k] = String(v);
+                    return acc;
+                }, {})
+            ).toString();
+            const url = `/restaurant_v2/sales-information/${qs ? `?${qs}` : ''}`;
+            const response = await apiGet(url);
             
             // API returns array directly: [{ id, restaurant_id, sales, expenses, labour, cogs, ... }]
             const data = Array.isArray(response.data) ? response.data : response.data;
@@ -98,8 +110,9 @@ const createSalesInformationSlice = (set, get) => ({
                     restaurant_id: restaurantId ? Number(restaurantId) : null,
                     ...payload
                   };
+            const withLocation = await get().withLocationParams(finalPayload);
             
-            const response = await apiPost('/restaurant_v2/sales-information/', finalPayload);
+            const response = await apiPost('/restaurant_v2/sales-information/', withLocation);
             
             set(() => ({ 
                 salesInformationLoading: false, 
@@ -165,8 +178,9 @@ const createSalesInformationSlice = (set, get) => ({
                 restaurant_id: restaurantId ? Number(restaurantId) : null,
                 ...payload
             };
+            const withLocation = await get().withLocationParams(finalPayload);
             
-            const response = await apiPut('/restaurant_v2/sales-information/', finalPayload);
+            const response = await apiPut('/restaurant_v2/sales-information/', withLocation);
             
             set(() => ({ 
                 salesInformationLoading: false, 
@@ -223,7 +237,8 @@ const createSalesInformationSlice = (set, get) => ({
         }));
         
         try {
-            const response = await apiDelete('/restaurant_v2/sales-information/');
+            const deleteUrl = await get().appendLocationToUrl('/restaurant_v2/sales-information/');
+            const response = await apiDelete(deleteUrl);
             
             set(() => ({ 
                 salesInformationLoading: false, 
@@ -346,11 +361,13 @@ const createSalesInformationSlice = (set, get) => ({
             }
             
             // Build query parameters
-            const params = new URLSearchParams({
-                restaurant_id: restaurantId.toString(),
-                start_date: startDateStr,
-                end_date: endDateStr
-            });
+            const params = new URLSearchParams(
+                await get().withLocationParams({
+                    restaurant_id: restaurantId.toString(),
+                    start_date: startDateStr,
+                    end_date: endDateStr,
+                })
+            );
             
             const apiUrl = `/restaurant_v2/sales-information/summary/?${params.toString()}`;
             
@@ -362,7 +379,11 @@ const createSalesInformationSlice = (set, get) => ({
                 salesInformationSummaryLoading: false, 
                 salesInformationSummaryError: null,
                 salesInformationSummary: response.data,
-                salesInformationSummaryLastFetch: Date.now() // Store fetch timestamp
+                salesInformationSummaryLastFetch: Date.now(),
+                activeReportCardRange: {
+                    start: startDateStr,
+                    end: endDateStr,
+                },
             }));
             
             return { 
@@ -461,11 +482,13 @@ const createSalesInformationSlice = (set, get) => ({
             }
             
             // Build query parameters
-            const params = new URLSearchParams({
-                restaurant_id: restaurantId.toString(),
-                start_date: startDateStr,
-                end_date: endDateStr
-            });
+            const params = new URLSearchParams(
+                await get().withLocationParams({
+                    restaurant_id: restaurantId.toString(),
+                    start_date: startDateStr,
+                    end_date: endDateStr,
+                })
+            );
             
             const response = await apiGet(`/restaurant_v2/sales-information-daily/summary/?${params.toString()}`);
             

@@ -92,6 +92,7 @@ const SummaryDashboard = () => {
     setSelectedMonth,
     setSelectedWeek
   } = useStore();
+  const selectedLocationId = useStore((s) => s.selectedLocationId);
   const isOnBoardingCompleted = useStore((s) => s.isOnBoardingCompleted);
   const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
   const isSetupComplete =
@@ -117,6 +118,7 @@ const SummaryDashboard = () => {
   // Dashboard summary functionality
   const {
     fetchDashboardSummary,
+    fetchBudgetAllocationSummary,
     dashboardSummaryData,
     loading: summaryLoading,
     error: summaryError,
@@ -268,6 +270,24 @@ const SummaryDashboard = () => {
       console.error('Error in auto-fetch useEffect:', error);
     }
   }, [isInitialized, calendarDateRange, fetchSummaryData, groupBy]);
+
+  const skipInitialLocationRefetch = useRef(true);
+
+  // Refetch budget page data when the header location changes (same date range).
+  useEffect(() => {
+    if (skipInitialLocationRefetch.current) {
+      skipInitialLocationRefetch.current = false;
+      return;
+    }
+    if (!selectedLocationId || !isInitialized || calendarDateRange.length !== 2) {
+      return;
+    }
+    lastDateRange.current = null;
+    const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+    const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+    fetchSummaryData(startDate, endDate, groupBy);
+    fetchBudgetAllocationSummary?.(startDate, endDate).catch(() => {});
+  }, [selectedLocationId]);
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
