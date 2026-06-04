@@ -504,7 +504,7 @@ const SimulationDashboard = () => {
       )
     },
     {
-      title: 'Original Amount',
+      title: 'Monthly Budgeted Amount',
       dataIndex: 'original_amount',
       key: 'original_amount',
       align: 'right',
