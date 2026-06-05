@@ -21,7 +21,7 @@ const getPlanLocationCap = (plan) => {
     return getMaxLocationsCap(plan);
 };
 
-const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false }) => {
+const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false, hideLocationCount = false }) => {
     const { 
         checkRestaurantName, 
         clearRestaurantNameCheck,
@@ -233,9 +233,8 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     </div>
                 </div>
                 
-                {/* Number of Locations */}
+                {!hideLocationCount && (
                 <div>
-
                     <label htmlFor="numberOfLocations" className="block text-sm font-semibold text-gray-700 mb-2">
                         Number of Locations <span className="text-red-500">*</span>
                         <TooltipIcon text={tooltips['number_of_locations']} />
@@ -256,7 +255,6 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                         <span className="text-red-500 text-xs mt-1">{errors.numberOfLocations}</span>
                     )}
 
-                    {/* Professional helper text driven by subscription/current */}
                     <div className="mt-2 text-xs text-gray-600">
                         {locationSelectModel.allowedLocations !== null && (
                             <div>
@@ -289,7 +287,8 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                         )}
                     </div>
                 </div>
-                
+                )}
+
                 {/* Location Name */}
                 <div>
                     <label htmlFor="locationName" className="block text-sm font-semibold text-gray-700 mb-2">

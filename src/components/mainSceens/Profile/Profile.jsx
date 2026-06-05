@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
-import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import LocationsTab from './LocationsTab';
 import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
@@ -17,7 +18,12 @@ const Profile = () => {
   const [passwordForm] = Form.useForm();
   const [deleteForm] = Form.useForm();
   const [memberForm] = Form.useForm();
-  const { restaurantId, isOwner, canManageUsers } = useRestaurantRole();
+  const { restaurantId, locationId, isOwner, canManageUsers } = useRestaurantRole();
+  const locations = useStore((state) => state.locations);
+  const selectedLocationId = useStore((state) => state.selectedLocationId);
+  const activeLocationId = locationId || selectedLocationId;
+  const activeLocationName =
+    locations?.find((loc) => loc.id === activeLocationId)?.name || 'Selected location';
   
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -45,10 +51,12 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    if (restaurantId) {
+    if (isOwner && restaurantId && activeLocationId) {
       fetchMembers();
+    } else {
+      setMembers([]);
     }
-  }, [restaurantId]);
+  }, [isOwner, restaurantId, activeLocationId]);
 
   const fetchProfileData = async () => {
     try {
@@ -78,11 +86,13 @@ const Profile = () => {
   };
 
   const fetchMembers = async () => {
-    if (!restaurantId) return;
+    if (!restaurantId || !activeLocationId) return;
 
     try {
       setMembersLoading(true);
-      const response = await apiGet(`/restaurant_v2/members/?restaurant_id=${restaurantId}`);
+      const response = await apiGet(
+        `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${activeLocationId}`
+      );
       setMembers(Array.isArray(response.data) ? response.data : response.data?.data || []);
     } catch (error) {
       console.error('Error fetching members:', error);
@@ -116,10 +126,11 @@ const Profile = () => {
   };
 
   const handleMemberSave = async (values) => {
-    if (!restaurantId || !canManageUsers) return;
+    if (!restaurantId || !activeLocationId || !canManageUsers) return;
 
     const payload = {
       restaurant_id: Number(restaurantId),
+      location_id: Number(activeLocationId),
       email: values.email,
       role: values.role,
       full_name: values.full_name,
@@ -452,7 +463,7 @@ const Profile = () => {
             </div>
           </TabPane>
 
-          {/* Profile Management Tab */}
+          {isOwner && (
           <TabPane
             tab={
               <span className="flex items-center gap-2">
@@ -511,23 +522,25 @@ const Profile = () => {
                   <div>
                     <h3 className="text-xl font-bold text-orange-600">Users & Roles</h3>
                     <p className="text-sm text-gray-600 mb-0">
-                      Owners can add managers and leaders. The original owner cannot be edited or deleted.
+                      Managing team for <span className="font-medium text-gray-800">{activeLocationName}</span>.
+                      Switch location in the header to manage another site. Owners can add managers and leaders;
+                      the primary owner cannot be edited or removed.
                     </p>
                   </div>
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={openAddMemberModal}
-                    disabled={!canManageUsers || !restaurantId}
+                    disabled={!canManageUsers || !restaurantId || !activeLocationId}
                     className="bg-orange-500 hover:bg-orange-600 border-0"
                   >
                     Add User
                   </Button>
                 </div>
 
-                {!isOwner && (
+                {!activeLocationId && (
                   <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
-                    Your role can view this list, but only the restaurant owner can manage users and roles.
+                    Select a location in the header to view and manage users for that site.
                   </div>
                 )}
 
@@ -542,6 +555,21 @@ const Profile = () => {
               </Card>
             </div>
           </TabPane>
+          )}
+
+          {isOwner && (
+            <TabPane
+              tab={
+                <span className="flex items-center gap-2">
+                  <EnvironmentOutlined />
+                  Locations
+                </span>
+              }
+              key="locations"
+            >
+              <LocationsTab />
+            </TabPane>
+          )}
 
           {/* Security Tab */}
           <TabPane 

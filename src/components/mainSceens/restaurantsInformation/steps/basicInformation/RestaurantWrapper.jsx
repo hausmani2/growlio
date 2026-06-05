@@ -13,6 +13,12 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import StepDataManager from "../../StepDataManager";
 import PrimaryButton from "../../../../../components/buttons/Buttons";
 import { Input } from "antd";
+import {
+    buildLocationPayload,
+    getLocationDisplayName,
+    mapApiLocationToAddress,
+    mapApiLocationToTypeData,
+} from "../../../../../utils/locationFormUtils";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -26,13 +32,18 @@ const RestaurantWrapperContent = () => {
         getTempFormData,
         updateTempFormData,
         isOnBoardingCompleted,
-        loadExistingOnboardingData
+        loadExistingOnboardingData,
+        fetchLocations,
+        selectedLocationId,
+        locations: headerLocations,
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
+    const activeLocationName =
+        headerLocations?.find((loc) => loc.id === selectedLocationId)?.name || 'Selected location';
     
     // Scroll to top when component mounts
     useEffect(() => {
@@ -98,10 +109,30 @@ const RestaurantWrapperContent = () => {
         }
     );
 
-    // Additional locations (Location 2..N)
+    // Additional locations (Location 2..N) — onboarding only
     const [additionalLocations, setAdditionalLocations] = useState(
         Array.isArray(tempFormData?.additionalLocations) ? tempFormData.additionalLocations : []
     );
+
+    const applySelectedLocationToForms = (basicData, locationRecord) => {
+        if (!basicData || !locationRecord) return;
+
+        setRestaurantData((prev) => ({
+            ...prev,
+            restaurantName: basicData.restaurant_name || prev.restaurantName,
+            numberOfLocations: basicData.number_of_locations || prev.numberOfLocations,
+            locationName: getLocationDisplayName(locationRecord),
+        }));
+
+        setAddressData(mapApiLocationToAddress(locationRecord));
+
+        setAddressTypeData((prev) => ({
+            ...prev,
+            ...mapApiLocationToTypeData(locationRecord),
+            restaurantType: basicData.restaurant_type || prev.restaurantType,
+            menuType: basicData.menu_type || prev.menuType,
+        }));
+    };
 
     // Load saved data when component mounts or when completeOnboardingData changes
     useEffect(() => {
@@ -112,13 +143,11 @@ const RestaurantWrapperContent = () => {
         if (basicInfoData && basicInfoData.data) {
             const data = basicInfoData.data;
             
-            // Load restaurant data
             if (data.restaurant_name) {
                 setRestaurantData(prev => ({
                     ...prev,
                     restaurantName: data.restaurant_name
                 }));
-            } else {
             }
             
             if (data.number_of_locations) {
@@ -127,64 +156,12 @@ const RestaurantWrapperContent = () => {
                     numberOfLocations: data.number_of_locations
                 }));
             }
-            
-            // Load location data
-            if (data.locations && data.locations.length > 0) {
-                const location = data.locations[0];
-                setRestaurantData(prev => ({
-                    ...prev,
-                    locationName: location.location_name || location.name || ""
-                }));
-                
-                setAddressData(prev => ({
-                    ...prev,
-                    address1: location.address_1 || "",
-                    address2: location.address_2 || "",
-                    country: location.country === "USA" ? "1" : location.country === "Canada" ? "2" : "",
-                    city: location.city || "",
-                    state: location.state || "", // Keep the actual state code (TX, CA, NY, etc.)
-                    zipCode: location.zip_code || "",
-                    latitude: location.latitude || location.lat || null,
-                    longitude: location.longitude || location.lng || null
-                }));
-                
-                setAddressTypeData(prev => ({
-                    ...prev,
-                    sqft: location.sqft?.toString() || "",
-                    isFranchise: location.is_franchise ? "2" : "1"
-                }));
 
-                // Populate Location 2..N into additionalLocations
-                const extraLocations = data.locations.slice(1).map((loc) => ({
-                    locationName: loc.location_name || loc.name || "",
-                    address1: loc.address_1 || "",
-                    address2: loc.address_2 || "",
-                    country: loc.country === "USA" ? "1" : loc.country === "Canada" ? "2" : "",
-                    city: loc.city || "",
-                    state: loc.state || "",
-                    zipCode: loc.zip_code || "",
-                    latitude: loc.latitude || loc.lat || null,
-                    longitude: loc.longitude || loc.lng || null
-                }));
-
-                setAdditionalLocations(Array.isArray(extraLocations) ? extraLocations : []);
-
-                // Persist into temp form data (best-effort)
-                try {
-                    const { updateTempFormDataMultiple } = useStore.getState();
-                    updateTempFormDataMultiple?.("Basic Information", "additionalLocations", extraLocations);
-                } catch (e) {
-                    // ignore
-                }
-            }
-            
-            // Load restaurant type and menu type
             if (data.restaurant_type) {
                 setAddressTypeData(prev => ({
                     ...prev,
                     restaurantType: data.restaurant_type
                 }));
-            } else {
             }
             
             if (data.menu_type) {
@@ -192,11 +169,38 @@ const RestaurantWrapperContent = () => {
                     ...prev,
                     menuType: data.menu_type
                 }));
-            } else {
             }
-        } else {
+
+            if (!data.locations || data.locations.length === 0) {
+                return;
+            }
+
+            if (isUpdateMode) {
+                const selectedLoc = selectedLocationId
+                    ? data.locations.find((loc) => loc.id === Number(selectedLocationId))
+                    : null;
+                applySelectedLocationToForms(data, selectedLoc || data.locations[0]);
+                return;
+            }
+
+            const location = data.locations[0];
+            applySelectedLocationToForms(data, location);
+
+            const extraLocations = data.locations.slice(1).map((loc) => ({
+                locationName: getLocationDisplayName(loc),
+                ...mapApiLocationToAddress(loc),
+            }));
+
+            setAdditionalLocations(Array.isArray(extraLocations) ? extraLocations : []);
+
+            try {
+                const { updateTempFormDataMultiple } = useStore.getState();
+                updateTempFormDataMultiple?.("Basic Information", "additionalLocations", extraLocations);
+            } catch (e) {
+                // ignore
+            }
         }
-    }, [completeOnboardingData]);
+    }, [completeOnboardingData, isUpdateMode, selectedLocationId]);
 
     // Clear error when component mounts
     useEffect(() => {
@@ -248,8 +252,9 @@ const RestaurantWrapperContent = () => {
         return Number.isFinite(n) && n > 0 ? n : 1;
     }, [restaurantData.numberOfLocations]);
 
-    // Ensure additionalLocations array matches the selected number of locations
+    // Ensure additionalLocations array matches the selected number of locations (onboarding only)
     useEffect(() => {
+        if (isUpdateMode) return;
         const neededAdditional = Math.max(0, desiredLocationsCount - 1);
         setAdditionalLocations((prev) => {
             const next = Array.isArray(prev) ? [...prev] : [];
@@ -284,7 +289,7 @@ const RestaurantWrapperContent = () => {
             return next;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [desiredLocationsCount]);
+    }, [desiredLocationsCount, isUpdateMode]);
 
     const updateAdditionalLocation = (index, field, value) => {
         setAdditionalLocations((prev) => {
@@ -319,7 +324,13 @@ const RestaurantWrapperContent = () => {
     const handleSaveAndContinue = async () => {
         try {
             // Step 1: Validate all forms
-            const isValid = validateAllForms(restaurantData, addressData, addressTypeData, additionalLocations);
+            const isValid = validateAllForms(
+                restaurantData,
+                addressData,
+                addressTypeData,
+                additionalLocations,
+                { singleLocationUpdate: isUpdateMode }
+            );
 
             if (!isValid) {
                 message.error("Please fill in all required fields correctly");
@@ -362,16 +373,45 @@ const RestaurantWrapperContent = () => {
                 return locationObj;
             };
 
-            const locationsPayload = [
-                buildLocationObj(restaurantData.locationName, addressData),
-                ...additionalLocations.map((loc) =>
-                    buildLocationObj(loc.locationName, loc)
-                )
-            ];
+            let locationsPayload = [];
+
+            if (isUpdateMode) {
+                const basicData = completeOnboardingData?.["Basic Information"]?.data || {};
+                const allLocations = Array.isArray(basicData.locations) ? basicData.locations : [];
+                const selectedId = Number(selectedLocationId);
+                const updatedLocationPayload = buildLocationPayload(
+                    restaurantData.locationName,
+                    addressData,
+                    addressTypeData.sqft,
+                    addressTypeData.isFranchise
+                );
+
+                locationsPayload = allLocations.map((loc) => {
+                    if (selectedLocationId && loc.id === selectedId) {
+                        return updatedLocationPayload;
+                    }
+                    const typeData = mapApiLocationToTypeData(loc);
+                    return buildLocationPayload(
+                        getLocationDisplayName(loc),
+                        mapApiLocationToAddress(loc),
+                        typeData.sqft,
+                        typeData.isFranchise
+                    );
+                });
+            } else {
+                locationsPayload = [
+                    buildLocationObj(restaurantData.locationName, addressData),
+                    ...additionalLocations.map((loc) =>
+                        buildLocationObj(loc.locationName, loc)
+                    ),
+                ];
+            }
             
             const stepData = {
                 restaurant_name: restaurantData.restaurantName,
-                number_of_locations: parseInt(restaurantData.numberOfLocations),
+                number_of_locations: isUpdateMode
+                    ? locationsPayload.length
+                    : parseInt(restaurantData.numberOfLocations, 10),
                 restaurant_type: addressTypeData.restaurantType,
                 menu_type: addressTypeData.menuType,
                 locations: locationsPayload
@@ -383,20 +423,16 @@ const RestaurantWrapperContent = () => {
             }
             
             // Step 3: Call API through Zustand store with success callback
-            const result = await submitStepData("Basic Information", stepData, (responseData) => {
-                // Success callback - handle navigation based on mode
-                
-                // Check if restaurant_id was returned and log it
-                if (responseData && responseData.restaurant_id) {
+            const result = await submitStepData("Basic Information", stepData, async (responseData) => {
+                if (isUpdateMode) {
+                    await loadExistingOnboardingData(true);
+                    await fetchLocations?.();
                 }
-                
-                // Ensure step is marked as completed
+
                 const { markStepCompleted } = useStore.getState();
                 markStepCompleted("Basic Information");
                 
-                // Step 4: Always navigate to next step after saving
                 if (isUpdateMode && isOnBoardingCompleted) {
-                    // In update mode AND onboarding is complete: show success and navigate
                     message.success("Basic information updated successfully!");
                 } else {
                     // In onboarding mode OR new user in update mode: show success and navigate
@@ -528,20 +564,29 @@ const RestaurantWrapperContent = () => {
 
             {/* Content Section */}
             <div className="space-y-6">
+                {isUpdateMode && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                        Editing <span className="font-semibold">{activeLocationName}</span>. Switch the location
+                        in the header to edit another site. Add new locations from Settings → Locations.
+                    </div>
+                )}
+
                 <RestaurantInformation
                     data={restaurantData}
                     updateData={updateRestaurantData}
                     errors={validationErrors}
+                    isUpdateMode={isUpdateMode}
+                    hideLocationCount={isUpdateMode}
                 />
                 <AddressInformation
                     data={addressData}
                     updateData={updateAddressData}
                     errors={validationErrors}
-                    title="Location Address 1"
+                    title={isUpdateMode ? `Location Address — ${activeLocationName}` : 'Location Address 1'}
                 />
 
-                {/* Additional Locations */}
-                {(Array.isArray(additionalLocations) ? additionalLocations : []).map((loc, idx) => {
+                {/* Additional Locations — onboarding only */}
+                {!isUpdateMode && (Array.isArray(additionalLocations) ? additionalLocations : []).map((loc, idx) => {
                     const locationNumber = idx + 2;
                     const locErrors = getAdditionalLocationErrors(locationNumber);
                     return (

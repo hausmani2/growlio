@@ -644,17 +644,10 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const settingsMenu = [
     {
-      key: 'settings',
+      key: 'profile',
       icon: <SettingOutlined />,
       label: 'Settings',
-      children: [
-        {
-          key: 'profile',
-          icon: <UserOutlined />,
-          label: 'Profile',
-          onClick: () => navigate('/dashboard/profile'),
-        },
-      ],
+      onClick: () => navigate('/dashboard/profile'),
     },
   ];
 
