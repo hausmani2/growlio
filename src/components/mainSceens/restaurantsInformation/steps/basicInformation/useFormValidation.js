@@ -13,13 +13,13 @@ const useFormValidation = () => {
         }
     }, [validationErrors]);
 
-    const validateRestaurantInfo = useCallback((restaurantData) => {
+    const validateRestaurantInfo = useCallback((restaurantData, options = {}) => {
         const errors = {};
 
         if (!restaurantData.restaurantName?.trim()) {
             errors.restaurantName = VALIDATION_MESSAGES.RESTAURANT_NAME;
         }
-        if (!restaurantData.numberOfLocations) {
+        if (!options.singleLocationUpdate && !restaurantData.numberOfLocations) {
             errors.numberOfLocations = VALIDATION_MESSAGES.NUMBER_OF_LOCATIONS;
         }
         if (!restaurantData.locationName?.trim()) {
@@ -122,11 +122,19 @@ const useFormValidation = () => {
         return errors;
     }, []);
 
-    const validateAllForms = useCallback((restaurantData, addressData, addressTypeData, additionalLocations = []) => {
-        const restaurantErrors = validateRestaurantInfo(restaurantData);
+    const validateAllForms = useCallback((
+        restaurantData,
+        addressData,
+        addressTypeData,
+        additionalLocations = [],
+        options = {}
+    ) => {
+        const restaurantErrors = validateRestaurantInfo(restaurantData, options);
         const addressErrors = validateAddressInfo(addressData);
         const addressTypeErrors = validateAddressTypeInfo(addressTypeData);
-        const additionalLocationsErrors = validateAdditionalLocations(additionalLocations);
+        const additionalLocationsErrors = options.singleLocationUpdate
+            ? {}
+            : validateAdditionalLocations(additionalLocations);
 
         const allErrors = {
             ...restaurantErrors,

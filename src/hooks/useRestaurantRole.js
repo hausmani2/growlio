@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../utils/axiosInterceptors';
 import useStore from '../store/store';
-import { getRolePermissions, normalizeRestaurantRole } from '../utils/rolePermissions';
+import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../utils/rolePermissions';
 
 const useRestaurantRole = () => {
   const user = useStore((state) => state.user);
   const setUser = useStore((state) => state.setUser);
+  const selectedLocationId = useStore((state) => state.selectedLocationId);
   const [members, setMembers] = useState([]);
 
   const restaurantId = localStorage.getItem('restaurant_id');
@@ -16,14 +17,16 @@ const useRestaurantRole = () => {
     let cancelled = false;
 
     const fetchRole = async () => {
-      if (!restaurantId) {
+      if (!restaurantId || !selectedLocationId) {
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        const response = await apiGet(`/restaurant_v2/members/?restaurant_id=${restaurantId}`);
+        const response = await apiGet(
+          `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${selectedLocationId}`
+        );
         const memberList = Array.isArray(response.data) ? response.data : response.data?.data || [];
 
         if (cancelled) return;
@@ -35,10 +38,22 @@ const useRestaurantRole = () => {
           return sameEmail || sameUserId;
         });
 
-        if (currentMember?.role) {
+        const ownerAtAnyLocation = (user?.restaurant_memberships || []).some(
+          (membership) =>
+            String(membership.restaurant_id) === String(restaurantId) &&
+            normalizeRestaurantRole(membership.role) === RESTAURANT_ROLES.OWNER
+        );
+
+        const resolvedRole = currentMember?.role
+          ? normalizeRestaurantRole(currentMember.role)
+          : ownerAtAnyLocation
+            ? RESTAURANT_ROLES.OWNER
+            : null;
+
+        if (resolvedRole) {
           setUser?.({
-            restaurant_role: normalizeRestaurantRole(currentMember.role),
-            role: user?.role || currentMember.role,
+            restaurant_role: resolvedRole,
+            role: user?.role || resolvedRole,
           });
         }
       } catch (error) {
@@ -53,7 +68,7 @@ const useRestaurantRole = () => {
     return () => {
       cancelled = true;
     };
-  }, [restaurantId, setUser, user?.email, user?.id, user?.role]);
+  }, [restaurantId, selectedLocationId, setUser, user?.email, user?.id, user?.role]);
 
   const permissions = useMemo(() => getRolePermissions(storedRole), [storedRole]);
 
@@ -62,6 +77,7 @@ const useRestaurantRole = () => {
     loading,
     members,
     restaurantId,
+    locationId: selectedLocationId,
   };
 };
 
