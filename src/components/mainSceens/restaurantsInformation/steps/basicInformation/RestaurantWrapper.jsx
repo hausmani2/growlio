@@ -388,14 +388,15 @@ const RestaurantWrapperContent = () => {
 
                 locationsPayload = allLocations.map((loc) => {
                     if (selectedLocationId && loc.id === selectedId) {
-                        return updatedLocationPayload;
+                        return { ...updatedLocationPayload, ...(loc.id ? { id: loc.id } : {}) };
                     }
                     const typeData = mapApiLocationToTypeData(loc);
                     return buildLocationPayload(
                         getLocationDisplayName(loc),
                         mapApiLocationToAddress(loc),
                         typeData.sqft,
-                        typeData.isFranchise
+                        typeData.isFranchise,
+                        loc.id
                     );
                 });
             } else {

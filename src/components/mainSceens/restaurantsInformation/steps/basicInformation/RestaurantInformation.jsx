@@ -37,6 +37,27 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     
     // Check if Basic Information step is completed
     const isBasicInfoCompleted = completeOnboardingData?.["Basic Information"]?.status === true;
+
+    const PLACEHOLDER_RESTAURANT_NAME = 'new restaurant';
+
+    // Use the name loaded from the API, not the live form value (which changes on each keystroke).
+    const savedRestaurantName =
+        completeOnboardingData?.['Basic Information']?.data?.restaurant_name ?? '';
+
+    const isPlaceholderFromBackend = useMemo(() => {
+        const name = String(savedRestaurantName).trim();
+        return name.toLowerCase() === PLACEHOLDER_RESTAURANT_NAME;
+    }, [savedRestaurantName]);
+
+    // Your Setup: editable only when the backend still has the default "New Restaurant" name
+    const isRestaurantNameEditable = useMemo(() => {
+        if (isUpdateMode) {
+            return isPlaceholderFromBackend;
+        }
+        return !isBasicInfoCompleted;
+    }, [isUpdateMode, isBasicInfoCompleted, isPlaceholderFromBackend]);
+
+    const isRestaurantNameLocked = !isRestaurantNameEditable;
     
     const [localRestaurantName, setLocalRestaurantName] = useState("");
     
@@ -118,17 +139,16 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         }
     }, [data.numberOfLocations, locationSelectModel.maxSelectable, updateData]);
 
-    // Clear restaurant name validation state when in update mode
+    // Clear restaurant name validation when field is locked
     useEffect(() => {
-        if (isUpdateMode) {
+        if (isRestaurantNameLocked) {
             clearRestaurantNameCheck();
         }
-    }, [isUpdateMode, clearRestaurantNameCheck]);
+    }, [isRestaurantNameLocked, clearRestaurantNameCheck]);
 
     // Debounced restaurant name check
     useEffect(() => {
-        // Skip restaurant name validation in update mode
-        if (isUpdateMode) {
+        if (isRestaurantNameLocked) {
             return;
         }
 
@@ -151,18 +171,18 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                 clearTimeout(debounceTimer);
             }
         };
-    }, [localRestaurantName, checkRestaurantName, clearRestaurantNameCheck, isUpdateMode]);
+    }, [localRestaurantName, checkRestaurantName, clearRestaurantNameCheck, isRestaurantNameLocked]);
 
     // Update local state and parent data
     const handleRestaurantNameChange = (value) => {
+        if (isRestaurantNameLocked) return;
         setLocalRestaurantName(value);
         updateData('restaurantName', value);
     };
 
     // Handle blur event - check restaurant name when user moves to next field
     const handleRestaurantNameBlur = () => {
-        // Skip restaurant name validation in update mode
-        if (isUpdateMode) {
+        if (isRestaurantNameLocked) {
             return;
         }
         
@@ -200,35 +220,34 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                             placeholder="Enter your company name" 
                             className={`w-full h-11 rounded-lg text-sm ${
                                 combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
-                            } ${(isBasicInfoCompleted || isUpdateMode) ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                            value={(() => {
-                                const displayValue = isUpdateMode || isBasicInfoCompleted ? (data.restaurantName || "") : localRestaurantName;
-                                
-                                return displayValue;
-                            })()}
+                            } ${isRestaurantNameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            value={isRestaurantNameEditable ? (localRestaurantName || data.restaurantName || '') : (data.restaurantName || '')}
                             onChange={(e) => handleRestaurantNameChange(e.target.value)}
                             onBlur={handleRestaurantNameBlur}
                             status={combinedErrors.restaurantName ? 'error' : ''}
-                            disabled={restaurantNameCheckLoading || isBasicInfoCompleted || isUpdateMode}
+                            disabled={restaurantNameCheckLoading || isRestaurantNameLocked}
                         />
-                        {restaurantNameCheckLoading && !isUpdateMode && (
+                        {restaurantNameCheckLoading && isRestaurantNameEditable && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                             </div>
                         )}
                     </div>
                     <div className="flex gap-2 items-center">
-                    {combinedErrors.restaurantName && !isUpdateMode && (
+                    {combinedErrors.restaurantName && isRestaurantNameEditable && (
                         <span className="text-red-500 text-xs mt-1">{combinedErrors.restaurantName}</span>
                     )}
-                    {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && !isUpdateMode && (
+                    {localRestaurantName && localRestaurantName.trim().length > 2 && !restaurantNameCheckLoading && !restaurantNameCheckError && !restaurantNameExists && isRestaurantNameEditable && (
                         <span className="text-green-500 text-xs mt-1">✓ Company name is available</span>
                     )}
                     {isBasicInfoCompleted && !isUpdateMode && (
                         <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked (cannot be changed after completion)</span>
                     )}
-                    {isUpdateMode && (
-                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked in update mode</span>
+                    {isUpdateMode && isPlaceholderFromBackend && (
+                        <span className="text-blue-500 text-xs mt-1">Set your company name.</span>
+                    )}
+                    {isUpdateMode && !isPlaceholderFromBackend && (
+                        <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked after it has been set.</span>
                     )}
                     </div>
                 </div>

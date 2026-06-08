@@ -17,7 +17,7 @@ export const mapApiLocationToTypeData = (loc = {}) => ({
 export const getLocationDisplayName = (loc = {}) =>
   loc.location_name || loc.name || 'Unnamed location';
 
-export const buildLocationPayload = (locationName, addressData, sqft, isFranchise) => {
+export const buildLocationPayload = (locationName, addressData, sqft, isFranchise, locationId = null) => {
   const locationObj = {
     location_name: locationName,
     address_1: addressData.address1,
@@ -43,6 +43,10 @@ export const buildLocationPayload = (locationName, addressData, sqft, isFranchis
     !Number.isNaN(parseFloat(addressData.longitude))
   ) {
     locationObj.longitude = parseFloat(addressData.longitude);
+  }
+
+  if (locationId != null && locationId !== '') {
+    locationObj.id = Number(locationId);
   }
 
   return locationObj;

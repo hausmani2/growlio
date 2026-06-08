@@ -12,7 +12,12 @@ import { DatePicker, Button, Dropdown, Modal } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { getOnboardingProgress } from "../../utils/onboardingUtils";
+import {
+  getOnboardingProgress,
+  ONBOARDING_ROUTES,
+  RESTAURANT_STATUS_KEYS,
+} from "../../utils/onboardingUtils";
+import useStore from "../../store/store";
 import TooltipIcon from "../common/TooltipIcon";
 import useTooltips from "../../utils/useTooltips";
 
@@ -700,7 +705,19 @@ const ReportCard = ({
             type="primary"
             onClick={() => {
               setIsNextStepsModalOpen(false);
-              navigate(nextSetupRoute);
+              const isSalesStep =
+                nextSetupItem?.key === RESTAURANT_STATUS_KEYS.ONE_MONTH_SALES_INFO;
+              const targetRoute = isSalesStep
+                ? ONBOARDING_ROUTES.SCORE
+                : nextSetupRoute;
+              if (isSalesStep) {
+                useStore.setState({
+                  salesInformationData: null,
+                  salesInformationLoading: false,
+                  salesInformationError: null,
+                });
+              }
+              navigate(targetRoute);
             }}
             className="bg-orange-500 hover:bg-orange-600 border-0"
             icon={<ArrowRightOutlined />}

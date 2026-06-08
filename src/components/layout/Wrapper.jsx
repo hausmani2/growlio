@@ -50,6 +50,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const restaurantIdForPlan = localStorage.getItem('restaurant_id');
   const selectedLocationId = useStore((state) => state.selectedLocationId);
   const refreshCurrentPage = useStore((state) => state.refreshCurrentPage);
+  const checkLocationOnboarding = useStore((state) => state.checkLocationOnboarding);
 
   const isOnSimulationRoute =
     location.pathname.startsWith('/simulation') ||
@@ -63,6 +64,43 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [showSidebar, location.pathname, selectedLocationId, refreshCurrentPage, isOnSimulationRoute]);
+
+  // New location or header switch: run same onboarding flow as new user signup.
+  useEffect(() => {
+    if (!showSidebar || isOnSimulationRoute) return;
+    if (typeof checkLocationOnboarding !== 'function') return;
+
+    const onLocationChanged = async (event) => {
+      const locationId = event?.detail?.locationId;
+      if (!locationId) return;
+
+      const result = await checkLocationOnboarding(locationId, location.pathname);
+      if (result?.isComplete || !result?.shouldRedirect || !result?.nextRoute) return;
+
+      if (!result.shouldShowModal) {
+        navigate(result.nextRoute, { replace: true });
+        return;
+      }
+
+      Modal.info({
+        title: 'Finish setup for this location',
+        content: 'This location still needs setup before you can use the dashboard.',
+        okText: 'Continue setup',
+        onOk: () => navigate(result.nextRoute, { replace: true }),
+      });
+    };
+
+    window.addEventListener('growlio:location-changed', onLocationChanged);
+    return () => {
+      window.removeEventListener('growlio:location-changed', onLocationChanged);
+    };
+  }, [
+    showSidebar,
+    isOnSimulationRoute,
+    location.pathname,
+    checkLocationOnboarding,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (!showSidebar || !restaurantIdForPlan) return;

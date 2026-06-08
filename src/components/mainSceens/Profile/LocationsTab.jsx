@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Card, Input, Select, message, Table, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
+import { ONBOARDING_ROUTES } from '../../../utils/onboardingUtils';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import AddressInformation from '../restaurantsInformation/steps/basicInformation/AddressInformation';
 import {
@@ -27,6 +29,7 @@ const getPlanLocationCap = (plan) => {
 };
 
 const LocationsTab = () => {
+  const navigate = useNavigate();
   const {
     completeOnboardingData,
     loadExistingOnboardingData,
@@ -36,6 +39,9 @@ const LocationsTab = () => {
     subscriptionDetails,
     currentPackage,
     fetchLocations,
+    changeLocation,
+    checkLocationOnboarding,
+    setSelectedLocationId,
   } = useStore();
   const { isOwner, restaurantId } = useRestaurantRole();
   const [formErrors, setFormErrors] = useState({});
@@ -206,7 +212,8 @@ const LocationsTab = () => {
         getLocationDisplayName(loc),
         mapApiLocationToAddress(loc),
         typeData.sqft,
-        typeData.isFranchise
+        typeData.isFranchise,
+        loc.id
       );
     });
 
@@ -240,13 +247,44 @@ const LocationsTab = () => {
     if (restaurantType) stepData.restaurant_type = restaurantType;
     if (menuType) stepData.menu_type = menuType;
 
+    const previousLocationIds = new Set(
+      existingLocations.map((loc) => loc.id).filter(Boolean)
+    );
+
     try {
       setSaveError(null);
       await submitStepData('Basic Information', stepData, async () => {
         message.success('Locations saved successfully');
         setSaveError(null);
+        const updatedLocations = (await fetchLocations?.()) || [];
+        const addedLocation =
+          updatedLocations.find((loc) => loc?.id && !previousLocationIds.has(loc.id)) ||
+          updatedLocations[updatedLocations.length - 1];
+
+        if (addedLocation?.id) {
+          if (typeof changeLocation === 'function') {
+            changeLocation(addedLocation.id);
+          } else {
+            setSelectedLocationId?.(addedLocation.id);
+          }
+
+          if (typeof checkLocationOnboarding === 'function') {
+            const result = await checkLocationOnboarding(
+              addedLocation.id,
+              window.location.pathname
+            );
+            if (result?.shouldRedirect && result?.nextRoute) {
+              message.info('Complete setup for this new location');
+              navigate(result.nextRoute, { replace: true });
+              return;
+            }
+          } else {
+            navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+            return;
+          }
+        }
+
         await loadExistingOnboardingData(true);
-        await fetchLocations?.();
       });
     } catch (error) {
       const errorMessage =

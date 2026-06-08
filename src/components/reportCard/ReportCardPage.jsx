@@ -131,7 +131,10 @@ const ReportCardPage = () => {
         hasFetchedOnboardingRef.current = true;
         try {
           // Force refresh to get latest data
-          const result = await getRestaurantOnboarding(true);
+          const result = await getRestaurantOnboarding(
+            true,
+            selectedLocationId || undefined
+          );
               
           if (result.success && result.data) {
             const progress = getOnboardingProgress(result.data);
@@ -203,7 +206,21 @@ const ReportCardPage = () => {
     }
     if (!selectedLocationId || !dateRange?.[0] || !dateRange?.[1]) return;
     hasFetchedRef.current = false;
-    fetchSummaryData(dateRange[0], dateRange[1]);
+    hasFetchedOnboardingRef.current = false;
+
+    const refreshForLocation = async () => {
+      try {
+        const result = await getRestaurantOnboarding(true, selectedLocationId);
+        if (result.success && result.data) {
+          setFetchedOnboardingProgress(getOnboardingProgress(result.data));
+        }
+      } catch (error) {
+        console.error('[ReportCardPage] Error refreshing onboarding for location:', error);
+      }
+      await fetchSummaryData(dateRange[0], dateRange[1]);
+    };
+
+    refreshForLocation();
   }, [selectedLocationId]);
 
   // Extract and map data from API response
