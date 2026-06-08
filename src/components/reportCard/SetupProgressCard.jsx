@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Mask from "../../assets/pngs/new-onboard.png";
+import useStore from "../../store/store";
+import { ONBOARDING_ROUTES } from "../../utils/onboardingUtils";
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -14,7 +16,7 @@ const ITEM_ROUTES = {
   "COGS": "/dashboard/food-cost-details",
   "Add third-party delivery info": "/dashboard/third-party-delivery",
   "Go to your budget": "/dashboard/budget",
-  "Enter one month of sales and expenses": "/onboarding/profitability",
+  "Enter one month of sales and expenses": "/onboarding/score",
 };
 
 /** Normalize legacy typo and map to route/display key */
@@ -43,11 +45,23 @@ const SetupProgressCard = ({
   const currentIdx = clamp(Number(currentStep) || 1, 1, sortedItems.length || 1);
 
   const handleItemClick = (item) => {
-    // Use route from item object, or fallback to ITEM_ROUTES
     const route = item.route || ITEM_ROUTES[normalizeSetupLabel(item.label)];
-    if (route) {
-      navigate(route);
+    if (!route) return;
+
+    const isSalesStep =
+      item.label === "Enter one month of sales and expenses" ||
+      route === ONBOARDING_ROUTES.SCORE;
+    if (isSalesStep) {
+      useStore.setState({
+        salesInformationData: null,
+        salesInformationLoading: false,
+        salesInformationError: null,
+      });
+      navigate(ONBOARDING_ROUTES.SCORE);
+      return;
     }
+
+    navigate(route);
   };
 
   return (

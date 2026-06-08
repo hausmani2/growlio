@@ -56,6 +56,7 @@ const ProtectedRoutes = () => {
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
   const restaurantOnboardingData = useStore((state) => state.restaurantOnboardingData);
   const restaurantOnboardingDataTimestamp = useStore((state) => state.restaurantOnboardingDataTimestamp);
+  const selectedLocationId = useStore((state) => state.selectedLocationId);
   const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
   const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
   const restaurantSimulationData = useStore((state) => state.restaurantSimulationData);
@@ -90,10 +91,44 @@ const ProtectedRoutes = () => {
   const [isSimulationUserComplete, setIsSimulationUserComplete] = useState(false);
   const [isCheckingSimulation, setIsCheckingSimulation] = useState(false);
   
-  // Derived state from restaurant data
-  const restaurantExists = hasRestaurant(restaurantData);
-  const oneMonthSalesInfoComplete = hasOneMonthSalesInfo(restaurantData);
-  const onboardingComplete = checkOnboardingComplete(restaurantData);
+  const effectiveRestaurantData = restaurantOnboardingData || restaurantData;
+
+  // Derived state from restaurant data (prefer location-scoped store cache)
+  const restaurantExists = hasRestaurant(effectiveRestaurantData);
+  const oneMonthSalesInfoComplete = hasOneMonthSalesInfo(effectiveRestaurantData);
+  const onboardingComplete = checkOnboardingComplete(effectiveRestaurantData);
+  const locationNeedsOneMonthSales =
+    restaurantExists && !oneMonthSalesInfoComplete;
+
+  useEffect(() => {
+    if (restaurantOnboardingData) {
+      setRestaurantData(restaurantOnboardingData);
+    }
+  }, [restaurantOnboardingData]);
+
+  const lastLocationRefreshRef = useRef(null);
+  useEffect(() => {
+    if (!isAuthenticated || !selectedLocationId) return;
+    if (lastLocationRefreshRef.current === selectedLocationId) return;
+    lastLocationRefreshRef.current = selectedLocationId;
+
+    const refreshForLocation = async () => {
+      sessionStorage.removeItem('hasCheckedRestaurant');
+      hasCheckedRestaurantRef.current = false;
+      const result = await getRestaurantOnboarding(true, selectedLocationId);
+      if (result?.success && result?.data) {
+        setRestaurantData(result.data);
+      }
+      useStore.setState({
+        salesInformationData: null,
+        salesInformationLoading: false,
+        salesInformationError: null,
+      });
+      await getSalesInformation();
+    };
+
+    refreshForLocation();
+  }, [isAuthenticated, selectedLocationId, getRestaurantOnboarding, getSalesInformation]);
   
   // Simple onboarding check function
   const checkOnboardingStatus = async () => {
@@ -1033,6 +1068,11 @@ const ProtectedRoutes = () => {
   const isProfilePath = location.pathname === '/dashboard/profile';
   const salesDataComplete = hasSalesData();
 
+  // Current location still needs sales — allow score/profitability (same as new signup)
+  if (locationNeedsOneMonthSales && (isProfitabilityPath || isScorePath)) {
+    return <Outlet />;
+  }
+
     // If checking simulation status, show loading
     if (isCheckingSimulation && isCongratulationsPath) {
       return <LoadingSpinner message="Checking your setup..." />;
@@ -1074,19 +1114,10 @@ const ProtectedRoutes = () => {
   // If sales data is complete, user should access report card
   // CRITICAL: Allow ALL dashboard routes when sales data is complete
   // This prevents redirects when reloading any dashboard page
-  if (salesDataComplete) {
-    // CRITICAL: Only redirect to simulation dashboard if user is simulation-only (no regular restaurants)
-    // If user has BOTH restaurants, they should be able to access regular dashboard routes
-    // Per requirement: "If both exist → treat user as regular"
-    // Note: Do not force simulation-only users to the simulation dashboard on login.
-    // The requested behavior is to land on the regular report card.
-    
-    // Block access to onboarding/score/profitability when sales data is complete
-    // BUT: Always allow simulation onboarding/routes.
+  if (salesDataComplete && !locationNeedsOneMonthSales) {
     if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
       return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
     }
-    // Allow all dashboard routes and other paths
     return <Outlet />;
   }
 

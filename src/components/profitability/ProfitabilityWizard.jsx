@@ -38,7 +38,13 @@ const ProfitabilityWizard = () => {
     lastMonthLabor: "",
     monthlyRent: "",
   });
-  const { createSalesInformation, getSalesInformation, salesInformationData } = useStore();
+  const {
+    createSalesInformation,
+    getSalesInformation,
+    salesInformationData,
+    selectedLocationId,
+    getRestaurantOnboarding,
+  } = useStore();
 
   // Helper function to extract data from API response
   const extractData = (data) => {
@@ -70,13 +76,10 @@ const ProfitabilityWizard = () => {
     );
   };
 
-  // Fetch existing sales information on mount
+  // Always load sales for the currently selected location
   useEffect(() => {
-    const currentData = useStore.getState().salesInformationData;
-    if (!currentData) {
-      getSalesInformation().catch(console.error);
-    }
-  }, []);
+    getSalesInformation().catch(console.error);
+  }, [selectedLocationId, getSalesInformation]);
 
   // Load existing values from API on initial load only
   useEffect(() => {
@@ -198,6 +201,12 @@ const ProfitabilityWizard = () => {
       }
 
       message.success('Sales information saved successfully!');
+
+      const locationId = useStore.getState().selectedLocationId;
+      if (locationId && typeof getRestaurantOnboarding === 'function') {
+        await getRestaurantOnboarding(true, locationId);
+      }
+
       navigate("/dashboard/report-card");
     } catch (error) {
       console.error('Error saving sales information:', error);

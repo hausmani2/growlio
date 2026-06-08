@@ -782,7 +782,7 @@ const createAuthSlice = (set, get) => {
     },
 
     // Get restaurant ID from restaurant-onboarding endpoint
-    getRestaurantOnboarding: async (forceRefresh = false) => {
+    getRestaurantOnboarding: async (forceRefresh = false, locationId = null) => {
       // CRITICAL: We should ALWAYS call this API, even if user has simulation mode enabled
       // Users can have BOTH regular and simulation restaurants
       // The decision logic in useOnboardingStatus will determine which UI to show
@@ -852,7 +852,15 @@ const createAuthSlice = (set, get) => {
       set(() => ({ loading: true, error: null }));
       
       try {
-        const response = await apiGet('/restaurant_v2/restaurants-onboarding/');
+        const restaurantIdParam =
+          get().restaurantId || localStorage.getItem('restaurant_id');
+        const params = new URLSearchParams();
+        if (restaurantIdParam) params.set('restaurant_id', restaurantIdParam);
+        if (locationId) params.set('location_id', String(locationId));
+        const query = params.toString();
+        const response = await apiGet(
+          `/restaurant_v2/restaurants-onboarding/${query ? `?${query}` : ''}`
+        );
         
         // IMPORTANT: The API response structure might be response.data or response.data.data
         // Let's handle both cases - check if response.data has a 'data' property with restaurants

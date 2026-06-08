@@ -1,4 +1,10 @@
 import { apiPost, apiGet, apiPut } from '../../utils/axiosInterceptors';
+import {
+    getFirstRestaurant,
+    getLocationOnboardingRedirect,
+    hasOneMonthSalesInfo,
+    isOnLocationOnboardingPage,
+} from '../../utils/onboardingUtils';
 
 const createOnBoardingSlice = (set, get) => ({
     name: 'onBoarding',
@@ -189,6 +195,68 @@ const createOnBoardingSlice = (set, get) => ({
                 },
             },
         });
+    },
+
+    /**
+     * Check whether the selected location needs onboarding (same flow as new signup).
+     * When One Month Sales is false, next step is /onboarding/score.
+     */
+    checkLocationOnboarding: async (locationId, currentPathname = '') => {
+        if (!locationId) {
+            return { success: true, isComplete: true, shouldRedirect: false };
+        }
+
+        sessionStorage.removeItem('onboarding_completion_check_time');
+        sessionStorage.removeItem('hasCheckedRestaurant');
+
+        set({
+            salesInformationData: null,
+            salesInformationLoading: false,
+            salesInformationError: null,
+        });
+
+        try {
+            await get().loadExistingOnboardingData(true);
+            const onboardingResult = await get().getRestaurantOnboarding(
+                true,
+                locationId
+            );
+            const restaurantData = onboardingResult?.data ?? null;
+            const restaurant = getFirstRestaurant(restaurantData);
+
+            if (restaurant?.onboarding_complete === true) {
+                get().setIsOnBoardingCompleted(true);
+                return {
+                    success: true,
+                    isComplete: true,
+                    shouldRedirect: false,
+                    shouldShowModal: false,
+                    restaurantData,
+                };
+            }
+
+            const nextRoute = getLocationOnboardingRedirect(restaurantData);
+            const needsOneMonthSales = !hasOneMonthSalesInfo(restaurantData);
+            get().setIsOnBoardingCompleted(false);
+
+            const onDashboard = String(currentPathname || '').startsWith('/dashboard');
+            const onSetupPage = isOnLocationOnboardingPage(currentPathname);
+            const shouldRedirect =
+                !!nextRoute && onDashboard && !onSetupPage;
+
+            return {
+                success: true,
+                isComplete: false,
+                nextRoute,
+                needsOneMonthSales,
+                shouldRedirect,
+                shouldShowModal: shouldRedirect && !needsOneMonthSales,
+                restaurantData,
+            };
+        } catch (error) {
+            console.warn('[onBoarding] checkLocationOnboarding failed:', error);
+            return { success: false, isComplete: false, error: error?.message };
+        }
     },
     
     // Update temporary form data for a specific step

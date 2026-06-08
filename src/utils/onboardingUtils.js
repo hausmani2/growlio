@@ -47,7 +47,7 @@ export const SETUP_ITEMS = [
   {
     label: 'Enter one month of sales and expenses',
     key: RESTAURANT_STATUS_KEYS.ONE_MONTH_SALES_INFO,
-    route: '/onboarding/profitability',
+    route: '/onboarding/score',
     order: 2,
   },
   {
@@ -172,6 +172,38 @@ export const getOnboardingProgress = (restaurantData) => {
     items: itemsWithStatus,
     restaurant,
   };
+};
+
+const DASHBOARD_SETUP_SEGMENTS = [
+  'basic-information',
+  'labor-information',
+  'food-cost-details',
+  'sales-channels',
+  'third-party-delivery',
+  'expense',
+];
+
+/** User is on a setup page (dashboard steps or score/profitability flow). */
+export const isOnLocationOnboardingPage = (pathname = '') => {
+  const path = String(pathname).toLowerCase();
+  if (
+    path.includes('/onboarding/score') ||
+    path.includes('/onboarding/profitability')
+  ) {
+    return true;
+  }
+  return DASHBOARD_SETUP_SEGMENTS.some((segment) => path.includes(segment));
+};
+
+/**
+ * Next route for a location that still needs setup.
+ * Returns null when onboarding_complete is true for that location.
+ */
+export const getLocationOnboardingRedirect = (restaurantData) => {
+  const restaurant = getFirstRestaurant(restaurantData);
+  if (!restaurant) return null;
+  if (restaurant.onboarding_complete === true) return null;
+  return getNextIncompleteSetupRoute(restaurantData);
 };
 
 /**
