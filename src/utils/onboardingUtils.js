@@ -279,6 +279,45 @@ export const getFirstRestaurant = (restaurantData) => {
 };
 
 /**
+ * Restaurant row from restaurants-onboarding for a specific location (or first).
+ */
+export const getRestaurantForLocation = (restaurantData, locationId = null) => {
+  if (!hasRestaurant(restaurantData)) return null;
+
+  const restaurants =
+    restaurantData?.restaurants ??
+    restaurantData?.data?.restaurants ??
+    restaurantData?.data?.data?.restaurants ??
+    [];
+
+  if (locationId != null) {
+    const match = restaurants.find(
+      (r) => Number(r.location_id) === Number(locationId)
+    );
+    if (match) return match;
+  }
+
+  return restaurants[0] || null;
+};
+
+/**
+ * True when user has saved the Expense setup step (restaurants-onboarding).
+ */
+export const hasExpenseStepComplete = (restaurantData, locationId = null) => {
+  const restaurant = getRestaurantForLocation(restaurantData, locationId);
+  if (!restaurant) return false;
+  return restaurant[RESTAURANT_STATUS_KEYS.EXPENSE] === true;
+};
+
+/**
+ * Show preloaded DEFAULT_EXPENSES when Expense step is not saved yet.
+ */
+export const shouldShowDefaultExpenses = (restaurantData, locationId = null) => {
+  if (!hasRestaurant(restaurantData)) return true;
+  return !hasExpenseStepComplete(restaurantData, locationId);
+};
+
+/**
  * Check if "One Month Sales Information" is completed
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if One Month Sales Information is completed

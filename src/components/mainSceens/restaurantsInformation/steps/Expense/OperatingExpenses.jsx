@@ -93,6 +93,7 @@ const OperatingExpenses = ({
   updateData,
   locationId = null,
   suppressDefaultInit = false,
+  showDefaultExpenses = false,
   errors = {},
   isFranchise = false,
   onInlineSave,
@@ -124,17 +125,19 @@ const OperatingExpenses = ({
 
   // Initialize with default expenses if no data exists - do this immediately on mount
   useEffect(() => {
-    if (hasInitialized || suppressDefaultInit) return;
-    
+    if (suppressDefaultInit) return;
+
     const current = Array.isArray(data.dynamicFixedFields) ? data.dynamicFixedFields : [];
-    
-    // If array is empty, initialize with default expenses (like ExpensesStep does)
-    if (current.length === 0) {
+
+    // Expense: false on restaurants-onboarding → user has not saved; show all defaults
+    if (current.length === 0 && (showDefaultExpenses || !hasInitialized)) {
       const defaultFields = convertDefaultExpensesToFields(DEFAULT_EXPENSES);
       updateData("dynamicFixedFields", defaultFields);
       setHasInitialized(true);
       return;
     }
+
+    if (hasInitialized) return;
     
     // If we have existing data, ensure all fields have required properties
     let fieldsWithDefaults = current.map(field => {
@@ -174,7 +177,7 @@ const OperatingExpenses = ({
     }
     
     setHasInitialized(true);
-  }, [data.dynamicFixedFields, updateData, hasInitialized, suppressDefaultInit]);
+  }, [data.dynamicFixedFields, updateData, hasInitialized, suppressDefaultInit, showDefaultExpenses]);
 
   // Franchise: ensure royalty & brand fields exist in expense list
   useEffect(() => {
