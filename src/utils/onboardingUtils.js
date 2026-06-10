@@ -290,6 +290,17 @@ export const hasOneMonthSalesInfo = (restaurantData) => {
 };
 
 /**
+ * Whether to call GET /sales-information/ (prefill or dashboard gating).
+ * New users on score/profitability submit via POST only; restaurants-onboarding
+ * already exposes "One Month Sales Information" status.
+ */
+export const shouldPrefetchSalesInformation = (pathname, restaurantData) => {
+  if (isOnLocationOnboardingPage(pathname)) return false;
+  if (!hasOneMonthSalesInfo(restaurantData)) return false;
+  return true;
+};
+
+/**
  * Check if onboarding is completely finished
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if onboarding_complete is true

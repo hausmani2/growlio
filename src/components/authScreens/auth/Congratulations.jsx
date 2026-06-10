@@ -4,6 +4,7 @@ import Mask from "../../../assets/pngs/new-onboard.png"
 import PrimaryBtn from "../../buttons/Buttons";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../../store/store";
+import { hasOneMonthSalesInfo } from "../../../utils/onboardingUtils";
 import LoadingSpinner from "../../layout/LoadingSpinner";
 import ImageLayout from "../../imageWrapper/ImageLayout";
 import GuidanceOverlay from "../../guidance/GuidanceOverlay";
@@ -22,44 +23,14 @@ const Congratulations = () => {
     const {
         isAuthenticated,
         checkOnboardingCompletion,
-        getSalesInformation,
-        salesInformationData,
         forceOnboardingCheck,
         getRestaurantSimulation,
-        getSimulationOnboardingStatus
+        getSimulationOnboardingStatus,
+        getRestaurantOnboarding,
+        restaurantOnboardingData,
     } = useStore();
-    
-    // Helper function to check if sales information exists
-    const hasSalesInformation = () => {
-        if (!salesInformationData) return false;
-        const data = extractSalesData(salesInformationData);
-        if (!data) return false;
-        return (
-            data.sales != null &&
-            data.expenses != null &&
-            data.labour != null &&
-            data.cogs != null
-        );
-    };
 
-    // Helper function to extract and check sales data
-    const extractSalesData = (data) => {
-        if (Array.isArray(data) && data.length > 0) {
-            return data[0];
-        }
-        if (data?.results) {
-            return typeof data.results === 'object' ? data.results : (Array.isArray(data.results) ? data.results[0] : null);
-        }
-        if (data?.data) {
-            return Array.isArray(data.data) ? data.data[0] : data.data;
-        }
-        if (data && typeof data === 'object' && ('sales' in data || 'cogs' in data)) {
-            return data;
-        }
-        return null;
-    };
-
-    // Check authentication, sales information, and onboarding status on component mount
+    // Check authentication and onboarding status on component mount
     useEffect(() => {
         const checkAuthAndOnboarding = async () => {
             if (!isAuthenticated) {
@@ -158,34 +129,23 @@ const Congratulations = () => {
                 // Continue with normal flow if simulation check fails
             }
 
-            // Fetch sales information if not in store
-            const currentSalesData = useStore.getState().salesInformationData;
-            if (!currentSalesData) {
+            // Sales status comes from restaurants-onboarding (not GET sales-information)
+            let onboardingData = restaurantOnboardingData;
+            if (!onboardingData && typeof getRestaurantOnboarding === 'function') {
                 try {
-                    await getSalesInformation();
+                    const onboardingResult = await getRestaurantOnboarding(true);
+                    if (onboardingResult?.success) {
+                        onboardingData = onboardingResult.data;
+                    }
                 } catch (error) {
-                    console.error('Error fetching sales information:', error);
+                    console.error('Error checking restaurant onboarding:', error);
                 }
             }
 
-            // Check if sales information exists
-            const updatedSalesData = useStore.getState().salesInformationData;
-            if (updatedSalesData) {
-                const salesData = extractSalesData(updatedSalesData);
-                if (salesData) {
-                    const hasAllData = (
-                        salesData.sales != null &&
-                        salesData.expenses != null &&
-                        salesData.labour != null &&
-                        salesData.cogs != null
-                    );
-                    
-                    if (hasAllData) {
-                        navigate('/dashboard/report-card');
-                        setIsChecking(false);
-                        return;
-                    }
-                }
+            if (hasOneMonthSalesInfo(onboardingData)) {
+                navigate('/dashboard/report-card');
+                setIsChecking(false);
+                return;
             }
 
             // Check onboarding completion using the store function (fallback check)
@@ -257,8 +217,8 @@ const Congratulations = () => {
                                 title="Let's get started!"
                                 className="btn-brand w-full text-lg py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
                                 onClick={() => {
-                                    // Check if sales information exists - if yes, redirect to dashboard
-                                    if (hasSalesInformation()) {
+                                    const data = useStore.getState().restaurantOnboardingData;
+                                    if (hasOneMonthSalesInfo(data)) {
                                         navigate('/dashboard/report-card');
                                     } else {
                                         navigate('/onboarding');

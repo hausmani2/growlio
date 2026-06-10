@@ -1,5 +1,26 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/axiosInterceptors';
 
+const SALES_INFO_CACHE_MS = 30000;
+const salesInfoFetchCacheByKey = new Map();
+
+const buildSalesInfoFetchKey = (restaurantId, locationId) =>
+    `${restaurantId || 'none'}-${locationId || 'none'}`;
+
+const getSalesInfoCacheEntry = (key) => {
+    if (!salesInfoFetchCacheByKey.has(key)) {
+        salesInfoFetchCacheByKey.set(key, {
+            promise: null,
+            fetchedAt: 0,
+            noAccess: false,
+        });
+    }
+    return salesInfoFetchCacheByKey.get(key);
+};
+
+const resetSalesInfoFetchCache = () => {
+    salesInfoFetchCacheByKey.clear();
+};
+
 const createSalesInformationSlice = (set, get) => ({
     name: 'salesInformation',
     

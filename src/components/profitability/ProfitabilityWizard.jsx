@@ -1,9 +1,10 @@
-import React, { useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import growlioLogo from "../../assets/svgs/growlio-logo.png";
 import Header from "../layout/Header";
 import useStore from "../../store/store";
 import { message } from "antd";
+import { hasOneMonthSalesInfo } from "../../utils/onboardingUtils";
 
 const formatMoney = (value) => {
   const n = Number(value);
@@ -38,77 +39,7 @@ const ProfitabilityWizard = () => {
     lastMonthLabor: "",
     monthlyRent: "",
   });
-  const {
-    createSalesInformation,
-    getSalesInformation,
-    salesInformationData,
-    selectedLocationId,
-    getRestaurantOnboarding,
-  } = useStore();
-
-  // Helper function to extract data from API response
-  const extractData = (data) => {
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0];
-    }
-    if (data?.results) {
-      return typeof data.results === 'object' ? data.results : (Array.isArray(data.results) ? data.results[0] : null);
-    }
-    if (data?.data) {
-      return Array.isArray(data.data) ? data.data[0] : data.data;
-    }
-    if (data && typeof data === 'object' && ('sales' in data || 'cogs' in data)) {
-      return data;
-    }
-    return null;
-  };
-
-  // Helper function to check if sales information exists
-  const hasSalesInformation = () => {
-    if (!salesInformationData) return false;
-    const data = extractData(salesInformationData);
-    if (!data) return false;
-    return (
-      data.sales != null &&
-      data.expenses != null &&
-      data.labour != null &&
-      data.cogs != null
-    );
-  };
-
-  // Always load sales for the currently selected location
-  useEffect(() => {
-    getSalesInformation().catch(console.error);
-  }, [selectedLocationId, getSalesInformation]);
-
-  // Load existing values from API on initial load only
-  useEffect(() => {
-    if (!salesInformationData) return;
-    
-    const data = extractData(salesInformationData);
-    if (!data) return;
-
-    setValues((prev) => {
-      const newValues = {
-        lastMonthSales: data.sales != null ? String(data.sales) : prev.lastMonthSales,
-        lastMonthCOGS: data.cogs != null ? String(data.cogs) : prev.lastMonthCOGS,
-        lastMonthLabor: data.labour != null ? String(data.labour) : prev.lastMonthLabor,
-        monthlyRent: data.expenses != null ? String(data.expenses) : prev.monthlyRent,
-      };
-
-      // Only update if values actually changed
-      if (
-        newValues.lastMonthSales === prev.lastMonthSales &&
-        newValues.lastMonthCOGS === prev.lastMonthCOGS &&
-        newValues.lastMonthLabor === prev.lastMonthLabor &&
-        newValues.monthlyRent === prev.monthlyRent
-      ) {
-        return prev;
-      }
-
-      return newValues;
-    });
-  }, [salesInformationData]);
+  const { createSalesInformation, getRestaurantOnboarding } = useStore();
 
   const step = steps[stepIdx];
   if (!step) {
@@ -155,7 +86,10 @@ const ProfitabilityWizard = () => {
 
   const goBack = () => {
     if (stepIdx === 0) {
-      navigate(hasSalesInformation() ? "/dashboard/budget" : "/onboarding");
+      const onboardingData = useStore.getState().restaurantOnboardingData;
+      navigate(
+        hasOneMonthSalesInfo(onboardingData) ? "/dashboard/budget" : "/onboarding/score"
+      );
       return;
     }
     setStepIdx(stepIdx - 1);
