@@ -1,4 +1,5 @@
 import { apiPost, apiGet } from '../../utils/axiosInterceptors';
+import { enrichUserWithRestaurantRole } from '../../utils/rolePermissions';
 
 // Simple token check - just undefined vs token
 const hasToken = (token) => {
@@ -16,7 +17,7 @@ const getStoredUser = () => {
   const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
   if (userStr) {
     try {
-      return JSON.parse(userStr);
+      return enrichUserWithRestaurantRole(JSON.parse(userStr));
     } catch (error) {
       console.warn('Failed to parse stored user data:', error);
       return null;
@@ -86,7 +87,8 @@ const createAuthSlice = (set, get) => {
         const response = await apiPost('/authentication/login/', credentials);
         // Handle both response structures: { access, ...userData } or { data: { access, ...userData } }
         const { access, ...userData } = response.data.data || response.data;
-        
+        const enrichedUser = enrichUserWithRestaurantRole(userData);
+
         // Check if access token exists
         if (!hasToken(access)) {
           console.error('No access token received from server');
@@ -111,9 +113,9 @@ const createAuthSlice = (set, get) => {
         // Store access token and user data in localStorage for cross-tab synchronization
         // Also store in sessionStorage for backward compatibility
         localStorage.setItem('token', access);
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('user', JSON.stringify(enrichedUser));
         sessionStorage.setItem('token', access);
-        sessionStorage.setItem('user', JSON.stringify(userData));
+        sessionStorage.setItem('user', JSON.stringify(enrichedUser));
         
         // Clear any old chat conversation ID on new login
         sessionStorage.removeItem('chat_conversation_id');
@@ -149,7 +151,7 @@ const createAuthSlice = (set, get) => {
         
         // Update store state
         set(() => ({ 
-          user: userData, 
+          user: enrichedUser, 
           token: access,
           activeToken: access,
           isImpersonatingSession: false,
