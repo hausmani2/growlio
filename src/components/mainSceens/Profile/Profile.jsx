@@ -64,17 +64,23 @@ const Profile = () => {
       const response = await apiGet('/authentication/profile/');
       
       if (response.data.status === 'success') {
-        setProfileData(response.data.data);
+        const nextProfileData = response.data.data;
+        const apiRestaurantRole = String(nextProfileData.restaurant_role || '').trim().toLowerCase();
+        const hasValidRestaurantRole = Object.values(RESTAURANT_ROLES).includes(apiRestaurantRole);
+
+        setProfileData(nextProfileData);
         // Keep global user state in sync so Header updates immediately
         setUser?.({
-          full_name: response.data.data.full_name,
-          email: response.data.data.email,
-          username: response.data.data.username,
-          role: response.data.data.role,
-          restaurant_role: normalizeRestaurantRole(response.data.data.restaurant_role || response.data.data.role),
+          full_name: nextProfileData.full_name,
+          email: nextProfileData.email,
+          username: nextProfileData.username,
+          role: nextProfileData.role,
+          // The profile endpoint may return the global role "USER". It must not
+          // replace the owner/manager/leader role used for restaurant permissions.
+          ...(hasValidRestaurantRole ? { restaurant_role: apiRestaurantRole } : {}),
         });
         profileForm.setFieldsValue({
-          full_name: response.data.data.full_name || ''
+          full_name: nextProfileData.full_name || ''
         });
       }
     } catch (error) {
