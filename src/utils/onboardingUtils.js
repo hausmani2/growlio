@@ -279,6 +279,45 @@ export const getFirstRestaurant = (restaurantData) => {
 };
 
 /**
+ * Restaurant row from restaurants-onboarding for a specific location (or first).
+ */
+export const getRestaurantForLocation = (restaurantData, locationId = null) => {
+  if (!hasRestaurant(restaurantData)) return null;
+
+  const restaurants =
+    restaurantData?.restaurants ??
+    restaurantData?.data?.restaurants ??
+    restaurantData?.data?.data?.restaurants ??
+    [];
+
+  if (locationId != null) {
+    const match = restaurants.find(
+      (r) => Number(r.location_id) === Number(locationId)
+    );
+    if (match) return match;
+  }
+
+  return restaurants[0] || null;
+};
+
+/**
+ * True when user has saved the Expense setup step (restaurants-onboarding).
+ */
+export const hasExpenseStepComplete = (restaurantData, locationId = null) => {
+  const restaurant = getRestaurantForLocation(restaurantData, locationId);
+  if (!restaurant) return false;
+  return restaurant[RESTAURANT_STATUS_KEYS.EXPENSE] === true;
+};
+
+/**
+ * Show preloaded DEFAULT_EXPENSES when Expense step is not saved yet.
+ */
+export const shouldShowDefaultExpenses = (restaurantData, locationId = null) => {
+  if (!hasRestaurant(restaurantData)) return true;
+  return !hasExpenseStepComplete(restaurantData, locationId);
+};
+
+/**
  * Check if "One Month Sales Information" is completed
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if One Month Sales Information is completed
@@ -287,6 +326,17 @@ export const hasOneMonthSalesInfo = (restaurantData) => {
   const restaurant = getFirstRestaurant(restaurantData);
   if (!restaurant) return false;
   return restaurant[RESTAURANT_STATUS_KEYS.ONE_MONTH_SALES_INFO] === true;
+};
+
+/**
+ * Whether to call GET /sales-information/ (prefill or dashboard gating).
+ * New users on score/profitability submit via POST only; restaurants-onboarding
+ * already exposes "One Month Sales Information" status.
+ */
+export const shouldPrefetchSalesInformation = (pathname, restaurantData) => {
+  if (isOnLocationOnboardingPage(pathname)) return false;
+  if (!hasOneMonthSalesInfo(restaurantData)) return false;
+  return true;
 };
 
 /**

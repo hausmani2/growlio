@@ -13,6 +13,7 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import PrimaryButton from "../../../../buttons/Buttons";
 import { useGuidance } from "../../../../../contexts/GuidanceContext";
 import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocationReload";
+import { shouldShowDefaultExpenses } from "../../../../../utils/onboardingUtils";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
@@ -30,7 +31,23 @@ const ExpenseWrapperContent = () => {
     const lastLoadedOnboardingLocationId = useStore(
         (s) => s.lastLoadedOnboardingLocationId
     );
-    
+    const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
+    const getRestaurantOnboarding = useStore((s) => s.getRestaurantOnboarding);
+
+    const showDefaultExpenses = shouldShowDefaultExpenses(
+        restaurantOnboardingData,
+        selectedLocationId
+    );
+    const onboardingStatusKnown = Boolean(
+        restaurantOnboardingData?.restaurants?.length
+    );
+
+    // restaurants-onboarding is the source of truth for Expense: false → show defaults
+    useEffect(() => {
+        if (!selectedLocationId || typeof getRestaurantOnboarding !== 'function') return;
+        getRestaurantOnboarding(true, selectedLocationId).catch(() => {});
+    }, [selectedLocationId, getRestaurantOnboarding]);
+
     // Scroll to top when component mounts
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -125,6 +142,11 @@ const ExpenseWrapperContent = () => {
             return;
         }
 
+        const statusData = useStore.getState().restaurantOnboardingData;
+        if (shouldShowDefaultExpenses(statusData, selectedLocationId)) {
+            return;
+        }
+
         const expenseInfoData = completeOnboardingData["Expense"];
         if (!expenseInfoData?.data) {
             return;
@@ -136,10 +158,9 @@ const ExpenseWrapperContent = () => {
             ...(data.variable_costs || []),
         ];
 
+        // API returns expenses: [] on first visit (nothing saved yet).
+        // Do not wipe the UI — static DEFAULT_EXPENSES from OperatingExpenses must stay visible.
         if (allCosts.length === 0) {
-            setExpenseData(emptyExpenseState);
-            setLastSavedExpenseRows({});
-            setHasInitializedRowBaseline(false);
             return;
         }
 
@@ -195,11 +216,16 @@ const ExpenseWrapperContent = () => {
         getComparableExpenseRow,
         lastLoadedOnboardingLocationId,
         selectedLocationId,
+        restaurantOnboardingData,
     ]);
 
     useEffect(() => {
         applyExpenseDataFromStore();
     }, [applyExpenseDataFromStore]);
+
+    const suppressDefaultInit =
+        !onboardingStatusKnown &&
+        (isLoadingLocationData || loading);
 
     useEffect(() => {
         if (hasInitializedRowBaseline) return;
@@ -474,10 +500,8 @@ const ExpenseWrapperContent = () => {
                             <OperatingExpenses
                                 key={selectedLocationId ?? 'expense'}
                                 locationId={selectedLocationId}
-                                suppressDefaultInit={
-                                    isLoadingLocationData ||
-                                    lastLoadedOnboardingLocationId !== selectedLocationId
-                                }
+                                suppressDefaultInit={suppressDefaultInit}
+                                showDefaultExpenses={showDefaultExpenses}
                                 data={expenseData}
                                 updateData={updateExpenseData}
                                 errors={validationErrors}
@@ -629,10 +653,8 @@ const ExpenseWrapperContent = () => {
                 <OperatingExpenses
                     key={selectedLocationId ?? 'expense'}
                     locationId={selectedLocationId}
-                    suppressDefaultInit={
-                        isLoadingLocationData ||
-                        lastLoadedOnboardingLocationId !== selectedLocationId
-                    }
+                    suppressDefaultInit={suppressDefaultInit}
+                    showDefaultExpenses={showDefaultExpenses}
                     data={expenseData}
                     updateData={updateExpenseData}
                     errors={validationErrors}

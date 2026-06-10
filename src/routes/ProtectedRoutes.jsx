@@ -14,6 +14,8 @@ import {
   getIncompleteSetupItems,
   ONBOARDING_ROUTES,
   isOnboardingComplete as checkOnboardingComplete,
+  isOnLocationOnboardingPage,
+  shouldPrefetchSalesInformation,
 } from '../utils/onboardingUtils';
 
 const ProtectedRoutes = () => {
@@ -119,16 +121,18 @@ const ProtectedRoutes = () => {
       if (result?.success && result?.data) {
         setRestaurantData(result.data);
       }
-      useStore.setState({
-        salesInformationData: null,
-        salesInformationLoading: false,
-        salesInformationError: null,
-      });
-      await getSalesInformation();
+      const onboardingForPrefetch = result?.data ?? restaurantOnboardingData ?? restaurantData;
+      if (!shouldPrefetchSalesInformation(location.pathname, onboardingForPrefetch)) {
+        return;
+      }
+      const currentSalesData = useStore.getState().salesInformationData;
+      if (currentSalesData === null || currentSalesData === undefined) {
+        await getSalesInformation();
+      }
     };
 
     refreshForLocation();
-  }, [isAuthenticated, selectedLocationId, getRestaurantOnboarding, getSalesInformation]);
+  }, [isAuthenticated, selectedLocationId, getRestaurantOnboarding, getSalesInformation, location.pathname, restaurantOnboardingData, restaurantData]);
   
   // Simple onboarding check function
   const checkOnboardingStatus = async () => {
@@ -845,6 +849,11 @@ const ProtectedRoutes = () => {
       // Only fetch if we truly don't have any data (null/undefined), not if it's an empty array
       // Empty array means we've already checked and the user has no sales data
       const needsSalesFetch = !hasSalesData;
+      const onboardingForPrefetch =
+        restaurantOnboardingData || restaurantData || useStore.getState().restaurantOnboardingData;
+      const shouldFetchSales =
+        needsSalesFetch &&
+        shouldPrefetchSalesInformation(location.pathname, onboardingForPrefetch);
       
       // Mark as fetching immediately to prevent duplicate calls
       hasFetchedRef.current = true;
@@ -855,15 +864,11 @@ const ProtectedRoutes = () => {
           // CRITICAL: Wait for initial onboarding APIs to complete first
           await waitForInitialAPIs();
           
-          // Only fetch sales information if we don't have it
-          if (needsSalesFetch) {
+          // GET sales-information only when dashboard gating needs it (not on score/profitability)
+          if (shouldFetchSales) {
             const result = await getSalesInformation();
-            // If API call failed, don't proceed with onboarding check
-            // This prevents redirecting to dashboard when API fails
             if (!result.success) {
               setIsLoading(false);
-              hasFetchedRef.current = false;
-              return;
             }
           }
           
@@ -878,8 +883,6 @@ const ProtectedRoutes = () => {
         } catch (error) {
           console.error('Error fetching data:', error);
           setIsLoading(false);
-          // Reset ref on error to allow retry
-          hasFetchedRef.current = false;
         }
       };
       
@@ -1020,9 +1023,11 @@ const ProtectedRoutes = () => {
   // Only show loading if:
   // 1. We're actually loading AND don't have data yet
   // 2. OR we're on a route that requires data and don't have it
+  const onSalesEntryPath = isOnLocationOnboardingPage(location.pathname);
+
   const shouldShowLoading = (
     (isLoading && !hasRestaurantData) || 
-    (salesInformationLoading && !salesInformationData) || 
+    (!onSalesEntryPath && salesInformationLoading && !salesInformationData) || 
     (restaurantCheckLoading && !hasRestaurantData && !hasCachedRestaurantData) || 
     (isCheckingSimulationForDashboard && isDashboardPathCheck && !hasRestaurantData) ||
     (isCheckingSubscription && location.pathname === '/dashboard/square' && !subscriptionDetails)
