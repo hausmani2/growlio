@@ -924,28 +924,40 @@ const createOnBoardingSlice = (set, get) => ({
                 }, 15000);
             });
 
-        // If a request is in flight: non-forced callers reuse the result; forced callers wait then fetch.
+        // Reuse an in-flight request. Multiple setup components mount together,
+        // and a forced caller must not queue another identical request behind it.
         if (state.onboardingLoading) {
-            if (!forceRefresh) {
-                await waitForOnboardingIdle();
+            await waitForOnboardingIdle();
+            const latestState = get();
+            const selectedLocationId = latestState.selectedLocationId ?? null;
+            const loadedLocationId = latestState.lastLoadedOnboardingLocationId ?? null;
+            const isLoadedForSelectedLocation =
+                !selectedLocationId ||
+                String(loadedLocationId) === String(selectedLocationId);
+
+            if (isLoadedForSelectedLocation) {
                 return {
                     success: true,
-                    data: get().completeOnboardingData,
-                    message: 'Data already loaded',
+                    data: latestState.completeOnboardingData,
+                    message: 'Onboarding request reused',
                 };
             }
-            await waitForOnboardingIdle();
         }
         
         // Check if we already have complete data loaded (prevent unnecessary calls)
         // Skip this check if forceRefresh is true to always fetch fresh data
         if (!forceRefresh) {
-            const hasCompleteData = state.completeOnboardingData?.restaurant_id && 
-                Object.values(state.completeOnboardingData).some(step => 
-                    step && typeof step === 'object' && step.status === true
-                );
+            const selectedLocationId = get().selectedLocationId ?? null;
+            const loadedLocationId = state.lastLoadedOnboardingLocationId ?? null;
+            const hasLoadedData = Boolean(
+                state.completeOnboardingData?.restaurant_id ||
+                loadedLocationId
+            );
+            const isLoadedForSelectedLocation =
+                !selectedLocationId ||
+                String(loadedLocationId) === String(selectedLocationId);
             
-            if (hasCompleteData) {
+            if (hasLoadedData && isLoadedForSelectedLocation) {
                 // Data already loaded, return it without making API call
                 return {
                     success: true,

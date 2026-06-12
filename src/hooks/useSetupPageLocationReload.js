@@ -18,7 +18,7 @@ export default function useSetupPageLocationReload(isUpdateMode) {
   useEffect(() => {
     if (!isUpdateMode || hasInitialLoadRef.current) return;
     hasInitialLoadRef.current = true;
-    loadExistingOnboardingData(true).catch(() => {});
+    loadExistingOnboardingData().catch(() => {});
   }, [isUpdateMode, loadExistingOnboardingData]);
 
   useEffect(() => {
@@ -28,8 +28,19 @@ export default function useSetupPageLocationReload(isUpdateMode) {
       return;
     }
     if (!selectedLocationId) return;
+    if (
+      lastLoadedOnboardingLocationId &&
+      String(lastLoadedOnboardingLocationId) === String(selectedLocationId)
+    ) {
+      return;
+    }
     loadExistingOnboardingData(true).catch(() => {});
-  }, [selectedLocationId, isUpdateMode, loadExistingOnboardingData]);
+  }, [
+    selectedLocationId,
+    lastLoadedOnboardingLocationId,
+    isUpdateMode,
+    loadExistingOnboardingData,
+  ]);
 
   const isStoreDataForSelectedLocation = Boolean(
     selectedLocationId &&

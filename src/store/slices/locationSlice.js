@@ -25,6 +25,7 @@ const createLocationSlice = (set, get) => ({
   selectedLocationId: readStoredLocationId(),
   locationsLoading: false,
   locationsError: null,
+  locationsRestaurantId: null,
 
   setSelectedLocationId: (locationId) => {
     if (locationId != null) {
@@ -149,7 +150,7 @@ const createLocationSlice = (set, get) => ({
 
       if (ONBOARDING_PATH_SEGMENTS.some((segment) => path.includes(segment))) {
         if (typeof get().loadExistingOnboardingData === 'function') {
-          await get().loadExistingOnboardingData(true);
+          await get().loadExistingOnboardingData();
         }
         return;
       }
@@ -166,9 +167,8 @@ const createLocationSlice = (set, get) => ({
     }
   },
 
-  fetchLocations: async (restaurantId = null) => {
+  fetchLocations: async (restaurantId = null, forceRefresh = false) => {
     try {
-      set({ locationsLoading: true, locationsError: null });
       let targetRestaurantId = restaurantId;
       if (!targetRestaurantId && typeof get().fetchRestaurantId === 'function') {
         targetRestaurantId = await get().fetchRestaurantId();
@@ -178,6 +178,39 @@ const createLocationSlice = (set, get) => ({
         return [];
       }
 
+      const currentState = get();
+      if (
+        !forceRefresh &&
+        currentState.locations.length > 0 &&
+        String(currentState.locationsRestaurantId) === String(targetRestaurantId)
+      ) {
+        return currentState.locations;
+      }
+
+      if (currentState.locationsLoading) {
+        await new Promise((resolve) => {
+          let timeoutId;
+          const interval = setInterval(() => {
+            if (!get().locationsLoading) {
+              clearInterval(interval);
+              clearTimeout(timeoutId);
+              resolve();
+            }
+          }, 50);
+          timeoutId = setTimeout(() => {
+            clearInterval(interval);
+            resolve();
+          }, 15000);
+        });
+        const latestState = get();
+        if (
+          String(latestState.locationsRestaurantId) === String(targetRestaurantId)
+        ) {
+          return latestState.locations;
+        }
+      }
+
+      set({ locationsLoading: true, locationsError: null });
       const response = await apiGet(
         `/restaurant_v2/locations/?restaurant_id=${targetRestaurantId}`
       );
@@ -188,7 +221,11 @@ const createLocationSlice = (set, get) => ({
         selected = locations[0].id;
         get().setSelectedLocationId(selected);
       }
-      set({ locations, locationsLoading: false });
+      set({
+        locations,
+        locationsLoading: false,
+        locationsRestaurantId: String(targetRestaurantId),
+      });
       return locations;
     } catch (error) {
       set({
@@ -226,6 +263,7 @@ const createLocationSlice = (set, get) => ({
       selectedLocationId: null,
       locationsLoading: false,
       locationsError: null,
+      locationsRestaurantId: null,
     });
   },
 });

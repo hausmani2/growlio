@@ -1405,9 +1405,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const totalThirdPartySales = apiTotal > 0 ? apiTotal : calculatedTotal;
 
     const getOverUnderColor = (value) => {
-      if (value > 0) return 'text-red-600';
-      if (value < 0) return 'text-green-600';
-      return 'text-red-600';
+      if (value > 0) return 'text-green-600';
+      if (value < 0) return 'text-red-600';
+      return 'text-gray-600';
     };
 
     const detailKey = `sales_${salesData.date || salesData.day || 'default'}`;
@@ -1598,9 +1598,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const percentOverUnder = parseFloat(laborData.labour_amount_percent) || 0;
 
     const getOverUnderColor = (value) => {
-      if (value > 0) return 'text-red-600';
-      if (value < 0) return 'text-green-600';
-      return 'text-red-600';
+      if (value > 0) return 'text-green-600';
+      if (value < 0) return 'text-red-600';
+      return 'text-gray-600';
     };
 
     const formatHours = (value) => {
@@ -1712,9 +1712,9 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     const percentOverUnder = parseFloat(foodCostData.food_cost_amount_percent) || 0;
 
     const getOverUnderColor = (value) => {
-      if (value > 0) return 'text-red-600';
-      if (value < 0) return 'text-green-600';
-      return 'text-red-600';
+      if (value > 0) return 'text-green-600';
+      if (value < 0) return 'text-red-600';
+      return 'text-gray-600';
     };
 
     const detailKey = `food_${foodCostData.date || foodCostData.day || 'default'}`;

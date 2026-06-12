@@ -57,8 +57,7 @@ const RestaurantWrapperContent = () => {
             if (isUpdateMode && !hasLoadedRef.current) {
                 hasLoadedRef.current = true;
                 try {
-                    // Call GET API to fetch onboarding data (force refresh to get latest data)
-                    await loadExistingOnboardingData(true);
+                    await loadExistingOnboardingData();
                 } catch (error) {
                     console.error('Error loading onboarding data:', error);
                     hasLoadedRef.current = false; // Allow retry on error
@@ -427,7 +426,7 @@ const RestaurantWrapperContent = () => {
             const result = await submitStepData("Basic Information", stepData, async (responseData) => {
                 if (isUpdateMode) {
                     await loadExistingOnboardingData(true);
-                    await fetchLocations?.();
+                    await fetchLocations?.(null, true);
                 }
 
                 const { markStepCompleted } = useStore.getState();

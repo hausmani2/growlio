@@ -40,8 +40,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
       if (isUpdateMode && !hasLoadedRef.current) {
         hasLoadedRef.current = true;
         try {
-          // Call GET API to fetch onboarding data (force refresh to get latest data)
-          await loadExistingOnboardingData(true);
+          await loadExistingOnboardingData();
         } catch (error) {
           console.error('Error loading onboarding data:', error);
           hasLoadedRef.current = false; // Allow retry on error
