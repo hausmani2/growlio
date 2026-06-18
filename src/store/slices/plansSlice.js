@@ -242,6 +242,17 @@ const createPlansSlice = (set, get) => ({
 
       return { success: true, data: subscriptionData };
     } catch (error) {
+      // 404 is expected when user hasn't selected a plan yet
+      if (error.response?.status === 404) {
+        set({
+          subscriptionDetails: null,
+          subscriptionDetailsTimestamp: now,
+          subscriptionDetailsLoading: false,
+          error: null
+        });
+        return { success: true, data: null };
+      }
+
       const errorMessage = error?.response?.data?.message ||
         error?.response?.data?.error ||
         error.message ||

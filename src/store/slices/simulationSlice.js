@@ -60,6 +60,17 @@ const createSimulationSlice = (set, get) => ({
       
       return { success: true, data: response.data };
     } catch (error) {
+      // 404 means no simulation onboarding data yet
+      if (error.response?.status === 404) {
+        set({
+          simulationOnboardingData: null,
+          simulationOnboardingDataTimestamp: now,
+          simulationOnboardingDataLoading: false,
+          simulationOnboardingDataError: null
+        });
+        return { success: true, data: null };
+      }
+
       console.error('❌ [simulationSlice] Failed to fetch simulation onboarding data:', error);
       
       const errorMessage = error?.response?.data?.message || 
@@ -155,8 +166,8 @@ const createSimulationSlice = (set, get) => ({
       
       // CRITICAL: For new users or users not in simulation mode, return success with empty array
       // This allows the login/registration flow to check both APIs without errors
-      // Handle 403, 401, or any simulation-related errors gracefully
-      if (error.response?.status === 403 || error.response?.status === 401 || 
+      // Handle 403, 401, 404, or any simulation-related errors gracefully
+      if (error.response?.status === 403 || error.response?.status === 401 || error.response?.status === 404 ||
           errorMessage.includes('simulation') || errorMessage.includes('not available') ||
           errorMessage.includes('permission') || errorMessage.includes('forbidden')) {
         // User is not in simulation mode or doesn't have access yet, return empty result (not an error)

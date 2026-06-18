@@ -669,6 +669,18 @@ const createAuthSlice = (set, get) => {
         
         return { success: true, data: response.data };
       } catch (error) {
+        // 404 means user hasn't set simulation preference yet — treat as default state
+        if (error.response?.status === 404) {
+          const defaultData = { restaurant_simulation: false };
+          set(() => ({
+            loading: false,
+            error: null,
+            restaurantSimulationData: defaultData,
+            restaurantSimulationDataTimestamp: now
+          }));
+          return { success: true, data: defaultData };
+        }
+
         const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error.message || 'Failed to get restaurant simulation status';
         set(() => ({ loading: false, error: errorMessage }));
         
@@ -956,6 +968,25 @@ const createAuthSlice = (set, get) => {
           restaurants: restaurantData?.restaurants || []
         };
       } catch (error) {
+        // 404 means no restaurant exists yet — expected for new users during onboarding
+        if (error.response?.status === 404) {
+          const emptyData = { restaurants: [] };
+          set(() => ({
+            loading: false,
+            error: null,
+            restaurantOnboardingData: emptyData,
+            restaurantOnboardingDataTimestamp: now
+          }));
+          return {
+            success: true,
+            data: emptyData,
+            restaurantId: null,
+            isSimulator: false,
+            simulationOnboardingStatus: null,
+            restaurants: []
+          };
+        }
+
         console.error('❌ [authSlice] API call failed:', error);
         console.error('❌ [authSlice] Error details:', {
           message: error.message,

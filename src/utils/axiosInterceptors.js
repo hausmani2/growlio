@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { message } from 'antd';
 import useStore from '../store/store';
 import { clearImpersonationData } from './tokenManager';
 
@@ -160,17 +159,12 @@ api.interceptors.response.use(
     
     // Suppress error messages when on login page UNLESS it's from an actual login attempt
     // This prevents showing errors from initialization API calls that fail when user is on login page
-    const shouldSuppressError = isOnLoginPage && !isAuthEndpoint;
+    const suppressGlobalError = error.config?.suppressGlobalError === true;
+    const shouldSuppressError = (isOnLoginPage && !isAuthEndpoint) || suppressGlobalError;
     
-    // Handle timeout errors
+    // Handle timeout errors — log only; callers handle user-facing messages
     if (error.code === 'ECONNABORTED' || error.message === 'timeout of ' + API_TIMEOUT + 'ms exceeded' || error.message.includes('timeout')) {
       const timeoutSeconds = Math.round(API_TIMEOUT / 1000);
-      if (!shouldSuppressError) {
-        message.error({
-          content: `Request timed out after ${timeoutSeconds} seconds. Please check your connection and try again.`,
-          duration: 5,
-        });
-      }
       console.error(`⏱️ API Timeout: Request exceeded ${timeoutSeconds}s limit`, error.config?.url);
       return Promise.reject(error);
     }
@@ -216,52 +210,31 @@ api.interceptors.response.use(
           console.error('Access forbidden');
           break;
         case 404:
-          // Not found
-          if (!shouldSuppressError) {
-            message.error('Resource not found. Please check the URL and try again.');
-          }
-          console.error('Resource not found');
+          // 404 is often expected (no goals, subscription, square connection, onboarding data yet).
+          // Callers handle it locally; avoid noisy global toasts during onboarding/dashboard load.
+          console.error('Resource not found:', error.config?.url);
           break;
         case 408:
-          // Request Timeout
-          if (!shouldSuppressError) {
-            message.error('Request timeout. The server took too long to respond. Please try again.');
-          }
-          console.error('Request timeout');
+          // Request timeout — callers handle locally
+          console.error('Request timeout:', error.config?.url);
           break;
         case 500:
-          // Server error
-          if (!shouldSuppressError) {
-            message.error('Server error occurred. Please try again later.');
-          }
-          console.error('Server error occurred');
-          break;
         case 502:
         case 503:
         case 504:
-          // Server unavailable errors
-          if (!shouldSuppressError) {
-            message.error('Server is temporarily unavailable. Please try again later.');
-          }
-          console.error('Server unavailable:', error.response.status);
+          // Server errors are handled by individual slices/components
+          console.error('Server error:', error.response.status, error.config?.url);
           break;
         default:
-          // Other errors
-          console.error('API Error:', error.response.status, error.response.data);
+          // Other errors — log only; callers show user-facing messages when needed
+          console.error('API Error:', error.response.status, error.response.data, error.config?.url);
       }
     } else if (error.request) {
-      // Network error - request was made but no response received
-      // Only show network error if not on login page (prevents showing errors from initialization)
-      if (!shouldSuppressError) {
-        message.error('Network error. Please check your internet connection and try again.');
-      }
-      console.error('Network error - no response received', error.request);
+      // Network error — log only; avoid noisy toasts during background page loads
+      console.error('Network error - no response received', error.config?.url, error.request);
     } else {
       // Other error (configuration error, etc.)
       console.error('Error:', error.message);
-      if (error.message && !shouldSuppressError) {
-        message.error(`An error occurred: ${error.message}`);
-      }
     }
     
     return Promise.reject(error);
