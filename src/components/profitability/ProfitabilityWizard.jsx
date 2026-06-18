@@ -116,14 +116,24 @@ const ProfitabilityWizard = () => {
     setIsProcessing(true);
 
     try {
+      const onboardingResult = await getRestaurantOnboarding(true);
+      const restaurants =
+        onboardingResult?.data?.restaurants || onboardingResult?.restaurants || [];
+      const restaurantId = restaurants[0]?.restaurant_id;
+
+      if (!restaurantId || Number(restaurantId) <= 0) {
+        message.error('Restaurant not found. Please complete restaurant setup first.');
+        setIsProcessing(false);
+        return;
+      }
+
       const payload = {
-        restaurant_id: useStore.getState().restaurantId || Number(localStorage.getItem('restaurant_id')),
         data: {
           sales: Number(values.lastMonthSales) || 0,
           cogs: Number(values.lastMonthCOGS) || 0,
           labour: Number(values.lastMonthLabor) || 0,
           expenses: Number(values.monthlyRent) || 0,
-        }
+        },
       };
 
       const result = await createSalesInformation(payload);

@@ -21,6 +21,89 @@ const resetSalesInfoFetchCache = () => {
     salesInfoFetchCacheByKey.clear();
 };
 
+/** Build POST/PUT body for /restaurant_v2/sales-information/ with stable restaurant + location IDs. */
+const buildSalesInformationPayload = async (get, rawPayload = {}) => {
+    const state = get();
+    const nested = rawPayload.data;
+    const source =
+        nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : rawPayload;
+
+    const salesData = {
+        sales: Number(source.sales) || 0,
+        cogs: Number(source.cogs) || 0,
+        labour: Number(source.labour) || 0,
+        expenses: Number(source.expenses) || 0,
+    };
+
+    let restaurantId = null;
+    let locationId = state.selectedLocationId || null;
+
+    // Authoritative IDs come from onboarding API — not stale localStorage
+    if (typeof state.getRestaurantOnboarding === 'function') {
+        const onboardingResult = await state.getRestaurantOnboarding(
+            true,
+            locationId || undefined
+        );
+        const restaurants =
+            onboardingResult?.data?.restaurants || onboardingResult?.restaurants || [];
+        if (restaurants.length > 0) {
+            let match = null;
+            if (locationId != null) {
+                match = restaurants.find(
+                    (r) => Number(r.location_id) === Number(locationId)
+                );
+            }
+            match = match || restaurants[0];
+            restaurantId = match?.restaurant_id ?? null;
+            if (match?.location_id) {
+                locationId = match.location_id;
+                if (typeof state.setSelectedLocationId === 'function') {
+                    state.setSelectedLocationId(locationId);
+                }
+            }
+        }
+    }
+
+    if (!restaurantId) {
+        const fallback = state.restaurantId || localStorage.getItem('restaurant_id');
+        if (fallback && Number(fallback) > 0) {
+            restaurantId = Number(fallback);
+        }
+    }
+
+    if (typeof state.fetchLocations === 'function' && restaurantId) {
+        try {
+            const locations = await state.fetchLocations(restaurantId, true);
+            if (Array.isArray(locations) && locations.length > 0) {
+                const validLocation =
+                    locations.find((loc) => Number(loc.id) === Number(locationId)) || locations[0];
+                locationId = validLocation?.id ?? null;
+                if (locationId && typeof state.setSelectedLocationId === 'function') {
+                    state.setSelectedLocationId(locationId);
+                }
+            }
+        } catch {
+            // keep location from onboarding when locations API is unavailable
+        }
+    }
+
+    const parsedRestaurantId = Number(restaurantId);
+    if (!Number.isFinite(parsedRestaurantId) || parsedRestaurantId <= 0) {
+        throw new Error('Restaurant not found. Please complete restaurant setup first.');
+    }
+
+    const payload = {
+        restaurant_id: parsedRestaurantId,
+        data: salesData,
+    };
+
+    if (locationId) {
+        payload.location_id = Number(locationId);
+    }
+
+    return payload;
+};
+
 const createSalesInformationSlice = (set, get) => ({
     name: 'salesInformation',
     
@@ -120,20 +203,19 @@ const createSalesInformationSlice = (set, get) => ({
         }));
         
         try {
-            // If payload already has restaurant_id, use it; otherwise get from store/localStorage
-            const state = get();
-            const restaurantId = payload.restaurant_id || state.restaurantId || localStorage.getItem('restaurant_id');
-            
-            // Prepare final payload - preserve structure if restaurant_id is already in payload
-            const finalPayload = payload.restaurant_id 
-                ? payload 
-                : {
-                    restaurant_id: restaurantId ? Number(restaurantId) : null,
-                    ...payload
-                  };
-            const withLocation = await get().withLocationParams(finalPayload);
-            
-            const response = await apiPost('/restaurant_v2/sales-information/', withLocation);
+            const finalPayload = await buildSalesInformationPayload(get, payload);
+            let response;
+            try {
+                response = await apiPost('/restaurant_v2/sales-information/', finalPayload);
+            } catch (postError) {
+                // Initial profitability flow may not be location-scoped yet
+                if (postError.response?.status === 403 && finalPayload.location_id) {
+                    const { location_id: _omit, ...withoutLocation } = finalPayload;
+                    response = await apiPost('/restaurant_v2/sales-information/', withoutLocation);
+                } else {
+                    throw postError;
+                }
+            }
             
             set(() => ({ 
                 salesInformationLoading: false, 
@@ -147,8 +229,8 @@ const createSalesInformationSlice = (set, get) => ({
             };
         } catch (error) {
             console.error('❌ Error creating sales information:', error);
-            
-            let errorMessage = 'Failed to create sales information. Please try again.';
+
+            let errorMessage = error.message || 'Failed to create sales information. Please try again.';
             
             if (error.response?.data) {
                 const errorData = error.response.data;
@@ -159,6 +241,8 @@ const createSalesInformationSlice = (set, get) => ({
                     errorMessage = errorData.error;
                 } else if (errorData.detail) {
                     errorMessage = errorData.detail;
+                } else if (Array.isArray(errorData) && errorData.length > 0) {
+                    errorMessage = String(errorData[0]);
                 } else if (typeof errorData === 'object') {
                     // Handle field-specific errors
                     const fieldErrors = Object.values(errorData).flat();
@@ -190,18 +274,8 @@ const createSalesInformationSlice = (set, get) => ({
         }));
         
         try {
-            // Get restaurant_id from store or localStorage
-            const state = get();
-            const restaurantId = state.restaurantId || localStorage.getItem('restaurant_id');
-            
-            // Prepare payload with restaurant_id
-            const finalPayload = {
-                restaurant_id: restaurantId ? Number(restaurantId) : null,
-                ...payload
-            };
-            const withLocation = await get().withLocationParams(finalPayload);
-            
-            const response = await apiPut('/restaurant_v2/sales-information/', withLocation);
+            const finalPayload = await buildSalesInformationPayload(get, payload);
+            const response = await apiPut('/restaurant_v2/sales-information/', finalPayload);
             
             set(() => ({ 
                 salesInformationLoading: false, 
@@ -227,6 +301,8 @@ const createSalesInformationSlice = (set, get) => ({
                     errorMessage = errorData.error;
                 } else if (errorData.detail) {
                     errorMessage = errorData.detail;
+                } else if (Array.isArray(errorData) && errorData.length > 0) {
+                    errorMessage = String(errorData[0]);
                 } else if (typeof errorData === 'object') {
                     // Handle field-specific errors
                     const fieldErrors = Object.values(errorData).flat();

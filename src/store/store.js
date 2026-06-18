@@ -205,6 +205,7 @@ const useStore = create(
           // Clear user-scoped localStorage keys
           localStorage.removeItem('restaurant_id');
           localStorage.removeItem('simulation_restaurant_id');
+          localStorage.removeItem('selected_location_id');
 
           // Clear user-scoped session flags/caches (keep auth + impersonation keys intact)
           sessionStorage.removeItem('chat_conversation_id');

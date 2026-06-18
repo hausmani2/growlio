@@ -26,6 +26,53 @@ const getStoredUser = () => {
   return null;
 };
 
+const parseRestaurantOnboardingPayload = (response) => {
+  let restaurantData = response?.data;
+  if (response?.data?.data && (response.data.data.restaurants || Array.isArray(response.data.data))) {
+    restaurantData = response.data.data;
+  } else if (response?.data?.restaurants) {
+    restaurantData = response.data;
+  } else if (response?.data?.data) {
+    restaurantData = response.data.data;
+  }
+  return restaurantData;
+};
+
+const pickRestaurantFromList = (restaurants, locationId = null) => {
+  if (!Array.isArray(restaurants) || restaurants.length === 0) return null;
+  if (locationId != null) {
+    const byLocation = restaurants.find(
+      (r) => Number(r.location_id) === Number(locationId)
+    );
+    if (byLocation) return byLocation;
+  }
+  return restaurants[0];
+};
+
+const getVerifiedOnboardingRestaurantId = (state, storedId) => {
+  const cachedRestaurants = Array.isArray(state.restaurantOnboardingData?.restaurants)
+    ? state.restaurantOnboardingData.restaurants
+    : [];
+  if (!storedId) return null;
+  const isKnown = cachedRestaurants.some(
+    (r) => Number(r.restaurant_id) === Number(storedId)
+  );
+  return isKnown ? String(storedId) : null;
+};
+
+const syncRestaurantIdFromOnboarding = (set, restaurantData, locationId = null) => {
+  const restaurantsList = Array.isArray(restaurantData?.restaurants)
+    ? restaurantData.restaurants
+    : [];
+  const picked = pickRestaurantFromList(restaurantsList, locationId);
+  const restaurantId = picked?.restaurant_id ?? null;
+  if (restaurantId) {
+    localStorage.setItem('restaurant_id', String(restaurantId));
+    set(() => ({ restaurantId: String(restaurantId) }));
+  }
+  return { restaurantsList, restaurantId, picked };
+};
+
 // Auth slice
 const createAuthSlice = (set, get) => {
   const storedToken = getStoredToken();
@@ -106,6 +153,7 @@ const createAuthSlice = (set, get) => {
         try {
           localStorage.removeItem('restaurant_id');
           localStorage.removeItem('simulation_restaurant_id');
+          localStorage.removeItem('selected_location_id');
         } catch (e) {
           // ignore
         }
@@ -349,6 +397,7 @@ const createAuthSlice = (set, get) => {
           try {
             localStorage.removeItem('restaurant_id');
             localStorage.removeItem('simulation_restaurant_id');
+            localStorage.removeItem('selected_location_id');
           } catch (e) {
             // ignore
           }
@@ -866,37 +915,42 @@ const createAuthSlice = (set, get) => {
       set(() => ({ loading: true, error: null }));
       
       try {
-        const restaurantIdParam =
-          get().restaurantId || localStorage.getItem('restaurant_id');
-        const params = new URLSearchParams();
-        if (restaurantIdParam) params.set('restaurant_id', restaurantIdParam);
-        if (locationId) params.set('location_id', String(locationId));
-        const query = params.toString();
-        const response = await apiGet(
-          `/restaurant_v2/restaurants-onboarding/${query ? `?${query}` : ''}`
-        );
-        
-        // IMPORTANT: The API response structure might be response.data or response.data.data
-        // Let's handle both cases - check if response.data has a 'data' property with restaurants
-        let restaurantData = response.data;
-        
-        // If response.data.data exists and has restaurants, use that
-        if (response.data?.data && (response.data.data.restaurants || Array.isArray(response.data.data))) {
-          restaurantData = response.data.data;
-        } 
-        // If response.data has restaurants directly, use it
-        else if (response.data?.restaurants) {
-          restaurantData = response.data;
+        const state = get();
+        const storedId = state.restaurantId || localStorage.getItem('restaurant_id');
+        const verifiedRestaurantId = getVerifiedOnboardingRestaurantId(state, storedId);
+
+        const buildParams = (restaurantIdForQuery) => {
+          const params = new URLSearchParams();
+          if (locationId) params.set('location_id', String(locationId));
+          if (restaurantIdForQuery) params.set('restaurant_id', String(restaurantIdForQuery));
+          return params;
+        };
+
+        const fetchOnboarding = async (restaurantIdForQuery) => {
+          const query = buildParams(restaurantIdForQuery).toString();
+          return apiGet(
+            `/restaurant_v2/restaurants-onboarding/${query ? `?${query}` : ''}`
+          );
+        };
+
+        let response = await fetchOnboarding(verifiedRestaurantId);
+        let restaurantData = parseRestaurantOnboardingPayload(response);
+        let restaurantsList = Array.isArray(restaurantData?.restaurants)
+          ? restaurantData.restaurants
+          : [];
+
+        // Stale localStorage id (e.g. 223) must not block the real restaurant (e.g. 292)
+        if (restaurantsList.length === 0 && (verifiedRestaurantId || storedId)) {
+          if (storedId) {
+            localStorage.removeItem('restaurant_id');
+            set(() => ({ restaurantId: null }));
+          }
+          response = await fetchOnboarding(null);
+          restaurantData = parseRestaurantOnboardingPayload(response);
+          restaurantsList = Array.isArray(restaurantData?.restaurants)
+            ? restaurantData.restaurants
+            : [];
         }
-        // Otherwise, try response.data.data as fallback
-        else if (response.data?.data) {
-          restaurantData = response.data.data;
-        } else {
-          console.warn('⚠️ [authSlice] Unexpected API response structure:', response.data);
-        }
-        
-        // IMPORTANT: Even if restaurants array is empty, we still need to return the data
-        // This allows components to know that the API was called and user has no restaurants
         
         // Store the data in the store for caching
         set(() => ({ 
@@ -906,17 +960,11 @@ const createAuthSlice = (set, get) => {
           restaurantOnboardingDataTimestamp: now
         }));
         
-        // Extract restaurant_id ONLY when a real restaurant exists.
-        // Some API shapes can include a top-level restaurant_id even when restaurants: [],
-        // which breaks new-user routing (treats them like a regular user).
-        const restaurantsList = Array.isArray(restaurantData?.restaurants) ? restaurantData.restaurants : [];
-        const restaurantId = restaurantsList.length > 0 ? (restaurantsList[0]?.restaurant_id ?? null) : null;
-        
-        // Store restaurant_id in localStorage and store if found
-        if (restaurantId) {
-          localStorage.setItem('restaurant_id', restaurantId.toString());
-          set(() => ({ restaurantId: restaurantId.toString() }));
-        }
+        const { restaurantId } = syncRestaurantIdFromOnboarding(
+          set,
+          restaurantData,
+          locationId
+        );
         
         // CRITICAL: After successful GET /restaurant_v2/restaurants-onboarding/, 
         // also call GET /simulation/simulation-onboarding/ to check if user is a simulator
