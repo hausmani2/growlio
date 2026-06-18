@@ -44,10 +44,8 @@ const PlansPage = ({
 
       try {
         const packagesResult = await fetchPackages(true);
-        const restaurantId = localStorage.getItem('restaurant_id');
-        const currentPackageResult = restaurantId
-          ? await getCurrentPackage(true)
-          : { success: false, data: null };
+        await fetchCurrentSubscriptionDetails?.(true);
+        const currentPackageResult = await getCurrentPackage(true);
 
         if (cancelled) return;
 
@@ -111,6 +109,12 @@ const PlansPage = ({
       fetchPackages(true),
       fetchCurrentSubscriptionDetails?.(true),
     ]);
+    const state = useStore.getState();
+    const restaurantId =
+      state.restaurantId || localStorage.getItem('restaurant_id');
+    if (restaurantId && typeof state.fetchLocations === 'function') {
+      await state.fetchLocations(restaurantId, true);
+    }
     message.success('Subscription plan updated successfully!');
   };
 

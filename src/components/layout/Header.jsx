@@ -5,6 +5,7 @@ import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Dropdown, Menu, Modal, Button, message, Select } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
+import { getEffectiveLocationCap } from '../../utils/locationLimits';
 
 const getInitials = (name = '') => {
   const parts = name.trim().split(' ');
@@ -29,6 +30,9 @@ const Header = ({ onMenuClick }) => {
     const selectedLocationId = useStore((state) => state.selectedLocationId);
     const fetchLocations = useStore((state) => state.fetchLocations);
     const changeLocation = useStore((state) => state.changeLocation);
+    const currentPackage = useStore((state) => state.currentPackage);
+    const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+    const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
     
     const [isSimulationMode, setIsSimulationMode] = useState(false);
     const [showRestaurantModal, setShowRestaurantModal] = useState(false);
@@ -227,24 +231,35 @@ const Header = ({ onMenuClick }) => {
     // Regular users who can also simulate should NOT see this button
     const shouldShowRestaurantButton = isSimulationMode && !hasRegularRestaurants;
 
+    const restaurantIdForLocations =
+        restaurantOnboardingData?.restaurants?.[0]?.restaurant_id ||
+        localStorage.getItem('restaurant_id');
+
+    const pkg = subscriptionDetails?.package || currentPackage || null;
+    const locationCap = getEffectiveLocationCap(pkg, subscriptionDetails?.restaurant || null);
+    const visibleLocations = Array.isArray(locations)
+        ? locations.slice(0, locationCap >= 9999 ? locations.length : locationCap)
+        : [];
+
     useEffect(() => {
-        const loadLocations = async () => {
-            const isOnSimulationRoute = location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation');
-            if (isOnSimulationRoute || isSimulationMode) return;
-            if (!hasRegularRestaurants && !restaurantOnboardingData?.restaurants?.length) return;
-            try {
-                await fetchLocations();
-            } catch (error) {
-                console.warn('[Header] Could not load locations:', error);
-            }
-        };
-        loadLocations();
+        const isOnSimulationRoute =
+            location.pathname.startsWith('/simulation') ||
+            location.pathname.startsWith('/onboarding/simulation');
+        if (isOnSimulationRoute || isSimulationMode) return;
+        if (!hasRegularRestaurants && !restaurantOnboardingData?.restaurants?.length) return;
+        if (!restaurantIdForLocations) return;
+
+        fetchCurrentSubscriptionDetails?.(false).catch(() => {});
+        fetchLocations(restaurantIdForLocations, false).catch((error) => {
+            console.warn('[Header] Could not load locations:', error);
+        });
     }, [
+        fetchCurrentSubscriptionDetails,
         fetchLocations,
         hasRegularRestaurants,
         isSimulationMode,
         location.pathname,
-        restaurantOnboardingData,
+        restaurantIdForLocations,
     ]);
 
     return (
@@ -280,12 +295,12 @@ const Header = ({ onMenuClick }) => {
 
             {/* Right side - Location + User Info */}
             <div className="flex items-center gap-3">
-                {!isSimulationMode && locations?.length > 0 && (
+                {!isSimulationMode && visibleLocations.length > 0 && (
                     <Select
                         className="min-w-[140px] max-w-[220px]"
                         value={selectedLocationId ?? undefined}
                         placeholder="Location"
-                        options={locations.map((loc) => ({
+                        options={visibleLocations.map((loc) => ({
                             value: loc.id,
                             label: loc.name || `Location ${loc.id}`,
                         }))}

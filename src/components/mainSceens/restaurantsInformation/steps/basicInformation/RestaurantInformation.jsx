@@ -6,20 +6,7 @@ import { fetchTooltips } from "../../../../../utils";
 import SubTrack from "../../../../../assets/svgs/Subtract.svg";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
-import { getMaxLocationsCap } from "../../../../../utils/packageDisplay";
-
-const getPlanName = (plan) =>
-    String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || "")
-        .trim()
-        .toLowerCase();
-
-const getPlanLocationCap = (plan) => {
-    const planName = getPlanName(plan);
-    if (planName.includes("lite")) return 1;
-    if (planName.includes("grow")) return 5;
-    if (planName.includes("pro")) return null;
-    return getMaxLocationsCap(plan);
-};
+import { buildLocationSelectModel } from "../../../../../utils/locationLimits";
 
 const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false, hideLocationCount = false }) => {
     const { 
@@ -80,48 +67,9 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     const locationSelectModel = useMemo(() => {
         const pkg = subscriptionDetails?.package || currentPackage || null;
         const restaurant = subscriptionDetails?.restaurant || null;
-
-        // Primary source of truth for what the user is allowed to select in setup
-        const allowedLocations = typeof restaurant?.allowed_locations === 'number' ? restaurant.allowed_locations : null;
-        // Keep plan max as a secondary fallback (and for display)
-        const planLocationCap = getPlanLocationCap(pkg);
-        const maxFromPlan = planLocationCap === null
-            ? null
-            : typeof planLocationCap === 'number'
-                ? planLocationCap
-                : typeof pkg?.max_locations === 'number'
-                    ? pkg.max_locations
-                    : null;
-        const pricePerLocation = typeof pkg?.price_per_location === 'number' ? pkg.price_per_location : null;
-
-        const actualCount = typeof restaurant?.actual_location_count === 'number' ? restaurant.actual_location_count : null;
-        const remainingAddable = typeof restaurant?.remaining_addable_locations === 'number' ? restaurant.remaining_addable_locations : null;
-        const computedMaxAddableTotal = (actualCount !== null && remainingAddable !== null) ? (actualCount + remainingAddable) : null;
-
-        // Hard safety caps (avoid huge dropdowns if backend misconfigures max_locations)
-        const hardCap = 100;
-        const unlimitedPlan = planLocationCap === null;
-        const planAwareCap = unlimitedPlan ? null : maxFromPlan;
-        const allowedCap = allowedLocations !== null && planAwareCap !== null
-            ? Math.min(allowedLocations, planAwareCap)
-            : allowedLocations ?? planAwareCap;
-
-        // Dropdown should be based on the strict plan/subscription cap when available.
-        const maxDropdown = Math.max(1, Math.min(hardCap, allowedCap ?? computedMaxAddableTotal ?? 1));
-
-        // Selection limit should be allowed_locations (strict). If missing, fall back to computed totals.
-        const maxSelectable = Math.max(1, Math.min(maxDropdown, allowedCap ?? computedMaxAddableTotal ?? maxDropdown));
-
-        return {
-            maxDropdown,
-            maxSelectable,
-            pricePerLocation,
-            actualCount,
-            remainingAddable,
-            allowedLocations: allowedCap,
-            planMaxLocations: maxFromPlan
-        };
-    }, [currentPackage, subscriptionDetails]);
+        const existingCount = Number(data.numberOfLocations || 1);
+        return buildLocationSelectModel(pkg, restaurant, existingCount);
+    }, [currentPackage, subscriptionDetails, data.numberOfLocations]);
 
     const numberOfLocationsOptions = useMemo(() => {
         const options = [];

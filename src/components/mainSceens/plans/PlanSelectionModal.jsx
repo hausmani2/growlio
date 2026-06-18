@@ -3,6 +3,7 @@ import { Modal, Form, InputNumber, Button, Typography, Divider, Alert, Spin, mes
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import useStore from '../../../store/store';
 import FeaturesTable from './FeaturesTable';
+import { resolveRestaurantIdFromStore } from '../../../utils/onboardingUtils';
 import {
   formatPrice,
   getMaxLocationsCap,
@@ -22,21 +23,33 @@ const PlanSelectionModal = ({
   const { updateSubscription } = useStore();
   const [submitting, setSubmitting] = useState(false);
 
+  const isUpgrade =
+    currentPlan &&
+    plan?.price_per_location != null &&
+    currentPlan.price_per_location != null &&
+    plan.price_per_location > currentPlan.price_per_location;
+  const isDowngrade =
+    currentPlan &&
+    plan?.price_per_location != null &&
+    currentPlan.price_per_location != null &&
+    plan.price_per_location < currentPlan.price_per_location;
+
   useEffect(() => {
     if (visible && plan) {
-      // Reset form and set initial value when modal opens
-      // For free plans, use max_locations; for paid plans, start with 1
       const maxCap = getMaxLocationsCap(plan);
-      const initialValue =
-        plan.price_per_location === 0 || (plan.price_per_location === null && maxCap === 1)
-          ? maxCap ?? 1
-          : 1;
+      let initialValue = 1;
+      if (maxCap === 1 || plan.price_per_location === 0) {
+        initialValue = maxCap ?? 1;
+      } else if (isUpgrade && maxCap != null) {
+        // Upgrading to a multi-location plan — default to full plan allowance
+        initialValue = maxCap;
+      }
       form.resetFields();
       form.setFieldsValue({
         number_of_locations: initialValue
       });
     }
-  }, [visible, plan, form]);
+  }, [visible, plan, form, isUpgrade]);
 
   const handleSubmit = async (values) => {
     if (!plan || !plan.id) {
@@ -45,7 +58,10 @@ const PlanSelectionModal = ({
 
     setSubmitting(true);
     try {
-      const restaurantId = localStorage.getItem('restaurant_id');
+      const restaurantId = await resolveRestaurantIdFromStore(
+        () => useStore.getState(),
+        { forceRefresh: true }
+      );
       
       if (!restaurantId) {
         Modal.error({
@@ -95,17 +111,6 @@ const PlanSelectionModal = ({
       setSubmitting(false);
     }
   };
-
-  const isUpgrade =
-    currentPlan &&
-    plan.price_per_location != null &&
-    currentPlan.price_per_location != null &&
-    plan.price_per_location > currentPlan.price_per_location;
-  const isDowngrade =
-    currentPlan &&
-    plan.price_per_location != null &&
-    currentPlan.price_per_location != null &&
-    plan.price_per_location < currentPlan.price_per_location;
 
   const maxLocationsCap = plan ? getMaxLocationsCap(plan) : 1;
 

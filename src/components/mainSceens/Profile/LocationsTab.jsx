@@ -13,20 +13,7 @@ import {
   mapApiLocationToAddress,
   mapApiLocationToTypeData,
 } from '../../../utils/locationFormUtils';
-import { getMaxLocationsCap } from '../../../utils/packageDisplay';
-
-const getPlanName = (plan) =>
-  String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
-    .trim()
-    .toLowerCase();
-
-const getPlanLocationCap = (plan) => {
-  const planName = getPlanName(plan);
-  if (planName.includes('lite')) return 1;
-  if (planName.includes('grow')) return 5;
-  if (planName.includes('pro')) return null;
-  return getMaxLocationsCap(plan);
-};
+import { buildLocationSelectModel } from '../../../utils/locationLimits';
 
 const LocationsTab = () => {
   const navigate = useNavigate();
@@ -43,6 +30,7 @@ const LocationsTab = () => {
     checkLocationOnboarding,
     setSelectedLocationId,
   } = useStore();
+  const storeLocations = useStore((state) => state.locations);
   const { isOwner, restaurantId } = useRestaurantRole();
   const [formErrors, setFormErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
@@ -58,69 +46,58 @@ const LocationsTab = () => {
 
   useEffect(() => {
     const load = async () => {
-      await fetchCurrentSubscriptionDetails?.();
+      await fetchCurrentSubscriptionDetails?.(true);
       await loadExistingOnboardingData(true);
+      if (restaurantId && typeof fetchLocations === 'function') {
+        await fetchLocations(restaurantId, true);
+      }
     };
     load();
-  }, []);
+  }, [restaurantId]);
 
   useEffect(() => {
     const basic = completeOnboardingData?.['Basic Information']?.data;
-    if (!basic) return;
+    const basicLocations = Array.isArray(basic?.locations) ? basic.locations : [];
+    const apiLocations = Array.isArray(storeLocations) ? storeLocations : [];
 
-    const locations = Array.isArray(basic.locations) ? basic.locations : [];
-    setExistingLocations(locations);
-    setRestaurantMeta({
-      restaurantName: basic.restaurant_name || '',
-      restaurantType: basic.restaurant_type || '',
-      menuType: basic.menu_type || '',
-    });
-    setNumberOfLocations(String(Math.max(locations.length, basic.number_of_locations || locations.length || 1)));
-  }, [completeOnboardingData]);
+    // API is primary; include basic-only entries (e.g. not yet synced to locations API)
+    const apiIds = new Set(apiLocations.map((loc) => loc?.id).filter(Boolean));
+    const extrasFromBasic = basicLocations.filter(
+      (loc) => loc?.id && !apiIds.has(loc.id)
+    );
+    const basicWithoutId = basicLocations.filter((loc) => !loc?.id);
+    const merged =
+      apiLocations.length > 0
+        ? [...apiLocations, ...extrasFromBasic, ...basicWithoutId]
+        : basicLocations;
+
+    if (merged.length > 0 || basic) {
+      setExistingLocations(merged);
+      setRestaurantMeta({
+        restaurantName: basic?.restaurant_name || '',
+        restaurantType: basic?.restaurant_type || '',
+        menuType: basic?.menu_type || '',
+      });
+      const count = Math.max(
+        merged.length,
+        basic?.number_of_locations || merged.length || 1
+      );
+      setNumberOfLocations(String(count));
+    }
+  }, [completeOnboardingData, storeLocations]);
 
   const locationSelectModel = useMemo(() => {
     const pkg = subscriptionDetails?.package || currentPackage || null;
     const restaurant = subscriptionDetails?.restaurant || null;
-    const allowedLocations =
-      typeof restaurant?.allowed_locations === 'number' ? restaurant.allowed_locations : null;
-    const planLocationCap = getPlanLocationCap(pkg);
-    const maxFromPlan =
-      planLocationCap === null
-        ? null
-        : typeof planLocationCap === 'number'
-          ? planLocationCap
-          : typeof pkg?.max_locations === 'number'
-            ? pkg.max_locations
-            : null;
-    const actualCount =
-      typeof restaurant?.actual_location_count === 'number'
-        ? restaurant.actual_location_count
-        : existingLocations.length;
-    const remainingAddable =
-      typeof restaurant?.remaining_addable_locations === 'number'
-        ? restaurant.remaining_addable_locations
-        : null;
-    const computedMaxAddableTotal =
-      actualCount !== null && remainingAddable !== null ? actualCount + remainingAddable : null;
-    const hardCap = 100;
-    const unlimitedPlan = planLocationCap === null;
-    const planAwareCap = unlimitedPlan ? null : maxFromPlan;
-    const allowedCap =
-      allowedLocations !== null && planAwareCap !== null
-        ? Math.min(allowedLocations, planAwareCap)
-        : allowedLocations ?? planAwareCap;
-    const maxDropdown = Math.max(1, Math.min(hardCap, allowedCap ?? computedMaxAddableTotal ?? 1));
-    const maxSelectable = Math.max(1, Math.min(maxDropdown, allowedCap ?? computedMaxAddableTotal ?? maxDropdown));
-
-    return {
-      maxDropdown,
-      maxSelectable,
-      allowedLocations: allowedCap,
-      actualCount,
-      remainingAddable,
-      pricePerLocation: typeof pkg?.price_per_location === 'number' ? pkg.price_per_location : null,
-    };
+    return buildLocationSelectModel(pkg, restaurant, existingLocations.length);
   }, [currentPackage, subscriptionDetails, existingLocations.length]);
+
+  useEffect(() => {
+    const cap = locationSelectModel.maxSelectable;
+    if (Number(numberOfLocations) > cap) {
+      setNumberOfLocations(String(Math.min(cap, Math.max(existingLocations.length, 1))));
+    }
+  }, [locationSelectModel.maxSelectable, numberOfLocations, existingLocations.length]);
 
   const desiredCount = useMemo(() => {
     const n = Number(numberOfLocations || existingLocations.length || 1);
@@ -206,6 +183,13 @@ const LocationsTab = () => {
       return;
     }
 
+    if (desiredCount > locationSelectModel.maxSelectable) {
+      message.error(
+        `Your plan allows up to ${locationSelectModel.maxSelectable} location(s). Upgrade your plan to add more.`
+      );
+      return;
+    }
+
     const existingPayload = existingLocations.map((loc) => {
       const typeData = mapApiLocationToTypeData(loc);
       return buildLocationPayload(
@@ -256,7 +240,9 @@ const LocationsTab = () => {
       await submitStepData('Basic Information', stepData, async () => {
         message.success('Locations saved successfully');
         setSaveError(null);
-        const updatedLocations = (await fetchLocations?.()) || [];
+        const updatedLocations = (await fetchLocations?.(restaurantId, true)) || [];
+        await fetchCurrentSubscriptionDetails?.(true);
+        await loadExistingOnboardingData(true);
         const addedLocation =
           updatedLocations.find((loc) => loc?.id && !previousLocationIds.has(loc.id)) ||
           updatedLocations[updatedLocations.length - 1];
@@ -369,17 +355,14 @@ const LocationsTab = () => {
             options={numberOfLocationsOptions}
           />
           <div className="mt-2 text-xs text-gray-600">
-            {locationSelectModel.allowedLocations !== null && (
-              <span>
-                Allowed: <strong>{locationSelectModel.allowedLocations}</strong>. Existing:{' '}
-                <strong>{existingLocations.length}</strong>.
-                {locationSelectModel.remainingAddable !== null && (
-                  <>
-                    {' '}
-                    You can add <strong>{locationSelectModel.remainingAddable}</strong> more.
-                  </>
-                )}
-              </span>
+            Plan limit: <strong>{locationSelectModel.maxSelectable}</strong> location
+            {locationSelectModel.maxSelectable === 1 ? '' : 's'}. Existing:{' '}
+            <strong>{existingLocations.length}</strong>.
+            {locationSelectModel.remainingAddable > 0 && (
+              <>
+                {' '}
+                You can add <strong>{locationSelectModel.remainingAddable}</strong> more.
+              </>
             )}
           </div>
         </div>

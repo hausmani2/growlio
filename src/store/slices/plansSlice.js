@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut } from '../../utils/axiosInterceptors';
+import { parsePackagesFromResponse, resolveRestaurantIdFromStore } from '../../utils/onboardingUtils';
 
 const createPlansSlice = (set, get) => ({
   name: 'plans',
@@ -9,6 +10,8 @@ const createPlansSlice = (set, get) => ({
   subscriptionDetails: null,
   subscriptionDetailsLoading: false,
   subscriptionDetailsTimestamp: null,
+  packagesLoading: false,
+  currentPackageLoading: false,
   loading: false,
   error: null,
   
@@ -30,18 +33,16 @@ const createPlansSlice = (set, get) => ({
     }
     
     // Prevent multiple concurrent calls
-    if (state.loading) {
-      // Wait for existing call to complete
+    if (state.packagesLoading) {
       return new Promise((resolve) => {
         const checkInterval = setInterval(() => {
           const currentState = get();
-          if (!currentState.loading) {
+          if (!currentState.packagesLoading) {
             clearInterval(checkInterval);
             resolve({ success: true, data: currentState.packages || [] });
           }
         }, 100);
         
-        // Timeout after 5 seconds
         setTimeout(() => {
           clearInterval(checkInterval);
           resolve({ success: false, error: 'Request timeout' });
@@ -49,31 +50,27 @@ const createPlansSlice = (set, get) => ({
       });
     }
     
-    set({ loading: true, error: null });
+    set({ packagesLoading: true, loading: true, error: null });
     
     try {
-      const response = await apiGet('/restaurant_v2/packages/');
-      
-      // Handle the API response structure: { success: true, packages: [...] }
-      let packages = response.data?.packages || response.data?.results || response.data?.data || [];
-      
-      // Ensure packages is always an array
-      if (!Array.isArray(packages)) {
-        // If it's an object, try to extract array from common keys
-        if (packages && typeof packages === 'object') {
-          packages = packages.packages || packages.items || Object.values(packages).find(Array.isArray) || [];
-        } else {
-          packages = [];
-        }
-      }
-      
-      // Final safety check
-      if (!Array.isArray(packages)) {
-        packages = [];
+      const restaurantId = await resolveRestaurantIdFromStore(get, { forceRefresh });
+      const fetchPackagesUrl = (rid) =>
+        rid
+          ? `/restaurant_v2/packages/?restaurant_id=${encodeURIComponent(rid)}`
+          : '/restaurant_v2/packages/';
+
+      let response = await apiGet(fetchPackagesUrl(restaurantId));
+      let packages = parsePackagesFromResponse(response);
+
+      // Retry without restaurant_id if scoped request returned nothing
+      if (packages.length === 0 && restaurantId) {
+        response = await apiGet('/restaurant_v2/packages/');
+        packages = parsePackagesFromResponse(response);
       }
       
       set({ 
-        packages: packages,
+        packages,
+        packagesLoading: false,
         loading: false,
         error: null
       });
@@ -86,6 +83,7 @@ const createPlansSlice = (set, get) => ({
                           'Failed to fetch subscription packages';
       
       set({ 
+        packagesLoading: false,
         loading: false,
         error: errorMessage
       });
@@ -98,21 +96,18 @@ const createPlansSlice = (set, get) => ({
   getCurrentPackage: async (forceRefresh = false) => {
     const state = get();
     
-    // Prevent multiple concurrent calls
-    if (state.loading) {
+    if (state.currentPackageLoading) {
       return { success: false, error: 'Request already in progress' };
     }
     
-    const restaurantId = localStorage.getItem('restaurant_id');
+    const restaurantId = await resolveRestaurantIdFromStore(get, { forceRefresh });
     
     if (!restaurantId) {
       set({ currentPackage: null });
       return { success: false, error: 'Restaurant ID not found' };
     }
     
-    // Always call API to check current subscription, even if we have cached data
-    // This ensures we always have the latest subscription status
-    // Note: Don't set loading state here to avoid blocking UI - use local loading state in components
+    set({ currentPackageLoading: true, error: null });
     
     try {
       let currentPackage = null;
@@ -123,16 +118,17 @@ const createPlansSlice = (set, get) => ({
         const subscriptionData = subscriptionResponse.data?.data || subscriptionResponse.data;
         
         if (subscriptionData?.package_id || subscriptionData?.package) {
-          // Get all packages to find the full package details
-          const packagesResponse = await apiGet('/restaurant_v2/packages/');
-          const allPackages = packagesResponse.data?.packages || 
-                             packagesResponse.data?.results || 
-                             packagesResponse.data?.data || 
-                             [];
+          const packagesResponse = await apiGet(
+            `/restaurant_v2/packages/?restaurant_id=${encodeURIComponent(restaurantId)}`
+          );
+          let allPackages = parsePackagesFromResponse(packagesResponse);
+          if (allPackages.length === 0) {
+            const fallbackResponse = await apiGet('/restaurant_v2/packages/');
+            allPackages = parsePackagesFromResponse(fallbackResponse);
+          }
           
           const packageId = subscriptionData.package_id || subscriptionData.package?.id;
           if (packageId) {
-            // Find the package by ID - this is the source of truth
             const foundPackage = allPackages.find(p => p.id === packageId);
             if (foundPackage) {
               currentPackage = foundPackage;
@@ -143,53 +139,25 @@ const createPlansSlice = (set, get) => ({
         }
       } catch (subscriptionError) {
         // Silently fallback to other methods
-        // Fallback to packages endpoint
       }
       
       // Fallback: Get from packages list (using is_current flag)
       if (!currentPackage) {
-        const packagesResponse = await apiGet('/restaurant_v2/packages/');
-        const allPackages = packagesResponse.data?.packages || 
-                           packagesResponse.data?.results || 
-                           packagesResponse.data?.data || 
-                           [];
-        
-        // Find package with is_current flag
-        currentPackage = allPackages.find(p => p.is_current) || null;
-      }
-      
-      // Final fallback: Extract package info from restaurant onboarding data
-      if (!currentPackage) {
-        try {
-          const restaurantResponse = await apiGet(`/restaurant/restaurants-onboarding/`);
-          const restaurantData = restaurantResponse.data?.data || restaurantResponse.data;
-          
-          if (restaurantData?.restaurants && restaurantData.restaurants.length > 0) {
-            const restaurant = restaurantData.restaurants[0];
-            if (restaurant.package_id || restaurant.package) {
-              const packagesResponse = await apiGet('/restaurant_v2/packages/');
-              const allPackages = packagesResponse.data?.packages || 
-                                 packagesResponse.data?.results || 
-                                 packagesResponse.data?.data || 
-                                 [];
-              
-              const packageId = restaurant.package_id || restaurant.package?.id;
-              if (packageId) {
-                currentPackage = allPackages.find(p => p.id === packageId) || 
-                               restaurant.package || 
-                               { id: packageId, name: 'Current Plan' };
-              } else {
-                currentPackage = restaurant.package;
-              }
-            }
-          }
-        } catch (restaurantError) {
-          console.warn('⚠️ [plansSlice] Failed to fetch from restaurant endpoint:', restaurantError);
+        const packagesResponse = await apiGet(
+          `/restaurant_v2/packages/?restaurant_id=${encodeURIComponent(restaurantId)}`
+        );
+        let allPackages = parsePackagesFromResponse(packagesResponse);
+        if (allPackages.length === 0) {
+          const fallbackResponse = await apiGet('/restaurant_v2/packages/');
+          allPackages = parsePackagesFromResponse(fallbackResponse);
         }
+        
+        currentPackage = allPackages.find(p => p.is_current) || null;
       }
       
       set({ 
         currentPackage,
+        currentPackageLoading: false,
         error: null
       });
       
@@ -202,7 +170,8 @@ const createPlansSlice = (set, get) => ({
       
       set({ 
         error: errorMessage,
-        currentPackage: null
+        currentPackage: null,
+        currentPackageLoading: false
       });
       
       return { success: false, error: errorMessage };
@@ -235,14 +204,12 @@ const createPlansSlice = (set, get) => ({
         error: null
       });
 
-      // Keep currentPackage in sync when possible (helps existing consumers)
       if (subscriptionData?.package) {
         set({ currentPackage: subscriptionData.package });
       }
 
       return { success: true, data: subscriptionData };
     } catch (error) {
-      // 404 is expected when user hasn't selected a plan yet
       if (error.response?.status === 404) {
         set({
           subscriptionDetails: null,
@@ -269,17 +236,19 @@ const createPlansSlice = (set, get) => ({
   
   // Update restaurant subscription
   updateSubscription: async (data) => {
-    // Don't set global loading state - let components handle their own loading
     set({ error: null });
     
     try {
-      const { restaurant_id, package_id, number_of_locations } = data;
+      let { restaurant_id, package_id, number_of_locations } = data;
+      
+      if (!restaurant_id) {
+        restaurant_id = await resolveRestaurantIdFromStore(get, { forceRefresh: true });
+      }
       
       if (!restaurant_id || !package_id) {
         throw new Error('Restaurant ID and Package ID are required');
       }
       
-      // Update subscription via API
       const response = await apiPost('/restaurant_v2/packages/', {
         restaurant_id,
         package_id,
@@ -288,9 +257,7 @@ const createPlansSlice = (set, get) => ({
       
       const responseData = response.data || {};
       
-      // Check if response contains Stripe checkout URL
       if (responseData.url) {
-        // Return the checkout URL for redirect
         set({ error: null });
         
         return { 
@@ -302,23 +269,29 @@ const createPlansSlice = (set, get) => ({
         };
       }
       
-      // If no checkout URL, update was successful without payment
       const updatedPackage = responseData.package || responseData.data;
       
-      // Update current package in store
       if (updatedPackage) {
         set({ currentPackage: updatedPackage });
       } else {
-        // If package not in response, fetch it
-        const packagesResponse = await apiGet('/restaurant_v2/packages/');
-        const allPackages = packagesResponse.data?.packages || 
-                           packagesResponse.data?.results || 
-                           packagesResponse.data?.data || 
-                           [];
+        const packagesResponse = await apiGet(
+          `/restaurant_v2/packages/?restaurant_id=${encodeURIComponent(restaurant_id)}`
+        );
+        let allPackages = parsePackagesFromResponse(packagesResponse);
+        if (allPackages.length === 0) {
+          const fallbackResponse = await apiGet('/restaurant_v2/packages/');
+          allPackages = parsePackagesFromResponse(fallbackResponse);
+        }
         const packageData = allPackages.find(p => p.id === package_id);
         if (packageData) {
           set({ currentPackage: packageData });
         }
+      }
+
+      // Refresh subscription + location limits after plan change
+      await get().fetchCurrentSubscriptionDetails?.(true);
+      if (typeof get().fetchLocations === 'function') {
+        await get().fetchLocations(restaurant_id, true);
       }
       
       set({ error: null });
@@ -340,7 +313,6 @@ const createPlansSlice = (set, get) => ({
     }
   },
   
-  // Clear plans state
   clearPlans: () => {
     set({
       packages: [],
@@ -348,6 +320,8 @@ const createPlansSlice = (set, get) => ({
       subscriptionDetails: null,
       subscriptionDetailsLoading: false,
       subscriptionDetailsTimestamp: null,
+      packagesLoading: false,
+      currentPackageLoading: false,
       loading: false,
       error: null
     });
@@ -355,4 +329,3 @@ const createPlansSlice = (set, get) => ({
 });
 
 export default createPlansSlice;
-

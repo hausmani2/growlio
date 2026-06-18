@@ -279,6 +279,47 @@ export const getFirstRestaurant = (restaurantData) => {
 };
 
 /**
+ * Resolve the active restaurant_id from onboarding cache/API (not stale localStorage).
+ */
+export const resolveRestaurantIdFromStore = async (get, { forceRefresh = false } = {}) => {
+  const state = get();
+
+  if (!forceRefresh) {
+    const cached = state.restaurantOnboardingData?.restaurants;
+    if (Array.isArray(cached) && cached.length > 0 && cached[0]?.restaurant_id) {
+      return String(cached[0].restaurant_id);
+    }
+  }
+
+  if (typeof state.getRestaurantOnboarding === 'function') {
+    const result = await state.getRestaurantOnboarding(forceRefresh);
+    const restaurants = result?.data?.restaurants || result?.restaurants || [];
+    if (restaurants.length > 0 && restaurants[0]?.restaurant_id) {
+      const id = String(restaurants[0].restaurant_id);
+      localStorage.setItem('restaurant_id', id);
+      return id;
+    }
+  }
+
+  const fallback = state.restaurantId || localStorage.getItem('restaurant_id');
+  return fallback && Number(fallback) > 0 ? String(fallback) : null;
+};
+
+export const parsePackagesFromResponse = (response) => {
+  const data = response?.data;
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.packages)) return data.packages;
+  if (Array.isArray(data.data?.packages)) return data.data.packages;
+  if (Array.isArray(data.results)) return data.results;
+  if (Array.isArray(data.data)) return data.data;
+  if (data.packages && typeof data.packages === 'object') {
+    return Object.values(data.packages).find(Array.isArray) || [];
+  }
+  return [];
+};
+
+/**
  * Restaurant row from restaurants-onboarding for a specific location (or first).
  */
 export const getRestaurantForLocation = (restaurantData, locationId = null) => {

@@ -173,6 +173,15 @@ export const buildPlanDisplayFeatures = (plan) => {
 export const getPlanDescription = (plan) => plan?.features?.description || '';
 
 export const getMaxLocationsCap = (plan) => {
+  const planName = String(
+    plan?.key || plan?.name || plan?.display_name || plan?.package_name || ''
+  )
+    .trim()
+    .toLowerCase();
+  if (planName.includes('lite')) return 1;
+  if (planName.includes('grow')) return 5;
+  if (planName.includes('pro')) return null;
+
   const features = plan?.features || {};
   if (features.unlimited_locations || isUnlimitedCount(plan?.max_locations)) {
     return null;

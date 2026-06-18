@@ -735,38 +735,46 @@ const createDashboardSlice = (set, get) => {
         fetchRestaurantId: async () => {
             try {
                 const state = get();
-                const storeRestaurantId = state.restaurantId;
 
-                // localStorage is the source of truth after login/restaurant switch.
-                // Member accounts can otherwise keep a stale in-memory restaurant id.
+                if (typeof state.getRestaurantOnboarding === 'function') {
+                    const cached = state.restaurantOnboardingData?.restaurants;
+                    if (Array.isArray(cached) && cached.length > 0 && cached[0]?.restaurant_id) {
+                        const id = String(cached[0].restaurant_id);
+                        if (String(state.restaurantId || '') !== id) {
+                            set({ restaurantId: id });
+                        }
+                        localStorage.setItem('restaurant_id', id);
+                        return id;
+                    }
+
+                    const result = await state.getRestaurantOnboarding(false);
+                    const restaurants = result?.data?.restaurants || [];
+                    if (restaurants.length > 0 && restaurants[0]?.restaurant_id) {
+                        const id = String(restaurants[0].restaurant_id);
+                        set({ restaurantId: id });
+                        localStorage.setItem('restaurant_id', id);
+                        return id;
+                    }
+                }
+
                 const localRestaurantId = localStorage.getItem('restaurant_id');
-
                 if (localRestaurantId) {
-                    if (String(storeRestaurantId || '') !== String(localRestaurantId)) {
+                    if (String(state.restaurantId || '') !== String(localRestaurantId)) {
                         set({ restaurantId: localRestaurantId });
                     }
                     return localRestaurantId;
                 }
 
-                if (storeRestaurantId) {
-                    return storeRestaurantId;
+                if (state.restaurantId) {
+                    return state.restaurantId;
                 }
                 
-                // Try to get restaurant ID from onboarding slice if available
-                try {
-                    const onboardingState = get();
-                    if (onboardingState.completeOnboardingData?.restaurant_id) {
-                        const onboardingRestaurantId = onboardingState.completeOnboardingData.restaurant_id;
-                        
-                        set({ restaurantId: onboardingRestaurantId });
-                        localStorage.setItem('restaurant_id', onboardingRestaurantId.toString());
-                        return onboardingRestaurantId;
-                    }
-                } catch (error) {
+                if (state.completeOnboardingData?.restaurant_id) {
+                    const onboardingRestaurantId = state.completeOnboardingData.restaurant_id;
+                    set({ restaurantId: onboardingRestaurantId });
+                    localStorage.setItem('restaurant_id', onboardingRestaurantId.toString());
+                    return onboardingRestaurantId;
                 }
-                
-                // If no restaurant ID found, this means the user is new and hasn't completed onboarding
-                // Don't make API calls - just return null and let the onboarding flow handle it
                 
                 return null;
             } catch (error) {
