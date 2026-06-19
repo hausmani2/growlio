@@ -49,10 +49,8 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
     if (hasShownLimitModalRef.current) return;
     if (now - lastShownAt < COOLDOWN_MS) return;
 
-    const detail = data?.error;
-    const msg =
-      "You've reached your daily message limit. To keep chatting, please upgrade your plan or try again tomorrow." +
-      (detail ? `\n\nDetails: ${detail}` : '');
+    const msg = data?.error || data?.message;
+    if (!msg) return;
 
     hasShownLimitModalRef.current = true;
     sessionStorage.setItem(cooldownKey, String(now));
