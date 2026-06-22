@@ -26,6 +26,29 @@ const createDashboardSummarySlice = (set, get) => {
         };
     };
 
+    /** Load locations for the restaurant, then return the selected location id. */
+    const resolveSelectedLocationId = async (restaurantId = null) => {
+        let targetRestaurantId = restaurantId;
+        if (!targetRestaurantId && typeof get().fetchRestaurantId === 'function') {
+            try {
+                targetRestaurantId = await get().fetchRestaurantId();
+            } catch (error) {
+                targetRestaurantId = null;
+            }
+        }
+        if (targetRestaurantId && typeof get().fetchLocations === 'function') {
+            try {
+                await get().fetchLocations(targetRestaurantId);
+            } catch (error) {
+                console.warn('Failed to load locations for weekly average:', error);
+            }
+        }
+        if (typeof get().getSelectedLocationId === 'function') {
+            return get().getSelectedLocationId();
+        }
+        return get().selectedLocationId ?? null;
+    };
+
     return {
         name: 'dashboardSummary',
         dashboardSummaryData: null,
@@ -486,14 +509,6 @@ const createDashboardSummarySlice = (set, get) => {
         checkWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null) => {
             try {
                 set({ weeklyAverageLoading: true, weeklyAverageError: null });
-
-                const locationId = typeof get().getSelectedLocationId === 'function'
-                    ? await get().getSelectedLocationId()
-                    : get().selectedLocationId;
-                if (!locationId) {
-                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
-                    return null;
-                }
                 
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
@@ -511,6 +526,12 @@ const createDashboardSummarySlice = (set, get) => {
                     }
                 }
 
+                const locationId = await resolveSelectedLocationId(targetRestaurantId);
+                if (!locationId) {
+                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
+                    return null;
+                }
+
                 // Use current week if no dates provided
                 let targetStartDate = startDate;
                 let targetEndDate = endDate;
@@ -522,13 +543,13 @@ const createDashboardSummarySlice = (set, get) => {
                     targetEndDate = currentWeekEnd.format('YYYY-MM-DD');
                 }
 
-                // Build URL with parameters
+                // Build URL with parameters — always include selected location
                 let url = '/restaurant/weekly-average/';
-                let params = { 
-                    restaurant_id: targetRestaurantId,
-                    location_id: locationId,
+                const params = {
+                    restaurant_id: String(targetRestaurantId),
+                    location_id: String(locationId),
                     start_date: targetStartDate,
-                    end_date: targetEndDate
+                    end_date: targetEndDate,
                 };
                 
                 // Convert params to query string
@@ -559,14 +580,6 @@ const createDashboardSummarySlice = (set, get) => {
         submitWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null, manualData = {}) => {
             try {
                 set({ weeklyAverageLoading: true, weeklyAverageError: null });
-
-                const locationId = typeof get().getSelectedLocationId === 'function'
-                    ? await get().getSelectedLocationId()
-                    : get().selectedLocationId;
-                if (!locationId) {
-                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
-                    return null;
-                }
                 
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
@@ -584,6 +597,12 @@ const createDashboardSummarySlice = (set, get) => {
                     }
                 }
 
+                const locationId = await resolveSelectedLocationId(targetRestaurantId);
+                if (!locationId) {
+                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
+                    return null;
+                }
+
                 // Use current week if no dates provided
                 let targetStartDate = startDate;
                 let targetEndDate = endDate;
@@ -595,13 +614,13 @@ const createDashboardSummarySlice = (set, get) => {
                     targetEndDate = currentWeekEnd.format('YYYY-MM-DD');
                 }
 
-                // Prepare payload
+                // Prepare payload — always include selected location
                 const payload = {
                     restaurant_id: targetRestaurantId,
                     location_id: locationId,
                     start_date: targetStartDate,
                     end_date: targetEndDate,
-                    ...manualData
+                    ...manualData,
                 };
 
                 const response = await apiPost('/restaurant/weekly-average/', payload);
