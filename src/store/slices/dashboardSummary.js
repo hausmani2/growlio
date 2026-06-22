@@ -486,6 +486,14 @@ const createDashboardSummarySlice = (set, get) => {
         checkWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null) => {
             try {
                 set({ weeklyAverageLoading: true, weeklyAverageError: null });
+
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+                if (!locationId) {
+                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
+                    return null;
+                }
                 
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
@@ -518,6 +526,7 @@ const createDashboardSummarySlice = (set, get) => {
                 let url = '/restaurant/weekly-average/';
                 let params = { 
                     restaurant_id: targetRestaurantId,
+                    location_id: locationId,
                     start_date: targetStartDate,
                     end_date: targetEndDate
                 };
@@ -550,6 +559,14 @@ const createDashboardSummarySlice = (set, get) => {
         submitWeeklyAverageData: async (restaurantId = null, startDate = null, endDate = null, manualData = {}) => {
             try {
                 set({ weeklyAverageLoading: true, weeklyAverageError: null });
+
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+                if (!locationId) {
+                    set({ weeklyAverageLoading: false, weeklyAverageError: 'No location selected' });
+                    return null;
+                }
                 
                 // Get restaurant ID if not provided
                 let targetRestaurantId = restaurantId;
@@ -581,6 +598,7 @@ const createDashboardSummarySlice = (set, get) => {
                 // Prepare payload
                 const payload = {
                     restaurant_id: targetRestaurantId,
+                    location_id: locationId,
                     start_date: targetStartDate,
                     end_date: targetEndDate,
                     ...manualData
