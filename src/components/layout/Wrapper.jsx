@@ -27,7 +27,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
-  const { canManageLocations, canAccessSimulator } = useRestaurantRole();
+  const { canManageLocations, canAccessSimulator, canAccessReportCard } = useRestaurantRole();
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
@@ -51,14 +51,26 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const selectedLocationId = useStore((state) => state.selectedLocationId);
   const refreshCurrentPage = useStore((state) => state.refreshCurrentPage);
   const checkLocationOnboarding = useStore((state) => state.checkLocationOnboarding);
+  const lastRefreshLocationIdRef = useRef(null);
 
   const isOnSimulationRoute =
     location.pathname.startsWith('/simulation') ||
     location.pathname.startsWith('/onboarding/simulation');
 
-  // Refetch only the active page when location changes or user navigates.
+  // Refetch the active page when the user switches location (not on every /dashboard mount).
   useEffect(() => {
     if (!showSidebar || isOnSimulationRoute || !selectedLocationId) return;
+
+    const locationChanged =
+      lastRefreshLocationIdRef.current !== null &&
+      lastRefreshLocationIdRef.current !== selectedLocationId;
+    lastRefreshLocationIdRef.current = selectedLocationId;
+
+    // Close Out Your Days loads its own data on mount — avoid a duplicate fetch on first paint.
+    if (location.pathname === '/dashboard' && !locationChanged) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       refreshCurrentPage(location.pathname);
     }, 0);
@@ -208,7 +220,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         content: (
           <div>
             <div className="mb-3">
-              Your restaurant setup isn’t finished yet. You can complete setup now, or continue to Simulation.
+              Please complete the setup before proceeding with the simulation.
             </div>
             {incompleteItems.length > 0 && (
               <div className="mb-3">
@@ -364,7 +376,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   
 
   const userMenus = [
-    {
+    ...(canAccessReportCard ? [{
       key:'report-card',
       icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <text x="2" y="18" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600" fill="#9ca3af">A</text>
@@ -373,7 +385,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     ,
       label: 'Report Card',
       onClick: () => navigate('/dashboard/report-card'),
-    },
+    }] : []),
     {
       key: 'dashboard-summary',
       icon: <FaChartLine />,

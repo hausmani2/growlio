@@ -26,8 +26,14 @@ export const getRolePermissions = (role) => {
     canViewBudget: true,
     canCloseDays: true,
     canAccessSimulator: [RESTAURANT_ROLES.OWNER, RESTAURANT_ROLES.MANAGER].includes(normalizedRole),
+    canAccessReportCard: normalizedRole === RESTAURANT_ROLES.OWNER,
   };
 };
+
+export const getRoleLandingRoute = (role) =>
+  getRolePermissions(role).canAccessReportCard
+    ? '/dashboard/report-card'
+    : '/dashboard';
 
 /**
  * Resolve role from login/profile payload: restaurant_memberships[].

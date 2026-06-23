@@ -67,11 +67,13 @@ import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
 import TermsOfService from './components/legal/TermsOfService';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import DataProcessingAgreement from './components/legal/DataProcessingAgreement';
+import { getRoleLandingRoute } from './utils/rolePermissions';
 
 // Smart redirect component that checks simulation status and restaurant onboarding
 const RootRedirect = () => {
   const navigate = useNavigate();
   const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const user = useStore((state) => state.user);
   const getRestaurantSimulation = useStore((state) => state.getRestaurantSimulation);
   const getSimulationOnboardingStatus = useStore((state) => state.getSimulationOnboardingStatus);
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
@@ -121,7 +123,7 @@ const RootRedirect = () => {
             // Restaurant onboarding is complete, redirect to dashboard
             const restaurantId = completeRestaurant.restaurant_id;
             localStorage.setItem('restaurant_id', restaurantId.toString());
-            navigate('/dashboard/report-card', { replace: true });
+            navigate(getRoleLandingRoute(user?.restaurant_role), { replace: true });
             return;
           }
           
@@ -145,7 +147,7 @@ const RootRedirect = () => {
 
           // Simulation onboarding complete: land on report card (requested behavior).
           localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
-          navigate('/dashboard/report-card', { replace: true });
+          navigate(getRoleLandingRoute(user?.restaurant_role), { replace: true });
           return;
         }
         
@@ -160,7 +162,7 @@ const RootRedirect = () => {
             // Restaurant onboarding is complete, redirect to dashboard
             const restaurantId = completeRestaurant.restaurant_id;
             localStorage.setItem('restaurant_id', restaurantId.toString());
-            navigate('/dashboard/report-card', { replace: true });
+            navigate(getRoleLandingRoute(user?.restaurant_role), { replace: true });
             return;
           }
           

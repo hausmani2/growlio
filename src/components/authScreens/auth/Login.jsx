@@ -8,6 +8,7 @@ import { Input, message, Button, Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 import Smile from "../../../assets/lio.png"
+import { getRoleLandingRoute } from '../../../utils/rolePermissions';
 
 const Login = () => {
   const [form, setForm] = useState({ 
@@ -22,7 +23,8 @@ const Login = () => {
     login, 
     error, 
     isAuthenticated, 
-    clearError
+    clearError,
+    user,
   } = useStore();
   
   // Get onboarding status check from onboarding slice
@@ -33,9 +35,9 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard/report-card');
+      navigate(getRoleLandingRoute(user?.restaurant_role));
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, user?.restaurant_role]);
 
   // Clear error when component mounts to prevent stale errors from showing
   useEffect(() => {
@@ -234,7 +236,7 @@ const Login = () => {
               localStorage.setItem('restaurant_id', restaurantId.toString());
               message.success('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
-                navigate('/dashboard/report-card', { replace: true });
+                navigate(getRoleLandingRoute(useStore.getState().user?.restaurant_role), { replace: true });
               }, 500);
               return;
             }
@@ -293,7 +295,7 @@ const Login = () => {
               localStorage.setItem('restaurant_id', restaurantId.toString());
               message.success('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
-                navigate('/dashboard/report-card', { replace: true });
+                navigate(getRoleLandingRoute(useStore.getState().user?.restaurant_role), { replace: true });
               }, 500);
               return;
             }

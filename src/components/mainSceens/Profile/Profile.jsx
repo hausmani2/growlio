@@ -215,6 +215,7 @@ const Profile = () => {
           permissions.canManageLocations ? 'Locations' : null,
           permissions.canCreateBudget ? 'Create Budget' : 'View Budget',
           permissions.canCloseDays ? 'Close Days' : null,
+          permissions.canAccessReportCard ? 'Report Card' : null,
           permissions.canAccessSimulator ? 'Simulator' : null,
         ].filter(Boolean);
         return <span className="text-sm text-gray-600">{labels.join(', ')}</span>;
@@ -493,7 +494,7 @@ const Profile = () => {
                       </div>
                       <ul className="m-0 list-disc space-y-1.5 pl-5 text-sm text-gray-700">
                         <li>Full access to location. Can add locations, users, and do everything else.</li>
-                        <li>Access to Simulator.</li>
+                        <li>Access to Report Card and Simulator.</li>
                       </ul>
                     </div>
                   </Col>

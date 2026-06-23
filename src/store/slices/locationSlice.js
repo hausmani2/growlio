@@ -92,8 +92,7 @@ const createLocationSlice = (set, get) => ({
         const weekStart = weekStartDate
           ? weekStartDate.format('YYYY-MM-DD')
           : dayjs().startOf('week').format('YYYY-MM-DD');
-        await get().fetchDashboardData(weekStart);
-        get().fetchGoalsData?.().catch(() => {});
+        await get().fetchDashboardDataIfNeeded(weekStart);
         return;
       }
 

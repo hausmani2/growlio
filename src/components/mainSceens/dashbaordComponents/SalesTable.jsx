@@ -252,19 +252,19 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   useEffect(() => {
     let isMounted = true;
 
-    const refreshOnboarding = async () => {
+    const refreshOnboarding = async (forceRefresh = false) => {
       try {
-        await loadExistingOnboardingData?.(true);
+        await loadExistingOnboardingData?.(forceRefresh);
       } catch (_) {
         // Non-blocking: page should still work with cached onboarding data
       }
     };
 
-    refreshOnboarding();
+    refreshOnboarding(false);
 
     const onFocus = () => {
       if (!isMounted) return;
-      refreshOnboarding();
+      refreshOnboarding(true);
     };
 
     window.addEventListener('focus', onFocus);

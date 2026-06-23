@@ -17,6 +17,7 @@ import {
   isOnLocationOnboardingPage,
   shouldPrefetchSalesInformation,
 } from '../utils/onboardingUtils';
+import { getRoleLandingRoute, getRolePermissions } from '../utils/rolePermissions';
 
 const ProtectedRoutes = () => {
   const location = useLocation();
@@ -101,6 +102,8 @@ const ProtectedRoutes = () => {
   const onboardingComplete = checkOnboardingComplete(effectiveRestaurantData);
   const locationNeedsOneMonthSales =
     restaurantExists && !oneMonthSalesInfoComplete;
+  const { canAccessReportCard } = getRolePermissions(user?.restaurant_role);
+  const roleLandingRoute = getRoleLandingRoute(user?.restaurant_role);
 
   useEffect(() => {
     if (restaurantOnboardingData) {
@@ -560,12 +563,12 @@ const ProtectedRoutes = () => {
     }
     
     // If we're already on the correct route based on our status, don't redirect
-    if (oneMonthSalesInfoComplete && location.pathname === ONBOARDING_ROUTES.REPORT_CARD) {
+    if (oneMonthSalesInfoComplete && location.pathname === roleLandingRoute) {
       hasRedirectedRef.current = false; // Reset so we can redirect if needed later
       sessionStorage.setItem('lastProcessedPath', location.pathname);
       return; // Already on correct route
     }
-    if (hasSalesData && location.pathname === ONBOARDING_ROUTES.REPORT_CARD) {
+    if (hasSalesData && location.pathname === roleLandingRoute) {
       hasRedirectedRef.current = false;
       sessionStorage.setItem('lastProcessedPath', location.pathname);
       return; // Already on correct route
@@ -598,6 +601,7 @@ const ProtectedRoutes = () => {
       isOnBoardingCompleted,
       currentPath: location.pathname,
       isOnboardingComplete: onboardingComplete,
+      landingRoute: getRoleLandingRoute(user?.restaurant_role),
     });
 
     // Perform redirect if needed - but only once per route change
@@ -724,7 +728,7 @@ const ProtectedRoutes = () => {
             const hasSimulationRestaurantsCheck = Array.isArray(simulationRestaurants) && simulationRestaurants.length > 0;
             // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
             if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
-              navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+              navigate(getRoleLandingRoute(user?.restaurant_role), { replace: true });
             } else {
               navigate('/simulation/dashboard', { replace: true });
             }
@@ -764,7 +768,7 @@ const ProtectedRoutes = () => {
                 sessionStorage.setItem(`${cacheKey}LastCheck`, now.toString());
                 // If both APIs have restaurants, navigate to dashboard/report-card instead of simulation/dashboard
                 if (hasRegularRestaurantsCheck && hasSimulationRestaurantsCheck) {
-                  navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
+                  navigate(getRoleLandingRoute(user?.restaurant_role), { replace: true });
                 } else if (hasSimulationRestaurantsCheck) {
                   // Only redirect to simulation dashboard if simulation onboarding API has restaurants
                   navigate('/simulation/dashboard', { replace: true });
@@ -1073,6 +1077,10 @@ const ProtectedRoutes = () => {
   const isProfilePath = location.pathname === '/dashboard/profile';
   const salesDataComplete = hasSalesData();
 
+  if (isReportCardPath && !canAccessReportCard) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Current location still needs sales — allow score/profitability (same as new signup)
   if (locationNeedsOneMonthSales && (isProfitabilityPath || isScorePath)) {
     return <Outlet />;
@@ -1121,7 +1129,7 @@ const ProtectedRoutes = () => {
   // This prevents redirects when reloading any dashboard page
   if (salesDataComplete && !locationNeedsOneMonthSales) {
     if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
-      return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      return <Navigate to={roleLandingRoute} replace />;
     }
     return <Outlet />;
   }
@@ -1140,10 +1148,10 @@ const ProtectedRoutes = () => {
     // Block access to onboarding, score, and profitability pages
      // But allow simulation routes
      if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
-      return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      return <Navigate to={roleLandingRoute} replace />;
     }
     if ((isScorePath || isProfitabilityPath) && !isSimulationPath) {
-      return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      return <Navigate to={roleLandingRoute} replace />;
     }
     // Allow access to report card and ALL other dashboard routes
     return <Outlet />;
@@ -1189,7 +1197,7 @@ const ProtectedRoutes = () => {
     // allow all routes and block /onboarding page
     if (onboardingComplete) {
       if (isOnboardingMainPath) {
-        return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+        return <Navigate to={roleLandingRoute} replace />;
       }
       // Allow all other routes
       return <Outlet />;
@@ -1204,7 +1212,7 @@ const ProtectedRoutes = () => {
     // CRITICAL: If onboarding is complete, block congratulations page and redirect to dashboard
     if (onboardingComplete) {
       if (isCongratulationsPath) {
-        return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+        return <Navigate to={roleLandingRoute} replace />;
       }
       // Allow all other routes
       return <Outlet />;
@@ -1240,10 +1248,10 @@ const ProtectedRoutes = () => {
   if (restaurantExists && oneMonthSalesInfoComplete) {
     // Block onboarding/score/profitability - redirect to report card
     if (isOnboardingPath && !isCompleteStepsPath) {
-      return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      return <Navigate to={roleLandingRoute} replace />;
     }
     if (isScorePath || isProfitabilityPath) {
-      return <Navigate to={ONBOARDING_ROUTES.REPORT_CARD} replace />;
+      return <Navigate to={roleLandingRoute} replace />;
     }
     // Allow all dashboard and other routes
     return <Outlet />;

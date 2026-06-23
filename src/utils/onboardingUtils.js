@@ -450,13 +450,14 @@ export const getOnboardingRedirectRoute = ({
   isOnBoardingCompleted,
   currentPath,
   isOnboardingComplete = false, // Add parameter to check onboarding_complete
+  landingRoute = ONBOARDING_ROUTES.REPORT_CARD,
 }) => {
   // CRITICAL: If onboarding is completely finished (onboarding_complete: true), 
   // user should NOT be redirected to /onboarding - allow all dashboard routes
   if (isOnboardingComplete) {
     // Block /onboarding page - redirect to report card or dashboard
     if (currentPath === ONBOARDING_ROUTES.ONBOARDING) {
-      return ONBOARDING_ROUTES.REPORT_CARD;
+      return landingRoute;
     }
     // Allow all other routes (dashboard, etc.)
     return null;
@@ -465,7 +466,7 @@ export const getOnboardingRedirectRoute = ({
   // If sales data is complete, user should go to report card
   if (hasSalesData) {
     if (currentPath === ONBOARDING_ROUTES.ONBOARDING) {
-      return ONBOARDING_ROUTES.REPORT_CARD;
+      return landingRoute;
     }
     return null; // Already on correct path
   }
@@ -477,7 +478,7 @@ export const getOnboardingRedirectRoute = ({
     if (currentPath === ONBOARDING_ROUTES.ONBOARDING || 
         currentPath === ONBOARDING_ROUTES.SCORE || 
         currentPath === ONBOARDING_ROUTES.PROFITABILITY) {
-      return ONBOARDING_ROUTES.REPORT_CARD;
+      return landingRoute;
     }
     // Allow all dashboard routes and other paths
     return null;
