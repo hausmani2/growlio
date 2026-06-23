@@ -7,6 +7,7 @@ import { apiGet, apiPatch, apiPost } from '../../utils/axiosInterceptors';
 import { getMerchantSyncStatus, triggerPosSync } from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
+import { parseOAuthState } from '../../utils/squareOAuth';
 
 /**
  * Square Callback Handler Component
@@ -36,9 +37,11 @@ const SquareCallbackHandler = () => {
   const completionHandledRef = useRef(false);
 
   const restaurantIdFromState = useMemo(() => {
-    const raw = searchParams.get('state');
-    const n = Number.parseInt(String(raw || ''), 10);
-    return Number.isFinite(n) ? n : null;
+    return parseOAuthState(searchParams.get('state')).restaurantId;
+  }, [searchParams]);
+
+  const locationIdFromState = useMemo(() => {
+    return parseOAuthState(searchParams.get('state')).locationId;
   }, [searchParams]);
 
   const restaurantIdFromQuery = useMemo(() => {
@@ -72,31 +75,27 @@ const SquareCallbackHandler = () => {
   useEffect(() => {
     const processCallback = async () => {
       try {
-        // Extract authorization code and state from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
-        
-        // Handle OAuth error from Square
+
         if (error) {
           console.error('Square OAuth error:', error, errorDescription);
           setResult('error');
           setProcessing(false);
           return;
         }
-        
-        // Check if we have an authorization code
+
         if (!code) {
           console.error('No authorization code received from Square');
           setResult('error');
           setProcessing(false);
           return;
         }
-        
-        // Process the callback
+
         const response = await handleSquareCallback(code, state);
-        
+
         if (response.success) {
           setResult('success');
         } else {
@@ -109,7 +108,7 @@ const SquareCallbackHandler = () => {
         setProcessing(false);
       }
     };
-    
+
     processCallback();
   }, [searchParams, handleSquareCallback]);
 
@@ -126,7 +125,9 @@ const SquareCallbackHandler = () => {
     setLocationsLoading(true);
     setLocationsError(null);
     try {
-      const growlioLocationId = localStorage.getItem('selected_location_id');
+      const growlioLocationId =
+        locationIdFromState ||
+        localStorage.getItem('selected_location_id');
       const locationQuery = growlioLocationId ? `&location_id=${growlioLocationId}` : '';
       const response = await apiGet(
         `/square_pos/locations/?restaurant_id=${restaurantIdForLocations}${locationQuery}`
@@ -160,7 +161,7 @@ const SquareCallbackHandler = () => {
     } finally {
       setLocationsLoading(false);
     }
-  }, [restaurantIdForLocations]);
+  }, [locationIdFromState, restaurantIdForLocations]);
 
   useEffect(() => {
     if (result === 'success') {
@@ -183,7 +184,17 @@ const SquareCallbackHandler = () => {
     cleanupRealtimeResources();
 
     try {
-      await apiPatch('/square_pos/locations/update-sync/', {
+      const growlioLocationId =
+        locationIdFromState ||
+        localStorage.getItem('selected_location_id');
+      const syncQuery = new URLSearchParams({
+        restaurant_id: String(restaurantIdForSync),
+      });
+      if (growlioLocationId) {
+        syncQuery.set('location_id', String(growlioLocationId));
+      }
+
+      await apiPatch(`/square_pos/locations/update-sync/?${syncQuery.toString()}`, {
         locations: [
           {
             location_id: locationId,
@@ -247,6 +258,7 @@ const SquareCallbackHandler = () => {
     }
   }, [
     cleanupRealtimeResources,
+    locationIdFromState,
     navigate,
     restaurantIdForSync,
   ]);

@@ -62,7 +62,15 @@ const PosLocations = () => {
     cleanupRealtimeResources();
 
     try {
-      await apiPatch('/square_pos/locations/update-sync/', {
+      const growlioLocationId = localStorage.getItem('selected_location_id');
+      const syncQuery = new URLSearchParams({
+        restaurant_id: String(restaurantId),
+      });
+      if (growlioLocationId) {
+        syncQuery.set('location_id', growlioLocationId);
+      }
+
+      await apiPatch(`/square_pos/locations/update-sync/?${syncQuery.toString()}`, {
         locations: [
           {
             location_id: locationId,

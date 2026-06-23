@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import { message } from 'antd';
+import { parseOAuthState } from '../../utils/squareOAuth';
 
 /**
  * Square POS Integration Slice
@@ -52,6 +53,16 @@ const createSquareSlice = (set, get) => ({
       message.error(error);
       return { success: false, error };
     }
+
+    const locationId = typeof get().getSelectedLocationId === 'function'
+      ? await get().getSelectedLocationId()
+      : get().selectedLocationId;
+    if (!locationId) {
+      const error = 'Please select a location before connecting Square POS';
+      set({ squareError: error, squareLoading: false });
+      message.error(error);
+      return { success: false, error };
+    }
     
     set({ squareLoading: true, squareError: null, squareStatus: 'connecting' });
     
@@ -69,6 +80,9 @@ const createSquareSlice = (set, get) => ({
       if (!authUrl) {
         throw new Error('No authorization URL received from server');
       }
+
+      sessionStorage.setItem('square_oauth_restaurant_id', String(restaurantId));
+      sessionStorage.setItem('square_oauth_location_id', String(locationId));
       
       // Redirect to Square OAuth authorization page
       window.location.href = authUrl;
@@ -108,10 +122,24 @@ const createSquareSlice = (set, get) => ({
     set({ squareLoading: true, squareError: null });
     
     try {
-      // POST the authorization code and state to the callback endpoint
-      const response = await apiGet(`/square_pos/callback/?code=${code}&state=${state}`);
+      const { locationId: stateLocationId } = parseOAuthState(state);
+      const locationId =
+        stateLocationId ||
+        sessionStorage.getItem('square_oauth_location_id') ||
+        get().selectedLocationId ||
+        localStorage.getItem('selected_location_id');
+
+      let callbackUrl = `/square_pos/callback/?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+      if (locationId) {
+        callbackUrl += `&location_id=${encodeURIComponent(locationId)}`;
+      }
+
+      const response = await apiGet(callbackUrl, { suppressGlobalError: true });
       const data = response.data?.data || response.data;
       
+      sessionStorage.removeItem('square_oauth_location_id');
+      sessionStorage.removeItem('square_oauth_restaurant_id');
+
       set({ 
         squareLoading: false,
         squareConnectionData: data,
@@ -121,9 +149,13 @@ const createSquareSlice = (set, get) => ({
       
       message.success('Square POS connected successfully!');
       
-      // Fetch updated status (which will also fetch merchant detail when connected)
-      const restaurantId = localStorage.getItem('restaurant_id') || get()?.restaurantId;
-      await get().checkSquareStatus(restaurantId);
+      const restaurantId =
+        localStorage.getItem('restaurant_id') ||
+        sessionStorage.getItem('square_oauth_restaurant_id') ||
+        get()?.restaurantId;
+      if (restaurantId) {
+        get().checkSquareStatus(restaurantId).catch(() => {});
+      }
       
       return { success: true, data };
     } catch (error) {
