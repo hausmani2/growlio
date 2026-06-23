@@ -95,7 +95,7 @@ api.interceptors.request.use(
       config.url.includes('/authentication/forgot-password/') ||
       config.url.includes('/authentication/reset-password/')
     );
-    
+
     if (isAuthEndpoint) {
       return config;
     }
@@ -147,6 +147,7 @@ api.interceptors.response.use(
     // Check if user is on login page
     const currentPath = window.location.pathname;
     const isOnLoginPage = currentPath === '/login' || currentPath === '/admin/login';
+    const isOnSquareCallbackPage = currentPath === '/square/callback';
     
     // Check if this is an authentication endpoint (actual login attempt)
     const isAuthEndpoint = error.config?.url && (
@@ -161,6 +162,7 @@ api.interceptors.response.use(
     // This prevents showing errors from initialization API calls that fail when user is on login page
     const suppressGlobalError = error.config?.suppressGlobalError === true;
     const shouldSuppressError = (isOnLoginPage && !isAuthEndpoint) || suppressGlobalError;
+    const isSquareOAuthCallback = error.config?.url?.includes('/square_pos/callback/');
     
     // Handle timeout errors — log only; callers handle user-facing messages
     if (error.code === 'ECONNABORTED' || error.message === 'timeout of ' + API_TIMEOUT + 'ms exceeded' || error.message.includes('timeout')) {
@@ -188,7 +190,7 @@ api.interceptors.response.use(
           } catch {}
           // Otherwise, clear and redirect to login
           // Don't show error message if already on login page (prevents showing stale 401 errors)
-          if (!shouldSuppressError) {
+          if (!shouldSuppressError && !isOnSquareCallbackPage && !isSquareOAuthCallback) {
             clearStoreAndRedirectToLogin();
           } else {
             // Silently clear store without redirecting (already on login page)
