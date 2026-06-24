@@ -363,6 +363,7 @@ const SimulationDashboard = () => {
     frequency: 'monthly', // 'monthly' | 'weekly'
     amount: 0
   });
+  const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
 
   // Whenever dashboard data updates, sync expenses list into local table data
   useEffect(() => {
@@ -560,6 +561,33 @@ const SimulationDashboard = () => {
         {shouldShowInitialLoading && (
           <LoadingSpinner message="Loading dashboard..." />
         )}
+
+        {/* Tutorial */}
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                onClick={() => setIsTutorialModalVisible(true)}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch How To Use The Simulator Tutorial"
+              >
+                How To Use The Simulator
+              </button>
+            </p>
+            <button
+              onClick={() => setIsTutorialModalVisible(true)}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2 w-full sm:w-auto"
+              title="Watch How To Use The Simulator Tutorial"
+              aria-label="Watch How To Use The Simulator Tutorial"
+              type="button"
+            >
+              Watch Video
+            </button>
+          </div>
+        </div>
+
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
           <h1 className="text-3xl font-bold text-orange-600 mb-2">
@@ -846,6 +874,64 @@ const SimulationDashboard = () => {
       
       {/* Chat Widget for Simulation */}
       <ChatWidget botName="LIO Advisor" />
+
+      <Modal
+        title="How To Use The Simulator Tutorial"
+        open={isTutorialModalVisible}
+        onCancel={() => setIsTutorialModalVisible(false)}
+        footer={[
+          <Button
+            key="corner"
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent('growlio:youtubePlayer', {
+                  detail: {
+                    action: 'open',
+                    title: 'How To Use The Simulator Tutorial',
+                    embedUrl: 'https://www.youtube.com/embed/6EPt76Z-CqM?rel=0',
+                  },
+                })
+              );
+              setIsTutorialModalVisible(false);
+            }}
+          >
+            Play in corner
+          </Button>,
+          <Button
+            key="open"
+            type="default"
+            onClick={() => {
+              window.open('https://youtu.be/6EPt76Z-CqM', '_blank', 'noopener,noreferrer');
+            }}
+          >
+            Open in new tab
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setIsTutorialModalVisible(false)}>
+            Close
+          </Button>,
+        ]}
+        width={900}
+        centered
+        destroyOnClose={true}
+        maskClosable={true}
+      >
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+          <iframe
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              border: 0
+            }}
+            src="https://www.youtube.com/embed/6EPt76Z-CqM?rel=0"
+            title="How To Use The Simulator"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </Modal>
 
       {/* Edit Expense Modal */}
       <Modal

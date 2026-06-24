@@ -29,6 +29,11 @@ const TRAINING_VIDEOS = {
     title: 'Report Card Tutorial',
     modalTitle: 'Report Card Tutorial',
     embedUrl: 'https://www.youtube.com/embed/XexAdO4ocK0?rel=0'
+  },
+  simulator: {
+    title: 'How To Use The Simulator',
+    modalTitle: 'How To Use The Simulator Tutorial',
+    embedUrl: 'https://www.youtube.com/embed/6EPt76Z-CqM?rel=0'
   }
 };
 
@@ -221,6 +226,37 @@ const Training = () => {
               className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
               title="Watch Operating Expenses Tutorial"
               aria-label="Watch Operating Expenses Tutorial"
+              type="button"
+            >
+              Watch Video
+            </button>
+          </div>
+        </div>
+
+        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-medium text-base text-orange-600">
+              Watch a tutorial on{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveVideoKey('simulator');
+                  setIsVideoModalVisible(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
+                title="Watch How To Use The Simulator Tutorial"
+              >
+                How To Use The Simulator
+              </button>
+            </p>
+            <button
+              onClick={() => {
+                setActiveVideoKey('simulator');
+                setIsVideoModalVisible(true);
+              }}
+              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
+              title="Watch How To Use The Simulator Tutorial"
+              aria-label="Watch How To Use The Simulator Tutorial"
               type="button"
             >
               Watch Video
