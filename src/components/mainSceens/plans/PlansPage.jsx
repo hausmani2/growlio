@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Card, Row, Col, Spin, message, Modal, Typography } from 'antd';
-import { CheckCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 import useStore from '../../../store/store';
 import PlanCard from './PlanCard';
 import PlanSelectionModal from './PlanSelectionModal';
+import { isSubscriptionDowngrade } from '../../../utils/packageDisplay';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
+
+const DOWNGRADE_WARNING = (
+  <div>
+    <Paragraph className="!mb-3">
+      You&apos;re about to downgrade your Growlio subscription. By downgrading, you will lose access
+      to all additional restaurant locations included with your current plan.
+    </Paragraph>
+    <Paragraph className="!mb-0">
+      Only your primary location will remain accessible. All other locations, along with their
+      budgets, reports, food costing, and other data, will no longer be available unless you
+      upgrade again.
+    </Paragraph>
+  </div>
+);
 
 const isFreePlan = (plan) => (
   plan?.price_per_location === 0 ||
@@ -78,6 +93,11 @@ const PlansPage = ({
     };
   }, [location.pathname, fetchPackages, getCurrentPackage, setCurrentPackage, onboardingMode]);
 
+  const openPlanSelectionModal = (plan) => {
+    setSelectedPlan(plan);
+    setIsModalVisible(true);
+  };
+
   const handlePlanClick = (plan) => {
     const restaurantId = localStorage.getItem('restaurant_id');
 
@@ -92,8 +112,24 @@ const PlansPage = ({
       return;
     }
 
-    setSelectedPlan(plan);
-    setIsModalVisible(true);
+    const packagesList = Array.isArray(packages) ? packages : [];
+    const activePlan = currentPackage || packagesList.find((p) => p.is_current);
+
+    if (isSubscriptionDowngrade(activePlan, plan)) {
+      Modal.confirm({
+        title: 'Downgrading Your Plan',
+        icon: <ExclamationCircleOutlined className="text-orange-500" />,
+        content: DOWNGRADE_WARNING,
+        okText: 'Continue Downgrade',
+        cancelText: 'Cancel',
+        centered: true,
+        width: 520,
+        onOk: () => openPlanSelectionModal(plan),
+      });
+      return;
+    }
+
+    openPlanSelectionModal(plan);
   };
 
   const handleModalClose = () => {
