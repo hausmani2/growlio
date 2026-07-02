@@ -11,6 +11,7 @@ import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 import TermsOfService from '../../legal/TermsOfService';
 import PrivacyPolicy from '../../legal/PrivacyPolicy';
 import DataProcessingAgreement from '../../legal/DataProcessingAgreement';
+import { trackLinkedInSignupConversion } from '../../../utils/linkedinInsight.js';
 
 const Register = () => {
   const [form, setForm] = useState({ 
@@ -132,6 +133,9 @@ const Register = () => {
       const result = await register(form);
       
       if (result.success) {
+        // Marketing conversion tracking (fires only if VITE_LINKEDIN_CONVERSION_ID is set)
+        trackLinkedInSignupConversion();
+
         // CRITICAL: Clear loading state BEFORE navigation to prevent stuck loading
         setIsSubmitting(false);
         

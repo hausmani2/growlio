@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
 import App from './App.jsx';
+import { initLinkedInInsightTag } from './utils/linkedinInsight.js';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +17,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Load LinkedIn Insight Tag once on app boot.
+initLinkedInInsightTag();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
