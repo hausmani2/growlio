@@ -26,6 +26,22 @@ const getStoredUser = () => {
   return null;
 };
 
+const getStoredUserId = (user) => {
+  if (!user || typeof user !== 'object') return null;
+  const id = user.id ?? user.user_id ?? user.pk ?? null;
+  return id != null ? String(id) : null;
+};
+
+const clearRestaurantContextStorage = () => {
+  try {
+    localStorage.removeItem('restaurant_id');
+    localStorage.removeItem('simulation_restaurant_id');
+    localStorage.removeItem('selected_location_id');
+  } catch (e) {
+    // ignore
+  }
+};
+
 const parseRestaurantOnboardingPayload = (response) => {
   let restaurantData = response?.data;
   if (response?.data?.data && (response.data.data.restaurants || Array.isArray(response.data.data))) {
@@ -591,6 +607,21 @@ const createAuthSlice = (set, get) => {
     initializeAuth: () => {
       const token = getStoredToken();
       const userData = getStoredUser();
+      const currentUserId = getStoredUserId(userData);
+      
+      // If a different user is now in storage (e.g. after switching accounts),
+      // clear any cached restaurant/location context to avoid leaking stale selections.
+      try {
+        const lastUserId = localStorage.getItem('last_auth_user_id');
+        if (currentUserId && lastUserId && String(lastUserId) !== String(currentUserId)) {
+          clearRestaurantContextStorage();
+        }
+        if (currentUserId) {
+          localStorage.setItem('last_auth_user_id', String(currentUserId));
+        }
+      } catch (e) {
+        // ignore
+      }
       
       if (hasToken(token)) {
         set(() => ({ 
@@ -602,12 +633,6 @@ const createAuthSlice = (set, get) => {
           originalToken: sessionStorage.getItem('original_superadmin_token') || null,
           isAuthenticated: true 
         }));
-        
-        // Also check for restaurant ID in localStorage
-        const restaurantId = localStorage.getItem('restaurant_id');
-        if (restaurantId) {
-          set(() => ({ restaurantId }));
-        }
       } else {
         // Clear invalid tokens from both storages
         localStorage.removeItem('token');
@@ -626,6 +651,19 @@ const createAuthSlice = (set, get) => {
     syncAuthFromStorage: () => {
       const token = getStoredToken();
       const userData = getStoredUser();
+      const currentUserId = getStoredUserId(userData);
+      
+      try {
+        const lastUserId = localStorage.getItem('last_auth_user_id');
+        if (currentUserId && lastUserId && String(lastUserId) !== String(currentUserId)) {
+          clearRestaurantContextStorage();
+        }
+        if (currentUserId) {
+          localStorage.setItem('last_auth_user_id', String(currentUserId));
+        }
+      } catch (e) {
+        // ignore
+      }
       
       if (hasToken(token)) {
         set(() => ({ 
