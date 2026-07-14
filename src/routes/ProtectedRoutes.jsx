@@ -369,6 +369,10 @@ const ProtectedRoutes = () => {
     }
 
     const showSetupRequiredModalOnce = (nextRoute) => {
+      // This gate is only for protected dashboard pages. New signup/welcome
+      // routes should render normally without a blocking setup modal.
+      if (!location.pathname.startsWith('/dashboard')) return false;
+
       // Never show on simulation routes
       if (location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation')) return false;
 
@@ -535,6 +539,13 @@ const ProtectedRoutes = () => {
       '/simulation/labor-information',
       '/simulation/expenses',
     ];
+
+    if (allowedOnboardingPaths.includes(location.pathname)) {
+      hasRedirectedRef.current = false;
+      sessionStorage.setItem('lastProcessedPath', location.pathname);
+      sessionStorage.removeItem('lastRedirectRoute');
+      return;
+    }
     
     // Track the last path we processed to prevent duplicate redirects
     const lastProcessedPath = sessionStorage.getItem('lastProcessedPath');
