@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
 import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import LocationsTab from './LocationsTab';
@@ -6,6 +6,7 @@ import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axi
 import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../../../utils/rolePermissions';
+import { isUnlimitedCount } from '../../../utils/packageDisplay';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -21,9 +22,34 @@ const Profile = () => {
   const { restaurantId, locationId, isOwner, canManageUsers } = useRestaurantRole();
   const locations = useStore((state) => state.locations);
   const selectedLocationId = useStore((state) => state.selectedLocationId);
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
+  const currentPackage = useStore((state) => state.currentPackage);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
   const activeLocationId = locationId || selectedLocationId;
   const activeLocationName =
     locations?.find((loc) => loc.id === activeLocationId)?.name || 'Selected location';
+  const [hasCheckedSubscription, setHasCheckedSubscription] = useState(false);
+  const activePlan = subscriptionDetails?.package || currentPackage || null;
+  const canUseProfileManagement = useMemo(() => {
+    const planName = String(
+      activePlan?.key ||
+      activePlan?.name ||
+      activePlan?.display_name ||
+      activePlan?.package_name ||
+      ''
+    ).trim().toLowerCase();
+
+    if (planName.includes('lite')) return false;
+    if (planName.includes('grow') || planName.includes('pro')) return true;
+
+    const features = activePlan?.features || {};
+    if (features.multiple_users_roles || features.expanded_roles) return true;
+    if (isUnlimitedCount(activePlan?.max_users)) return true;
+    if (typeof activePlan?.max_users === 'number') return activePlan.max_users > 1;
+
+    return !activePlan && hasCheckedSubscription && !subscriptionDetailsLoading;
+  }, [activePlan, hasCheckedSubscription, subscriptionDetailsLoading]);
   
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -51,12 +77,34 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    if (isOwner && restaurantId && activeLocationId) {
+    let cancelled = false;
+
+    if (isOwner && restaurantId) {
+      setHasCheckedSubscription(false);
+      const subscriptionPromise = fetchCurrentSubscriptionDetails?.(true);
+      if (subscriptionPromise?.finally) {
+        subscriptionPromise.finally(() => {
+          if (!cancelled) setHasCheckedSubscription(true);
+        });
+      } else {
+        setHasCheckedSubscription(true);
+      }
+    } else {
+      setHasCheckedSubscription(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, restaurantId, fetchCurrentSubscriptionDetails]);
+
+  useEffect(() => {
+    if (isOwner && canUseProfileManagement && restaurantId && activeLocationId) {
       fetchMembers();
     } else {
       setMembers([]);
     }
-  }, [isOwner, restaurantId, activeLocationId]);
+  }, [isOwner, canUseProfileManagement, restaurantId, activeLocationId]);
 
   const fetchProfileData = async () => {
     try {
@@ -132,7 +180,7 @@ const Profile = () => {
   };
 
   const handleMemberSave = async (values) => {
-    if (!restaurantId || !activeLocationId || !canManageUsers) return;
+    if (!restaurantId || !activeLocationId || !canManageUsers || !canUseProfileManagement) return;
 
     const payload = {
       restaurant_id: Number(restaurantId),
@@ -167,7 +215,7 @@ const Profile = () => {
   };
 
   const handleMemberDelete = async (member) => {
-    if (!canManageUsers || normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER) return;
+    if (!canManageUsers || !canUseProfileManagement || normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER) return;
 
     try {
       await apiDelete(`/restaurant_v2/members/${member.id}/`);
@@ -233,7 +281,7 @@ const Profile = () => {
 
         return (
           <div className="flex justify-end gap-2">
-            <Button icon={<EditOutlined />} onClick={() => openEditMemberModal(member)} disabled={!canManageUsers}>
+            <Button icon={<EditOutlined />} onClick={() => openEditMemberModal(member)} disabled={!canManageUsers || !canUseProfileManagement}>
               Edit
             </Button>
             <Popconfirm
@@ -241,9 +289,9 @@ const Profile = () => {
               okText="Remove"
               okButtonProps={{ danger: true }}
               onConfirm={() => handleMemberDelete(member)}
-              disabled={!canManageUsers}
+              disabled={!canManageUsers || !canUseProfileManagement}
             >
-              <Button danger icon={<DeleteOutlined />} disabled={!canManageUsers}>
+              <Button danger icon={<DeleteOutlined />} disabled={!canManageUsers || !canUseProfileManagement}>
                 Delete
               </Button>
             </Popconfirm>
@@ -470,7 +518,7 @@ const Profile = () => {
             </div>
           </TabPane>
 
-          {isOwner && (
+          {isOwner && canUseProfileManagement && (
           <TabPane
             tab={
               <span className="flex items-center gap-2">
@@ -538,7 +586,7 @@ const Profile = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={openAddMemberModal}
-                    disabled={!canManageUsers || !restaurantId || !activeLocationId}
+                    disabled={!canManageUsers || !canUseProfileManagement || !restaurantId || !activeLocationId}
                     className="bg-orange-500 hover:bg-orange-600 border-0"
                   >
                     Add User
