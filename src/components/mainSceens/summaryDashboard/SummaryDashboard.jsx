@@ -15,6 +15,7 @@ import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 
 
 
@@ -99,6 +100,10 @@ const SummaryDashboard = () => {
     isOnBoardingCompleted === true ||
     restaurantOnboardingData?.restaurants?.[0]?.onboarding_complete === true ||
     restaurantOnboardingData?.data?.restaurants?.[0]?.onboarding_complete === true;
+  const nextSetupRoute = useMemo(
+    () => getNextIncompleteSetupRoute(restaurantOnboardingData),
+    [restaurantOnboardingData]
+  );
 
   // Local state for group by selection
   const [groupBy, setGroupBy] = useState('daily');
@@ -189,22 +194,23 @@ const SummaryDashboard = () => {
       content:
         'To enter budgeted sales, please complete onboarding first so we can set up your restaurant details correctly.',
       okText: 'Complete onboarding',
-      cancelText: 'Not now',
+      cancelText: 'Close',
       centered: true,
       maskClosable: true,
       onOk: () => {
-        navigate('/onboarding');
+        navigate(nextSetupRoute);
       },
       onCancel: () => {},
       afterClose: () => {
         onboardingGateModalOpenRef.current = false;
       },
     });
-  }, [navigate]);
+  }, [navigate, nextSetupRoute]);
 
   // Fetch dashboard summary data for selected date range
   const fetchSummaryData = useCallback(async (startDate, endDate, groupBy = 'daily') => {
     if (!startDate || !endDate) return;
+    if (!isSetupComplete) return null;
 
     try {
       return await fetchDashboardSummary(startDate, endDate, groupBy);
@@ -212,11 +218,11 @@ const SummaryDashboard = () => {
       console.error('Error in fetchDashboardSummary:', error);
       return null;
     }
-  }, [fetchDashboardSummary]);
+  }, [fetchDashboardSummary, isSetupComplete]);
 
   useEffect(() => {
     const loadLatestReadableBudget = async () => {
-      if (isOwner || roleLoading || summaryLoading || !isInitialized || hasValidData() || readableBudgetFallbackRef.current) {
+      if (!isSetupComplete || isOwner || roleLoading || summaryLoading || !isInitialized || hasValidData() || readableBudgetFallbackRef.current) {
         return;
       }
 
@@ -248,7 +254,7 @@ const SummaryDashboard = () => {
     };
 
     loadLatestReadableBudget();
-  }, [isOwner, roleLoading, summaryLoading, isInitialized, hasValidData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
+  }, [isSetupComplete, isOwner, roleLoading, summaryLoading, isInitialized, hasValidData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
 
   // Auto-fetch data when calendar dates are set and component is initialized
   useEffect(() => {
@@ -279,7 +285,7 @@ const SummaryDashboard = () => {
       skipInitialLocationRefetch.current = false;
       return;
     }
-    if (!selectedLocationId || !isInitialized || calendarDateRange.length !== 2) {
+    if (!isSetupComplete || !selectedLocationId || !isInitialized || calendarDateRange.length !== 2) {
       return;
     }
     lastDateRange.current = null;
@@ -287,7 +293,7 @@ const SummaryDashboard = () => {
     const endDate = calendarDateRange[1].format('YYYY-MM-DD');
     fetchSummaryData(startDate, endDate, groupBy);
     fetchBudgetAllocationSummary?.(startDate, endDate).catch(() => {});
-  }, [selectedLocationId]);
+  }, [selectedLocationId, isSetupComplete, isInitialized, calendarDateRange, fetchSummaryData, fetchBudgetAllocationSummary, groupBy]);
 
   // Handle date change from calendar
   const handleDateChange = useCallback((dates) => {
@@ -317,6 +323,10 @@ const SummaryDashboard = () => {
     const startDate = start.format('YYYY-MM-DD');
     const endDate = end.format('YYYY-MM-DD');
     const dateRangeKey = `${startDate}-${endDate}`;
+
+    if (!isSetupComplete) {
+      return;
+    }
     
     // Prevent duplicate processing
     if (isProcessingWeek.current === dateRangeKey) {
@@ -386,7 +396,7 @@ const SummaryDashboard = () => {
         isProcessingWeek.current = null;
       }, 1000);
     }
-  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries]);
+  }, [checkWeeklyAverageData, fetchDashboardSummary, fetchSummaryData, groupBy, getSummaryEntries, isSetupComplete]);
 
   // New: Week Picker change handler (single week selection like Enter Weekly Data)
   const handleWeekPickerChange = useCallback(async (date) => {
@@ -407,11 +417,12 @@ const SummaryDashboard = () => {
     setGroupBy(groupByValue);
     // Refetch data with new group by if we have a date range
     if (calendarDateRange && calendarDateRange.length === 2) {
+      if (!isSetupComplete) return;
       const startDate = calendarDateRange[0].format('YYYY-MM-DD');
       const endDate = calendarDateRange[1].format('YYYY-MM-DD');
       fetchSummaryData(startDate, endDate, groupByValue);
     }
-  }, [calendarDateRange, fetchSummaryData]);
+  }, [calendarDateRange, fetchSummaryData, isSetupComplete]);
 
   // Handle sales modal visibility
   const handleShowSalesModal = () => {
@@ -786,7 +797,7 @@ const SummaryDashboard = () => {
         </Modal>
       )} */}
       {/* Show tutorial section only when no budget exists for the selected week */}
-      {!hasBudgetForWeek() && !summaryLoading && (
+      {isSetupComplete && !hasBudgetForWeek() && !summaryLoading && (
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
@@ -820,7 +831,7 @@ const SummaryDashboard = () => {
       )}
 
       {/* After a budget exists, show the "How to Use My Budget" tutorial from the Budget screen */}
-      {hasBudgetForWeek() && !summaryLoading && (
+      {isSetupComplete && hasBudgetForWeek() && !summaryLoading && (
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100 mb-5">
           <div className="flex items-center justify-between gap-2">
             <p className="font-medium text-base text-orange-600">
@@ -853,6 +864,34 @@ const SummaryDashboard = () => {
         </div>
       )}
 
+      {!isSetupComplete ? (
+        <Card>
+          <div className="text-center py-8">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <div>
+                  <p className="text-gray-600 mb-4">
+                    Complete your restaurant setup before creating or viewing a budget.
+                  </p>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={showOnboardingRequiredModal}
+                    size="large"
+                    disabled={!canCreateBudget}
+                    className="bg-orange-500 hover:bg-orange-600 border-0"
+                  >
+                    {canCreateBudget
+                      ? `Enter Your Budgets Sales for The week of ${calendarDateRange?.[0]?.format('MMM D')} - ${calendarDateRange?.[1]?.format('MMM D')}`
+                      : 'Budget creation is owner/manager only'}
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+        </Card>
+      ) : (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {calendarDateRange && calendarDateRange.length === 2 ? (
           <>
@@ -946,6 +985,7 @@ const SummaryDashboard = () => {
           </Card>
         )}
       </Space>
+      )}
 
       <SalesDataModal
         visible={isSetupComplete && isSalesModalVisible}

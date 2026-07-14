@@ -11,6 +11,7 @@ import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 import { useGuidance } from '../../../contexts/GuidanceContext';
+import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 const { Title, Text } = Typography;
 
 function isDayClosedForWtd(record) {
@@ -86,6 +87,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     isOnBoardingCompleted === true ||
     restaurantOnboardingData?.restaurants?.[0]?.onboarding_complete === true ||
     restaurantOnboardingData?.data?.restaurants?.[0]?.onboarding_complete === true;
+  const nextSetupRoute = useMemo(
+    () => getNextIncompleteSetupRoute(restaurantOnboardingData),
+    [restaurantOnboardingData]
+  );
 
   const onboardingGateModalOpenRef = useRef(false);
   const showOnboardingRequiredModal = () => {
@@ -97,10 +102,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       content:
         'To add actual weekly sales, please complete onboarding first so we can set up your restaurant details correctly.',
       okText: 'Complete onboarding',
-      cancelText: 'Not now',
+      cancelText: 'Close',
       centered: true,
       maskClosable: true,
-      onOk: () => navigate('/onboarding'),
+      onOk: () => navigate(nextSetupRoute),
       onCancel: () => {},
       afterClose: () => {
         onboardingGateModalOpenRef.current = false;
