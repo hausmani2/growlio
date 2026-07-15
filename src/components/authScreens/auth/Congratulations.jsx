@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Modal } from "antd";
 import Mask from "../../../assets/pngs/new-onboard.png"
 import PrimaryBtn from "../../buttons/Buttons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import useStore from "../../../store/store";
 import { hasOneMonthSalesInfo } from "../../../utils/onboardingUtils";
 import LoadingSpinner from "../../layout/LoadingSpinner";
@@ -11,7 +11,11 @@ import GuidanceOverlay from "../../guidance/GuidanceOverlay";
 
 const Congratulations = () => {
     const navigate = useNavigate();
-    const [isChecking, setIsChecking] = useState(true);
+    const location = useLocation();
+    // Signup / new-user login skip the gate spinner so Welcome → Let's get started
+    // does not flash "Checking your setup..." first.
+    const skipSetupCheck = location.state?.skipSetupCheck === true;
+    const [isChecking, setIsChecking] = useState(!skipSetupCheck);
 
     // Safety: if any global gating modal was triggered during a brief redirect,
     // ensure it doesn't linger on this public page.
@@ -32,6 +36,16 @@ const Congratulations = () => {
 
     // Check authentication and onboarding status on component mount
     useEffect(() => {
+        if (skipSetupCheck) {
+            // Fresh signup/new-user path: show Welcome immediately, no setup gate.
+            if (!isAuthenticated) {
+                navigate('/login', { replace: true });
+                return;
+            }
+            setIsChecking(false);
+            return;
+        }
+
         const checkAuthAndOnboarding = async () => {
             if (!isAuthenticated) {
                 navigate('/login');
@@ -165,7 +179,7 @@ const Congratulations = () => {
 
         checkAuthAndOnboarding();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, navigate]);
+    }, [isAuthenticated, navigate, skipSetupCheck]);
 
     // Show loading spinner while checking authentication and onboarding status
     if (isChecking) {

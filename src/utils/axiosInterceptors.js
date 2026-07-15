@@ -1,6 +1,7 @@
 import axios from 'axios';
 import useStore from '../store/store';
 import { clearImpersonationData } from './tokenManager';
+import { clearClientSessionStorage } from './clearClientSession';
 
 // API Timeout Configuration
 // You can set this via environment variable VITE_API_TIMEOUT (in milliseconds)
@@ -18,6 +19,7 @@ const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
  * - All Redux store data is cleared (prevents showing previous user's data)
  * - All localStorage items are removed
  * - All sessionStorage is cleared
+ * - Accessible cookies are expired
  * - User is redirected to login page
  * 
  * This prevents the issue where a new user would see the previous user's data
@@ -29,27 +31,13 @@ export const clearStoreAndRedirectToLogin = () => {
   const store = useStore.getState();
   if (store.clearPersistedState) {
     store.clearPersistedState();
-  } else {
   }
   
-  // Also clear any remaining localStorage items
-  localStorage.removeItem('token');
-  localStorage.removeItem('user'); // Also remove user from localStorage
-  localStorage.removeItem('restaurant_id');
-  localStorage.removeItem('growlio-store');
+  // Full browser session wipe (tokens, restaurant IDs, cookies, modals)
+  clearClientSessionStorage();
   
-  // Clear impersonation data kept in sessionStorage
+  // Clear impersonation data kept in sessionStorage (also covered above)
   try { clearImpersonationData(); } catch {}
-  
-  // Note: We intentionally keep original_superadmin_token and original_superadmin_refresh
-  // These are only cleared when stopping impersonation, not on logout
-  
-  // Clear sessionStorage
-  sessionStorage.clear();
-  
-  // Explicitly clear restaurant onboarding flags
-  sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
-  sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
   
   // Dispatch custom event to notify other tabs/windows about logout
   window.dispatchEvent(new Event('auth-storage-change'));
@@ -198,10 +186,7 @@ api.interceptors.response.use(
             if (store.clearPersistedState) {
               store.clearPersistedState();
             }
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('user');
+            clearClientSessionStorage();
           }
           break;
         case 403:

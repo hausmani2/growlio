@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
 import Message from "../../../assets/svgs/Message_open.svg"
@@ -17,27 +17,27 @@ const Login = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Prevent mid-login navigation races while handleSubmit decides the destination
+  const isLoginInProgressRef = useRef(false);
   
   // Zustand store hooks
   const { 
     login, 
     error, 
-    isAuthenticated, 
     clearError,
-    user,
   } = useStore();
-  
-  // Get onboarding status check from onboarding slice
-  const checkOnboardingCompletion = useStore((state) => state.checkOnboardingCompletion);
   
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Only redirect if the user was already logged in when they opened /login.
+  // Do NOT depend on isAuthenticated flips during submit — that races with
+  // login() (auth is set true before login() returns) and can skip welcome toasts.
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate(getRoleLandingRoute(user?.restaurant_role));
+    if (useStore.getState().isAuthenticated) {
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate, user?.restaurant_role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Clear error when component mounts to prevent stale errors from showing
   useEffect(() => {
@@ -106,6 +106,12 @@ const Login = () => {
     }
     
     setIsSubmitting(true);
+    isLoginInProgressRef.current = true;
+
+    const showWelcome = (text) => {
+      // No shared key — both "Login successful..." and "Welcome back..." should stack
+      message.success({ content: text, duration: 4 });
+    };
     
     try {
       const result = await login(form);
@@ -116,7 +122,7 @@ const Login = () => {
         // 1. simulation/simulation-onboarding/ (GET) - FIRST
         // 2. /restaurant_v2/restaurants-onboarding/ (GET) - SECOND
         // We should use the cached results from login() instead of calling them again
-        message.success('Login successful! Checking your setup...');
+        showWelcome('Login successful! Checking your setup...');
         
         // Get store state - these should already be populated from login() function
         const restaurantSimulationData = useStore.getState().restaurantSimulationData;
@@ -216,9 +222,9 @@ const Login = () => {
           
           // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
           if (!hasSimulationRestaurant && !hasRegularRestaurant) {
-            message.success('Welcome to Growlio! Let\'s get you set up.');
+            showWelcome('Welcome to Growlio! Let\'s get you set up.');
             setTimeout(() => {
-              navigate('/congratulations', { replace: true });
+              navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
             }, 500);
             return;
           }
@@ -234,7 +240,7 @@ const Login = () => {
               // Restaurant onboarding is complete, redirect to dashboard
               const restaurantId = completeRestaurant.restaurant_id;
               localStorage.setItem('restaurant_id', restaurantId.toString());
-              message.success('Welcome back! Redirecting to dashboard...');
+              showWelcome('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
                 navigate(getRoleLandingRoute(useStore.getState().user?.restaurant_role), { replace: true });
               }, 500);
@@ -242,7 +248,7 @@ const Login = () => {
             }
             
             // User has restaurant but onboarding not complete
-            message.success('Welcome back! Continuing your setup...');
+            showWelcome('Welcome back! Continuing your setup...');
             setTimeout(() => {
               navigate('/onboarding/score', { replace: true });
             }, 500);
@@ -260,7 +266,7 @@ const Login = () => {
               if (completeSimulationRestaurant) {
                 // Simulation onboarding is complete, redirect to simulation dashboard
                 localStorage.setItem('simulation_restaurant_id', completeSimulationRestaurant.simulation_restaurant_id.toString());
-                message.success('Welcome back! Redirecting to simulation dashboard...');
+                showWelcome('Welcome back! Redirecting to simulation dashboard...');
                 setTimeout(() => {
                   navigate('/simulation/dashboard', { replace: true });
                 }, 500);
@@ -268,14 +274,14 @@ const Login = () => {
               }
               
               // Simulation restaurant exists but not complete
-              message.success('Welcome to Growlio! Let\'s complete your setup.');
+              showWelcome('Welcome to Growlio! Let\'s complete your setup.');
               setTimeout(() => {
                 navigate('/onboarding/simulation', { replace: true });
               }, 500);
               return;
             }
             // If simulation onboarding API has no restaurants, redirect to onboarding
-            message.success('Welcome to Growlio! Let\'s complete your setup.');
+            showWelcome('Welcome to Growlio! Let\'s complete your setup.');
             setTimeout(() => {
               navigate('/onboarding/simulation', { replace: true });
             }, 500);
@@ -293,7 +299,7 @@ const Login = () => {
               // Restaurant onboarding is complete, redirect to dashboard
               const restaurantId = completeRestaurant.restaurant_id;
               localStorage.setItem('restaurant_id', restaurantId.toString());
-              message.success('Welcome back! Redirecting to dashboard...');
+              showWelcome('Welcome back! Redirecting to dashboard...');
               setTimeout(() => {
                 navigate(getRoleLandingRoute(useStore.getState().user?.restaurant_role), { replace: true });
               }, 500);
@@ -301,7 +307,7 @@ const Login = () => {
             }
             
             // User has restaurant but onboarding not complete
-            message.success('Welcome back! Continuing your setup...');
+            showWelcome('Welcome back! Continuing your setup...');
             setTimeout(() => {
               navigate('/onboarding/score', { replace: true });
             }, 500);
@@ -309,16 +315,16 @@ const Login = () => {
           }
           
           // Fallback: redirect to congratulations
-          message.success('Welcome to Growlio! Let\'s get you set up.');
+          showWelcome('Welcome to Growlio! Let\'s get you set up.');
           setTimeout(() => {
-            navigate('/congratulations', { replace: true });
+            navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
           }, 500);
         } catch (error) {
           console.error('Error checking status:', error);
           // On error, default to congratulations
-          message.success('Welcome to Growlio! Let\'s get you set up.');
+          showWelcome('Welcome to Growlio! Let\'s get you set up.');
           setTimeout(() => {
-            navigate('/congratulations', { replace: true });
+            navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
           }, 500);
         }
       }
@@ -326,9 +332,15 @@ const Login = () => {
       // Error is already handled in the store
       // The store's login function sets the error state appropriately
       console.error('Login error:', err);
+      isLoginInProgressRef.current = false;
     } finally {
       // Ensure both loading states are reset
       setIsSubmitting(false);
+      // Keep isLoginInProgressRef true on success until this screen unmounts,
+      // so the auth useEffect does not send users to `/` / dashboard mid-redirect.
+      if (!useStore.getState().isAuthenticated) {
+        isLoginInProgressRef.current = false;
+      }
     }
   };
 

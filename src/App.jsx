@@ -108,7 +108,7 @@ const RootRedirect = () => {
         
         // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
         if (!hasSimulationRestaurant && !hasRegularRestaurant) {
-          navigate('/congratulations', { replace: true });
+          navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
           return;
         }
         
@@ -172,11 +172,11 @@ const RootRedirect = () => {
         }
         
         // Fallback: redirect to congratulations
-        navigate('/congratulations', { replace: true });
+        navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
       } catch (error) {
         console.error('Error checking status:', error);
         // On error, default to congratulations
-        navigate('/congratulations', { replace: true });
+        navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
       } finally {
         setIsChecking(false);
       }

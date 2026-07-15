@@ -11,7 +11,6 @@ import {
   isSalesInformationComplete,
   getOnboardingRedirectRoute,
   getNextIncompleteSetupRoute,
-  getIncompleteSetupItems,
   ONBOARDING_ROUTES,
   isOnboardingComplete as checkOnboardingComplete,
   isOnLocationOnboardingPage,
@@ -27,7 +26,6 @@ const ProtectedRoutes = () => {
   const hasCheckedRestaurantRef = useRef(false); // Track if we've checked restaurant to prevent multiple checks
   const hasRedirectedRef = useRef(false); // Track if we've already redirected to prevent infinite loops
   const redirectTimeoutRef = useRef(null); // Track redirect timeout for cleanup
-  const hasShownSetupModalRef = useRef(false);
   const [isCheckingSimulationForDashboard, setIsCheckingSimulationForDashboard] = useState(false);
   const hasCheckedSimulationRef = useRef(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
@@ -110,6 +108,14 @@ const ProtectedRoutes = () => {
       setRestaurantData(restaurantOnboardingData);
     }
   }, [restaurantOnboardingData]);
+
+  // Setup-gate Modal.info() is a global Ant Design portal. Clear any leftover
+  // modal if we leave dashboard routes (e.g. login briefly bounced through /dashboard).
+  useEffect(() => {
+    if (!location.pathname.startsWith('/dashboard')) {
+      Modal.destroyAll();
+    }
+  }, [location.pathname]);
 
   const lastLocationRefreshRef = useRef(null);
   useEffect(() => {
@@ -368,85 +374,6 @@ const ProtectedRoutes = () => {
       return;
     }
 
-    const showSetupRequiredModalOnce = (nextRoute) => {
-      // This gate is only for protected dashboard pages. New signup/welcome
-      // routes should render normally without a blocking setup modal.
-      if (!location.pathname.startsWith('/dashboard')) return false;
-
-      // Never show on simulation routes
-      if (location.pathname.startsWith('/simulation') || location.pathname.startsWith('/onboarding/simulation')) return false;
-
-      // Super admins (without impersonation) should never see onboarding gating
-      const isSuperAdminUser = user?.is_superuser;
-      const impersonating = isImpersonating();
-      if (isSuperAdminUser && !impersonating) return false;
-
-      const modalKey = `setup_required_modal:${location.pathname}`;
-      const lastShown = sessionStorage.getItem(modalKey);
-      if (lastShown === 'shown') return false;
-      if (hasShownSetupModalRef.current) return false;
-
-      hasShownSetupModalRef.current = true;
-      sessionStorage.setItem(modalKey, 'shown');
-
-      const safeNextRoute =
-        typeof nextRoute === 'string' && nextRoute.length > 0
-          ? nextRoute
-          : getNextIncompleteSetupRoute(restaurantData);
-
-      const incompleteItems = getIncompleteSetupItems(restaurantData);
-
-      Modal.info({
-        title: 'Finish your setup to continue',
-        content: (
-          <div>
-            <div className="mb-3">
-              To access this page, please complete your restaurant setup first.
-            </div>
-            {incompleteItems.length > 0 && (
-              <div className="mb-3">
-                <div className="font-medium mb-2">Steps remaining:</div>
-                <ul className="list-disc list-inside space-y-1">
-                  {incompleteItems.slice(0, 8).map((item) => (
-                    <li key={item.key || item.label}>
-                      {item.route ? (
-                        <button
-                          type="button"
-                          className="text-blue-600 hover:underline"
-                          onClick={() => {
-                            Modal.destroyAll();
-                            hasRedirectedRef.current = false;
-                            navigate(item.route, { replace: true });
-                          }}
-                        >
-                          {item.label}
-                        </button>
-                      ) : (
-                        item.label
-                      )}
-                    </li>
-                  ))}
-                  {incompleteItems.length > 8 && (
-                    <li>…and {incompleteItems.length - 8} more</li>
-                  )}
-                </ul>
-              </div>
-            )}
-            <div className="text-sm text-gray-600">
-              We’ll take you to the next required step now.
-            </div>
-          </div>
-        ),
-        okText: 'Continue setup',
-        onOk: () => {
-          hasRedirectedRef.current = false;
-          navigate(safeNextRoute, { replace: true });
-        },
-      });
-
-      return true;
-    };
-
     // CRITICAL: If onboarding is completely finished (onboarding_complete: true), 
     // allow ALL routes - user should NOT be redirected to /onboarding
     if (onboardingComplete) {
@@ -587,17 +514,15 @@ const ProtectedRoutes = () => {
     
     // If One Month Sales Info is FALSE, block dashboard routes and guide user to next setup step
     if (restaurantExists && !oneMonthSalesInfoComplete) {
-      // If user is trying to access ANY dashboard route, show modal and redirect to next required step
+      // If user is trying to access ANY dashboard route, redirect to next required step
       if (location.pathname.startsWith('/dashboard')) {
         const nextRoute = getNextIncompleteSetupRoute(restaurantData);
-        const shown = showSetupRequiredModalOnce(nextRoute);
-        if (shown) return;
-
-        // Fallback redirect if modal is suppressed (e.g. already shown)
         if (!hasRedirectedRef.current) {
           hasRedirectedRef.current = true;
           sessionStorage.setItem('lastProcessedPath', location.pathname);
           sessionStorage.setItem('lastRedirectRoute', nextRoute);
+          // Silent replace — do not open Modal.info here. It survives route changes
+          // and flashed over login/signup → score/congratulations redirects.
           setTimeout(() => navigate(nextRoute, { replace: true }), 0);
         }
         return;
@@ -640,12 +565,10 @@ const ProtectedRoutes = () => {
         return;
       }
       
-      // If user attempted a dashboard route and redirecting into onboarding, show a professional gate modal
+      // If user attempted a dashboard route and redirecting into onboarding, replace silently.
+      // Modal.info was removed here — it persisted across auth redirects and caused flashes.
       if (location.pathname.startsWith('/dashboard') && redirectRoute.startsWith('/onboarding')) {
         const nextRoute = getNextIncompleteSetupRoute(restaurantData);
-        const shown = showSetupRequiredModalOnce(nextRoute);
-        if (shown) return;
-
         if (!hasRedirectedRef.current || lastProcessedPath !== location.pathname) {
           hasRedirectedRef.current = true;
           sessionStorage.setItem('lastProcessedPath', location.pathname);

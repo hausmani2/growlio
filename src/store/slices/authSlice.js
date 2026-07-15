@@ -1,5 +1,6 @@
 import { apiPost, apiGet } from '../../utils/axiosInterceptors';
 import { enrichUserWithRestaurantRole } from '../../utils/rolePermissions';
+import { clearClientSessionStorage } from '../../utils/clearClientSession';
 
 // Simple token check - just undefined vs token
 const hasToken = (token) => {
@@ -304,14 +305,11 @@ const createAuthSlice = (set, get) => {
     
     // Logout function - clears all state and redirects to login
     logout: () => {
-      // Clear restaurant simulation cache on logout
-      sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
-      sessionStorage.removeItem('restaurantSimulationLastCheckTime');
-      
-      // Use the store's clearPersistedState function to completely reset all state
       const currentState = get();
       if (currentState.clearPersistedState) {
         currentState.clearPersistedState();
+      } else {
+        clearClientSessionStorage();
       }
       
       // Also call individual clear functions as backup
@@ -326,32 +324,13 @@ const createAuthSlice = (set, get) => {
       if (currentState.clearDashboardSummary) {
         currentState.clearDashboardSummary();
       }
+
+      if (currentState.clearSimulationState) {
+        currentState.clearSimulationState();
+      }
       
-      // Clear all localStorage items related to the app
-      const keysToRemove = [
-        'token',
-        'user', // Also remove user from localStorage
-        'restaurant_id',
-        'growlio-store' // This is the Zustand persist key
-      ];
-      
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-      });
-      
-      // Clear sessionStorage as well
-      sessionStorage.clear();
-      
-      // Clear onboarding-specific session storage
-      sessionStorage.removeItem('onboarding_completion_check_time');
-      sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
-      sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
-      
-      // Clear chat conversation ID on logout
-      sessionStorage.removeItem('chat_conversation_id');
-      
-      // Dispatch custom event to notify other tabs/windows about logout
-      window.dispatchEvent(new Event('auth-storage-change'));
+      // Belt-and-suspenders: ensure browser session is wiped even if store reset missed keys
+      clearClientSessionStorage();
       
       // Clear all auth state
       set(() => ({ 
@@ -363,8 +342,22 @@ const createAuthSlice = (set, get) => {
         originalToken: null,
         isAuthenticated: false, 
         error: null, 
-        loading: false
+        loading: false,
+        restaurantOnboardingData: null,
+        restaurantOnboardingDataTimestamp: null,
+        restaurantSimulationData: null,
+        restaurantSimulationDataTimestamp: null,
+        simulationOnboardingStatus: null,
+        simulationOnboardingStatusTimestamp: null,
+        selectedLocationId: null,
       }));
+
+      // Notify other tabs
+      try {
+        window.dispatchEvent(new Event('auth-storage-change'));
+      } catch (_) {
+        // ignore
+      }
       
       // Force redirect to login page using window.location to ensure full page reload
       // This prevents any routing state issues and ensures clean logout
@@ -392,15 +385,8 @@ const createAuthSlice = (set, get) => {
         const { access, refresh, ...userData } = response.data.data || response.data;
         
         if (hasToken(access)) {
-          // Prevent stale restaurant context from previous users/sessions.
-          // Restaurant selection should be re-derived from onboarding APIs after registration.
-          try {
-            localStorage.removeItem('restaurant_id');
-            localStorage.removeItem('simulation_restaurant_id');
-            localStorage.removeItem('selected_location_id');
-          } catch (e) {
-            // ignore
-          }
+          // Wipe previous user's browser session before writing the new token
+          clearClientSessionStorage();
 
           // Registration successful with token - user is automatically authenticated
           // Store in localStorage for cross-tab sync and sessionStorage for backward compatibility
@@ -409,35 +395,25 @@ const createAuthSlice = (set, get) => {
           sessionStorage.setItem('token', access);
           sessionStorage.setItem('user', JSON.stringify(userData));
           
-          // Clear any old chat conversation ID on new registration
-          sessionStorage.removeItem('chat_conversation_id');
-          
-          // Clear simulation-related caches on new registration to ensure fresh API calls
-          sessionStorage.removeItem('isSimulationMode');
-          sessionStorage.removeItem('simulationModeLastCheck');
-          sessionStorage.removeItem('appSimulationMode');
-          sessionStorage.removeItem('appSimulationModeLastCheck');
-          sessionStorage.removeItem('headerSimulationMode');
-          sessionStorage.removeItem('headerSimulationModeLastCheck');
-          sessionStorage.removeItem('simulationCheckCongratulations');
-          sessionStorage.removeItem('simulationCheckCongratulationsLastCheck');
-          sessionStorage.removeItem('simulationCheckCongratulationsComplete');
-          sessionStorage.removeItem('hasCheckedRestaurantSimulationGlobal');
-          sessionStorage.removeItem('restaurantSimulationLastCheckTime');
-          sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
-          sessionStorage.removeItem('simulationOnboardingLastCheckTime');
-          
-          // Clear restaurant simulation data from store on registration
-          set(() => ({
-            restaurantSimulationData: null,
-            restaurantSimulationDataTimestamp: null
-          }));
-          
-          // Clear simulation onboarding status from store on registration
+          // Clear restaurant + simulation store caches BEFORE auth flips.
+          // Stale previous-user onboarding data caused a flash of setup/dashboard
+          // before the Welcome / Let's get started screen.
           const currentState = get();
           if (currentState.clearSimulationState) {
             currentState.clearSimulationState();
           }
+          
+          set(() => ({
+            restaurantSimulationData: null,
+            restaurantSimulationDataTimestamp: null,
+            restaurantOnboardingData: null,
+            restaurantOnboardingDataTimestamp: null,
+            simulationOnboardingStatus: null,
+            simulationOnboardingStatusTimestamp: null,
+            selectedLocationId: null,
+            salesInformationData: null,
+            isOnBoardingCompleted: false,
+          }));
           
           // Dispatch custom event to notify other tabs/windows in same origin
           window.dispatchEvent(new Event('auth-storage-change'));
@@ -454,42 +430,16 @@ const createAuthSlice = (set, get) => {
             error: null 
           }));
           
-          // CRITICAL: Call BOTH APIs in PARALLEL immediately after registration for NEW users
-          // This ensures we have restaurant data from both sources before any redirects happen
-          // We need to check both APIs to determine if user has restaurants in either one
-          // Both APIs are called in parallel for better performance
-          // NOTE: These API calls run in the background and don't block the return
-          // The loading state is already set to false above, so the button won't be stuck
-          try {
-            // Call both APIs in parallel using Promise.allSettled to handle errors gracefully
-            const [simulationResult, restaurantResult] = await Promise.allSettled([
-              get().getSimulationOnboardingStatus().catch(err => {
-                // If simulation API fails (e.g., user doesn't have access), return empty result
-                // This is expected for non-simulation users, so we don't log it as an error
-                return { success: true, data: { restaurants: [] } };
-              }),
-              get().getRestaurantOnboarding(true),
-            ]);
-            
-            // Log results with detailed information
-            if (simulationResult.status === 'fulfilled') {
-              // Simulation API completed successfully
-            } else {
-              console.warn('⚠️ [authSlice] Simulation onboarding API rejected after registration:', simulationResult.reason);
-            }
-            
-            if (restaurantResult.status === 'fulfilled') {
-              // Restaurant API completed successfully
-            } else {
-              console.warn('⚠️ [authSlice] Restaurant onboarding API rejected after registration:', restaurantResult.reason);
-            }
-          } catch (onboardingError) {
+          // Prefetch onboarding in background — do not block signup → Welcome navigation
+          Promise.allSettled([
+            get().getSimulationOnboardingStatus().catch(() => ({
+              success: true,
+              data: { restaurants: [] },
+            })),
+            get().getRestaurantOnboarding(true),
+          ]).catch((onboardingError) => {
             console.error('❌ [authSlice] Failed to check onboarding status after registration:', onboardingError);
-            // Don't fail registration if onboarding check fails
-          }
-          
-          // CRITICAL: Ensure loading is false before returning (in case API calls set it to true)
-          set(() => ({ loading: false }));
+          });
           
           return { success: true, data: response.data, needsLogin: false, token: access };
         } else {
@@ -561,6 +511,8 @@ const createAuthSlice = (set, get) => {
       const currentState = get();
       if (currentState.clearPersistedState) {
         currentState.clearPersistedState();
+      } else {
+        clearClientSessionStorage();
       }
       
       // Also call individual clear functions as backup
@@ -575,14 +527,31 @@ const createAuthSlice = (set, get) => {
       if (currentState.clearDashboardSummary) {
         currentState.clearDashboardSummary();
       }
+
+      if (currentState.clearSimulationState) {
+        currentState.clearSimulationState();
+      }
+      
+      clearClientSessionStorage();
       
       // Clear all auth state
       set(() => ({ 
         user: null, 
-        token: null, 
+        token: null,
+        activeToken: null,
+        isImpersonatingSession: false,
+        impersonatorId: null,
+        originalToken: null,
         isAuthenticated: false, 
         error: null, 
-        loading: false
+        loading: false,
+        restaurantOnboardingData: null,
+        restaurantOnboardingDataTimestamp: null,
+        restaurantSimulationData: null,
+        restaurantSimulationDataTimestamp: null,
+        simulationOnboardingStatus: null,
+        simulationOnboardingStatusTimestamp: null,
+        selectedLocationId: null,
       }));
       
     },

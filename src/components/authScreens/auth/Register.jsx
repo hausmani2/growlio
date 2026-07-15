@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useStore from '../../../store/store';
 import { useNavigate } from 'react-router-dom';
 import Message from "../../../assets/svgs/Message_open.svg"
@@ -26,26 +26,27 @@ const Register = () => {
   const [activeLegalTab, setActiveLegalTab] = useState('terms');
   const [isVerifyEmailModalOpen, setIsVerifyEmailModalOpen] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const isRegisterInProgressRef = useRef(false);
   
   // Zustand store hooks
   const { 
     register, 
     loading, 
     error, 
-    isAuthenticated, 
     clearError 
   } = useStore();
   
   const navigate = useNavigate();
 
-  // Redirect if already authenticated
+  // Only redirect if already logged in when opening /signup — not mid-submit.
+  // Auth flips true inside register() before it returns; navigating early flashs
+  // setup checks before Welcome / Let's get started.
   useEffect(() => {
-    if (isAuthenticated) {
-      // Do not rely on `restaurant_id` here; it can be stale or present before onboarding is complete.
-      // New users should always go through the welcome/congratulations flow first.
-      navigate('/congratulations');
+    if (useStore.getState().isAuthenticated && !isRegisterInProgressRef.current) {
+      navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
     }
-  }, [isAuthenticated, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Clear error when component unmounts or form changes
   useEffect(() => {
@@ -127,6 +128,7 @@ const Register = () => {
     }
     
     setIsSubmitting(true);
+    isRegisterInProgressRef.current = true;
     
     try {
       const result = await register(form);
@@ -137,21 +139,22 @@ const Register = () => {
         
         if (result.needsLogin) {
           // Registration requires email verification before login.
+          isRegisterInProgressRef.current = false;
           setRegisteredEmail(form.email);
           setIsVerifyEmailModalOpen(true);
         } else {
           // Token received - user is automatically authenticated
           message.success('Registration successful! Welcome to Growlio!');
-          // Navigate to onboarding after successful registration with token
-          // Small delay to ensure state is cleared
-          setTimeout(() => {
-            navigate('/congratulations');
-          }, 100);
+          // Go straight to Welcome — skipSetupCheck avoids "Checking your setup..." flash
+          navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
         }
+      } else {
+        isRegisterInProgressRef.current = false;
       }
     } catch (err) {
       // Error is already handled in the store
       console.error('Registration error:', err);
+      isRegisterInProgressRef.current = false;
       setIsSubmitting(false);
     } finally {
       // Ensure loading is always cleared

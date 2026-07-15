@@ -1,19 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useStore from '../../store/store';
+import React from 'react';
 import Login from './auth/Login';
 
 const LoginPage = () => {
-  const navigate = useNavigate();
-  const isAuthenticated = useStore((state) => state.isAuthenticated);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
-
+  // Do not redirect to /dashboard here on isAuthenticated.
+  // That races with Login's post-login onboarding checks and briefly opens the
+  // "Finish your setup" gate before the correct route (score / congratulations).
+  // Login.jsx handles already-authenticated visits and post-submit redirects.
   return (
     <div className='w-full h-screen flex justify-center items-center'>
         <Login />

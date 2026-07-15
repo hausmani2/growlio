@@ -15,6 +15,7 @@ import createSquarePosDetailsSlice from './slices/squarePosDetailsSlice';
 import createSimulationSlice from './slices/simulationSlice';
 import createPosIntegrationsSlice from './slices/posIntegrationsSlice';
 import createLocationSlice from './slices/locationSlice';
+import { clearClientSessionStorage } from '../utils/clearClientSession';
 
 
 const useStore = create(
@@ -41,23 +42,31 @@ const useStore = create(
         
         // Function to completely clear all persisted state
         clearPersistedState: () => {
-          
-          // Clear localStorage
-          localStorage.removeItem('growlio-store');
-          localStorage.removeItem('restaurant_id');
-          
-          // Clear sessionStorage (including tokens)
-          sessionStorage.clear();
+          // Tokens, restaurant IDs, session flags, cookies, modals
+          clearClientSessionStorage();
           
           // Reset all slices to initial state
           set(() => ({
             // Auth slice reset
             user: null,
             token: null,
+            activeToken: null,
+            isImpersonatingSession: false,
+            impersonatorId: null,
+            originalToken: null,
             isAuthenticated: false,
             error: null,
             onboardingStatus: null,
             loading: false,
+            restaurantOnboardingData: null,
+            restaurantOnboardingDataTimestamp: null,
+            restaurantSimulationData: null,
+            restaurantSimulationDataTimestamp: null,
+            simulationOnboardingStatus: null,
+            simulationOnboardingStatusTimestamp: null,
+            selectedLocationId: null,
+            locations: [],
+            locationsRestaurantId: null,
             
             // Onboarding slice reset
             completeOnboardingData: {
