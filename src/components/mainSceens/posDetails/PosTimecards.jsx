@@ -4,6 +4,15 @@ import useStore from '../../../store/store';
 import GenericDataTable from '../../common/GenericDataTable';
 import PageHeaderSection from '../../common/PageHeaderSection';
 
+const formatApiDateTime = (value) => {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString('en-US', { timeZone: 'UTC' });
+};
+
 const PosTimecards = () => {
   const fetchPosTimecards = useStore((s) => s.fetchPosTimecards);
   const loading = useStore((s) => s.posTimecardsLoading);
@@ -28,14 +37,14 @@ const PosTimecards = () => {
         dataIndex: 'start_at',
         key: 'start_at',
         width: 220,
-        render: (v) => (v ? new Date(v).toLocaleString() : '-'),
+        render: formatApiDateTime,
       },
       {
         title: 'End',
         dataIndex: 'end_at',
         key: 'end_at',
         width: 220,
-        render: (v) => (v ? new Date(v).toLocaleString() : '-'),
+        render: formatApiDateTime,
       },
       { title: 'Hours', dataIndex: 'hours', key: 'hours', width: 100 },
       {
