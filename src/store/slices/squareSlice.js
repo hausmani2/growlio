@@ -22,7 +22,7 @@ const createSquareSlice = (set, get) => ({
   // Square connection state
   squareLoading: false,
   squareError: null,
-  squareStatus: null, // 'disconnected' | 'connected' | 'connecting' | 'error'
+  squareStatus: null, // 'disconnected' | 'connected' | 'connecting' | 'erro"
   squareConnectionData: null,
   squareMerchantDetail: null,
   merchantDetailLoading: false,
