@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Mask from "../../assets/pngs/new-onboard.png";
 import useStore from "../../store/store";
-import { ONBOARDING_ROUTES } from "../../utils/onboardingUtils";
+import { ONBOARDING_ROUTES, setAutoZeroProfitabilityFromSimulation } from "../../utils/onboardingUtils";
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -52,6 +52,9 @@ const SetupProgressCard = ({
       item.label === "Enter one month of sales and expenses" ||
       route === ONBOARDING_ROUTES.SCORE;
     if (isSalesStep) {
+      if (localStorage.getItem('simulation_restaurant_id')) {
+        setAutoZeroProfitabilityFromSimulation();
+      }
       useStore.setState({
         salesInformationData: null,
         salesInformationLoading: false,

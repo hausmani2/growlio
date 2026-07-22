@@ -1,18 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeftLong } from 'react-icons/fa6';
 import { message } from 'antd';
 import growlioLogo from '../../assets/svgs/growlio-logo.png';
 import PlansWrapper from '../mainSceens/plans/PlansWrapper';
+import LoadingSpinner from '../layout/LoadingSpinner';
 import useStore from '../../store/store';
-import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
+import {
+  ONBOARDING_ROUTES,
+  shouldAutoZeroProfitabilityFromSimulation,
+  ZERO_PROFITABILITY_PAYLOAD,
+} from '../../utils/onboardingUtils';
 import { isImpersonating } from '../../utils/tokenManager';
+import { getRoleLandingRoute } from '../../utils/rolePermissions';
 
 const OnboardingPlansPage = () => {
   const navigate = useNavigate();
   const logout = useStore((state) => state.logout);
   const stopImpersonation = useStore((state) => state.stopImpersonation);
+  const createSalesInformation = useStore((state) => state.createSalesInformation);
+  const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
+  const user = useStore((state) => state.user);
   const impersonating = isImpersonating();
+  const [isSubmittingZeros, setIsSubmittingZeros] = useState(false);
+
+  const handleContinue = async () => {
+    // Simulation → restaurant: silently Finish profitability with all zeros, then Report Card
+    if (shouldAutoZeroProfitabilityFromSimulation()) {
+      setIsSubmittingZeros(true);
+      try {
+        const result = await createSalesInformation(ZERO_PROFITABILITY_PAYLOAD);
+        if (!result?.success) {
+          message.error(result?.error || 'Failed to complete setup. Please try again.');
+          setIsSubmittingZeros(false);
+          return;
+        }
+
+        const locationId = useStore.getState().selectedLocationId;
+        await getRestaurantOnboarding(true, locationId || undefined);
+        // Keep auto-zero flag until Report Card mounts so ProtectedRoutes
+        // does not bounce to /onboarding/score (which flashes the Score UI).
+        navigate(getRoleLandingRoute(user?.restaurant_role) || ONBOARDING_ROUTES.REPORT_CARD, {
+          replace: true,
+        });
+      } catch (error) {
+        console.error('Error auto-submitting zero profitability score:', error);
+        message.error(error?.message || 'Failed to complete setup. Please try again.');
+        setIsSubmittingZeros(false);
+      }
+      return;
+    }
+
+    navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+  };
 
   const handleStopImpersonation = async () => {
     try {
@@ -26,6 +66,10 @@ const OnboardingPlansPage = () => {
       message.error('Failed to stop impersonation');
     }
   };
+
+  if (isSubmittingZeros) {
+    return <LoadingSpinner message="Setting up your restaurant..." />;
+  }
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-gray-50 px-4 py-8 sm:px-6 lg:px-8">
@@ -66,7 +110,7 @@ const OnboardingPlansPage = () => {
           onboardingMode
           title="Choose Your Plan"
           subtitle="Start with the free plan, then upgrade when your restaurant is ready for more tools."
-          onContinue={() => navigate(ONBOARDING_ROUTES.SCORE, { replace: true })}
+          onContinue={handleContinue}
         />
       </div>
     </div>

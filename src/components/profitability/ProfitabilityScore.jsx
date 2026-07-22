@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import growlioLogo from "../../assets/svgs/growlio-logo.png";
 import PrimaryBtn from "../buttons/Buttons";
@@ -8,12 +8,71 @@ import { CheckOutlined } from '@ant-design/icons';
 import { message } from "antd";
 import useStore from "../../store/store";
 import { isImpersonating } from "../../utils/tokenManager";
+import LoadingSpinner from "../layout/LoadingSpinner";
+import {
+    ONBOARDING_ROUTES,
+    shouldAutoZeroProfitabilityFromSimulation,
+    clearAutoZeroProfitabilityFromSimulation,
+    ZERO_PROFITABILITY_PAYLOAD,
+} from "../../utils/onboardingUtils";
+import { getRoleLandingRoute } from "../../utils/rolePermissions";
 
 const ProfitabilityScore = () => {
     const navigate = useNavigate();
     const [showInfoModal, setShowInfoModal] = useState(false);
+    const [isAutoZeroing, setIsAutoZeroing] = useState(() =>
+        shouldAutoZeroProfitabilityFromSimulation()
+    );
     const stopImpersonation = useStore((state) => state.stopImpersonation);
+    const createSalesInformation = useStore((state) => state.createSalesInformation);
+    const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
+    const user = useStore((state) => state.user);
     const impersonating = isImpersonating();
+    const autoZeroStartedRef = useRef(false);
+
+    // Simulation → restaurant: zeros already submitted on Plans — never paint Score UI
+    useEffect(() => {
+        if (!shouldAutoZeroProfitabilityFromSimulation()) {
+            setIsAutoZeroing(false);
+            return;
+        }
+        if (autoZeroStartedRef.current) return;
+        autoZeroStartedRef.current = true;
+        setIsAutoZeroing(true);
+
+        const run = async () => {
+            try {
+                // Prefer landing on Report Card immediately; only POST if still needed
+                const onboardingData = useStore.getState().restaurantOnboardingData;
+                const alreadyHasSales =
+                    onboardingData?.restaurants?.[0]?.['One Month Sales Information'] === true;
+
+                if (!alreadyHasSales) {
+                    const result = await createSalesInformation(ZERO_PROFITABILITY_PAYLOAD);
+                    if (!result?.success) {
+                        message.error(result?.error || "Failed to complete setup. Please try again.");
+                        clearAutoZeroProfitabilityFromSimulation();
+                        setIsAutoZeroing(false);
+                        return;
+                    }
+                    const locationId = useStore.getState().selectedLocationId;
+                    await getRestaurantOnboarding(true, locationId || undefined);
+                }
+
+                navigate(
+                    getRoleLandingRoute(user?.restaurant_role) || ONBOARDING_ROUTES.REPORT_CARD,
+                    { replace: true }
+                );
+            } catch (error) {
+                console.error("Error auto-submitting zero profitability score:", error);
+                message.error(error?.message || "Failed to complete setup. Please try again.");
+                clearAutoZeroProfitabilityFromSimulation();
+                setIsAutoZeroing(false);
+            }
+        };
+
+        run();
+    }, [createSalesInformation, getRestaurantOnboarding, navigate, user?.restaurant_role]);
 
     const handleGetScore = () => {
         // Navigate to the profitability form or next step
@@ -44,6 +103,10 @@ const ProfitabilityScore = () => {
         "Last Months Labor Expense",
         "Your Monthly Rent"
     ];
+
+    if (isAutoZeroing) {
+        return <LoadingSpinner message="Setting up your restaurant..." />;
+    }
 
     return (
         <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex items-center justify-center bg-gray-50">
