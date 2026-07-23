@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2 } from 'react-icons/fi';
+import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2, FiImage } from 'react-icons/fi';
 import { apiGet, apiPut, apiDelete, streamChatbotMessage } from '../../../utils/axiosInterceptors';
 import { message, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -98,6 +98,8 @@ const ChatPage = () => {
   const inputRef = useRef(null);
   const textareaRef = useRef(null);
   const inputContainerRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -192,6 +194,7 @@ const ChatPage = () => {
 
     try {
       setIsLoadingHistory(true);
+      setSelectedImage(null);
       setSelectedConversationIdLocal(threadId);
       setSelectedConversationId(threadId); // Update store
       const response = await apiGet(`/chatbot/conversation/${threadId}/`);
@@ -260,6 +263,7 @@ const ChatPage = () => {
       },
     ]);
     setInputMessage('');
+    setSelectedImage(null);
     
     // Close sidebar on mobile after starting new conversation
     if (window.innerWidth < 768) {
@@ -351,15 +355,20 @@ const ChatPage = () => {
    * Send message to the backend API using SSE streaming
    */
   const sendMessage = async (messageText) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() && !selectedImage) return;
+    const attachedImage = selectedImage;
+    const displayText = [messageText.trim(), attachedImage ? `[Image attached: ${attachedImage.name}]` : '']
+      .filter(Boolean)
+      .join('\n');
 
     // Prepare user message
     const userMessage = {
-      text: messageText,
+      text: displayText || 'Analyze this menu item image.',
       isUser: true,
       timestamp: new Date(),
     };
     setInputMessage('');
+    setSelectedImage(null);
     setIsLoading(true);
     
     // Reset textarea height
@@ -369,10 +378,20 @@ const ChatPage = () => {
 
     // Prepare request payload
     const conversationIdToUse = selectedConversationId ? String(selectedConversationId) : '';
-    const payload = {
-      question: messageText,
-      conversation_id: conversationIdToUse,
-    };
+    const payload = attachedImage
+      ? (() => {
+          const formData = new FormData();
+          formData.append('question', messageText);
+          formData.append('conversation_id', conversationIdToUse);
+          formData.append('image', attachedImage);
+          const locationId = localStorage.getItem('selected_location_id');
+          if (locationId) formData.append('location_id', locationId);
+          return formData;
+        })()
+      : {
+          question: messageText,
+          conversation_id: conversationIdToUse,
+        };
 
     // Initialize bot message for streaming with typing effect
     let fullMessageText = ''; // Complete message from server
@@ -526,13 +545,16 @@ const ChatPage = () => {
       // Replace placeholder with error message
       setMessages((prev) => {
         const updated = [...prev];
-        updated[botMessageIndex] = {
-          text: error.response?.data?.message || 
-                error.message || 
-                'Sorry, I encountered an error. Please try again later.',
-          isUser: false,
-          timestamp: new Date(),
-        };
+        const lastIndex = updated.length - 1;
+        if (lastIndex >= 0) {
+          updated[lastIndex] = {
+            text: error.response?.data?.message ||
+                  error.message ||
+                  'Sorry, I encountered an error. Please try again later.',
+            isUser: false,
+            timestamp: new Date(),
+          };
+        }
         return updated;
       });
     }
@@ -543,9 +565,16 @@ const ChatPage = () => {
    */
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (inputMessage.trim() && !isLoading) {
+    if ((inputMessage.trim() || selectedImage) && !isLoading) {
       sendMessage(inputMessage);
     }
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    e.target.value = '';
   };
 
   /**
@@ -569,6 +598,8 @@ const ChatPage = () => {
       textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
     }
   };
+
+  const canSend = Boolean(inputMessage.trim() || selectedImage) && !isLoading;
 
   /**
    * Format date for display
@@ -933,10 +964,38 @@ const ChatPage = () => {
               ? 'max-w-full md:max-w-3xl' 
               : 'max-w-full md:max-w-5xl'
           }`}>
+            {selectedImage && (
+              <div className="mb-2 flex items-center justify-between rounded-lg bg-orange-50 px-3 py-2 text-sm text-gray-700">
+                <span className="truncate pr-2">{selectedImage.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedImage(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FiX className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <div 
               ref={inputContainerRef}
               className="flex justify-center items-end gap-2 sm:gap-3 bg-white rounded-2xl border border-gray-300 p-2 sm:p-3 transition-all"
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={() => fileInputRef.current?.click()}
+                className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg border border-gray-300 text-gray-600 flex items-center justify-center hover:border-orange-300 hover:text-[#FF8132] disabled:bg-gray-100 disabled:text-gray-300 flex-shrink-0"
+                aria-label="Attach image"
+              >
+                <FiImage className="w-5 h-5" />
+              </button>
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
@@ -966,16 +1025,16 @@ const ChatPage = () => {
               />
               <button
                 type="submit"
-                disabled={!inputMessage.trim() || isLoading}
+                disabled={!canSend}
                 className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0 touch-manipulation active:opacity-80 active:scale-95"
-                style={{ backgroundColor: inputMessage.trim() && !isLoading ? '#FF8132' : '#d1d5db' }}
+                style={{ backgroundColor: canSend ? '#FF8132' : '#d1d5db' }}
                 onMouseEnter={(e) => {
-                  if (inputMessage.trim() && !isLoading) {
+                  if (canSend) {
                     e.target.style.backgroundColor = '#EB5B00';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (inputMessage.trim() && !isLoading) {
+                  if (canSend) {
                     e.target.style.backgroundColor = '#FF8132';
                   }
                 }}

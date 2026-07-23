@@ -75,6 +75,13 @@ const api = axios.create({
 // Request Interceptor: Attach token if available
 api.interceptors.request.use(
   (config) => {
+    // Let the browser set multipart boundary for FormData uploads
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
+
     // Skip token attachment for authentication endpoints
     const isAuthEndpoint = config.url && (
       config.url.includes('/authentication/login/') ||
@@ -285,14 +292,18 @@ export const streamChatbotMessage = async (url, payload, callbacks = {}) => {
 
     const baseURL = import.meta.env.VITE_ROOT_URL;
     const fullUrl = `${baseURL}${url}`;
+    const isFormData = payload instanceof FormData;
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const response = await fetch(fullUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body: isFormData ? payload : JSON.stringify(payload),
     });
 
     if (!response.ok) {

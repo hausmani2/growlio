@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2 } from 'react-icons/fi';
+import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2, FiImage } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from 'antd';
 import useStore from '../../store/store';
@@ -38,6 +38,8 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const showLimitReachedModalOnce = (data) => {
     // Prevent multiple modals at once, but allow re-show after a short cooldown.
@@ -298,15 +300,20 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
    * Send message to the backend API using SSE streaming
    */
   const sendMessage = async (messageText) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() && !selectedImage) return;
+    const attachedImage = selectedImage;
+    const displayText = [messageText.trim(), attachedImage ? `[Image attached: ${attachedImage.name}]` : '']
+      .filter(Boolean)
+      .join('\n');
 
     // Prepare user message
     const userMessage = {
-      text: messageText,
+      text: displayText || 'Analyze this menu item image.',
       isUser: true,
       timestamp: new Date(),
     };
     setInputMessage('');
+    setSelectedImage(null);
     setIsLoading(true);
     
     // Reset textarea height
@@ -316,10 +323,20 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
 
     // Prepare request payload
     const conversationIdToUse = (conversationId && conversationId !== '') ? String(conversationId) : '';
-    const payload = {
-      question: messageText,
-      conversation_id: conversationIdToUse,
-    };
+    const payload = attachedImage
+      ? (() => {
+          const formData = new FormData();
+          formData.append('question', messageText);
+          formData.append('conversation_id', conversationIdToUse);
+          formData.append('image', attachedImage);
+          const locationId = localStorage.getItem('selected_location_id');
+          if (locationId) formData.append('location_id', locationId);
+          return formData;
+        })()
+      : {
+          question: messageText,
+          conversation_id: conversationIdToUse,
+        };
 
     // Initialize bot message for streaming with typing effect
     let fullMessageText = ''; // Complete message from server
@@ -474,13 +491,16 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
       // Replace placeholder with error message
       setMessages((prev) => {
         const updated = [...prev];
-        updated[botMessageIndex] = {
-          text: error.response?.data?.message || 
-                error.message || 
-                'Sorry, I encountered an error. Please try again later.',
-          isUser: false,
-          timestamp: new Date(),
-        };
+        const lastIndex = updated.length - 1;
+        if (lastIndex >= 0) {
+          updated[lastIndex] = {
+            text: error.response?.data?.message ||
+                  error.message ||
+                  'Sorry, I encountered an error. Please try again later.',
+            isUser: false,
+            timestamp: new Date(),
+          };
+        }
         return updated;
       });
     }
@@ -491,9 +511,16 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
    */
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (inputMessage.trim() && !isLoading) {
+    if ((inputMessage.trim() || selectedImage) && !isLoading) {
       sendMessage(inputMessage);
     }
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    e.target.value = '';
   };
 
   /**
@@ -620,7 +647,35 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
           onSubmit={handleSubmit}
           className="border-t border-gray-200 bg-white px-4 py-3 rounded-b-2xl"
         >
+          {selectedImage && (
+            <div className="mb-2 flex items-center justify-between rounded-lg bg-orange-50 px-3 py-2 text-sm text-gray-700">
+              <span className="truncate pr-2">{selectedImage.name}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-10 h-10 md:w-11 md:h-11 rounded-lg border border-gray-300 text-gray-600 flex items-center justify-center hover:border-orange-300 hover:text-[#FF8132] disabled:bg-gray-100 disabled:text-gray-300"
+              aria-label="Attach image"
+            >
+              <FiImage className="w-5 h-5" />
+            </button>
             <textarea
               ref={inputRef}
               value={inputMessage}
@@ -647,7 +702,7 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
             />
             <button
               type="submit"
-              disabled={!inputMessage.trim() || isLoading}
+              disabled={(!inputMessage.trim() && !selectedImage) || isLoading}
               className="w-10 h-10 md:w-11 md:h-11 rounded-lg text-white flex items-center justify-center bg-[#FF8132] hover:bg-[#EB5B00] disabled:bg-gray-300 disabled:cursor-not-allowed disabled:hover:bg-gray-300 transition-colors"
               aria-label="Send message"
             >
