@@ -115,6 +115,18 @@ const Login = () => {
     
     try {
       const result = await login(form);
+
+      if (result?.needsPasswordSetup) {
+        message.info(
+          result.error ||
+            'Please finish setting your password from the email we sent you.'
+        );
+        navigate(
+          `/verify-email?email=${encodeURIComponent(result.email || form.email)}`,
+          { replace: true }
+        );
+        return;
+      }
       
       if (result.success) {
         // CRITICAL: simulation-onboarding and restaurants-onboarding APIs are already called in login() function

@@ -88,7 +88,10 @@ api.interceptors.request.use(
       config.url.includes('/authentication/superadmin-login/') ||
       config.url.includes('/authentication/register/') ||
       config.url.includes('/authentication/forgot-password/') ||
-      config.url.includes('/authentication/reset-password/')
+      config.url.includes('/authentication/reset-password/') ||
+      config.url.includes('/authentication/set-password/') ||
+      config.url.includes('/authentication/verify-email/') ||
+      config.url.includes('/authentication/resend-verification/')
     );
 
     if (isAuthEndpoint) {
@@ -150,7 +153,10 @@ api.interceptors.response.use(
       error.config.url.includes('/authentication/superadmin-login/') ||
       error.config.url.includes('/authentication/register/') ||
       error.config.url.includes('/authentication/forgot-password/') ||
-      error.config.url.includes('/authentication/reset-password/')
+      error.config.url.includes('/authentication/reset-password/') ||
+      error.config.url.includes('/authentication/set-password/') ||
+      error.config.url.includes('/authentication/verify-email/') ||
+      error.config.url.includes('/authentication/resend-verification/')
     );
     
     // Suppress error messages when on login page UNLESS it's from an actual login attempt
