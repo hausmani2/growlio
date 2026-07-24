@@ -75,13 +75,23 @@ const api = axios.create({
 // Request Interceptor: Attach token if available
 api.interceptors.request.use(
   (config) => {
+    // Let the browser set multipart boundary for FormData uploads
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
+
     // Skip token attachment for authentication endpoints
     const isAuthEndpoint = config.url && (
       config.url.includes('/authentication/login/') ||
       config.url.includes('/authentication/superadmin-login/') ||
       config.url.includes('/authentication/register/') ||
       config.url.includes('/authentication/forgot-password/') ||
-      config.url.includes('/authentication/reset-password/')
+      config.url.includes('/authentication/reset-password/') ||
+      config.url.includes('/authentication/set-password/') ||
+      config.url.includes('/authentication/verify-email/') ||
+      config.url.includes('/authentication/resend-verification/')
     );
 
     if (isAuthEndpoint) {
@@ -143,7 +153,10 @@ api.interceptors.response.use(
       error.config.url.includes('/authentication/superadmin-login/') ||
       error.config.url.includes('/authentication/register/') ||
       error.config.url.includes('/authentication/forgot-password/') ||
-      error.config.url.includes('/authentication/reset-password/')
+      error.config.url.includes('/authentication/reset-password/') ||
+      error.config.url.includes('/authentication/set-password/') ||
+      error.config.url.includes('/authentication/verify-email/') ||
+      error.config.url.includes('/authentication/resend-verification/')
     );
     
     // Suppress error messages when on login page UNLESS it's from an actual login attempt
@@ -285,14 +298,18 @@ export const streamChatbotMessage = async (url, payload, callbacks = {}) => {
 
     const baseURL = import.meta.env.VITE_ROOT_URL;
     const fullUrl = `${baseURL}${url}`;
+    const isFormData = payload instanceof FormData;
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const response = await fetch(fullUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body: isFormData ? payload : JSON.stringify(payload),
     });
 
     if (!response.ok) {

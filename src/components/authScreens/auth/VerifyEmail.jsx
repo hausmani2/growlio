@@ -3,12 +3,28 @@ import { Button, Result, Spin } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet } from '../../../utils/axiosInterceptors';
 
+/**
+ * Legacy /authentication/verify-email/:token/ links redirect to set-password
+ * with the same durable token (email is verified only when password is saved).
+ */
 const VerifyEmail = () => {
   const navigate = useNavigate();
   const { token } = useParams();
   const hasRequestedRef = useRef(false);
   const [status, setStatus] = useState('loading');
-  const [message, setMessage] = useState('Verifying your email...');
+  const [message, setMessage] = useState('Preparing your password setup...');
+  const [setupToken, setSetupToken] = useState('');
+  const [email, setEmail] = useState('');
+
+  const goToSetPassword = (tokenValue, emailValue) => {
+    const emailParam = emailValue
+      ? `&email=${encodeURIComponent(emailValue)}`
+      : '';
+    navigate(
+      `/set-password?token=${encodeURIComponent(tokenValue)}${emailParam}`,
+      { replace: true }
+    );
+  };
 
   useEffect(() => {
     if (!token || hasRequestedRef.current) {
@@ -17,37 +33,42 @@ const VerifyEmail = () => {
 
     hasRequestedRef.current = true;
 
-    const verifyEmail = async () => {
+    const prepareSetup = async () => {
       try {
-        await apiGet(`/authentication/verify-email/${token}/`);
-        setStatus('success');
-        setMessage('Email verified successfully. Redirecting to login...');
+        const response = await apiGet(`/authentication/verify-email/${token}/`);
+        const data = response?.data || {};
+        const nextSetupToken = data.setup_token || token;
+        const nextEmail = data?.data?.email || '';
 
-        window.setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 1500);
-      } catch (error) {
-        const statusCode = error?.response?.status;
-        const backendMessage =
-          error?.response?.data?.message || error?.response?.data?.error || '';
-
-        let errorMessage = 'This verification link is invalid or has expired.';
-
-        if (
-          statusCode === 403 ||
-          /access forbidden|permission to perform this action/i.test(backendMessage)
-        ) {
-          errorMessage = 'This verification link is invalid, expired, or has already been used.';
-        } else if (backendMessage) {
-          errorMessage = backendMessage;
+        if (data.needs_password_setup && nextSetupToken) {
+          setStatus('success');
+          setSetupToken(nextSetupToken);
+          setEmail(nextEmail);
+          setMessage('Redirecting to set your password...');
+          window.setTimeout(() => {
+            goToSetPassword(nextSetupToken, nextEmail);
+          }, 600);
+          return;
         }
 
+        setStatus('success');
+        setMessage(data.message || 'Account already set up. Redirecting to login...');
+        window.setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 1200);
+      } catch (error) {
+        const backendMessage =
+          error?.response?.data?.message || error?.response?.data?.error || '';
         setStatus('error');
-        setMessage(errorMessage);
+        setMessage(
+          backendMessage ||
+            'This setup link is invalid or has already been used. Request a new one from signup.'
+        );
       }
     };
 
-    verifyEmail();
+    prepareSetup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, token]);
 
   if (status === 'loading') {
@@ -65,16 +86,25 @@ const VerifyEmail = () => {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <Result
         status={status}
-        title={status === 'success' ? 'Email Verified' : 'Verification Failed'}
+        title={status === 'success' ? 'Continue setup' : 'Setup link invalid'}
         subTitle={message}
         extra={
           status === 'success' ? (
-            <Button type="primary" onClick={() => navigate('/login', { replace: true })}>
-              Go to Login
+            <Button
+              type="primary"
+              onClick={() => {
+                if (setupToken) {
+                  goToSetPassword(setupToken, email);
+                } else {
+                  navigate('/login', { replace: true });
+                }
+              }}
+            >
+              {setupToken ? 'Set Password' : 'Go to Login'}
             </Button>
           ) : (
             <Button onClick={() => navigate('/signup', { replace: true })}>
-              Create Account Again
+              Back to Signup
             </Button>
           )
         }

@@ -263,6 +263,25 @@ const createAuthSlice = (set, get) => {
         if (error.response?.data) {
           const errorData = error.response.data;
 
+          if (errorData.needs_password_setup) {
+            const emailText = errorData.email ? ` for ${errorData.email}` : '';
+            errorMessage =
+              errorData.error ||
+              errorData.message ||
+              `Please finish setting your password${emailText} from the email we sent you.`;
+            set(() => ({
+              loading: false,
+              error: errorMessage,
+              isAuthenticated: false,
+            }));
+            return {
+              success: false,
+              needsPasswordSetup: true,
+              email: errorData.email || '',
+              error: errorMessage,
+            };
+          }
+
           if (errorData.requires_verification) {
             const emailText = errorData.email ? ` for ${errorData.email}` : '';
             errorMessage =
@@ -376,8 +395,8 @@ const createAuthSlice = (set, get) => {
       set(() => ({ loading: true, error: null }));
       
       try {
-        const verifyRedirectBase = `${window.location.origin}/authentication/verify-email/`;
-        const registerUrl = `/authentication/register/?redirect_url=${encodeURIComponent(verifyRedirectBase)}`;
+        const setPasswordRedirectBase = `${window.location.origin}/set-password`;
+        const registerUrl = `/authentication/register/?redirect_url=${encodeURIComponent(setPasswordRedirectBase)}`;
         const response = await apiPost(registerUrl, formData);
         
         // Check if registration response includes a token
@@ -441,9 +460,16 @@ const createAuthSlice = (set, get) => {
             console.error('❌ [authSlice] Failed to check onboarding status after registration:', onboardingError);
           });
           
-          return { success: true, data: response.data, needsLogin: false, token: access };
+          return {
+            success: true,
+            data: response.data,
+            needsLogin: false,
+            token: access,
+            needsPasswordSetup: Boolean(response.data?.needs_password_setup),
+            setupToken: response.data?.setup_token || null,
+          };
         } else {
-          // Registration successful but no token - user needs to login
+          // Registration successful but no token - user needs to verify email
           set(() => ({ 
             user: null, 
             token: null, 
@@ -452,7 +478,13 @@ const createAuthSlice = (set, get) => {
             error: null 
           }));
           
-          return { success: true, data: response.data, needsLogin: true };
+          return {
+            success: true,
+            data: response.data,
+            needsLogin: true,
+            requiresVerification: Boolean(response.data?.requires_verification),
+            needsPasswordSetup: Boolean(response.data?.needs_password_setup),
+          };
         }
       } catch (error) {
         console.error('Registration error response:', error.response?.data);
