@@ -54,6 +54,7 @@ import {
   updateMenuItem,
   updateVendor,
 } from '../../../services/foodCostingApi';
+import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
 
 const getPlanName = (plan) =>
   String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
@@ -198,6 +199,20 @@ const FoodCostingPage = () => {
     }
   }, [allowed, restaurantId]);
 
+  const handleSlowAiUpload = useCallback(
+    (tab) => {
+      message.warning(
+        'LIO is still processing your upload. Refreshing automatically — check the list in a moment.',
+        7
+      );
+      setActiveTab(tab);
+      [5000, 15000, 30000, 60000].forEach((delay) => {
+        window.setTimeout(() => loadAll(), delay);
+      });
+    },
+    [loadAll]
+  );
+
   useEffect(() => {
     if (allowed) loadAll();
   }, [allowed, loadAll]);
@@ -320,6 +335,13 @@ const FoodCostingPage = () => {
       loadAll();
     } catch (error) {
       if (error?.errorFields) return;
+      if (isApiTimeoutError(error)) {
+        setInvoiceModalOpen(false);
+        setInvoiceFile(null);
+        invoiceForm.resetFields();
+        handleSlowAiUpload('invoices');
+        return;
+      }
       message.error(error?.response?.data?.error || 'Failed to save invoice');
     } finally {
       setSavingInvoice(false);
@@ -552,6 +574,13 @@ const FoodCostingPage = () => {
       loadAll();
     } catch (error) {
       const data = error?.response?.data;
+      if (isApiTimeoutError(error)) {
+        setPhotoModalOpen(false);
+        setPhotoFile(null);
+        setPhotoMenuName('');
+        handleSlowAiUpload('drafts');
+        return;
+      }
       message.error(data?.error || 'Failed to build recipe from photo');
       if (data?.upgrade_required || data?.limit_reached) {
         // keep modal open so user can see message

@@ -1,4 +1,11 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from '../utils/axiosInterceptors';
+import {
+  apiDelete,
+  apiGet,
+  apiPatch,
+  apiPost,
+  apiPostWithTimeout,
+  AI_UPLOAD_TIMEOUT,
+} from '../utils/axiosInterceptors';
 
 const withIds = (params = {}) => {
   const restaurantId =
@@ -109,7 +116,11 @@ export const createPhotoDraft = async ({ image, menuItemId, menuItemName }) => {
   if (menuItemId) formData.append('menu_item_id', String(menuItemId));
   if (menuItemName) formData.append('menu_item_name', menuItemName);
 
-  const res = await apiPost('/food_costing/drafts/from-photo/', formData);
+  const res = await apiPostWithTimeout(
+    '/food_costing/drafts/from-photo/',
+    formData,
+    AI_UPLOAD_TIMEOUT
+  );
   return res.data;
 };
 
@@ -162,7 +173,8 @@ export const createInvoice = async ({
   if (extractWithAi) formData.append('extract_with_ai', 'true');
   if (file) formData.append('file', file);
   if (lines?.length) formData.append('lines', JSON.stringify(lines));
-  const res = await apiPost('/food_costing/invoices/', formData);
+  const timeout = extractWithAi && file ? AI_UPLOAD_TIMEOUT : 30000;
+  const res = await apiPostWithTimeout('/food_costing/invoices/', formData, timeout);
   return res.data;
 };
 

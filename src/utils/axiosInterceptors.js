@@ -8,6 +8,14 @@ import { clearClientSessionStorage } from './clearClientSession';
 // Default is 30 seconds (30000ms)
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
 
+/** Longer timeout for LIO vision uploads (invoice photo, recipe photo). */
+export const AI_UPLOAD_TIMEOUT =
+  parseInt(import.meta.env.VITE_AI_UPLOAD_TIMEOUT, 10) || 180000;
+
+export const isApiTimeoutError = (error) =>
+  error?.code === 'ECONNABORTED' ||
+  /timeout/i.test(String(error?.message || ''));
+
 /**
  * Utility function to clear all store data and redirect to login
  * 
