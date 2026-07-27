@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2 } from 'react-icons/fi';
-import { apiGet, apiPut, apiDelete, streamChatbotMessage } from '../../../utils/axiosInterceptors';
+import { apiGet, apiPut, apiDelete, streamChatbotMessage, getChatbotContextPayload } from '../../../utils/axiosInterceptors';
 import { message, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
@@ -372,6 +372,7 @@ const ChatPage = () => {
     const payload = {
       question: messageText,
       conversation_id: conversationIdToUse,
+      ...getChatbotContextPayload(),
     };
 
     // Initialize bot message for streaming with typing effect
