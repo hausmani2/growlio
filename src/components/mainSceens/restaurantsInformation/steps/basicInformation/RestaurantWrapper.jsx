@@ -45,6 +45,27 @@ const RestaurantWrapperContent = () => {
     const activeLocationName =
         headerLocations?.find((loc) => loc.id === selectedLocationId)?.name || 'Selected location';
     
+    // Prefill owner name fields from profile
+    useEffect(() => {
+        const loadOwnerProfile = async () => {
+            try {
+                const { apiGet } = await import("../../../../../utils/axiosInterceptors");
+                const res = await apiGet("/authentication/profile/");
+                const profile = res?.data?.data || res?.data || {};
+                setRestaurantData((prev) => ({
+                    ...prev,
+                    firstName: prev.firstName || profile.first_name || "",
+                    lastName: prev.lastName || profile.last_name || "",
+                    middleInitial: prev.middleInitial || profile.middle_initial || "",
+                }));
+            } catch (err) {
+                // Non-blocking — owner fields can be filled manually
+            }
+        };
+        loadOwnerProfile();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Scroll to top when component mounts
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -78,7 +99,10 @@ const RestaurantWrapperContent = () => {
             restaurantName: "",
             numberOfLocations: undefined,
             locationName: "",
-            otherLocationName: ""
+            otherLocationName: "",
+            firstName: "",
+            lastName: "",
+            middleInitial: "",
         }
     );
 
@@ -334,6 +358,35 @@ const RestaurantWrapperContent = () => {
             if (!isValid) {
                 message.error("Please fill in all required fields correctly");
                 return { success: false, error: "Validation failed" };
+            }
+
+            // Persist Owner Information on the user profile
+            try {
+                const { apiPut } = await import("../../../../../utils/axiosInterceptors");
+                await apiPut("/authentication/profile/", {
+                    first_name: restaurantData.firstName?.trim() || "",
+                    last_name: restaurantData.lastName?.trim() || "",
+                    middle_initial: restaurantData.middleInitial?.trim() || "",
+                });
+                const composed = [
+                    restaurantData.firstName?.trim(),
+                    restaurantData.middleInitial?.trim()
+                        ? `${restaurantData.middleInitial.trim().replace(/\.$/, "")}.`
+                        : "",
+                    restaurantData.lastName?.trim(),
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+                if (composed) {
+                    useStore.getState().setUser?.({ full_name: composed });
+                }
+            } catch (profileError) {
+                console.error("Failed to save owner information:", profileError);
+                message.error(
+                    profileError?.response?.data?.error ||
+                        "Failed to save owner information"
+                );
+                return { success: false, error: "Owner information failed" };
             }
 
             // Step 1.5: Save temporary form data to store

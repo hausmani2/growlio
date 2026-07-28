@@ -20,6 +20,7 @@ import SimulationOnboarding from './components/onBoarding/SimulationOnboarding';
 import SimulationDashboard from './components/simulation/SimulationDashboard';
 import SimulationRestaurantInfo from './components/simulation/SimulationRestaurantInfo';
 import ResetPassword from './components/authScreens/auth/ResetPassword';
+import SetPassword from './components/authScreens/auth/SetPassword';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 import OnboardingPlansPage from './components/onBoarding/OnboardingPlansPage';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
@@ -328,6 +329,7 @@ function App() {
         <Route path="/admin/login" element={<SuperAdminLoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmailNotice />} />
         <Route path="/authentication/verify-email/:token/" element={<VerifyEmail />} />
