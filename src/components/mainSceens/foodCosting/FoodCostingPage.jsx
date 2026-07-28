@@ -55,6 +55,10 @@ import {
   updateVendor,
 } from '../../../services/foodCostingApi';
 import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
+import {
+  MAX_IMAGE_UPLOAD_MB,
+  validateImageFileSize,
+} from '../../../utils/uploadLimits';
 
 const getPlanName = (plan) =>
   String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
@@ -78,6 +82,16 @@ const UNIT_OPTIONS = [
   { value: 'kg', label: 'kg' },
   { value: 'each', label: 'each' },
 ];
+
+const handleImageFileSelect = (file, setFile) => {
+  const sizeError = validateImageFileSize(file);
+  if (sizeError) {
+    message.error(sizeError);
+    return Upload.LIST_IGNORE;
+  }
+  setFile(file);
+  return false;
+};
 
 const FoodCostingPage = () => {
   const navigate = useNavigate();
@@ -304,6 +318,13 @@ const FoodCostingPage = () => {
       if (!invoiceFile && !(values.lines || []).length) {
         message.error('Upload an invoice photo or add at least one line');
         return;
+      }
+      if (invoiceFile) {
+        const sizeError = validateImageFileSize(invoiceFile);
+        if (sizeError) {
+          message.error(sizeError);
+          return;
+        }
       }
       setSavingInvoice(true);
       const lines = (values.lines || [])
@@ -549,6 +570,11 @@ const FoodCostingPage = () => {
   const handleBuildFromPhoto = async () => {
     if (!photoFile) {
       message.error('Please choose a photo first');
+      return;
+    }
+    const sizeError = validateImageFileSize(photoFile);
+    if (sizeError) {
+      message.error(sizeError);
       return;
     }
     setBuildingDraft(true);
@@ -1460,16 +1486,16 @@ const FoodCostingPage = () => {
               onChange={(e) => setPhotoMenuName(e.target.value)}
             />
             <Upload
-              beforeUpload={(file) => {
-                setPhotoFile(file);
-                return false;
-              }}
+              beforeUpload={(file) => handleImageFileSelect(file, setPhotoFile)}
               maxCount={1}
               accept="image/*"
               onRemove={() => setPhotoFile(null)}
             >
               <Button icon={<UploadOutlined />}>Upload or take photo</Button>
             </Upload>
+            <p className="text-xs text-gray-500 m-0">
+              Max file size: {MAX_IMAGE_UPLOAD_MB} MB
+            </p>
             {photoFile ? (
               <p className="text-sm text-gray-600">Selected: {photoFile.name}</p>
             ) : null}
@@ -1706,16 +1732,16 @@ const FoodCostingPage = () => {
           </Row>
           <div className="mb-4 space-y-2">
             <Upload
-              beforeUpload={(file) => {
-                setInvoiceFile(file);
-                return false;
-              }}
+              beforeUpload={(file) => handleImageFileSelect(file, setInvoiceFile)}
               maxCount={1}
               accept="image/*"
               onRemove={() => setInvoiceFile(null)}
             >
               <Button icon={<UploadOutlined />}>Upload invoice photo</Button>
             </Upload>
+            <p className="text-xs text-gray-500 m-0">
+              Max file size: {MAX_IMAGE_UPLOAD_MB} MB
+            </p>
             {invoiceFile ? (
               <p className="text-sm text-gray-600 m-0">Selected: {invoiceFile.name}</p>
             ) : null}
