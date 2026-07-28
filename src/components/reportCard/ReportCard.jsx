@@ -16,6 +16,7 @@ import {
   getOnboardingProgress,
   ONBOARDING_ROUTES,
   RESTAURANT_STATUS_KEYS,
+  setAutoZeroProfitabilityFromSimulation,
 } from "../../utils/onboardingUtils";
 import useStore from "../../store/store";
 import TooltipIcon from "../common/TooltipIcon";
@@ -711,6 +712,10 @@ const ReportCard = ({
                 ? ONBOARDING_ROUTES.SCORE
                 : nextSetupRoute;
               if (isSalesStep) {
+                // Former simulator: finish score with zeros instead of showing the form
+                if (localStorage.getItem('simulation_restaurant_id')) {
+                  setAutoZeroProfitabilityFromSimulation();
+                }
                 useStore.setState({
                   salesInformationData: null,
                   salesInformationLoading: false,

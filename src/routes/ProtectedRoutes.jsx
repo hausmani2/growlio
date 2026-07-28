@@ -15,6 +15,7 @@ import {
   isOnboardingComplete as checkOnboardingComplete,
   isOnLocationOnboardingPage,
   shouldPrefetchSalesInformation,
+  shouldAutoZeroProfitabilityFromSimulation,
 } from '../utils/onboardingUtils';
 import { getRoleLandingRoute, getRolePermissions } from '../utils/rolePermissions';
 
@@ -513,9 +514,15 @@ const ProtectedRoutes = () => {
     }
     
     // If One Month Sales Info is FALSE, block dashboard routes and guide user to next setup step
+    // Exception: simulation → restaurant auto-zero flow must land on Report Card without Score flash
     if (restaurantExists && !oneMonthSalesInfoComplete) {
       // If user is trying to access ANY dashboard route, redirect to next required step
       if (location.pathname.startsWith('/dashboard')) {
+        if (shouldAutoZeroProfitabilityFromSimulation()) {
+          hasRedirectedRef.current = false;
+          sessionStorage.setItem('lastProcessedPath', location.pathname);
+          return;
+        }
         const nextRoute = getNextIncompleteSetupRoute(restaurantData);
         if (!hasRedirectedRef.current) {
           hasRedirectedRef.current = true;
@@ -567,7 +574,13 @@ const ProtectedRoutes = () => {
       
       // If user attempted a dashboard route and redirecting into onboarding, replace silently.
       // Modal.info was removed here — it persisted across auth redirects and caused flashes.
+      // Simulation auto-zero: never bounce Report Card → Score (causes Score UI flash).
       if (location.pathname.startsWith('/dashboard') && redirectRoute.startsWith('/onboarding')) {
+        if (shouldAutoZeroProfitabilityFromSimulation()) {
+          hasRedirectedRef.current = false;
+          sessionStorage.setItem('lastProcessedPath', location.pathname);
+          return;
+        }
         const nextRoute = getNextIncompleteSetupRoute(restaurantData);
         if (!hasRedirectedRef.current || lastProcessedPath !== location.pathname) {
           hasRedirectedRef.current = true;
@@ -1160,8 +1173,12 @@ const ProtectedRoutes = () => {
     // If One Month Sales Info is FALSE, block dashboard routes
     // CRITICAL: Only block if we have restaurant data loaded
     // This prevents redirects when data is still loading on page reload
+    // Simulation → restaurant: stay on Report Card (zeros already submitted / in progress)
     if (!oneMonthSalesInfoComplete && restaurantData) {
       if (isDashboardPath) {
+        if (shouldAutoZeroProfitabilityFromSimulation()) {
+          return <Outlet />;
+        }
         return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
       }
     }

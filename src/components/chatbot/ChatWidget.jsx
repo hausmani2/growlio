@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from 'antd';
 import useStore from '../../store/store';
 import MessageBubble from './MessageBubble';
-import { apiGet, streamChatbotMessage } from '../../utils/axiosInterceptors';
+import { apiGet, streamChatbotMessage, getChatbotContextPayload } from '../../utils/axiosInterceptors';
 import chatIcon from '../../assets/lio.png';
 
 /**

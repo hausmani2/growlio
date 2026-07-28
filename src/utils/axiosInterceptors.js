@@ -96,7 +96,10 @@ api.interceptors.request.use(
       config.url.includes('/authentication/superadmin-login/') ||
       config.url.includes('/authentication/register/') ||
       config.url.includes('/authentication/forgot-password/') ||
-      config.url.includes('/authentication/reset-password/')
+      config.url.includes('/authentication/reset-password/') ||
+      config.url.includes('/authentication/set-password/') ||
+      config.url.includes('/authentication/verify-email/') ||
+      config.url.includes('/authentication/resend-verification/')
     );
 
     if (isAuthEndpoint) {
@@ -158,7 +161,10 @@ api.interceptors.response.use(
       error.config.url.includes('/authentication/superadmin-login/') ||
       error.config.url.includes('/authentication/register/') ||
       error.config.url.includes('/authentication/forgot-password/') ||
-      error.config.url.includes('/authentication/reset-password/')
+      error.config.url.includes('/authentication/reset-password/') ||
+      error.config.url.includes('/authentication/set-password/') ||
+      error.config.url.includes('/authentication/verify-email/') ||
+      error.config.url.includes('/authentication/resend-verification/')
     );
     
     // Suppress error messages when on login page UNLESS it's from an actual login attempt
@@ -274,6 +280,16 @@ export const apiDeleteWithTimeout = (url, timeout = API_TIMEOUT, config = {}) =>
 
 // Export the timeout constant for reference in other parts of the app
 export { API_TIMEOUT };
+
+/** Active restaurant/location for LIO chat (matches dashboard selection). */
+export const getChatbotContextPayload = () => {
+  const restaurant_id = localStorage.getItem('restaurant_id');
+  const location_id = localStorage.getItem('selected_location_id');
+  const payload = {};
+  if (restaurant_id) payload.restaurant_id = Number(restaurant_id);
+  if (location_id) payload.location_id = Number(location_id);
+  return payload;
+};
 
 // Optionally, export the raw instance for custom use
 export default api;

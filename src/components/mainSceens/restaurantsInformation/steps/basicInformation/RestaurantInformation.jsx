@@ -146,7 +146,62 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     };
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="space-y-6">
+            {/* Owner Information */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="mb-6">
+                    <h3 className="text-xl font-bold text-orange-600 mb-2">Owner Information</h3>
+                    <p className="text-sm text-gray-500">
+                        Tell us who owns this restaurant. First and last name are required.
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            First Name <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                            placeholder="First name"
+                            className={`h-11 ${errors.firstName ? 'border-red-500' : ''}`}
+                            value={data.firstName || ''}
+                            onChange={(e) => updateData('firstName', e.target.value)}
+                            status={errors.firstName ? 'error' : ''}
+                        />
+                        {errors.firstName && (
+                            <span className="text-red-500 text-xs mt-1">{errors.firstName}</span>
+                        )}
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Middle Initial <span className="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <Input
+                            placeholder="M"
+                            maxLength={5}
+                            className="h-11"
+                            value={data.middleInitial || ''}
+                            onChange={(e) => updateData('middleInitial', e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Last Name <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                            placeholder="Last name"
+                            className={`h-11 ${errors.lastName ? 'border-red-500' : ''}`}
+                            value={data.lastName || ''}
+                            onChange={(e) => updateData('lastName', e.target.value)}
+                            status={errors.lastName ? 'error' : ''}
+                        />
+                        {errors.lastName && (
+                            <span className="text-red-500 text-xs mt-1">{errors.lastName}</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
             {/* Header Section */}
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600 mb-2">Restaurant Information</h3>
@@ -279,6 +334,7 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                         <span className="text-red-500 text-xs mt-1">{errors.locationName}</span>
                     )}
                 </div>
+            </div>
             </div>
         </div>
     );

@@ -20,6 +20,50 @@ export const ONBOARDING_ROUTES = {
 };
 
 /**
+ * Simulation → restaurant switch: after plan selection, submit Profitability Score
+ * with all zeros (same Finish API) without showing the score UI.
+ */
+export const AUTO_ZERO_PROFITABILITY_KEY = 'auto_zero_profitability_from_simulation';
+
+export const ZERO_PROFITABILITY_PAYLOAD = {
+  data: {
+    sales: 0,
+    cogs: 0,
+    labour: 0,
+    expenses: 0,
+  },
+};
+
+export const setAutoZeroProfitabilityFromSimulation = () => {
+  try {
+    localStorage.setItem(AUTO_ZERO_PROFITABILITY_KEY, 'true');
+    sessionStorage.setItem(AUTO_ZERO_PROFITABILITY_KEY, 'true');
+  } catch {
+    // ignore storage errors
+  }
+};
+
+export const shouldAutoZeroProfitabilityFromSimulation = () => {
+  try {
+    return (
+      localStorage.getItem(AUTO_ZERO_PROFITABILITY_KEY) === 'true' ||
+      sessionStorage.getItem(AUTO_ZERO_PROFITABILITY_KEY) === 'true'
+    );
+  } catch {
+    return false;
+  }
+};
+
+export const clearAutoZeroProfitabilityFromSimulation = () => {
+  try {
+    localStorage.removeItem(AUTO_ZERO_PROFITABILITY_KEY);
+    sessionStorage.removeItem(AUTO_ZERO_PROFITABILITY_KEY);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+/**
  * Restaurant onboarding status keys from API
  */
 export const RESTAURANT_STATUS_KEYS = {

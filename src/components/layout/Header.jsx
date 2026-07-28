@@ -6,6 +6,10 @@ import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Dropdown, Menu, Modal, Button, message, Select } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
 import { getEffectiveLocationCap } from '../../utils/locationLimits';
+import {
+  ONBOARDING_ROUTES,
+  setAutoZeroProfitabilityFromSimulation,
+} from '../../utils/onboardingUtils';
 
 const getInitials = (name = '') => {
   const parts = name.trim().split(' ');
@@ -143,6 +147,8 @@ const Header = ({ onMenuClick }) => {
 
     const handleSwitchToRestaurant = async () => {
         setIsSwitching(true);
+        // After plan select, silently Finish Profitability Score with all zeros
+        setAutoZeroProfitabilityFromSimulation();
         try {
             // Call the API to set restaurant_simulation to false
             // This will automatically call restaurants-onboarding API in the store
@@ -152,31 +158,28 @@ const Header = ({ onMenuClick }) => {
                 // Wait a bit for the store to update
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Check restaurants-onboarding response
+                // Refresh restaurant onboarding so report card / setup checklist is ready
                 const restaurantResult = await getRestaurantOnboarding(true);
-                
-                // Check simulation-onboarding response
-                const simulationResult = await getSimulationOnboardingStatus(true);
-                
-                // Navigate based on the responses
-                if (restaurantResult?.success && restaurantResult?.restaurants && Array.isArray(restaurantResult.restaurants) && restaurantResult.restaurants.length > 0) {
-                    // User has regular restaurants, navigate to dashboard
-                    const restaurantId = restaurantResult.restaurantId || restaurantResult.restaurants[0]?.restaurant_id;
+                const regularRestaurants = restaurantResult?.restaurants
+                    || restaurantResult?.data?.restaurants
+                    || [];
+                const hasRegularRestaurantsAfterSwitch =
+                    restaurantResult?.success !== false &&
+                    Array.isArray(regularRestaurants) &&
+                    regularRestaurants.length > 0;
+
+                if (hasRegularRestaurantsAfterSwitch) {
+                    const restaurantId =
+                        restaurantResult.restaurantId ||
+                        regularRestaurants[0]?.restaurant_id;
                     if (restaurantId) {
                         localStorage.setItem('restaurant_id', restaurantId.toString());
                     }
-                    message.success('Switched to Restaurant Dashboard');
-                    navigate('/dashboard');
-                } else if (simulationResult?.success && simulationResult?.data?.restaurants && Array.isArray(simulationResult.data.restaurants) && simulationResult.data.restaurants.length > 0) {
-                    // User only has simulation restaurants
-                    message.warning('No regular restaurants found. Please complete restaurant onboarding first.');
-                    navigate('/onboarding');
-                } else {
-                    // No restaurants found, redirect to onboarding
-                    message.info('Please complete restaurant onboarding');
-                    navigate('/onboarding');
                 }
-                
+
+                // Plan selection first; Continue silently submits score zeros → Report Card
+                message.success('Switched to Restaurant Dashboard');
+                navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
                 setShowRestaurantModal(false);
             } else {
                 message.error(result?.error || 'Failed to switch to restaurant dashboard');

@@ -23,6 +23,8 @@ const LOCAL_STORAGE_KEYS = [
   'impersonated_user',
   'impersonated_user_data',
   'impersonation_message',
+  'auto_zero_profitability_from_simulation',
+  'skip_profitability_score_from_simulation',
 ];
 
 /**

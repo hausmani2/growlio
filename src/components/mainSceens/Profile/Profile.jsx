@@ -128,7 +128,10 @@ const Profile = () => {
           ...(hasValidRestaurantRole ? { restaurant_role: apiRestaurantRole } : {}),
         });
         profileForm.setFieldsValue({
-          full_name: nextProfileData.full_name || ''
+          full_name: nextProfileData.full_name || '',
+          first_name: nextProfileData.first_name || '',
+          last_name: nextProfileData.last_name || '',
+          middle_initial: nextProfileData.middle_initial || '',
         });
       }
     } catch (error) {
@@ -309,8 +312,17 @@ const Profile = () => {
       if (response.data.status === 'success') {
         message.success('Profile updated successfully');
         // Update Header immediately (no logout/login needed)
-        if (values?.full_name) {
-          setUser?.({ full_name: values.full_name });
+        const composed = [
+          values?.first_name,
+          values?.middle_initial
+            ? `${String(values.middle_initial).trim().replace(/\.$/, '')}.`
+            : '',
+          values?.last_name,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        if (composed || values?.full_name) {
+          setUser?.({ full_name: composed || values.full_name });
         }
         fetchProfileData(); // Refresh data
       } else {
@@ -453,30 +465,14 @@ const Profile = () => {
                       onFinish={handleProfileUpdate}
                       disabled={profileLoading}
                     >
-                      <Form.Item
-                        label="Full Name"
-                        name="full_name"
-                        rules={[
-                          { required: true, message: 'Please enter your full name' },
-                          {
-                            pattern: /^[A-Za-z][A-Za-z\s.'-]*$/,
-                            message: 'Full Name can only contain letters, spaces, apostrophes, periods, and hyphens',
-                          },
-                        ]}
-                      >
-                        <Input 
-                          prefix={<UserOutlined />} 
-                          placeholder="Enter your full name"
-                          size="large"
-                          onChange={(e) => {
-                            const raw = e.target.value ?? '';
-                            // Remove digits and collapse repeated whitespace for a clean, predictable input.
-                            const cleaned = String(raw)
-                              .replace(/[0-9]/g, '')
-                              .replace(/\s+/g, ' ');
-                            profileForm.setFieldsValue({ full_name: cleaned });
-                          }}
-                        />
+                      <Form.Item label="First Name" name="first_name" rules={[{ required: true, message: 'First name is required' }]}>
+                        <Input prefix={<UserOutlined />} placeholder="First name" size="large" />
+                      </Form.Item>
+                      <Form.Item label="Middle Initial (optional)" name="middle_initial">
+                        <Input placeholder="M" size="large" maxLength={5} />
+                      </Form.Item>
+                      <Form.Item label="Last Name" name="last_name" rules={[{ required: true, message: 'Last name is required' }]}>
+                        <Input prefix={<UserOutlined />} placeholder="Last name" size="large" />
                       </Form.Item>
                       
                       <Form.Item>
@@ -499,10 +495,10 @@ const Profile = () => {
                       <Avatar size={80} icon={<UserOutlined />} className="mb-4" />
                       <div className="space-y-2 text-sm text-gray-600">
                         <div>
-                          <Text strong>Username:</Text> {profileData.username}
+                          <Text strong>Email:</Text> {profileData.email}
                         </div>
                         <div>
-                          <Text strong>Email:</Text> {profileData.email}
+                          <Text strong>Display Name:</Text> {profileData.full_name || '—'}
                         </div>
                         <div>
                           <Text strong>Member Since:</Text> {formatDate(profileData.created_date)}

@@ -19,6 +19,12 @@ const useFormValidation = () => {
         if (!restaurantData.restaurantName?.trim()) {
             errors.restaurantName = VALIDATION_MESSAGES.RESTAURANT_NAME;
         }
+        if (!restaurantData.firstName?.trim()) {
+            errors.firstName = 'First name is required';
+        }
+        if (!restaurantData.lastName?.trim()) {
+            errors.lastName = 'Last name is required';
+        }
         if (!options.singleLocationUpdate && !restaurantData.numberOfLocations) {
             errors.numberOfLocations = VALIDATION_MESSAGES.NUMBER_OF_LOCATIONS;
         }
