@@ -87,6 +87,18 @@ export const fetchMenuItems = async () => {
   return res.data;
 };
 
+export const importSquareMenuItems = async () => {
+  const { query } = withIds();
+  const res = await apiPost(`/square_pos/menu-items/?${query}`, {});
+  return res.data;
+};
+
+export const pollSquareImportStatus = async (jobId) => {
+  const { query } = withIds();
+  const res = await apiGet(`/square_pos/menu-items/status/${jobId}/?${query}`);
+  return res.data;
+};
+
 export const createMenuItem = async (payload) => {
   const { restaurant_id, location_id } = withIds();
   const res = await apiPost('/food_costing/menu-items/', {

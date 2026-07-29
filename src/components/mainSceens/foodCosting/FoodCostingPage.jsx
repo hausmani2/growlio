@@ -49,6 +49,8 @@ import {
   fetchMenuItems,
   fetchRecipeDrafts,
   fetchVendors,
+  importSquareMenuItems,
+  pollSquareImportStatus,
   updateIngredient,
   updateInvoice,
   updateMenuItem,
@@ -117,6 +119,9 @@ const FoodCostingPage = () => {
 
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
+  const [importingMenuFromSquare, setImportingMenuFromSquare] = useState(false);
+  const [squareImportJobId, setSquareImportJobId] = useState(null);
+  const squareImportPollRef = React.useRef(null);
   const [menuForm] = Form.useForm();
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -567,6 +572,59 @@ const FoodCostingPage = () => {
     }
   };
 
+  const _stopSquareImportPoll = () => {
+    if (squareImportPollRef.current) {
+      clearInterval(squareImportPollRef.current);
+      squareImportPollRef.current = null;
+    }
+  };
+
+  const handleImportMenuFromSquare = async () => {
+    if (importingMenuFromSquare) return;
+    try {
+      setImportingMenuFromSquare(true);
+      const result = await importSquareMenuItems();
+      if (!result?.success) {
+        message.error(result?.error || 'Failed to start Square import');
+        setImportingMenuFromSquare(false);
+        return;
+      }
+      const jobId = result.job_id;
+      setSquareImportJobId(jobId);
+      message.loading({ content: 'Fetching menu from Square POS…', key: 'sq-import', duration: 0 });
+
+      squareImportPollRef.current = setInterval(async () => {
+        try {
+          const poll = await pollSquareImportStatus(jobId);
+          if (poll.status === 'done') {
+            _stopSquareImportPoll();
+            setImportingMenuFromSquare(false);
+            setSquareImportJobId(null);
+            const created = Number(poll.created_count || 0);
+            const updated = Number(poll.updated_count || 0);
+            message.success({
+              content: `Square import complete: ${created} created, ${updated} updated.`,
+              key: 'sq-import',
+              duration: 4,
+            });
+            await loadAll();
+          } else if (poll.status === 'error') {
+            _stopSquareImportPoll();
+            setImportingMenuFromSquare(false);
+            setSquareImportJobId(null);
+            message.error({ content: poll.error || 'Square import failed', key: 'sq-import', duration: 5 });
+          }
+        } catch {
+          // keep polling on transient network errors
+        }
+      }, 3000);
+    } catch (error) {
+      setImportingMenuFromSquare(false);
+      setSquareImportJobId(null);
+      message.error(error?.response?.data?.error || 'Failed to fetch menu from Square POS');
+    }
+  };
+
   const handleBuildFromPhoto = async () => {
     if (!photoFile) {
       message.error('Please choose a photo first');
@@ -794,15 +852,22 @@ const FoodCostingPage = () => {
             Edit
           </Button>
           <Popconfirm
-            title="Archive this menu item?"
+            title="Delete this menu item permanently?"
+            description="This cannot be undone."
+            okText="Delete"
+            okButtonProps={{ danger: true }}
             onConfirm={async () => {
-              await archiveMenuItem(record.id);
-              message.success('Menu item archived');
-              loadAll();
+              try {
+                await archiveMenuItem(record.id);
+                message.success('Menu item deleted');
+                loadAll();
+              } catch (err) {
+                message.error(err?.response?.data?.error || 'Failed to delete menu item');
+              }
             }}
           >
             <Button size="small" danger>
-              Archive
+              Delete
             </Button>
           </Popconfirm>
         </Space>
@@ -1023,14 +1088,23 @@ const FoodCostingPage = () => {
               <Card
                 className="shadow-sm"
                 extra={
-                  <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
-                    onClick={openCreateMenuItem}
-                  >
-                    Add menu item
-                  </Button>
+                  <Space wrap>
+                    <Button
+                      icon={<ReloadOutlined />}
+                      loading={importingMenuFromSquare}
+                      onClick={handleImportMenuFromSquare}
+                    >
+                      Fetch from Square POS
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+                      onClick={openCreateMenuItem}
+                    >
+                      Add menu item
+                    </Button>
+                  </Space>
                 }
               >
                 <Table
