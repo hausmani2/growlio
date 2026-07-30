@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ReportCard, SetupProgressCard, YourGradeCard, DailyPerformanceCard } from "./index";
+import GrowlioIQPanel from "../growlioIQ/GrowlioIQPanel";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
 import { Button, Modal, message } from "antd";
@@ -353,6 +354,8 @@ const ReportCardPage = () => {
             showSetupCompletePopup={isOnboardingComplete}
           />
         </div>
+
+        <GrowlioIQPanel initialDateRange={dateRange} />
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-3">
             <p className="font-medium text-base text-orange-600">

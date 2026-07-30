@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2, FiImage } from 'react-icons/fi';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { FiMessageCircle, FiSend, FiLoader, FiPlus, FiTrash2, FiMoreVertical, FiMenu, FiX, FiEdit2, FiImage, FiMic, FiMicOff } from 'react-icons/fi';
 import { apiGet, apiPut, apiDelete, streamChatbotMessage } from '../../../utils/axiosInterceptors';
 import { message, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
 import MessageBubble from '../../chatbot/MessageBubble';
+import useSpeechToText from '../../../hooks/useSpeechToText';
 import chatIcon from '../../../assets/lio.png';
 /**
  * ChatPage Component
@@ -99,7 +100,50 @@ const ChatPage = () => {
   const textareaRef = useRef(null);
   const inputContainerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const speechBaseRef = useRef('');
   const [selectedImage, setSelectedImage] = useState(null);
+
+  const handleSpeechTranscript = useCallback((transcript, { isFinal } = {}) => {
+    const base = speechBaseRef.current.trim();
+    const next = base ? `${base} ${transcript}` : transcript;
+    setInputMessage(next);
+    if (isFinal) {
+      speechBaseRef.current = next;
+    }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, []);
+
+  const {
+    isSupported: isSpeechSupported,
+    isListening,
+    error: speechError,
+    clearError: clearSpeechError,
+    toggleListening,
+    stopListening,
+  } = useSpeechToText({
+    onTranscript: handleSpeechTranscript,
+    disabled: isLoading,
+  });
+
+  useEffect(() => {
+    if (!speechError) return;
+    message.warning(speechError);
+    clearSpeechError();
+  }, [speechError, clearSpeechError]);
+
+  const handleMicClick = () => {
+    if (!isSpeechSupported) {
+      message.warning('Voice input is not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+    if (!isListening) {
+      speechBaseRef.current = inputMessage;
+    }
+    toggleListening();
+  };
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -356,6 +400,8 @@ const ChatPage = () => {
    */
   const sendMessage = async (messageText) => {
     if (!messageText.trim() && !selectedImage) return;
+    stopListening();
+    speechBaseRef.current = '';
     const attachedImage = selectedImage;
     const displayText = [messageText.trim(), attachedImage ? `[Image attached: ${attachedImage.name}]` : '']
       .filter(Boolean)
@@ -592,6 +638,9 @@ const ChatPage = () => {
    */
   const handleInputChange = (e) => {
     setInputMessage(e.target.value);
+    if (!isListening) {
+      speechBaseRef.current = e.target.value;
+    }
     if (textareaRef.current) {
       const textarea = textareaRef.current;
       textarea.style.height = 'auto';
@@ -1008,12 +1057,12 @@ const ChatPage = () => {
                   }
                 }}
                 onBlur={() => {
-                  if (inputContainerRef.current) {
+                  if (inputContainerRef.current && !isListening) {
                     inputContainerRef.current.style.borderColor = '#d1d5db';
                     inputContainerRef.current.style.boxShadow = 'none';
                   }
                 }}
-                placeholder="Type your message..."
+                placeholder={isListening ? 'Listening...' : 'Type or talk to LIO...'}
                 rows={1}
                 disabled={isLoading}
                 className="flex-1 resize-none border-none outline-none text-sm sm:text-base bg-transparent disabled:cursor-not-allowed overflow-y-auto leading-relaxed"
@@ -1023,6 +1072,20 @@ const ChatPage = () => {
                   lineHeight: '1.5'
                 }}
               />
+              <button
+                type="button"
+                disabled={isLoading}
+                onClick={handleMicClick}
+                className={`w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg border flex items-center justify-center transition-colors flex-shrink-0 disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed ${
+                  isListening
+                    ? 'border-[#FF8132] bg-[#FF8132] text-white animate-pulse'
+                    : 'border-gray-300 text-gray-600 hover:border-orange-300 hover:text-[#FF8132]'
+                }`}
+                aria-label={isListening ? 'Stop listening' : 'Talk to LIO'}
+                title={isListening ? 'Stop listening' : 'Talk to LIO'}
+              >
+                {isListening ? <FiMicOff className="w-5 h-5" /> : <FiMic className="w-5 h-5" />}
+              </button>
               <button
                 type="submit"
                 disabled={!canSend}
@@ -1048,7 +1111,7 @@ const ChatPage = () => {
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-2 sm:mt-3 text-center hidden sm:block">
-              Press Enter to send, Shift+Enter for new line
+              Press Enter to send, Shift+Enter for new line · Mic to talk to LIO
             </p>
           </form>
         </div>
