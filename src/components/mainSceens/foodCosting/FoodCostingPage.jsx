@@ -51,6 +51,7 @@ import {
   fetchVendors,
   importSquareMenuItems,
   pollSquareImportStatus,
+  scanPrintedMenu,
   updateIngredient,
   updateInvoice,
   updateMenuItem,
@@ -58,7 +59,11 @@ import {
 } from '../../../services/foodCostingApi';
 import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
 import {
+  ACCEPT_IMAGE_OR_PDF,
+  MAX_FILE_UPLOAD_MB,
   MAX_IMAGE_UPLOAD_MB,
+  isImageOrPdfFile,
+  validateFileUploadSize,
   validateImageFileSize,
 } from '../../../utils/uploadLimits';
 
@@ -85,8 +90,79 @@ const UNIT_OPTIONS = [
   { value: 'each', label: 'each' },
 ];
 
+const PURCHASE_CONTENT_UNIT_OPTIONS = [
+  { value: 'lb', label: 'lb' },
+  { value: 'oz', label: 'oz' },
+  { value: 'kg', label: 'kg' },
+  { value: 'g', label: 'g' },
+  { value: 'gal', label: 'gal' },
+  { value: 'L', label: 'L' },
+  { value: 'mL', label: 'mL' },
+  { value: 'each', label: 'each' },
+];
+
+const TO_OZ = { oz: 1, ounce: 1, ounces: 1, lb: 16, lbs: 16, pound: 16, pounds: 16, g: 0.03527396, gram: 0.03527396, grams: 0.03527396 };
+const TO_ML = { ml: 1, milliliter: 1, milliliters: 1, l: 1000, liter: 1000, liters: 1000, gal: 3785.41, gallon: 3785.41, gallons: 3785.41 };
+const TO_KG = { kg: 1, kilogram: 1, kilograms: 1 };
+
+const previewPurchaseConversion = ({
+  packQty = 1,
+  contentsQty,
+  contentsUnit,
+  totalCost,
+  targetUnit = 'oz',
+  yieldPercent,
+}) => {
+  const pack = Number(packQty || 1);
+  const contents = Number(contentsQty);
+  const cost = Number(totalCost);
+  if (!(contents > 0) || !(cost >= 0) || Number.isNaN(cost)) return null;
+  const raw = String(contentsUnit || 'oz').trim().toLowerCase().replace('.', '');
+  let qty = pack * contents;
+  let unit = targetUnit || 'oz';
+  if (TO_OZ[raw] != null) {
+    qty = qty * TO_OZ[raw];
+    unit = 'oz';
+  } else if (TO_ML[raw] != null) {
+    qty = qty * TO_ML[raw];
+    unit = 'mL';
+  } else if (TO_KG[raw] != null) {
+    qty = qty * TO_KG[raw];
+    unit = 'kg';
+  } else if (['each', 'ea', 'pc', 'pcs'].includes(raw)) {
+    unit = 'each';
+  }
+  if (targetUnit === 'oz' && unit === 'kg') {
+    qty *= 35.27396;
+    unit = 'oz';
+  }
+  let divisor = qty;
+  const yp = Number(yieldPercent);
+  if (yp > 0) divisor = qty * (yp / 100);
+  if (!(divisor > 0)) return null;
+  return {
+    purchasedQty: qty,
+    unit,
+    costPerUnit: cost / divisor,
+  };
+};
+
 const handleImageFileSelect = (file, setFile) => {
   const sizeError = validateImageFileSize(file);
+  if (sizeError) {
+    message.error(sizeError);
+    return Upload.LIST_IGNORE;
+  }
+  setFile(file);
+  return false;
+};
+
+const handleFileSelect = (file, setFile) => {
+  if (!isImageOrPdfFile(file)) {
+    message.error('Please upload a PNG, JPG, or PDF file.');
+    return Upload.LIST_IGNORE;
+  }
+  const sizeError = validateFileUploadSize(file);
   if (sizeError) {
     message.error(sizeError);
     return Upload.LIST_IGNORE;
@@ -116,10 +192,18 @@ const FoodCostingPage = () => {
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
   const [ingredientForm] = Form.useForm();
+  const [ingredientSearch, setIngredientSearch] = useState('');
+  const [ingredientCategory, setIngredientCategory] = useState('');
+  const [ingredientOrdering, setIngredientOrdering] = useState('name');
+  const [draftSellingPrice, setDraftSellingPrice] = useState('0.00');
 
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
   const [importingMenuFromSquare, setImportingMenuFromSquare] = useState(false);
+  const [scanningPrintedMenu, setScanningPrintedMenu] = useState(false);
+  const [menuScanModalOpen, setMenuScanModalOpen] = useState(false);
+  const [menuScanFile, setMenuScanFile] = useState(null);
+  const [menuScanResult, setMenuScanResult] = useState(null);
   const [squareImportJobId, setSquareImportJobId] = useState(null);
   const squareImportPollRef = React.useRef(null);
   const [menuForm] = Form.useForm();
@@ -148,6 +232,16 @@ const FoodCostingPage = () => {
 
   const restaurantId = localStorage.getItem('restaurant_id');
   const locationId = localStorage.getItem('selected_location_id');
+  const ingredientFilterRef = React.useRef({
+    search: '',
+    category: '',
+    ordering: 'name',
+  });
+  ingredientFilterRef.current = {
+    search: ingredientSearch,
+    category: ingredientCategory,
+    ordering: ingredientOrdering,
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -194,7 +288,11 @@ const FoodCostingPage = () => {
       const [dash, ings, items, pendingDrafts, invoiceList, vendorList] =
         await Promise.all([
           fetchFoodCostingDashboard(),
-          fetchIngredients(),
+          fetchIngredients({
+            search: ingredientFilterRef.current.search,
+            category: ingredientFilterRef.current.category,
+            ordering: ingredientFilterRef.current.ordering,
+          }),
           fetchMenuItems(),
           fetchRecipeDrafts('pending'),
           fetchInvoices(),
@@ -217,6 +315,29 @@ const FoodCostingPage = () => {
       setLoading(false);
     }
   }, [allowed, restaurantId]);
+
+  useEffect(() => {
+    if (!allowed || !restaurantId) return undefined;
+    const timer = window.setTimeout(async () => {
+      try {
+        const ings = await fetchIngredients({
+          search: ingredientSearch,
+          category: ingredientCategory,
+          ordering: ingredientOrdering,
+        });
+        setIngredients(Array.isArray(ings) ? ings : []);
+      } catch {
+        // ignore transient search errors
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [
+    allowed,
+    restaurantId,
+    ingredientSearch,
+    ingredientCategory,
+    ingredientOrdering,
+  ]);
 
   const handleSlowAiUpload = useCallback(
     (tab) => {
@@ -285,8 +406,20 @@ const FoodCostingPage = () => {
       exclude: false,
       line_type: line.line_type,
       confidence: line.confidence,
+      matched_ingredient_id: line.matched_ingredient_id,
+      matched_ingredient_name: line.matched_ingredient_name,
+      cost_per_standardized_unit: line.cost_per_standardized_unit,
+      line_cost_estimate: line.line_cost_estimate,
+      needs_pricing: line.needs_pricing,
     }));
     setDraftLines(lines);
+    setDraftSellingPrice(
+      draft?.menu_item
+        ? String(
+            menuItems.find((m) => m.id === draft.menu_item)?.selling_price ?? '0.00'
+          )
+        : '0.00'
+    );
     setPhotoFile(null);
     setPhotoModalOpen(true);
   };
@@ -325,7 +458,7 @@ const FoodCostingPage = () => {
         return;
       }
       if (invoiceFile) {
-        const sizeError = validateImageFileSize(invoiceFile);
+        const sizeError = validateFileUploadSize(invoiceFile);
         if (sizeError) {
           message.error(sizeError);
           return;
@@ -485,6 +618,8 @@ const FoodCostingPage = () => {
     ingredientForm.resetFields();
     ingredientForm.setFieldsValue({
       standardized_unit: 'oz',
+      purchase_pack_qty: 1,
+      purchase_contents_unit: 'lb',
       cost_per_standardized_unit: 0,
       is_estimated_cost: true,
     });
@@ -519,7 +654,7 @@ const FoodCostingPage = () => {
     setEditingMenuItem(null);
     menuForm.resetFields();
     menuForm.setFieldsValue({
-      selling_price: 0,
+      selling_price: '0.00',
       recipe_lines: [{ name: '', quantity: 1, unit: 'oz', is_confirmed: true }],
     });
     setMenuModalOpen(true);
@@ -539,7 +674,7 @@ const FoodCostingPage = () => {
     menuForm.setFieldsValue({
       name: record.name,
       category: record.category,
-      selling_price: Number(record.selling_price || 0),
+      selling_price: record.selling_price != null ? String(record.selling_price) : '0.00',
       notes: record.notes,
       recipe_lines: lines.length
         ? lines
@@ -651,8 +786,14 @@ const FoodCostingPage = () => {
         exclude: false,
         line_type: line.line_type,
         confidence: line.confidence,
+        matched_ingredient_id: line.matched_ingredient_id,
+        matched_ingredient_name: line.matched_ingredient_name,
+        cost_per_standardized_unit: line.cost_per_standardized_unit,
+        line_cost_estimate: line.line_cost_estimate,
+        needs_pricing: line.needs_pricing,
       }));
       setDraftLines(lines);
+      setDraftSellingPrice('0.00');
       message.success('LIO created a draft. Review before confirming.');
       setActiveTab('drafts');
       loadAll();
@@ -678,8 +819,8 @@ const FoodCostingPage = () => {
     if (!draftResult?.draft?.id) return;
     setConfirmingDraft(true);
     try {
-      await confirmRecipeDraft(draftResult.draft.id, {
-        selling_price: 0,
+      const result = await confirmRecipeDraft(draftResult.draft.id, {
+        selling_price: draftSellingPrice,
         lines: draftLines.map((line) => ({
           draft_line_id: line.draft_line_id,
           name: line.name,
@@ -689,18 +830,58 @@ const FoodCostingPage = () => {
           exclude: line.exclude,
         })),
       });
-      message.success('Draft confirmed. Official recipe saved.');
+      message.success('Draft confirmed. Continue editing the recipe below.');
+      const menuItem = result?.menu_item;
       setPhotoModalOpen(false);
       setPhotoFile(null);
       setDraftResult(null);
       setDraftLines([]);
       setPhotoMenuName('');
+      setDraftSellingPrice('0.00');
+      await loadAll();
+      if (menuItem) {
+        openEditMenuItem(menuItem);
+      }
       setActiveTab('menu');
-      loadAll();
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to confirm draft');
     } finally {
       setConfirmingDraft(false);
+    }
+  };
+
+  const handleScanPrintedMenu = async () => {
+    if (!menuScanFile) {
+      message.error('Please choose a menu image or PDF first');
+      return;
+    }
+    const sizeError = validateFileUploadSize(menuScanFile);
+    if (sizeError) {
+      message.error(sizeError);
+      return;
+    }
+    setScanningPrintedMenu(true);
+    try {
+      const result = await scanPrintedMenu({ file: menuScanFile });
+      setMenuScanResult(result);
+      message.success(
+        result?.message || `Imported ${result?.created_count || 0} menu item(s).`
+      );
+      await loadAll();
+    } catch (error) {
+      const data = error?.response?.data;
+      if (isApiTimeoutError(error)) {
+        message.warning(
+          'Menu scan is taking longer than usual. Refresh Menu Items shortly.'
+        );
+        setMenuScanModalOpen(false);
+        setMenuScanFile(null);
+        setActiveTab('menu');
+        return;
+      }
+      message.error(data?.error || 'Failed to scan printed menu');
+    } finally {
+      setScanningPrintedMenu(false);
     }
   };
 
@@ -754,7 +935,20 @@ const FoodCostingPage = () => {
   }
 
   const ingredientColumns = [
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (v) => v || '—',
+      sorter: (a, b) =>
+        String(a.category || '').localeCompare(String(b.category || '')),
+    },
     {
       title: 'Vendor',
       dataIndex: 'vendor',
@@ -762,12 +956,24 @@ const FoodCostingPage = () => {
       render: (vendorId) =>
         vendors.find((v) => v.id === vendorId)?.name || '—',
     },
+    {
+      title: 'Purchase',
+      key: 'purchase',
+      render: (_, r) =>
+        r.purchase_unit_label ||
+        (r.purchase_contents_qty
+          ? `${r.purchase_pack_qty || 1} × ${r.purchase_contents_qty} ${r.purchase_contents_unit || ''}`
+          : '—'),
+    },
     { title: 'Unit', dataIndex: 'standardized_unit', key: 'unit', width: 90 },
     {
       title: 'Cost / unit',
       dataIndex: 'cost_per_standardized_unit',
       key: 'cost',
       render: (v) => `$${Number(v || 0).toFixed(4)}`,
+      sorter: (a, b) =>
+        Number(a.cost_per_standardized_unit || 0) -
+        Number(b.cost_per_standardized_unit || 0),
     },
     {
       title: 'Catch weight',
@@ -1090,6 +1296,17 @@ const FoodCostingPage = () => {
                 extra={
                   <Space wrap>
                     <Button
+                      icon={<CameraOutlined />}
+                      loading={scanningPrintedMenu}
+                      onClick={() => {
+                        setMenuScanFile(null);
+                        setMenuScanResult(null);
+                        setMenuScanModalOpen(true);
+                      }}
+                    >
+                      Scan printed menu with LIO
+                    </Button>
+                    <Button
                       icon={<ReloadOutlined />}
                       loading={importingMenuFromSquare}
                       onClick={handleImportMenuFromSquare}
@@ -1390,6 +1607,50 @@ const FoodCostingPage = () => {
                   </Button>
                 }
               >
+                <div className="mb-4 flex flex-wrap gap-3">
+                  <Input.Search
+                    allowClear
+                    placeholder="Search ingredients…"
+                    className="max-w-xs"
+                    value={ingredientSearch}
+                    onChange={(e) => setIngredientSearch(e.target.value)}
+                  />
+                  <Select
+                    allowClear
+                    placeholder="Category"
+                    className="min-w-[160px]"
+                    value={ingredientCategory || undefined}
+                    onChange={(v) => setIngredientCategory(v || '')}
+                    options={[
+                      ...Array.from(
+                        new Set(
+                          ingredients
+                            .map((i) => i.category)
+                            .filter(Boolean)
+                        )
+                      ),
+                    ].map((c) => ({ value: c, label: c }))}
+                  />
+                  <Select
+                    className="min-w-[180px]"
+                    value={ingredientOrdering}
+                    onChange={setIngredientOrdering}
+                    options={[
+                      { value: 'name', label: 'Sort: Name A–Z' },
+                      { value: '-name', label: 'Sort: Name Z–A' },
+                      { value: 'category', label: 'Sort: Category A–Z' },
+                      { value: '-category', label: 'Sort: Category Z–A' },
+                      {
+                        value: 'cost_per_standardized_unit',
+                        label: 'Sort: Cost low→high',
+                      },
+                      {
+                        value: '-cost_per_standardized_unit',
+                        label: 'Sort: Cost high→low',
+                      },
+                    ]}
+                  />
+                </div>
                 <Table
                   rowKey="id"
                   loading={loading}
@@ -1410,6 +1671,7 @@ const FoodCostingPage = () => {
         onCancel={() => setIngredientModalOpen(false)}
         onOk={saveIngredient}
         okText="Save"
+        width={640}
         okButtonProps={{ className: '!bg-[#FF8132] border-none' }}
         destroyOnClose
       >
@@ -1419,28 +1681,117 @@ const FoodCostingPage = () => {
             label="Name"
             rules={[{ required: true, message: 'Name is required' }]}
           >
-            <Input placeholder="Mozzarella" />
+            <Input placeholder="Romaine Lettuce" />
           </Form.Item>
-          <Form.Item name="vendor" label="Vendor">
-            <Select
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              placeholder="Select vendor"
-              options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-            />
-          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="category" label="Category">
+                <Input placeholder="Produce" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="vendor" label="Vendor">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Select vendor"
+                  options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="vendor_item_number" label="Vendor item #">
             <Input placeholder="Optional SKU" />
           </Form.Item>
-          <Form.Item name="standardized_unit" label="Standardized unit" required>
-            <Select options={UNIT_OPTIONS} />
+
+          <Alert
+            className="mb-3"
+            type="info"
+            showIcon
+            message="Enter ingredients as purchased. Growlio converts to recipe unit cost automatically."
+          />
+          <Row gutter={12}>
+            <Col span={8}>
+              <Form.Item name="purchase_unit_label" label="Purchase unit">
+                <Input placeholder="case / bag / can" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="purchase_pack_qty" label="Pack qty">
+                <InputNumber className="w-full" min={0} step={1} placeholder="1" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="purchase_total_cost" label="Total cost ($)">
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  stringMode
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="purchase_contents_qty" label="Contents per pack">
+                <InputNumber className="w-full" min={0} step={0.1} placeholder="6" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="purchase_contents_unit" label="Contents unit">
+                <Select options={PURCHASE_CONTENT_UNIT_OPTIONS} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="standardized_unit" label="Recipe costing unit" required>
+                <Select options={UNIT_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="yield_percent" label="Yield % (optional)">
+                <InputNumber className="w-full" min={0} max={100} step={1} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item shouldUpdate noStyle>
+            {() => {
+              const values = ingredientForm.getFieldsValue();
+              const preview = previewPurchaseConversion({
+                packQty: values.purchase_pack_qty,
+                contentsQty: values.purchase_contents_qty,
+                contentsUnit: values.purchase_contents_unit,
+                totalCost: values.purchase_total_cost,
+                targetUnit: values.standardized_unit || 'oz',
+                yieldPercent: values.yield_percent,
+              });
+              if (!preview) {
+                return (
+                  <p className="text-sm text-gray-500 mb-3">
+                    Enter pack contents and total cost to preview cost per recipe unit.
+                  </p>
+                );
+              }
+              return (
+                <Alert
+                  className="mb-3"
+                  type="success"
+                  showIcon
+                  message={`= ${preview.purchasedQty.toFixed(2)} ${preview.unit} @ $${preview.costPerUnit.toFixed(4)} per ${preview.unit}`}
+                />
+              );
+            }}
           </Form.Item>
-          <Form.Item name="cost_per_standardized_unit" label="Cost per unit">
-            <InputNumber className="w-full" min={0} step={0.0001} />
-          </Form.Item>
-          <Form.Item name="purchase_unit_label" label="Purchase unit label">
-            <Input placeholder="5 lb bag / #10 can" />
+          <Form.Item
+            name="cost_per_standardized_unit"
+            label="Cost per recipe unit (override)"
+            extra="Leave blank or 0 to auto-calculate from purchase pack above."
+          >
+            <InputNumber className="w-full" min={0} step={0.0001} stringMode />
           </Form.Item>
           <Form.Item name="is_catch_weight" label="Catch weight" initialValue={false}>
             <Select
@@ -1483,7 +1834,13 @@ const FoodCostingPage = () => {
             </Col>
             <Col span={12}>
               <Form.Item name="selling_price" label="Selling price">
-                <InputNumber className="w-full" min={0} step={0.01} />
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  stringMode
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -1510,7 +1867,7 @@ const FoodCostingPage = () => {
                         <Input placeholder="Ingredient" />
                       </Form.Item>
                     </Col>
-                    <Col span={5}>
+                    <Col span={4}>
                       <Form.Item
                         {...field}
                         name={[field.name, 'quantity']}
@@ -1519,9 +1876,42 @@ const FoodCostingPage = () => {
                         <InputNumber className="w-full" min={0} step={0.1} placeholder="Qty" />
                       </Form.Item>
                     </Col>
-                    <Col span={5}>
+                    <Col span={4}>
                       <Form.Item {...field} name={[field.name, 'unit']}>
                         <Select options={UNIT_OPTIONS} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={4}>
+                      <Form.Item shouldUpdate noStyle>
+                        {() => {
+                          const lines = menuForm.getFieldValue('recipe_lines') || [];
+                          const line = lines[field.name] || {};
+                          const match = ingredients.find(
+                            (ing) =>
+                              ing.id === line.ingredient_id ||
+                              (line.name &&
+                                ing.name.toLowerCase() ===
+                                  String(line.name).toLowerCase())
+                          );
+                          const unitCost = match
+                            ? Number(match.cost_per_standardized_unit || 0)
+                            : 0;
+                          const qty = Number(line.quantity || 0);
+                          const lineCost = unitCost * qty;
+                          if (!match) {
+                            return <Tag color="orange">Needs pricing</Tag>;
+                          }
+                          return (
+                            <span className="text-xs text-gray-600">
+                              ${lineCost.toFixed(2)}
+                              {match.is_estimated_cost || unitCost <= 0 ? (
+                                <Tag color="orange" className="ml-1">
+                                  Review
+                                </Tag>
+                              ) : null}
+                            </span>
+                          );
+                        }}
                       </Form.Item>
                     </Col>
                     <Col span={4}>
@@ -1595,10 +1985,44 @@ const FoodCostingPage = () => {
                   {draftResult.draft?.starting_confidence_score}% · AI builds{' '}
                   {draftResult.ai_builds_used}/{draftResult.ai_builds_limit}
                 </p>
+                <p className="text-sm text-gray-600 m-0 mt-1">
+                  Est. plate cost: $
+                  {Number(
+                    draftResult.draft?.estimated_plate_cost ??
+                      draftLines.reduce(
+                        (sum, line) =>
+                          sum +
+                          (line.exclude
+                            ? 0
+                            : Number(line.line_cost_estimate || 0)),
+                        0
+                      )
+                  ).toFixed(2)}{' '}
+                  ·{' '}
+                  {
+                    draftLines.filter(
+                      (line) => !line.exclude && line.needs_pricing
+                    ).length
+                  }{' '}
+                  ingredient(s) need pricing
+                </p>
               </div>
               <Tag icon={<CheckCircleOutlined />} color="processing">
                 Draft pending review
               </Tag>
+            </div>
+
+            <div className="max-w-xs">
+              <p className="text-sm font-medium mb-1">Selling price</p>
+              <InputNumber
+                className="w-full"
+                min={0}
+                step={0.01}
+                precision={2}
+                stringMode
+                value={draftSellingPrice}
+                onChange={(v) => setDraftSellingPrice(v ?? '0.00')}
+              />
             </div>
 
             {(draftResult.draft?.questions_for_user || []).length > 0 ? (
@@ -1674,8 +2098,48 @@ const FoodCostingPage = () => {
                 {
                   title: 'Type',
                   dataIndex: 'line_type',
-                  width: 110,
+                  width: 100,
                   render: (v) => <Tag>{v}</Tag>,
+                },
+                {
+                  title: 'Match',
+                  key: 'match',
+                  width: 130,
+                  render: (_, record) =>
+                    record.matched_ingredient_name ? (
+                      <Tag color="blue">{record.matched_ingredient_name}</Tag>
+                    ) : (
+                      <Tag color="orange">New</Tag>
+                    ),
+                },
+                {
+                  title: 'Unit cost',
+                  key: 'unit_cost',
+                  width: 100,
+                  render: (_, record) =>
+                    record.cost_per_standardized_unit != null
+                      ? `$${Number(record.cost_per_standardized_unit).toFixed(4)}`
+                      : '—',
+                },
+                {
+                  title: 'Est. cost',
+                  key: 'est_cost',
+                  width: 90,
+                  render: (_, record) =>
+                    record.line_cost_estimate != null
+                      ? `$${Number(record.line_cost_estimate).toFixed(2)}`
+                      : '—',
+                },
+                {
+                  title: 'Pricing',
+                  key: 'pricing',
+                  width: 110,
+                  render: (_, record) =>
+                    record.needs_pricing ? (
+                      <Tag color="orange">Needs pricing</Tag>
+                    ) : (
+                      <Tag color="green">Priced</Tag>
+                    ),
                 },
                 {
                   title: 'Keep',
@@ -1806,15 +2270,15 @@ const FoodCostingPage = () => {
           </Row>
           <div className="mb-4 space-y-2">
             <Upload
-              beforeUpload={(file) => handleImageFileSelect(file, setInvoiceFile)}
+              beforeUpload={(file) => handleFileSelect(file, setInvoiceFile)}
               maxCount={1}
-              accept="image/*"
+              accept={ACCEPT_IMAGE_OR_PDF}
               onRemove={() => setInvoiceFile(null)}
             >
-              <Button icon={<UploadOutlined />}>Upload invoice photo</Button>
+              <Button icon={<UploadOutlined />}>Upload invoice photo or PDF</Button>
             </Upload>
             <p className="text-xs text-gray-500 m-0">
-              Max file size: {MAX_IMAGE_UPLOAD_MB} MB
+              Max file size: {MAX_FILE_UPLOAD_MB} MB · PNG, JPG, or PDF
             </p>
             {invoiceFile ? (
               <p className="text-sm text-gray-600 m-0">Selected: {invoiceFile.name}</p>
@@ -1824,7 +2288,10 @@ const FoodCostingPage = () => {
               value={extractWithAi}
               onChange={setExtractWithAi}
               options={[
-                { value: true, label: 'Extract lines with LIO (recommended for photos)' },
+                {
+                  value: true,
+                  label: 'Extract lines with LIO (recommended for photos/PDFs)',
+                },
                 { value: false, label: 'Do not extract — use manual lines only' },
               ]}
             />
@@ -2000,6 +2467,8 @@ const FoodCostingPage = () => {
                       className="w-full"
                       min={0}
                       step={0.01}
+                      precision={2}
+                      stringMode
                       value={value}
                       onChange={(val) => {
                         const next = [...invoiceLines];
@@ -2008,6 +2477,20 @@ const FoodCostingPage = () => {
                       }}
                     />
                   ),
+                },
+                {
+                  title: '$/oz',
+                  dataIndex: 'cost_per_oz',
+                  width: 90,
+                  render: (v) =>
+                    v != null ? `$${Number(v).toFixed(4)}` : '—',
+                },
+                {
+                  title: 'Matched cost',
+                  dataIndex: 'matched_unit_cost',
+                  width: 110,
+                  render: (v) =>
+                    v != null ? `$${Number(v).toFixed(4)}` : '—',
                 },
                 {
                   title: 'Non-food',
@@ -2048,6 +2531,115 @@ const FoodCostingPage = () => {
             </Space>
           </div>
         ) : null}
+      </Modal>
+
+      {/* Printed menu scan modal */}
+      <Modal
+        title="Scan printed menu with LIO"
+        open={menuScanModalOpen}
+        onCancel={() => {
+          setMenuScanModalOpen(false);
+          setMenuScanFile(null);
+          setMenuScanResult(null);
+        }}
+        footer={null}
+        width={720}
+        destroyOnClose
+      >
+        <Alert
+          className="mb-4"
+          type="info"
+          showIcon
+          message="Upload a photo or PDF of a printed menu. LIO imports item names, prices, and categories — recipes are not invented."
+        />
+        {!menuScanResult ? (
+          <div className="space-y-4">
+            <Upload
+              beforeUpload={(file) => handleFileSelect(file, setMenuScanFile)}
+              maxCount={1}
+              accept={ACCEPT_IMAGE_OR_PDF}
+              onRemove={() => setMenuScanFile(null)}
+            >
+              <Button icon={<UploadOutlined />}>Upload menu photo or PDF</Button>
+            </Upload>
+            <p className="text-xs text-gray-500 m-0">
+              Max file size: {MAX_FILE_UPLOAD_MB} MB · PNG, JPG, or PDF
+            </p>
+            {menuScanFile ? (
+              <p className="text-sm text-gray-600">Selected: {menuScanFile.name}</p>
+            ) : null}
+            <Button
+              type="primary"
+              loading={scanningPrintedMenu}
+              icon={<CameraOutlined />}
+              className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+              onClick={handleScanPrintedMenu}
+            >
+              Scan with LIO
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Alert
+              type="success"
+              showIcon
+              message={
+                menuScanResult.message ||
+                `Imported ${menuScanResult.created_count || 0} item(s).`
+              }
+            />
+            <Table
+              rowKey="id"
+              size="small"
+              pagination={false}
+              dataSource={menuScanResult.items || []}
+              columns={[
+                { title: 'Item', dataIndex: 'name', key: 'name' },
+                {
+                  title: 'Category',
+                  dataIndex: 'category',
+                  key: 'category',
+                  render: (v) => v || '—',
+                },
+                {
+                  title: 'Price',
+                  dataIndex: 'selling_price',
+                  key: 'price',
+                  render: (v) => `$${Number(v || 0).toFixed(2)}`,
+                },
+                {
+                  title: 'Actions',
+                  key: 'actions',
+                  render: (_, record) => (
+                    <Button
+                      size="small"
+                      type="primary"
+                      className="!bg-[#FF8132] border-none"
+                      onClick={() => {
+                        setMenuScanModalOpen(false);
+                        setMenuScanResult(null);
+                        setMenuScanFile(null);
+                        openEditMenuItem(record);
+                      }}
+                    >
+                      Edit recipe
+                    </Button>
+                  ),
+                },
+              ]}
+            />
+            <Button
+              onClick={() => {
+                setMenuScanModalOpen(false);
+                setMenuScanResult(null);
+                setMenuScanFile(null);
+                setActiveTab('menu');
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   );

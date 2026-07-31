@@ -54,10 +54,17 @@ export const archiveVendor = async (id) => {
   return res.data;
 };
 
-export const fetchIngredients = async (search = '') => {
+export const fetchIngredients = async ({
+  search = '',
+  category = '',
+  ordering = 'name',
+} = {}) => {
   const { query } = withIds();
-  const q = search ? `${query}&search=${encodeURIComponent(search)}` : query;
-  const res = await apiGet(`/food_costing/ingredients/?${q}`);
+  const params = new URLSearchParams(query);
+  if (search) params.set('search', search);
+  if (category) params.set('category', category);
+  if (ordering) params.set('ordering', ordering);
+  const res = await apiGet(`/food_costing/ingredients/?${params.toString()}`);
   return res.data;
 };
 
@@ -96,6 +103,20 @@ export const importSquareMenuItems = async () => {
 export const pollSquareImportStatus = async (jobId) => {
   const { query } = withIds();
   const res = await apiGet(`/square_pos/menu-items/status/${jobId}/?${query}`);
+  return res.data;
+};
+
+export const scanPrintedMenu = async ({ file }) => {
+  const { restaurant_id, location_id } = withIds();
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('restaurant_id', String(restaurant_id));
+  if (location_id) formData.append('location_id', String(location_id));
+  const res = await apiPostWithTimeout(
+    '/food_costing/menu-items/from-menu-scan/',
+    formData,
+    AI_UPLOAD_TIMEOUT
+  );
   return res.data;
 };
 
