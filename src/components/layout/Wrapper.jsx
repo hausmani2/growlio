@@ -28,6 +28,15 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
   const { canManageLocations, canAccessSimulator, canAccessReportCard } = useRestaurantRole();
+  const restaurantId = useStore((state) => state.restaurantId);
+  const selectedLocationId = useStore((state) => state.selectedLocationId);
+  const unseenFindingsCount = useStore((state) => {
+    const rid = restaurantId || localStorage.getItem('restaurant_id') || '';
+    const lid = selectedLocationId || localStorage.getItem('selected_location_id') || '';
+    const scopeKey = `${rid}:${lid}`;
+    if (state.unseenFindingsScopeKey !== scopeKey) return 0;
+    return state.unseenFindingsCount || 0;
+  });
 
   const user = useStore((state) => state.user);
   const isAdmin = (user?.role || '').toUpperCase() === 'ADMIN' || user?.is_staff;
@@ -48,7 +57,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const hasFetchedSubscriptionRef = useRef(false);
   const lastSubscriptionRestaurantIdRef = useRef(null);
   const restaurantIdForPlan = localStorage.getItem('restaurant_id');
-  const selectedLocationId = useStore((state) => state.selectedLocationId);
   const refreshCurrentPage = useStore((state) => state.refreshCurrentPage);
   const checkLocationOnboarding = useStore((state) => state.checkLocationOnboarding);
   const lastRefreshLocationIdRef = useRef(null);
@@ -384,6 +392,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
     </svg>
     ,
       label: 'Report Card',
+      badgeCount: unseenFindingsCount,
       onClick: () => navigate('/dashboard/report-card'),
     }] : []),
     {

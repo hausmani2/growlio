@@ -359,6 +359,62 @@ export const shouldShowDefaultExpenses = (restaurantData, locationId = null) => 
 };
 
 /**
+ * Detect Rent row in operating-expense payloads (API `name` or UI `label`).
+ */
+export const isRentExpense = (expense) => {
+  if (!expense || typeof expense !== 'object') return false;
+  const name = String(expense.name || expense.label || '').trim().toLowerCase();
+  const category = String(expense.category || '').trim().toLowerCase();
+  return name === 'rent' || category === 'rent';
+};
+
+/**
+ * Build Expense payload for "Setup Later": all inactive except Rent,
+ * with Rent amount from profitability score (sales-information.expenses).
+ *
+ * @param {Array} expenses - Expense rows (API or DEFAULT_EXPENSES shape)
+ * @param {number} monthlyRent - Rent dollars from sales-information.expenses
+ * @returns {Array}
+ */
+export const buildSetupLaterExpenses = (expenses, monthlyRent) => {
+  const list = Array.isArray(expenses) ? expenses : [];
+  const rentAmount = Number(monthlyRent);
+  const resolvedRent = Number.isFinite(rentAmount) ? rentAmount : 0;
+
+  return list.map((expense) => {
+    const rent = isRentExpense(expense);
+    const existingAmount = Number(expense?.amount);
+    const amount = rent
+      ? (resolvedRent > 0
+          ? resolvedRent
+          : (Number.isFinite(existingAmount) ? existingAmount : 0))
+      : (Number.isFinite(existingAmount) ? existingAmount : Number(expense?.amount) || 0);
+
+    return {
+      ...expense,
+      category: expense.category || (rent ? 'Rent' : 'Other'),
+      name: expense.name || expense.label || (rent ? 'Rent' : ''),
+      amount,
+      is_value_type: rent ? true : (expense.is_value_type !== undefined ? expense.is_value_type : true),
+      expense_type: rent
+        ? 'monthly'
+        : (expense.expense_type ||
+          (expense.fixed_expense_type === 'MONTHLY'
+            ? 'monthly'
+            : expense.fixed_expense_type === 'WEEKLY'
+              ? 'weekly'
+              : expense.expense_type) ||
+          'monthly'),
+      fixed_expense_type: rent
+        ? 'MONTHLY'
+        : (expense.fixed_expense_type ||
+          (String(expense.expense_type || '').toLowerCase() === 'weekly' ? 'WEEKLY' : 'MONTHLY')),
+      is_active: rent,
+    };
+  });
+};
+
+/**
  * Check if "One Month Sales Information" is completed
  * @param {Object} restaurantData - Response from restaurants-onboarding API
  * @returns {boolean} - True if One Month Sales Information is completed

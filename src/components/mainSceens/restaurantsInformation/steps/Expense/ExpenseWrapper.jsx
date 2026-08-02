@@ -13,13 +13,27 @@ import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import PrimaryButton from "../../../../buttons/Buttons";
 import { useGuidance } from "../../../../../contexts/GuidanceContext";
 import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocationReload";
-import { shouldShowDefaultExpenses } from "../../../../../utils/onboardingUtils";
+import {
+    shouldShowDefaultExpenses,
+    buildSetupLaterExpenses,
+} from "../../../../../utils/onboardingUtils";
+import { DEFAULT_EXPENSES } from "../../../../../utils/simulationUtils";
 
 const ExpenseWrapperContent = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { startExpenseGuidance, dismissGuidanceUIOnly } = useGuidance();
-    const { submitStepData, onboardingLoading: loading, onboardingError: error, clearError, completeOnboardingData, checkOnboardingCompletion, isOnBoardingCompleted } = useStore();
+    const {
+        submitStepData,
+        onboardingLoading: loading,
+        onboardingError: error,
+        clearError,
+        completeOnboardingData,
+        checkOnboardingCompletion,
+        isOnBoardingCompleted,
+        getSalesInformation,
+        salesInformationData,
+    } = useStore();
     const { validationErrors, clearFieldError, validateExpense, setValidationErrors, clearAllErrors } = useStepValidation();
     const { navigateToNextStep, completeOnboarding, activeTab, tabs } = useTabHook();
 
@@ -38,6 +52,8 @@ const ExpenseWrapperContent = () => {
         restaurantOnboardingData,
         selectedLocationId
     );
+    // Incomplete Expense setup (owner onboard): offer Setup Later instead of bare Skip
+    const showSetupLater = showDefaultExpenses;
     const onboardingStatusKnown = Boolean(
         restaurantOnboardingData?.restaurants?.length
     );
@@ -377,11 +393,15 @@ const ExpenseWrapperContent = () => {
         return errors;
     };
 
-    const proceedWithSave = async () => {
+    const proceedWithSave = async (expensesOverride = null, options = {}) => {
+        const { successMessage, rowSnapshotSource } = options;
         try {
+            const expensesToSave =
+                expensesOverride != null ? expensesOverride : apiExpenseData.expenses;
+
             // Prepare data for API
             const stepData = {
-                expenses: apiExpenseData.expenses,
+                expenses: expensesToSave,
             };
 
             // Call API through Zustand store with success callback
@@ -390,10 +410,10 @@ const ExpenseWrapperContent = () => {
 
                 // Clear all validation errors on successful save
                 clearAllErrors();
-                setLastSavedExpenseRows(buildRowSnapshot(expenseData));
+                setLastSavedExpenseRows(
+                    buildRowSnapshot(rowSnapshotSource || expenseData)
+                );
                 setHasInitializedRowBaseline(true);
-
-                const grandTotal = apiExpenseData.expenses.reduce((sum, cost) => sum + cost.amount, 0);
 
                 // Check if restaurant_id was returned and log it
                 if (responseData && responseData.restaurant_id) {
@@ -401,10 +421,10 @@ const ExpenseWrapperContent = () => {
 
                 if (isUpdateMode && isOnBoardingCompleted) {
                     // Update mode AND onboarding is complete: stay on Operating Expenses after saving
-                    message.success("Expense information updated successfully!");
+                    message.success(successMessage || "Expense information updated successfully!");
                 } else {
                     // Onboarding mode OR new user in update mode: navigate to next step
-                    message.success("Expense information saved successfully!");
+                    message.success(successMessage || "Expense information saved successfully!");
                     navigate('/dashboard/sales-channels');
                 }
             });
@@ -417,6 +437,94 @@ const ExpenseWrapperContent = () => {
         } catch (error) {
             console.error("Error saving expense data:", error);
             message.error("An unexpected error occurred. Please try again.");
+        }
+    };
+
+    const handleSetupLater = async () => {
+        try {
+            let salesInfo = salesInformationData;
+            if (!salesInfo) {
+                const salesResult = await getSalesInformation();
+                salesInfo = salesResult?.data ?? useStore.getState().salesInformationData;
+            }
+
+            const record = Array.isArray(salesInfo) ? salesInfo[0] : salesInfo;
+            const monthlyRent = Number(record?.expenses) || 0;
+
+            let sourceExpenses = apiExpenseData.expenses;
+            if (!sourceExpenses?.length) {
+                const fromUi = [
+                    ...(expenseData.dynamicFixedFields || []),
+                    ...(expenseData.dynamicVariableFields || []),
+                ]
+                    .filter((field) => field && field.label && field.label.trim() !== "")
+                    .map((field) => ({
+                        category: field.category || "Other",
+                        name: field.label,
+                        amount: parseFloat(field.value || 0),
+                        expense_type:
+                            field.expense_type ||
+                            field.fixed_expense_type ||
+                            field.variable_expense_type ||
+                            "monthly",
+                        is_value_type:
+                            field.is_value_type !== undefined ? field.is_value_type : true,
+                        is_active: field.is_active !== undefined ? field.is_active : true,
+                    }));
+
+                sourceExpenses = fromUi.length
+                    ? fromUi
+                    : DEFAULT_EXPENSES.map((expense) => ({
+                          category: expense.category || "Other",
+                          name: expense.name,
+                          amount: Number(expense.amount) || 0,
+                          expense_type:
+                              expense.fixed_expense_type === "WEEKLY" ? "weekly" : "monthly",
+                          is_value_type:
+                              expense.is_value_type !== undefined
+                                  ? expense.is_value_type
+                                  : true,
+                          is_active:
+                              expense.is_active !== undefined ? expense.is_active : true,
+                          fixed_expense_type: expense.fixed_expense_type || "MONTHLY",
+                      }));
+            }
+
+            const setupLaterExpenses = buildSetupLaterExpenses(
+                sourceExpenses,
+                monthlyRent
+            );
+
+            const dynamicFields = setupLaterExpenses.map((expense, index) => ({
+                id: `setup-later-${selectedLocationId || "loc"}-${index}`,
+                label: expense.name,
+                value: String(expense.amount ?? 0),
+                key: `dynamic_expense_setup_later_${selectedLocationId || "loc"}_${index}`,
+                expense_type: expense.expense_type || "monthly",
+                is_active: expense.is_active,
+                is_value_type:
+                    expense.is_value_type !== undefined ? expense.is_value_type : true,
+                category: expense.category || "Other",
+            }));
+
+            setExpenseData((prev) => ({
+                ...prev,
+                dynamicFixedFields: dynamicFields,
+                dynamicVariableFields: [],
+            }));
+            setApiExpenseData({ expenses: setupLaterExpenses });
+
+            await proceedWithSave(setupLaterExpenses, {
+                successMessage:
+                    "We'll use your rent for now. You can finish the rest of your expenses later.",
+                rowSnapshotSource: {
+                    dynamicFixedFields: dynamicFields,
+                    dynamicVariableFields: [],
+                },
+            });
+        } catch (error) {
+            console.error("Error in handleSetupLater:", error);
+            message.error("Failed to set up expenses for later. Please try again.");
         }
     };
 
@@ -519,17 +627,31 @@ const ExpenseWrapperContent = () => {
 
                         {isUpdateMode && (
                             <div className="flex justify-end gap-3 mt-8 pt-6">
-                                <button
-                                    onClick={() => {
-                                        navigate('/dashboard/sales-channels');
-                                    }}
-                                    disabled={loading}
-                                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
-                                    }`}
-                                >
-                                    Skip
-                                </button>
+                                {showSetupLater ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleSetupLater}
+                                        disabled={loading}
+                                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        Setup Later
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigate('/dashboard/sales-channels');
+                                        }}
+                                        disabled={loading}
+                                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        Skip
+                                    </button>
+                                )}
                                 <button
                                     onClick={handleSave}
                                     className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition-colors font-semibold"
@@ -671,18 +793,31 @@ const ExpenseWrapperContent = () => {
             </div>
 
             <div className="flex justify-end gap-3 mt-8 pt-6">
-                <button
-                    onClick={() => {
-                     
-                        navigate('/dashboard/sales-channels');
-                    }}
-                    disabled={loading}
-                    className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                        loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
-                    }`}
-                >
-                    Skip
-                </button>
+                {showSetupLater ? (
+                    <button
+                        type="button"
+                        onClick={handleSetupLater}
+                        disabled={loading}
+                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                        }`}
+                    >
+                        Setup Later
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            navigate('/dashboard/sales-channels');
+                        }}
+                        disabled={loading}
+                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                        }`}
+                    >
+                        Skip
+                    </button>
+                )}
                 {isUpdateMode && (
                     <button
                         onClick={handleSave}

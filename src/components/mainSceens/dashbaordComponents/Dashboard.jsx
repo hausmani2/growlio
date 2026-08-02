@@ -18,6 +18,7 @@ import SyncModal from '../../SyncModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
+import { NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT } from '../../../utils/reportCardReminders';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -532,6 +533,25 @@ const Dashboard = () => {
     setSelectedDate(weekStart);
     await processWeekSelection(weekStart);
   };
+
+  const handleWeekPickerChangeRef = useRef(handleWeekPickerChange);
+  handleWeekPickerChangeRef.current = handleWeekPickerChange;
+
+  // "Complete Previous Week" from incomplete-previous-week warning
+  useEffect(() => {
+    const handleNavigateToCloseOutWeek = (event) => {
+      const weekStartStr = event?.detail?.weekStart;
+      if (!weekStartStr) return;
+      const weekStart = dayjs(weekStartStr).startOf('week');
+      if (!weekStart.isValid()) return;
+      handleWeekPickerChangeRef.current?.(weekStart);
+    };
+
+    window.addEventListener(NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT, handleNavigateToCloseOutWeek);
+    return () => {
+      window.removeEventListener(NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT, handleNavigateToCloseOutWeek);
+    };
+  }, []);
 
   // Generate week days based on selected week
   const getWeekDays = () => {

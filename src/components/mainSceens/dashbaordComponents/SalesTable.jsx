@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin } from 'antd';
-import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
@@ -11,6 +11,21 @@ import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 import { useGuidance } from '../../../contexts/GuidanceContext';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import {
+  captureCloseOutFingerprintsBeforeSave,
+  recordCloseOutSessionChanges,
+  flushCloseOutSessionNotification,
+  maybeWarnPreviousWeekIncomplete,
+} from '../../../utils/reportCardReminders';
+import {
+  OPEN_SALES_MODAL_EVENT,
+  collectSalesEnteredDatesFromFormDays,
+  hasSalesAmountEvidence,
+  markSalesEnteredDates,
+  normalizeCloseOutDate,
+} from '../../../utils/salesEnteredGate';
+
 const { Title, Text } = Typography;
 
 function isDayClosedForWtd(record) {
@@ -63,6 +78,7 @@ function computeWtdActualVsBudgetVariance(dailyData, providersList) {
 
 const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null, dashboardLoading = false }) => {
   const navigate = useNavigate();
+  const { canAccessReportCard } = useRestaurantRole();
   // Guidance hook for data guidance - safe to use even without provider (returns defaults)
   const { startDataGuidance, hasSeenDataGuidance, isDataGuidanceActive } = useGuidance();
   
@@ -417,6 +433,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   useEffect(() => {
     if (dashboardData) {
       processDashboardData();
+
+      // Persist sales-entered marks for days with sales evidence (POS sync / prior saves)
+      const evidencedDates = (dashboardData.daily_entries || [])
+        .filter((entry) => hasSalesAmountEvidence(entry?.['Sales Performance']))
+        .map((entry) => normalizeCloseOutDate(entry?.date))
+        .filter(Boolean);
+      if (evidencedDates.length > 0) {
+        markSalesEnteredDates(evidencedDates);
+      }
     } else {
       // Reset data when no dashboard data is available
       setWeeklyData([]);
@@ -597,6 +622,26 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         localStorage.removeItem('dashboardNavigationContext');
       }
     }
+  }, [dashboardData, dataNotFound, weeklyData]);
+
+  // Open Sales modal when Labor/COGS guide the user here (sales-first gate)
+  useEffect(() => {
+    const handleOpenSalesModal = () => {
+      if (dashboardData === null) return;
+      setTimeout(() => {
+        if (dataNotFound || areAllValuesZero(weeklyData)) {
+          showAddWeeklyModal();
+        } else if (weeklyData[0]) {
+          showEditWeeklyModal(weeklyData[0]);
+        } else {
+          showAddWeeklyModal();
+        }
+        message.info('Enter sales for this day before adding labor or COGS.');
+      }, 100);
+    };
+
+    window.addEventListener(OPEN_SALES_MODAL_EVENT, handleOpenSalesModal);
+    return () => window.removeEventListener(OPEN_SALES_MODAL_EVENT, handleOpenSalesModal);
   }, [dashboardData, dataNotFound, weeklyData]);
 
   // Recalculate weekly totals when weeklyData changes
@@ -1166,7 +1211,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
 
   // Helper function to check week status and show warning if needed
-  const checkWeekStatusAndShowWarning = (weekStartDate, onConfirm, actionType = 'add') => {
+  const checkWeekStatusAndShowWarning = async (weekStartDate, onConfirm, actionType = 'add') => {
     if (!weekStartDate) {
       message.warning('Please select a date first.');
       return;
@@ -1194,10 +1239,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       setPendingModalAction(() => onConfirm);
       setPendingActionType(actionType);
       setShowWeekWarningModal(true);
-    } else {
-      // Current week - proceed directly
-      onConfirm();
+      return;
     }
+
+    // Current week — warn if the immediately previous week is still incomplete
+    await maybeWarnPreviousWeekIncomplete({
+      weekStartDate,
+      onProceed: onConfirm,
+    });
   };
 
   // Handle weekly data modal - Directly open modal without checking for weekly average data
@@ -1360,9 +1409,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     setIsAutoAverageLoading(false);
   };
 
-  const handleWeeklySubmit = async (weekData) => {
+  const handleWeeklySubmit = async (weekData, touchedDates = []) => {
     try {
       setIsSubmitting(true);
+
+      if (!weekData || !weekData.dailyData) {
+        message.warning('No weekly data to save. Please add weekly Sales data first.');
+        return;
+      }
 
       if (editingWeek) {
         // Edit existing week
@@ -1396,13 +1450,6 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             return acc;
           }, {})
         });
-      }
-
-      // Save data to API when modal is submitted
-      // Use the weekData from the modal instead of checking weeklyData state
-      if (!weekData || !weekData.dailyData) {
-        message.warning('No weekly data to save. Please add weekly Sales data first.');
-        return;
       }
 
       // Use the weekly totals from the modal data
@@ -1563,10 +1610,25 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         }
       };
 
+      const beforeFingerprints = captureCloseOutFingerprintsBeforeSave();
       await saveDashboardData(transformedData);
+
+      // Frontend sales-entered marks (supports $0 days via touched dates)
+      const enteredDates = collectSalesEnteredDatesFromFormDays(completeDailyData, touchedDates);
+      markSalesEnteredDates(enteredDates);
 
       // Show success message
       message.success(isEditMode ? 'Sales data updated successfully!' : 'Sales data saved successfully!');
+
+      // Refresh before sequential prompt / close-out check so completeness uses fresh data
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      } else {
+        await processDashboardData();
+      }
+
+      // Keep Sales date changes in the session; notify only when this chain ends
+      recordCloseOutSessionChanges(beforeFingerprints, 'sales');
 
       // Show confirmation popup asking if user wants to add COGS data
       Modal.confirm({
@@ -1583,7 +1645,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         cancelText: 'No, Later',
         okType: 'primary',
         onOk: () => {
-          // Close the sales modal first
+          // Close the sales modal first — session kept for COGS/Labor
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
@@ -1600,20 +1662,17 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
           window.dispatchEvent(event);
         },
         onCancel: () => {
-          // Just close the sales modal
+          // Chain ended — summarize all session dates (Sales + any earlier)
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
+          flushCloseOutSessionNotification({
+            navigate,
+            beforeFingerprints,
+            canAccessReportCard,
+          });
         }
       });
-
-      // Refresh all dashboard data to show updated data across all components
-      if (refreshDashboardData) {
-        await refreshDashboardData();
-      } else {
-        // Fallback: reload data after saving
-        await processDashboardData();
-      }
 
       // Trigger data guidance after data is saved (if user hasn't seen it yet)
       if (hasSeenDataGuidance === false || hasSeenDataGuidance === null) {
@@ -1696,6 +1755,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Weekly Modal Component
   const WeeklyModal = () => {
+    const [touchedSalesDates, setTouchedSalesDates] = useState(() => new Set());
     const [weekFormData, setWeekFormData] = useState({
       weekTitle: '',
       startDate: weekDays.length > 0 ? weekDays[0].date : selectedDate,
@@ -1712,6 +1772,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         // Dynamic provider fields will be added here
       }
     });
+
+    useEffect(() => {
+      if (isModalVisible) {
+        setTouchedSalesDates(new Set());
+      }
+    }, [isModalVisible, editingWeek]);
 
     // Regenerate daily data when restaurant goals become available
     // This ensures restaurant_days from the API are applied correctly
@@ -1943,6 +2009,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         return;
       }
 
+      // Track intentional day edits (supports marking valid $0 sales days)
+      const dateKey = record?.date?.format
+        ? record.date.format('YYYY-MM-DD')
+        : String(record?.date || '');
+      if (dateKey && field !== 'restaurant_open') {
+        setTouchedSalesDates((prev) => {
+          const next = new Set(prev);
+          next.add(dateKey);
+          return next;
+        });
+      }
+
       const newDailyData = [...weekFormData.dailyData];
       const currentDay = newDailyData[dayIndex];
       // When toggling day to closed, set all that day's input values to zero
@@ -1963,7 +2041,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     };
 
     const handleSubmit = () => {
-      handleWeeklySubmit(weekFormData);
+      handleWeeklySubmit(weekFormData, Array.from(touchedSalesDates));
     };
 
     return (
@@ -1992,82 +2070,122 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
 
           {/* Weekly Totals Section - Responsive Grid (Read-only) */}
-          <Card title="Weekly Sales Summary" size="small" className='opacity-50 bg-gray-50'>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
+          <div
+            style={{
+              background: '#f5f5f5',
+              border: '1px solid #d9d9d9',
+              borderRadius: '6px',
+              padding: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Text strong style={{ fontSize: '15px', color: '#262626' }}>Weekly Sales Summary</Text>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#595959',
+                    backgroundColor: '#e8e8e8',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '4px',
+                    padding: '1px 8px',
+                    fontWeight: 500,
+                    lineHeight: '20px',
+                  }}
+                >
+                  <LockOutlined style={{ fontSize: '10px' }} /> Read only
+                </span>
+            </div>
+            <Text style={{ fontSize: '12px', color: '#8c8c8c', display: 'block', marginBottom: '14px' }}>
+              These values are calculated automatically from the weekly sales budget and your daily sales entries.
+            </Text>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Sales Budget:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Sales Budget</Text>
                 <Input
                   type='number'
                   value={Math.round(weekFormData.weeklyTotals.budgetedSales || 0)}
                   prefix="$"
                   placeholder="0.00"
-                  className="w-full"
+                  className="w-full mt-1"
                   disabled={true}
                   style={{
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                    color: '#1890ff'
-
+                    backgroundColor: '#e6e6e6',
+                    color: '#1a6fb5',
+                    borderColor: '#bfbfbf',
+                    opacity: 1,
+                    WebkitTextFillColor: '#1a6fb5',
+                    cursor: 'default',
                   }}
                 />
               </div>
               {salesChannelsConfig.in_store && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Actual Sales - In Store:</Text>
+                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - In Store</Text>
                   <Input
                     type='number'
                     value={Math.round(weekFormData.weeklyTotals.actualSalesInStore || 0)}
                     prefix="$"
                     placeholder="0.00"
-                    className="w-full"
+                    className="w-full mt-1"
                     disabled={true}
                     style={{
-                      backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed',
-                      color: '#1890ff'
+                      backgroundColor: '#e6e6e6',
+                      color: '#1a6fb5',
+                      borderColor: '#bfbfbf',
+                      opacity: 1,
+                      WebkitTextFillColor: '#1a6fb5',
+                      cursor: 'default',
                     }}
                   />
                 </div>
               )}
               {salesChannelsConfig.from_app && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Actual Sales - App:</Text>
+                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - App</Text>
                   <Input
                     type='number'
                     value={Math.round(weekFormData.weeklyTotals.actualSalesAppOnline || 0)}
                     prefix="$"
                     placeholder="0.00"
-                    className="w-full"
+                    className="w-full mt-1"
                     disabled={true}
                     style={{
-                      backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed',
-                      color: '#1890ff'
+                      backgroundColor: '#e6e6e6',
+                      color: '#1a6fb5',
+                      borderColor: '#bfbfbf',
+                      opacity: 1,
+                      WebkitTextFillColor: '#1a6fb5',
+                      cursor: 'default',
                     }}
                   />
                 </div>
               )}
               {salesChannelsConfig.online && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Actual Sales - Online:</Text>
+                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - Online</Text>
                   <Input
                     type='number'
                     value={Math.round(weekFormData.weeklyTotals.actualSalesOnline || 0)}
                     prefix="$"
                     placeholder="0.00"
-                    className="w-full"
+                    className="w-full mt-1"
                     disabled={true}
                     style={{
-                      backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed',
-                      color: '#1890ff'
+                      backgroundColor: '#e6e6e6',
+                      color: '#1a6fb5',
+                      borderColor: '#bfbfbf',
+                      opacity: 1,
+                      WebkitTextFillColor: '#1a6fb5',
+                      cursor: 'default',
                     }}
                   />
                 </div>
               )}
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base"># Daily Tickets:</Text>
-
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}># Daily Tickets</Text>
                 <Input
                   type='number'
                   value={weekFormData.weeklyTotals.dailyTickets}
@@ -2075,76 +2193,84 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   step="1"
                   min="0"
                   pattern="[0-9]*"
-                  className="w-full"
+                  className="w-full mt-1"
                   disabled={true}
                   style={{
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                    color: '#1890ff'
+                    backgroundColor: '#e6e6e6',
+                    color: '#1a6fb5',
+                    borderColor: '#bfbfbf',
+                    opacity: 1,
+                    WebkitTextFillColor: '#1a6fb5',
+                    cursor: 'default',
                   }}
                 />
-
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Net Sales - Actual</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Net Sales - Actual</Text>
                 <Input
                   type='number'
                   value={Math.round(weekFormData.weeklyTotals.netSalesActual || 0)}
                   prefix="$"
                   placeholder="0.00"
-                  className="w-full"
+                  className="w-full mt-1"
                   disabled={true}
                   style={{
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                    color: '#1890ff'
+                    backgroundColor: '#e6e6e6',
+                    color: '#1a6fb5',
+                    borderColor: '#bfbfbf',
+                    opacity: 1,
+                    WebkitTextFillColor: '#1a6fb5',
+                    cursor: 'default',
                   }}
                 />
-
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Average Daily Ticket ($):</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Average Daily Ticket ($)</Text>
                 <Input
                   type='number'
                   value={Math.round(weekFormData.weeklyTotals.averageDailyTicket || 0)}
                   prefix="$"
                   placeholder="0.00"
-                  className="w-full"
+                  className="w-full mt-1"
                   disabled={true}
                   style={{
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                    color: '#1890ff'
+                    backgroundColor: '#e6e6e6',
+                    color: '#1a6fb5',
+                    borderColor: '#bfbfbf',
+                    opacity: 1,
+                    WebkitTextFillColor: '#1a6fb5',
+                    cursor: 'default',
                   }}
                 />
               </div>
             </div>
-          </Card>
 
-          {/* Dynamic Provider Fields - Responsive Grid (Read-only) */}
-          {providerList.length > 0 && (
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border p-2 rounded-md bg-gray-50 opacity-50">
-              {providerList.map((provider) => (
-                <div key={provider.provider_name} className="w-full">
-                  <Text strong className="text-sm sm:text-base">Actual Sales - {provider.provider_name}:</Text>
-                  <Input
-                    type='number'
-                    value={weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
-                    prefix="$"
-                    placeholder="0.00"
-                    className="w-full"
-                    disabled={true}
-                    style={{
-                      backgroundColor: '#f5f5f5',
-                      cursor: 'not-allowed',
-                      color: '#1890ff'
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+            {providerList.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4" style={{ borderTop: '1px solid #d9d9d9' }}>
+                {providerList.map((provider) => (
+                  <div key={provider.provider_name} className="w-full">
+                    <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - {provider.provider_name}</Text>
+                    <Input
+                      type='number'
+                      value={weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
+                      prefix="$"
+                      placeholder="0.00"
+                      className="w-full mt-1"
+                      disabled={true}
+                      style={{
+                        backgroundColor: '#e6e6e6',
+                        color: '#1a6fb5',
+                        borderColor: '#bfbfbf',
+                        opacity: 1,
+                        WebkitTextFillColor: '#1a6fb5',
+                        cursor: 'default',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
 
 

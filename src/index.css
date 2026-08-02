@@ -163,6 +163,16 @@ body {
   z-index: 1010 !important;
 }
 
+/* CMS tooltip content formatting (TooltipIcon) */
+.ant-tooltip .tooltip-formatted-content {
+  text-align: left;
+  line-height: 1.55;
+}
+
+.ant-tooltip .tooltip-formatted-content strong {
+  font-weight: 700 !important;
+}
+
 .ant-message-notice-content {
   z-index: 1010 !important;
 }

@@ -1,16 +1,33 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import { useGuidance } from '../../../contexts/GuidanceContext';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import {
+  captureCloseOutFingerprintsBeforeSave,
+  recordCloseOutSessionChanges,
+  flushCloseOutSessionNotification,
+  maybeWarnPreviousWeekIncomplete,
+} from '../../../utils/reportCardReminders';
+import {
+  SALES_FIRST_LABOR_MESSAGE,
+  dispatchOpenSalesModal,
+  isSalesEnteredForDay,
+  getDatesMissingSalesForActuals,
+  hasOpenDaysMissingSales,
+} from '../../../utils/salesEnteredGate';
 
 const { Title, Text } = Typography;
 
 const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+  const navigate = useNavigate();
+  const { canAccessReportCard } = useRestaurantRole();
   // Guidance hook for data guidance
   const { startDataGuidance, hasSeenDataGuidance } = useGuidance();
   
@@ -45,7 +62,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     error: storeError,
     restaurantGoals,
     fetchAverageHourlyRate,
-    dashboardSummaryData
+    dashboardSummaryData,
   } = useStore();
 
   // Get average hourly rate - prioritize API-fetched value, then restaurant goals, then fallback
@@ -445,22 +462,57 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
 
 
+  const openLaborModalAfterPreviousWeekCheck = async (openModal) => {
+    const weekStartDate =
+      weekDays.length > 0 ? weekDays[0].date : selectedDate;
+    await maybeWarnPreviousWeekIncomplete({
+      weekStartDate,
+      onProceed: openModal,
+    });
+  };
+
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsEditMode(false);
-    setIsModalVisible(true);
+    openLaborModalAfterPreviousWeekCheck(() => {
+      setEditingWeek(null);
+      setIsEditMode(false);
+      setIsModalVisible(true);
+    });
   };
 
   const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsEditMode(true);
-    setIsModalVisible(true);
+    openLaborModalAfterPreviousWeekCheck(() => {
+      setEditingWeek(weekData);
+      setIsEditMode(true);
+      setIsModalVisible(true);
+    });
   };
 
   const handleWeeklySubmit = async (weekData) => {
     try {
       setIsSubmitting(true);
+
+      if (!weekData || !weekData.dailyData) {
+        message.warning('No weekly data to save. Please add weekly Labor data first.');
+        return;
+      }
+
+      const blockedDates = getDatesMissingSalesForActuals(weekData.dailyData, dashboardData, {
+        hasActual: (day) =>
+          day.restaurantOpen !== false &&
+          ((parseFloat(day.laborHoursActual) || 0) > 0 ||
+            (parseFloat(day.actualLaborDollars) || 0) > 0),
+      });
+      if (blockedDates.length > 0) {
+        message.warning(SALES_FIRST_LABOR_MESSAGE);
+        dispatchOpenSalesModal(
+          weekDays.length > 0
+            ? weekDays[0].date.format('YYYY-MM-DD')
+            : selectedDate?.format?.('YYYY-MM-DD')
+        );
+        return;
+      }
+
       if (editingWeek) {
         // Edit existing week
         setWeeklyData(prev => prev.map(week => 
@@ -474,13 +526,6 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           weekNumber: weeklyData.length + 1
         };
         setWeeklyData(prev => [...prev, newWeek]);
-      }
-
-      // Save data to API when modal is submitted
-      // Use the weekData from the modal instead of checking weeklyData state
-      if (!weekData || !weekData.dailyData) {
-        message.warning('No weekly data to save. Please add weekly Labor data first.');
-        return;
       }
 
       // Use the weekly totals from the form data
@@ -535,6 +580,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         }
       };
 
+      const beforeFingerprints = captureCloseOutFingerprintsBeforeSave();
       await saveDashboardData(transformedData);
       message.success(isEditMode ? 'Labor data updated successfully!' : 'Labor data saved successfully!');
       
@@ -545,6 +591,14 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         // Fallback: reload data after saving to update totals and table
         processLaborData(); 
       }
+
+      // End of close-out chain — include all session dates (Sales + COGS + Labor)
+      recordCloseOutSessionChanges(beforeFingerprints, 'labor');
+      await flushCloseOutSessionNotification({
+        navigate,
+        beforeFingerprints,
+        canAccessReportCard,
+      });
 
       if (hasSeenDataGuidance === false || hasSeenDataGuidance === null) {
         // Reset trigger refs to allow guidance to show again after data is added
@@ -738,6 +792,16 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
         return;
       }
 
+      if (actualFields.includes(field) && !isSalesEnteredForDay(dashboardData, record.date)) {
+        message.warning(SALES_FIRST_LABOR_MESSAGE);
+        dispatchOpenSalesModal(
+          weekDays.length > 0
+            ? weekDays[0].date.format('YYYY-MM-DD')
+            : selectedDate?.format?.('YYYY-MM-DD')
+        );
+        return;
+      }
+
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
@@ -755,6 +819,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       handleWeeklySubmit(weekFormData);
     };
 
+    const showSalesFirstBanner = hasOpenDaysMissingSales(
+      weekFormData?.dailyData,
+      dashboardData,
+      { isFuture: isFutureDate }
+    );
+
     return (
       <Modal
         title={isEditMode ? "Edit Your Actual Daily Labor" : "Enter Your Actual Daily Labor"}
@@ -763,12 +833,21 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
+          // Labor dismissed without save — still show Sales/COGS session updates
+          flushCloseOutSessionNotification({
+            navigate,
+            canAccessReportCard,
+          });
         }}
         footer={[
           <Button key="cancel" onClick={() => {
             setIsModalVisible(false);
             setEditingWeek(null);
             setIsEditMode(false);
+            flushCloseOutSessionNotification({
+              navigate,
+              canAccessReportCard,
+            });
           }}>
             Cancel
           </Button>,
@@ -787,55 +866,116 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
           />
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
+          {showSalesFirstBanner && (
+          <div
+            style={{
+              background: '#fff7e6',
+              border: '1px solid #ffd591',
+              borderRadius: '6px',
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <Text style={{ fontSize: '13px', color: '#ad6800', flex: 1, minWidth: 0 }}>
+              {SALES_FIRST_LABOR_MESSAGE}
+            </Text>
+            <Button
+              type="primary"
+              size="small"
+              style={{ background: '#ff6b00', borderColor: '#ff6b00', flexShrink: 0 }}
+              onClick={() =>
+                dispatchOpenSalesModal(
+                  weekDays.length > 0
+                    ? weekDays[0].date.format('YYYY-MM-DD')
+                    : selectedDate?.format?.('YYYY-MM-DD')
+                )
+              }
+            >
+              Go to Sales
+            </Button>
+          </div>
+          )}
           {/* Weekly Labor Totals Summary - Auto-calculated from daily inputs */}
-          <Card title="Weekly Labor Totals Summary" size="small" className='opacity-50 bg-gray-50'>
+          <div
+            style={{
+              background: '#f5f5f5',
+              border: '1px solid #d9d9d9',
+              borderRadius: '6px',
+              padding: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Text strong style={{ fontSize: '15px', color: '#262626' }}>Weekly Labor Totals Summary</Text>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#595959',
+                    backgroundColor: '#e8e8e8',
+                    border: '1px solid #d9d9d9',
+                    borderRadius: '4px',
+                    padding: '1px 8px',
+                    fontWeight: 500,
+                    lineHeight: '20px',
+                  }}
+                >
+                  <LockOutlined style={{ fontSize: '10px' }} /> Read only
+                </span>
+            </div>
+            <Text style={{ fontSize: '12px', color: '#8c8c8c', display: 'block', marginBottom: '14px' }}>
+              These values are calculated automatically from the weekly labor budget and your recorded daily labor.
+            </Text>
             <div className={`grid grid-cols-1 sm:grid-cols-2 ${getLaborRecordMethod() === 'daily-hours-costs' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Total Labor Hours - Budget:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Total Labor Hours - Budget</Text>
                 <Input
                   value={`${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursBudget) || 0), 0))} hrs`}
                   className="mt-1"
                   disabled
-                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
-              {/* Conditionally show Labor Hours - Actual based on labor_record_method */}
               {getLaborRecordMethod() !== 'cost-only' && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Total Labor Hours - Actual:</Text>
+                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Total Labor Hours - Actual</Text>
                   <Input
                     value={`${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.laborHoursActual) || 0), 0))} hrs`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                    style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                   />
                 </div>
               )}
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Total Budgeted Labor $:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Total Budgeted Labor $</Text>
                 <Input
                   value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budgetedLaborDollars) || 0), 0))}`}
                   className="mt-1"
                   disabled
-                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
-              {/* Conditionally show Actual Labor $ based on labor_record_method */}
               {getLaborRecordMethod() !== 'hours-only' && (
                 <div className="w-full">
-                  <Text strong className="text-sm sm:text-base">Total Actual Labor $:</Text>
+                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Total Actual Labor $</Text>
                   <Input
                     value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0))}`}
                     className="mt-1"
                     disabled
-                    style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                    style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                   />
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Week to Date Avg. Actual Hourly Rate:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Week to Date Avg. Actual Hourly Rate</Text>
                 <Input
                   value={`${(() => {
                     const totalLabor = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actualLaborDollars) || 0), 0);
@@ -844,29 +984,29 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   })()}`}
                   className="mt-1"
                   disabled
-                  style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Total Net Sales </Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Total Net Sales</Text>
                 <Input
                   value={`$${Math.round(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0))}`}
                   className="mt-1"
                   disabled
-                  style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Average Hourly Rate </Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Average Hourly Rate</Text>
                 <Input
                   value={`$${getAverageHourlyRate().toFixed(2)}`}
                   disabled
-                  className="w-full"
-                  style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
+                  className="w-full mt-1"
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Average Daily Labor %:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Average Daily Labor %</Text>
                 <Input
                   value={`${(() => {
                     const validDays = weekFormData.dailyData.filter(day => day.restaurantOpen !== false && day.netSales > 0);
@@ -875,12 +1015,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     return Math.round(avgPercentage);
                   })()}%`}
                   disabled
-                  className="w-full"
-                  style={{ backgroundColor: '#e8f5e8', color: '#2e7d32' }}
+                  className="w-full mt-1"
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                 />
               </div>
               <div className="w-full">
-                <Text strong className="text-sm sm:text-base">Remaining Labor $ based on Actual Labor Rate:</Text>
+                <Text strong style={{ color: '#434343', fontSize: '13px' }}>Remaining Labor $ based on Actual Labor Rate</Text>
                 <Input
                   value={`${(() => {
                     const totalBudgetLabor = weekFormData.dailyData.reduce((sum, day) => {
@@ -895,12 +1035,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     return `$${remaining.toFixed(2)}`;
                   })()}`}
                   disabled
-                  style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
-                  className="w-full"
+                  style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
+                  className="w-full mt-1"
                 />
               </div>
             </div>
-          </Card>
+          </div>
 
          
 
@@ -977,23 +1117,38 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
-                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    const salesMissing =
+                      record.restaurantOpen !== false &&
+                      !isFuture &&
+                      !isSalesEnteredForDay(dashboardData, record.date);
+                    const isDisabled =
+                      record.restaurantOpen === false || isFuture || salesMissing;
                     return (
-                      <Input
-                        type="number"
-                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                        onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0, record)}
-                        suffix="hrs"
-                        className="w-full"
-                        disabled={isDisabled}
-                        readOnly={isFuture}
-                        style={{
-                          opacity: isDisabled ? 0.5 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
-                          color: record.restaurantOpen === false ? '#999' : undefined
-                        }}
-                      />
+                      <div>
+                        <Input
+                          type="number"
+                          value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
+                          onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0, record)}
+                          onClick={() => {
+                            if (salesMissing) message.warning(SALES_FIRST_LABOR_MESSAGE);
+                          }}
+                          suffix="hrs"
+                          className="w-full"
+                          disabled={isDisabled}
+                          readOnly={isFuture || salesMissing}
+                          style={{
+                            opacity: isDisabled ? 0.5 : 1,
+                            cursor: isDisabled ? 'not-allowed' : 'text',
+                            backgroundColor: isFuture || salesMissing ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                            color: record.restaurantOpen === false ? '#999' : undefined
+                          }}
+                        />
+                        {salesMissing && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            Sales required
+                          </Text>
+                        )}
+                      </div>
                     );
                   }
                 }]),
@@ -1005,23 +1160,38 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
-                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    const salesMissing =
+                      record.restaurantOpen !== false &&
+                      !isFuture &&
+                      !isSalesEnteredForDay(dashboardData, record.date);
+                    const isDisabled =
+                      record.restaurantOpen === false || isFuture || salesMissing;
                     return (
-                      <Input
-                        type="number"
-                        value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                        onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0, record)}
-                        prefix="$"
-                        className="w-full"
-                        disabled={isDisabled}
-                        readOnly={isFuture}
-                        style={{
-                          opacity: isDisabled ? 0.5 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
-                          color: record.restaurantOpen === false ? '#999' : undefined
-                        }}
-                      />
+                      <div>
+                        <Input
+                          type="number"
+                          value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
+                          onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0, record)}
+                          onClick={() => {
+                            if (salesMissing) message.warning(SALES_FIRST_LABOR_MESSAGE);
+                          }}
+                          prefix="$"
+                          className="w-full"
+                          disabled={isDisabled}
+                          readOnly={isFuture || salesMissing}
+                          style={{
+                            opacity: isDisabled ? 0.5 : 1,
+                            cursor: isDisabled ? 'not-allowed' : 'text',
+                            backgroundColor: isFuture || salesMissing ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                            color: record.restaurantOpen === false ? '#999' : undefined
+                          }}
+                        />
+                        {salesMissing && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            Sales required
+                          </Text>
+                        )}
+                      </div>
                     );
                   }
                 }]),

@@ -2,10 +2,15 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { ReportCard, SetupProgressCard, YourGradeCard, DailyPerformanceCard } from "./index";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
-import { Button, Modal, message } from "antd";
-import { getOnboardingProgress } from "../../utils/onboardingUtils";
+import { Button, Modal, Tooltip, message } from "antd";
+import {
+  getOnboardingProgress,
+  getNextIncompleteSetupRoute,
+  ONBOARDING_ROUTES,
+} from "../../utils/onboardingUtils";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
+import useTooltips from "../../utils/useTooltips";
 
 // Calculate grade based on score - moved outside component to avoid hoisting issues
 const getGradeFromScore = (score) => {
@@ -54,11 +59,17 @@ const ReportCardPage = () => {
     restaurantOnboardingDataTimestamp
   } = useStore();
   const selectedLocationId = useStore((s) => s.selectedLocationId);
+  const clearUnseenFindings = useStore((s) => s.clearUnseenFindings);
   const hasFetchedRef = useRef(false); // Prevent multiple API calls
   const hasFetchedOnboardingRef = useRef(false); // Prevent multiple onboarding API calls
+  const onboardingGateModalOpenRef = useRef(false);
   
   // Use summary data from store if available
   const summaryData = salesInformationSummary;
+
+  useEffect(() => {
+    clearUnseenFindings();
+  }, [clearUnseenFindings]);
 
   // Calculate onboarding progress from cached store data
   // This prevents showing null state on re-renders by always using the latest cached data
@@ -296,6 +307,44 @@ const ReportCardPage = () => {
     navigate("/dashboard");
   };
 
+  const showOnboardingRequiredModal = useCallback(() => {
+    if (onboardingGateModalOpenRef.current) return;
+    onboardingGateModalOpenRef.current = true;
+
+    Modal.confirm({
+      title: 'Complete onboarding to continue',
+      content:
+        'To start creating your budget, please complete onboarding first so we can set up your restaurant details correctly.',
+      okText: 'Complete onboarding',
+      cancelText: 'Not now',
+      centered: true,
+      maskClosable: true,
+      onOk: () => {
+        const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
+        if (nextRoute === ONBOARDING_ROUTES.SCORE) {
+          useStore.setState({
+            salesInformationData: null,
+            salesInformationLoading: false,
+            salesInformationError: null,
+          });
+        }
+        navigate(nextRoute || ONBOARDING_ROUTES.ONBOARDING);
+      },
+      onCancel: () => {},
+      afterClose: () => {
+        onboardingGateModalOpenRef.current = false;
+      },
+    });
+  }, [navigate, restaurantOnboardingData]);
+
+  const handleGoToBudgetDashboard = useCallback(() => {
+    if (!isOnboardingComplete) {
+      showOnboardingRequiredModal();
+      return;
+    }
+    navigate('/dashboard/budget');
+  }, [isOnboardingComplete, navigate, showOnboardingRequiredModal]);
+
   const playTutorialInCorner = useCallback(() => {
     window.dispatchEvent(
       new CustomEvent('growlio:youtubePlayer', {
@@ -312,6 +361,13 @@ const ReportCardPage = () => {
   const openTutorialInNewTab = useCallback(() => {
     window.open(REPORT_CARD_TUTORIAL.watchUrl, '_blank', 'noopener,noreferrer');
   }, []);
+
+  const tooltips = useTooltips('report-card');
+  const budgetDashboardTooltipText =
+    tooltips?.start_creating_budget ||
+    tooltips?.go_to_budget_dashboard ||
+    tooltips?.budget_dashboard ||
+    "Go to your Budget Dashboard to start creating your budget and track daily profitability.";
 
   const showInitialLoading =
     salesInformationSummaryLoading &&
@@ -368,6 +424,20 @@ const ReportCardPage = () => {
             </Button>
           </div>
         </div>
+
+        <Tooltip
+          placement="bottom"
+          title={budgetDashboardTooltipText}
+        >
+          <button
+            type="button"
+            onClick={handleGoToBudgetDashboard}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center"
+            aria-label="Start Creating Your Budget Today"
+          >
+            Start Creating Your Budget Today
+          </button>
+        </Tooltip>
         
         {/* Show Daily Performance Card when onboarding is complete */}
         {isOnboardingComplete ? (

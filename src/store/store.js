@@ -15,6 +15,7 @@ import createSquarePosDetailsSlice from './slices/squarePosDetailsSlice';
 import createSimulationSlice from './slices/simulationSlice';
 import createPosIntegrationsSlice from './slices/posIntegrationsSlice';
 import createLocationSlice from './slices/locationSlice';
+import createReportCardSlice from './slices/reportCardSlice';
 
 
 const useStore = create(
@@ -36,6 +37,7 @@ const useStore = create(
         ...createSimulationSlice(set, get),
         ...createPosIntegrationsSlice(set, get),
         ...createLocationSlice(set, get),
+        ...createReportCardSlice(set, get),
 
       
         
@@ -404,6 +406,12 @@ const useStore = create(
             selectedConversationId: null,
             pendingChatMessage: null,
             shouldOpenChat: false,
+
+            // Report card reminders
+            unseenFindingsCount: 0,
+            unseenFindingsScopeKey: null,
+            closeOutNotifiedByDate: {},
+            weekCloseOutNotifiedByWeek: {},
           }));
         }
       }),
