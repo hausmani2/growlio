@@ -551,6 +551,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
+    {
+      key: 'food-costing',
+      icon: <MdOutlineFoodBank />,
+      label: 'Food Costing',
+      onClick: () => navigate('/dashboard/food-costing'),
+    },
     ...(posEnabled ? [{
       key: 'square',
       icon: <ShoppingOutlined />,

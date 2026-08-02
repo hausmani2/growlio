@@ -1,11 +1,20 @@
 import axios from 'axios';
 import useStore from '../store/store';
 import { clearImpersonationData } from './tokenManager';
+import { clearClientSessionStorage } from './clearClientSession';
 
 // API Timeout Configuration
 // You can set this via environment variable VITE_API_TIMEOUT (in milliseconds)
 // Default is 30 seconds (30000ms)
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
+
+/** Longer timeout for LIO vision uploads (invoice photo, recipe photo). */
+export const AI_UPLOAD_TIMEOUT =
+  parseInt(import.meta.env.VITE_AI_UPLOAD_TIMEOUT, 10) || 180000;
+
+export const isApiTimeoutError = (error) =>
+  error?.code === 'ECONNABORTED' ||
+  /timeout/i.test(String(error?.message || ''));
 
 /**
  * Utility function to clear all store data and redirect to login
@@ -18,6 +27,7 @@ const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000;
  * - All Redux store data is cleared (prevents showing previous user's data)
  * - All localStorage items are removed
  * - All sessionStorage is cleared
+ * - Accessible cookies are expired
  * - User is redirected to login page
  * 
  * This prevents the issue where a new user would see the previous user's data
@@ -29,27 +39,13 @@ export const clearStoreAndRedirectToLogin = () => {
   const store = useStore.getState();
   if (store.clearPersistedState) {
     store.clearPersistedState();
-  } else {
   }
   
-  // Also clear any remaining localStorage items
-  localStorage.removeItem('token');
-  localStorage.removeItem('user'); // Also remove user from localStorage
-  localStorage.removeItem('restaurant_id');
-  localStorage.removeItem('growlio-store');
+  // Full browser session wipe (tokens, restaurant IDs, cookies, modals)
+  clearClientSessionStorage();
   
-  // Clear impersonation data kept in sessionStorage
+  // Clear impersonation data kept in sessionStorage (also covered above)
   try { clearImpersonationData(); } catch {}
-  
-  // Note: We intentionally keep original_superadmin_token and original_superadmin_refresh
-  // These are only cleared when stopping impersonation, not on logout
-  
-  // Clear sessionStorage
-  sessionStorage.clear();
-  
-  // Explicitly clear restaurant onboarding flags
-  sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
-  sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
   
   // Dispatch custom event to notify other tabs/windows about logout
   window.dispatchEvent(new Event('auth-storage-change'));
@@ -87,13 +83,23 @@ const api = axios.create({
 // Request Interceptor: Attach token if available
 api.interceptors.request.use(
   (config) => {
+    // Let the browser set multipart boundary for FormData uploads
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
+
     // Skip token attachment for authentication endpoints
     const isAuthEndpoint = config.url && (
       config.url.includes('/authentication/login/') ||
       config.url.includes('/authentication/superadmin-login/') ||
       config.url.includes('/authentication/register/') ||
       config.url.includes('/authentication/forgot-password/') ||
-      config.url.includes('/authentication/reset-password/')
+      config.url.includes('/authentication/reset-password/') ||
+      config.url.includes('/authentication/set-password/') ||
+      config.url.includes('/authentication/verify-email/') ||
+      config.url.includes('/authentication/resend-verification/')
     );
 
     if (isAuthEndpoint) {
@@ -155,7 +161,10 @@ api.interceptors.response.use(
       error.config.url.includes('/authentication/superadmin-login/') ||
       error.config.url.includes('/authentication/register/') ||
       error.config.url.includes('/authentication/forgot-password/') ||
-      error.config.url.includes('/authentication/reset-password/')
+      error.config.url.includes('/authentication/reset-password/') ||
+      error.config.url.includes('/authentication/set-password/') ||
+      error.config.url.includes('/authentication/verify-email/') ||
+      error.config.url.includes('/authentication/resend-verification/')
     );
     
     // Suppress error messages when on login page UNLESS it's from an actual login attempt
@@ -198,10 +207,7 @@ api.interceptors.response.use(
             if (store.clearPersistedState) {
               store.clearPersistedState();
             }
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('token');
-            sessionStorage.removeItem('user');
+            clearClientSessionStorage();
           }
           break;
         case 403:
@@ -275,6 +281,16 @@ export const apiDeleteWithTimeout = (url, timeout = API_TIMEOUT, config = {}) =>
 // Export the timeout constant for reference in other parts of the app
 export { API_TIMEOUT };
 
+/** Active restaurant/location for LIO chat (matches dashboard selection). */
+export const getChatbotContextPayload = () => {
+  const restaurant_id = localStorage.getItem('restaurant_id');
+  const location_id = localStorage.getItem('selected_location_id');
+  const payload = {};
+  if (restaurant_id) payload.restaurant_id = Number(restaurant_id);
+  if (location_id) payload.location_id = Number(location_id);
+  return payload;
+};
+
 // Optionally, export the raw instance for custom use
 export default api;
 
@@ -300,14 +316,18 @@ export const streamChatbotMessage = async (url, payload, callbacks = {}) => {
 
     const baseURL = import.meta.env.VITE_ROOT_URL;
     const fullUrl = `${baseURL}${url}`;
+    const isFormData = payload instanceof FormData;
+    const headers = {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const response = await fetch(fullUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body: isFormData ? payload : JSON.stringify(payload),
     });
 
     if (!response.ok) {

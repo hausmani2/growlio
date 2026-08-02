@@ -25,7 +25,7 @@ import {
   markSalesEnteredDates,
   normalizeCloseOutDate,
 } from '../../../utils/salesEnteredGate';
-
+import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 const { Title, Text } = Typography;
 
 function isDayClosedForWtd(record) {
@@ -102,6 +102,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     isOnBoardingCompleted === true ||
     restaurantOnboardingData?.restaurants?.[0]?.onboarding_complete === true ||
     restaurantOnboardingData?.data?.restaurants?.[0]?.onboarding_complete === true;
+  const nextSetupRoute = useMemo(
+    () => getNextIncompleteSetupRoute(restaurantOnboardingData),
+    [restaurantOnboardingData]
+  );
 
   const onboardingGateModalOpenRef = useRef(false);
   const showOnboardingRequiredModal = () => {
@@ -113,10 +117,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       content:
         'To add actual weekly sales, please complete onboarding first so we can set up your restaurant details correctly.',
       okText: 'Complete onboarding',
-      cancelText: 'Not now',
+      cancelText: 'Close',
       centered: true,
       maskClosable: true,
-      onOk: () => navigate('/onboarding'),
+      onOk: () => navigate(nextSetupRoute),
       onCancel: () => {},
       afterClose: () => {
         onboardingGateModalOpenRef.current = false;
@@ -2840,10 +2844,15 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       key={week.id || `week-${week.weekTitle}`}
                       size="small"
                       title={
-                        <div className="flex items-center justify-between">
-                          <span>Actual Weekly Sales </span>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                            <span>Actual Weekly Sales</span>
+                            <span className="text-xs font-semibold text-red-600">
+                              Gross Sales - Includes Tips & Other Service Charges
+                            </span>
+                          </div>
                           {week.dailyData && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">
                               {week.dailyData.filter(day => day.restaurant_open === 0).length} of 7 days closed
                             </span>
                           )}

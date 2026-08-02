@@ -7,6 +7,8 @@ import {
   getOnboardingProgress,
   getNextIncompleteSetupRoute,
   ONBOARDING_ROUTES,
+  clearAutoZeroProfitabilityFromSimulation,
+  hasOneMonthSalesInfo,
 } from "../../utils/onboardingUtils";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
@@ -300,7 +302,14 @@ const ReportCardPage = () => {
   const setupItems = onboardingProgress?.items ?? [];
   const restaurant = onboardingProgress?.restaurant;
   const isOnboardingComplete = restaurant?.onboarding_complete === true;
-  
+
+  // Only clear after backend confirms one-month sales — clearing earlier lets
+  // ProtectedRoutes bounce to /onboarding/score and flash that page.
+  useEffect(() => {
+    if (isOnboardingComplete || hasOneMonthSalesInfo(restaurantOnboardingData)) {
+      clearAutoZeroProfitabilityFromSimulation();
+    }
+  }, [isOnboardingComplete, restaurantOnboardingData]);
 
   // Handle close out previous days button
   const handleCloseOutDays = () => {

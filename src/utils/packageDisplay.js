@@ -188,3 +188,23 @@ export const getMaxLocationsCap = (plan) => {
   }
   return plan?.max_locations ?? 1;
 };
+
+/** True when switching to a lower-tier plan (e.g. Grow → Lite). */
+export const isSubscriptionDowngrade = (currentPlan, targetPlan) => {
+  if (!currentPlan || !targetPlan || currentPlan.id === targetPlan.id) return false;
+
+  if (
+    currentPlan.price_per_location != null &&
+    targetPlan.price_per_location != null &&
+    targetPlan.price_per_location < currentPlan.price_per_location
+  ) {
+    return true;
+  }
+
+  const currentCap = getMaxLocationsCap(currentPlan);
+  const targetCap = getMaxLocationsCap(targetPlan);
+  if (currentCap == null && targetCap != null) return true;
+  if (currentCap != null && targetCap != null && targetCap < currentCap) return true;
+
+  return false;
+};

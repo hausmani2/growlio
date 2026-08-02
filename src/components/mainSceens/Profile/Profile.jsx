@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
 import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import LocationsTab from './LocationsTab';
@@ -6,6 +6,7 @@ import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axi
 import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../../../utils/rolePermissions';
+import { isUnlimitedCount } from '../../../utils/packageDisplay';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -21,9 +22,34 @@ const Profile = () => {
   const { restaurantId, locationId, isOwner, canManageUsers } = useRestaurantRole();
   const locations = useStore((state) => state.locations);
   const selectedLocationId = useStore((state) => state.selectedLocationId);
+  const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+  const subscriptionDetailsLoading = useStore((state) => state.subscriptionDetailsLoading);
+  const currentPackage = useStore((state) => state.currentPackage);
+  const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
   const activeLocationId = locationId || selectedLocationId;
   const activeLocationName =
     locations?.find((loc) => loc.id === activeLocationId)?.name || 'Selected location';
+  const [hasCheckedSubscription, setHasCheckedSubscription] = useState(false);
+  const activePlan = subscriptionDetails?.package || currentPackage || null;
+  const canUseProfileManagement = useMemo(() => {
+    const planName = String(
+      activePlan?.key ||
+      activePlan?.name ||
+      activePlan?.display_name ||
+      activePlan?.package_name ||
+      ''
+    ).trim().toLowerCase();
+
+    if (planName.includes('lite')) return false;
+    if (planName.includes('grow') || planName.includes('pro')) return true;
+
+    const features = activePlan?.features || {};
+    if (features.multiple_users_roles || features.expanded_roles) return true;
+    if (isUnlimitedCount(activePlan?.max_users)) return true;
+    if (typeof activePlan?.max_users === 'number') return activePlan.max_users > 1;
+
+    return !activePlan && hasCheckedSubscription && !subscriptionDetailsLoading;
+  }, [activePlan, hasCheckedSubscription, subscriptionDetailsLoading]);
   
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -51,12 +77,34 @@ const Profile = () => {
   }, []);
 
   useEffect(() => {
-    if (isOwner && restaurantId && activeLocationId) {
+    let cancelled = false;
+
+    if (isOwner && restaurantId) {
+      setHasCheckedSubscription(false);
+      const subscriptionPromise = fetchCurrentSubscriptionDetails?.(true);
+      if (subscriptionPromise?.finally) {
+        subscriptionPromise.finally(() => {
+          if (!cancelled) setHasCheckedSubscription(true);
+        });
+      } else {
+        setHasCheckedSubscription(true);
+      }
+    } else {
+      setHasCheckedSubscription(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner, restaurantId, fetchCurrentSubscriptionDetails]);
+
+  useEffect(() => {
+    if (isOwner && canUseProfileManagement && restaurantId && activeLocationId) {
       fetchMembers();
     } else {
       setMembers([]);
     }
-  }, [isOwner, restaurantId, activeLocationId]);
+  }, [isOwner, canUseProfileManagement, restaurantId, activeLocationId]);
 
   const fetchProfileData = async () => {
     try {
@@ -80,7 +128,10 @@ const Profile = () => {
           ...(hasValidRestaurantRole ? { restaurant_role: apiRestaurantRole } : {}),
         });
         profileForm.setFieldsValue({
-          full_name: nextProfileData.full_name || ''
+          full_name: nextProfileData.full_name || '',
+          first_name: nextProfileData.first_name || '',
+          last_name: nextProfileData.last_name || '',
+          middle_initial: nextProfileData.middle_initial || '',
         });
       }
     } catch (error) {
@@ -132,7 +183,7 @@ const Profile = () => {
   };
 
   const handleMemberSave = async (values) => {
-    if (!restaurantId || !activeLocationId || !canManageUsers) return;
+    if (!restaurantId || !activeLocationId || !canManageUsers || !canUseProfileManagement) return;
 
     const payload = {
       restaurant_id: Number(restaurantId),
@@ -167,7 +218,7 @@ const Profile = () => {
   };
 
   const handleMemberDelete = async (member) => {
-    if (!canManageUsers || normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER) return;
+    if (!canManageUsers || !canUseProfileManagement || normalizeRestaurantRole(member.role) === RESTAURANT_ROLES.OWNER) return;
 
     try {
       await apiDelete(`/restaurant_v2/members/${member.id}/`);
@@ -233,7 +284,7 @@ const Profile = () => {
 
         return (
           <div className="flex justify-end gap-2">
-            <Button icon={<EditOutlined />} onClick={() => openEditMemberModal(member)} disabled={!canManageUsers}>
+            <Button icon={<EditOutlined />} onClick={() => openEditMemberModal(member)} disabled={!canManageUsers || !canUseProfileManagement}>
               Edit
             </Button>
             <Popconfirm
@@ -241,9 +292,9 @@ const Profile = () => {
               okText="Remove"
               okButtonProps={{ danger: true }}
               onConfirm={() => handleMemberDelete(member)}
-              disabled={!canManageUsers}
+              disabled={!canManageUsers || !canUseProfileManagement}
             >
-              <Button danger icon={<DeleteOutlined />} disabled={!canManageUsers}>
+              <Button danger icon={<DeleteOutlined />} disabled={!canManageUsers || !canUseProfileManagement}>
                 Delete
               </Button>
             </Popconfirm>
@@ -261,8 +312,17 @@ const Profile = () => {
       if (response.data.status === 'success') {
         message.success('Profile updated successfully');
         // Update Header immediately (no logout/login needed)
-        if (values?.full_name) {
-          setUser?.({ full_name: values.full_name });
+        const composed = [
+          values?.first_name,
+          values?.middle_initial
+            ? `${String(values.middle_initial).trim().replace(/\.$/, '')}.`
+            : '',
+          values?.last_name,
+        ]
+          .filter(Boolean)
+          .join(' ');
+        if (composed || values?.full_name) {
+          setUser?.({ full_name: composed || values.full_name });
         }
         fetchProfileData(); // Refresh data
       } else {
@@ -405,30 +465,14 @@ const Profile = () => {
                       onFinish={handleProfileUpdate}
                       disabled={profileLoading}
                     >
-                      <Form.Item
-                        label="Full Name"
-                        name="full_name"
-                        rules={[
-                          { required: true, message: 'Please enter your full name' },
-                          {
-                            pattern: /^[A-Za-z][A-Za-z\s.'-]*$/,
-                            message: 'Full Name can only contain letters, spaces, apostrophes, periods, and hyphens',
-                          },
-                        ]}
-                      >
-                        <Input 
-                          prefix={<UserOutlined />} 
-                          placeholder="Enter your full name"
-                          size="large"
-                          onChange={(e) => {
-                            const raw = e.target.value ?? '';
-                            // Remove digits and collapse repeated whitespace for a clean, predictable input.
-                            const cleaned = String(raw)
-                              .replace(/[0-9]/g, '')
-                              .replace(/\s+/g, ' ');
-                            profileForm.setFieldsValue({ full_name: cleaned });
-                          }}
-                        />
+                      <Form.Item label="First Name" name="first_name" rules={[{ required: true, message: 'First name is required' }]}>
+                        <Input prefix={<UserOutlined />} placeholder="First name" size="large" />
+                      </Form.Item>
+                      <Form.Item label="Middle Initial (optional)" name="middle_initial">
+                        <Input placeholder="M" size="large" maxLength={5} />
+                      </Form.Item>
+                      <Form.Item label="Last Name" name="last_name" rules={[{ required: true, message: 'Last name is required' }]}>
+                        <Input prefix={<UserOutlined />} placeholder="Last name" size="large" />
                       </Form.Item>
                       
                       <Form.Item>
@@ -451,10 +495,10 @@ const Profile = () => {
                       <Avatar size={80} icon={<UserOutlined />} className="mb-4" />
                       <div className="space-y-2 text-sm text-gray-600">
                         <div>
-                          <Text strong>Username:</Text> {profileData.username}
+                          <Text strong>Email:</Text> {profileData.email}
                         </div>
                         <div>
-                          <Text strong>Email:</Text> {profileData.email}
+                          <Text strong>Display Name:</Text> {profileData.full_name || '—'}
                         </div>
                         <div>
                           <Text strong>Member Since:</Text> {formatDate(profileData.created_date)}
@@ -470,7 +514,7 @@ const Profile = () => {
             </div>
           </TabPane>
 
-          {isOwner && (
+          {isOwner && canUseProfileManagement && (
           <TabPane
             tab={
               <span className="flex items-center gap-2">
@@ -538,7 +582,7 @@ const Profile = () => {
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={openAddMemberModal}
-                    disabled={!canManageUsers || !restaurantId || !activeLocationId}
+                    disabled={!canManageUsers || !canUseProfileManagement || !restaurantId || !activeLocationId}
                     className="bg-orange-500 hover:bg-orange-600 border-0"
                   >
                     Add User

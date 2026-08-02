@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, InputNumber, Button, Typography, Divider, Alert, Spin, message } from 'antd';
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import useStore from '../../../store/store';
 import FeaturesTable from './FeaturesTable';
 import { resolveRestaurantIdFromStore } from '../../../utils/onboardingUtils';
@@ -8,6 +8,7 @@ import {
   formatPrice,
   getMaxLocationsCap,
   getPlanDescription,
+  isSubscriptionDowngrade,
 } from '../../../utils/packageDisplay';
 
 const { Title, Text } = Typography;
@@ -23,16 +24,13 @@ const PlanSelectionModal = ({
   const { updateSubscription } = useStore();
   const [submitting, setSubmitting] = useState(false);
 
+  const isDowngrade = isSubscriptionDowngrade(currentPlan, plan);
   const isUpgrade =
     currentPlan &&
     plan?.price_per_location != null &&
     currentPlan.price_per_location != null &&
-    plan.price_per_location > currentPlan.price_per_location;
-  const isDowngrade =
-    currentPlan &&
-    plan?.price_per_location != null &&
-    currentPlan.price_per_location != null &&
-    plan.price_per_location < currentPlan.price_per_location;
+    plan.price_per_location > currentPlan.price_per_location &&
+    !isDowngrade;
 
   useEffect(() => {
     if (visible && plan) {
@@ -155,6 +153,29 @@ const PlanSelectionModal = ({
               </div>
             </div>
           </div>
+
+          {isDowngrade && (
+            <Alert
+              message="Downgrading Your Plan"
+              description={
+                <div>
+                  <Text className="block mb-2">
+                    You&apos;re about to downgrade your Growlio subscription. By downgrading, you will
+                    lose access to all additional restaurant locations included with your current plan.
+                  </Text>
+                  <Text className="block">
+                    Only your primary location will remain accessible. All other locations, along with
+                    their budgets, reports, food costing, and other data, will no longer be available
+                    unless you upgrade again.
+                  </Text>
+                </div>
+              }
+              type="warning"
+              showIcon
+              icon={<ExclamationCircleOutlined />}
+              className="mb-6"
+            />
+          )}
 
           {/* Current Plan Info */}
           {currentPlan && currentPlan.id !== plan.id && (

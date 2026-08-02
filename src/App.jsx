@@ -20,6 +20,7 @@ import SimulationOnboarding from './components/onBoarding/SimulationOnboarding';
 import SimulationDashboard from './components/simulation/SimulationDashboard';
 import SimulationRestaurantInfo from './components/simulation/SimulationRestaurantInfo';
 import ResetPassword from './components/authScreens/auth/ResetPassword';
+import SetPassword from './components/authScreens/auth/SetPassword';
 import OnboardingWrapper from './components/onBoarding/OnboardingWrapper';
 import OnboardingPlansPage from './components/onBoarding/OnboardingPlansPage';
 import RestaurantInfo from './components/mainSceens/restaurantsInformation/RestaurantInfo';
@@ -63,6 +64,7 @@ import PosPayments from './components/mainSceens/posDetails/PosPayments';
 import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
 import PosIntegrationsPage from './components/mainSceens/posIntegrations/PosIntegrationsPage';
 import SuperAdminPosIntegrations from './components/superadmin/components/SuperAdminPosIntegrations';
+import FoodCostingPage from './components/mainSceens/foodCosting/FoodCostingPage';
 import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
 import TermsOfService from './components/legal/TermsOfService';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
@@ -108,7 +110,7 @@ const RootRedirect = () => {
         
         // CRITICAL: If BOTH don't have restaurants, redirect to congratulations (new user)
         if (!hasSimulationRestaurant && !hasRegularRestaurant) {
-          navigate('/congratulations', { replace: true });
+          navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
           return;
         }
         
@@ -172,11 +174,11 @@ const RootRedirect = () => {
         }
         
         // Fallback: redirect to congratulations
-        navigate('/congratulations', { replace: true });
+        navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
       } catch (error) {
         console.error('Error checking status:', error);
         // On error, default to congratulations
-        navigate('/congratulations', { replace: true });
+        navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
       } finally {
         setIsChecking(false);
       }
@@ -328,6 +330,7 @@ function App() {
         <Route path="/admin/login" element={<SuperAdminLoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmailNotice />} />
         <Route path="/authentication/verify-email/:token/" element={<VerifyEmail />} />
@@ -386,6 +389,7 @@ function App() {
           <Route path="/dashboard/pos/payments" element={<Wrapper showSidebar={true} children={<PosPayments />} />} />
           <Route path="/dashboard/pos/timecards" element={<Wrapper showSidebar={true} children={<PosTimecards />} />} />
           <Route path="/dashboard/pos-integrations" element={<Wrapper showSidebar={true} children={<PosIntegrationsPage />} />} />
+          <Route path="/dashboard/food-costing" element={<Wrapper showSidebar={true} children={<FoodCostingPage />} />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
         <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />

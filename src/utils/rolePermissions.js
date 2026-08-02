@@ -13,6 +13,7 @@ export const normalizeRestaurantRole = (role) => {
 };
 
 export const getRolePermissions = (role) => {
+  const hasProvidedRole = String(role || '').trim().length > 0;
   const normalizedRole = normalizeRestaurantRole(role);
 
   return {
@@ -26,7 +27,10 @@ export const getRolePermissions = (role) => {
     canViewBudget: true,
     canCloseDays: true,
     canAccessSimulator: [RESTAURANT_ROLES.OWNER, RESTAURANT_ROLES.MANAGER].includes(normalizedRole),
-    canAccessReportCard: normalizedRole === RESTAURANT_ROLES.OWNER,
+    // Signup/login can briefly render before restaurant_role is hydrated.
+    // Treat only a missing role as report-card eligible so the landing route
+    // does not fall back to Close Out Your Day(s) during that handoff.
+    canAccessReportCard: !hasProvidedRole || normalizedRole === RESTAURANT_ROLES.OWNER,
   };
 };
 

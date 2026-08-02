@@ -5,8 +5,16 @@ import { PlusOutlined, EditOutlined, CalculatorOutlined, SaveOutlined, DollarOut
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import useStore from '../../../store/store';
+import { apiGet } from '../../../utils/axiosInterceptors';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
+
+const getSummaryEntries = (summary) => {
+  if (Array.isArray(summary?.data)) return summary.data;
+  if (Array.isArray(summary?.daily_entries)) return summary.daily_entries;
+  if (Array.isArray(summary)) return summary;
+  return [];
+};
 
 const { Title, Text } = Typography;
 const NEW_USER_GUIDE_VIDEO_EMBED_URL = 'https://www.youtube.com/embed/aXUSZtOxN-k';
@@ -66,6 +74,9 @@ const SalesDataModal = ({
   const [showPopupDelay, setShowPopupDelay] = useState(false);
   const [showLaborRateInput, setShowLaborRateInput] = useState(false);
   const [previousWeekLaborRate, setPreviousWeekLaborRate] = useState(null);
+  const [previousWeekHasBudget, setPreviousWeekHasBudget] = useState(false);
+  const [defaultAvgHourlyRate, setDefaultAvgHourlyRate] = useState(null);
+  const [laborRateDataReady, setLaborRateDataReady] = useState(false);
   const [showEditWeeklyRateWarningModal, setShowEditWeeklyRateWarningModal] = useState(false);
   const [selectedLaborRateChoice, setSelectedLaborRateChoice] = useState(null); // 'current' or 'previous'
   const [newLaborRateValue, setNewLaborRateValue] = useState('');
@@ -176,6 +187,115 @@ const SalesDataModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fetchPreviousWeekBudgetInfo = async (weekStart) => {
+    try {
+      const storeState = useStore.getState();
+      let restaurantId = null;
+      if (typeof storeState.fetchRestaurantId === 'function') {
+        restaurantId = await storeState.fetchRestaurantId();
+      }
+      if (!restaurantId) return { hasBudget: false, avgHourlyRate: 0 };
+
+      const locationId = typeof storeState.getSelectedLocationId === 'function'
+        ? storeState.getSelectedLocationId()
+        : storeState.selectedLocationId;
+
+      const prevStart = dayjs(weekStart).subtract(7, 'day').format('YYYY-MM-DD');
+      const prevEnd = dayjs(weekStart).subtract(1, 'day').format('YYYY-MM-DD');
+
+      const params = {
+        restaurant_id: restaurantId,
+        group_by: 'daily',
+        start_date: prevStart,
+        end_date: prevEnd,
+      };
+      if (locationId) {
+        params.location_id = locationId;
+      }
+
+      const response = await apiGet(`/restaurant/dashboard-summary/?${new URLSearchParams(params)}`);
+      const entries = getSummaryEntries(response.data);
+
+      const hasBudget = entries.some((entry) => {
+        const salesBudget = parseFloat(entry.sales_budget ?? entry.salesBudget ?? 0) || 0;
+        return salesBudget > 0;
+      });
+
+      const avgHourlyRate = entries.reduce((foundValue, entry) => {
+        if (foundValue > 0) return foundValue;
+        const rate = parseFloat(
+          entry.average_hourly_rate ?? entry.avg_hourly_rate ?? entry.averageHourlyRate ?? 0
+        ) || 0;
+        return rate > 0 ? rate : foundValue;
+      }, 0);
+
+      return { hasBudget, avgHourlyRate };
+    } catch (error) {
+      console.error('Error checking previous week budget:', error);
+      return { hasBudget: false, avgHourlyRate: 0 };
+    }
+  };
+
+  // Refs for labor rate auto-apply (avoids stale state between async fetches)
+  const prevWeekInfoRef = useRef(null);
+  const summaryDataForRateRef = useRef(null);
+
+  const getDefaultAvgHourlyRate = (summaryData) => {
+    const goals = useStore.getState().restaurantGoals;
+    const fromGoals = parseFloat(goals?.avg_hourly_rate) || 0;
+    const fromApi = parseFloat(summaryData?.average_hourly_rate) || 0;
+    return fromGoals > 0 ? fromGoals : (fromApi > 0 ? fromApi : 0);
+  };
+
+  const autoApplyLaborRateForNewBudget = () => {
+    if (!visible || !selectedWeekData) return;
+
+    const goals = useStore.getState().restaurantGoals;
+    const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
+
+    setShowLaborRateConfirmationModal(false);
+    setShowPopupDelay(false);
+
+    if (hasExistingData || goals?.forward_previous_week_rate === true) {
+      setLaborRateConfirmed(true);
+      setShowLaborRateInput(false);
+      return;
+    }
+
+    // New budget entry: apply rate automatically — no confirmation popup
+    const prevWeekInfo = prevWeekInfoRef.current;
+    const summaryData = summaryDataForRateRef.current;
+    const { hasBudget, avgHourlyRate } = prevWeekInfo || {};
+    const defaultRate = getDefaultAvgHourlyRate(summaryData);
+    const rateToUse = (hasBudget && avgHourlyRate > 0) ? avgHourlyRate : defaultRate;
+
+    if (rateToUse > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        weeklyTotals: {
+          ...prev.weeklyTotals,
+          average_hourly_rate: rateToUse,
+        },
+      }));
+    }
+
+    setLaborRateConfirmed(true);
+    setShowLaborRateInput(false);
+  };
+
+  const applyPreviousWeekLaborRate = (summaryData, prevWeekInfo) => {
+    const { hasBudget, avgHourlyRate } = prevWeekInfo;
+    const hasValidRate = hasBudget && avgHourlyRate > 0;
+
+    prevWeekInfoRef.current = prevWeekInfo;
+    summaryDataForRateRef.current = summaryData;
+
+    setPreviousWeekHasBudget(hasValidRate);
+    setPreviousWeekLaborRate(hasValidRate ? avgHourlyRate : null);
+    setDefaultAvgHourlyRate(getDefaultAvgHourlyRate(summaryData));
+    setLaborRateDataReady(true);
+  };
+
   // Function to fetch average hourly rate from API
   const fetchAverageHourlyRate = async () => {
     try {
@@ -184,6 +304,9 @@ const SalesDataModal = ({
 
         // Check if we already have the average hourly rate for this week
         if (hasAverageHourlyRateForWeek(weekStart)) {
+          const summaryData = useStore.getState().dashboardSummaryData;
+          const prevWeekInfo = await fetchPreviousWeekBudgetInfo(weekStart);
+          applyPreviousWeekLaborRate(summaryData, prevWeekInfo);
           avgHourlyRateFetchedRef.current = true;
           return;
         }
@@ -196,12 +319,20 @@ const SalesDataModal = ({
         // Fetch dashboard summary which will automatically include average hourly rate
         await fetchDashboardSummary(startDate, endDate, 'daily');
 
+        const summaryData = useStore.getState().dashboardSummaryData;
+        const prevWeekInfo = await fetchPreviousWeekBudgetInfo(weekStart);
+        applyPreviousWeekLaborRate(summaryData, prevWeekInfo);
+
         avgHourlyRateFetchedRef.current = true;
         avgHourlyRateFetchingRef.current = false;
       }
     } catch (error) {
       console.error('Error fetching average hourly rate:', error);
       avgHourlyRateFetchingRef.current = false;
+      setPreviousWeekHasBudget(false);
+      setPreviousWeekLaborRate(null);
+      setDefaultAvgHourlyRate(null);
+      setLaborRateDataReady(false);
     }
   };
 
@@ -272,46 +403,10 @@ const SalesDataModal = ({
           await fetchAverageHourlyRate();
           console.log('[SalesDataModal] Calling initializeFormData after fetch');
           initializeFormData();
+          autoApplyLaborRateForNewBudget();
         };
 
         initializeModal();
-      }
-
-      // Show labor rate confirmation modal with 1.5 second delay
-      // Only show if forward_previous_week_rate is false AND there's no existing data (new entry only)
-      // If forward_previous_week_rate is true, the system will automatically forward the previous week's rate
-      // Check if there's existing data - if dailyData exists and has entries, it's an edit, not a new entry
-      const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
-
-      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
-
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData && hasPreviousWeekData) {
-        setShowPopupDelay(true); // Show delay indicator
-
-        const popupTimer = setTimeout(() => {
-          setShowLaborRateConfirmationModal(true);
-          setLaborRateConfirmed(false);
-          setShowPopupDelay(false); // Hide delay indicator
-        }, 1500); // 1.5 seconds delay
-
-        // Cleanup timer if component unmounts or modal closes
-        return () => {
-          clearTimeout(popupTimer);
-        };
-      } else if (restaurantGoals && restaurantGoals.forward_previous_week_rate === true) {
-        // If forward_previous_week_rate is true, skip the confirmation modal
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-      } else if (hasExistingData) {
-        // If editing existing data, skip the confirmation modal
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-      } else if (!hasPreviousWeekData) {
-        // First-time budget flow: no previous week labor data exists yet.
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-        setShowLaborRateConfirmationModal(false);
-        setShowPopupDelay(false);
       }
     }
   }, [visible, selectedWeekData, dashboardSummaryData]);
@@ -326,39 +421,14 @@ const SalesDataModal = ({
         initializeFormData();
       }
 
-      // Handle labor rate confirmation modal based on forward_previous_week_rate
-      // Only show if there's no existing data (new entry only, not editing)
       const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
 
-      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
-
-      if (restaurantGoals.forward_previous_week_rate === false && !laborRateConfirmed && !hasExistingData && hasPreviousWeekData) {
-        // Show the confirmation modal if forward_previous_week_rate is false and it's a new entry
-        setShowPopupDelay(true);
-
-        const popupTimer = setTimeout(() => {
-          setShowLaborRateConfirmationModal(true);
-          setLaborRateConfirmed(false);
-          setShowPopupDelay(false);
-        }, 1500);
-
-        return () => {
-          clearTimeout(popupTimer);
-        };
-      } else if (restaurantGoals.forward_previous_week_rate === true) {
-        // Skip the confirmation modal if forward_previous_week_rate is true
+      if (restaurantGoals.forward_previous_week_rate === true) {
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
         setShowLaborRateConfirmationModal(false);
         setShowPopupDelay(false);
       } else if (hasExistingData) {
-        // If editing existing data, skip the confirmation modal
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-        setShowLaborRateConfirmationModal(false);
-        setShowPopupDelay(false);
-      } else if (!hasPreviousWeekData) {
-        // No previous week data: skip labor-rate confirmation popup.
         setLaborRateConfirmed(true);
         setShowLaborRateInput(false);
         setShowLaborRateConfirmationModal(false);
@@ -386,6 +456,11 @@ const SalesDataModal = ({
       avgHourlyRateFetchedRef.current = false;
       setShowEditWeeklyRateWarningModal(false);
       setSelectedLaborRateChoice(null);
+      setPreviousWeekHasBudget(false);
+      setPreviousWeekLaborRate(null);
+      setDefaultAvgHourlyRate(null);
+      setLaborRateDataReady(false);
+      setLaborRateConfirmed(false);
       weekInitiallyConfirmedRef.current = false; // Reset week confirmation so it can show again for new week
       lastWeekStartDateRef.current = null; // Reset last week start date when modal closes
     }
@@ -469,12 +544,7 @@ const SalesDataModal = ({
       avgHourlyRateFromAPI = parseFloat(dashboardSummaryData.average_hourly_rate);
     }
 
-    // Get previous week's rate from API response
-    if (dashboardSummaryData?.previous_week_average_hourly_rate) {
-      setPreviousWeekLaborRate(parseFloat(dashboardSummaryData.previous_week_average_hourly_rate));
-    } else {
-      setPreviousWeekLaborRate(null);
-    }
+    // Previous week labor rate is set in fetchAverageHourlyRate after verifying last week's budget exists
 
     // Fallback to restaurant goals if API didn't return a value
     const avgHourlyRateFromGoals = restaurantGoals?.avg_hourly_rate && restaurantGoals.avg_hourly_rate > 0
@@ -992,7 +1062,7 @@ const SalesDataModal = ({
     setShowPopupDelay(false); // Reset delay indicator
 
     if (choice === 'yes') {
-      // User wants to use last week's rate
+      // User wants to use last week's budget avg hourly rate
       setShowLaborRateConfirmationModal(false);
       setSelectedLaborRateChoice('previous');
       if (previousWeekLaborRate) {
@@ -1003,23 +1073,23 @@ const SalesDataModal = ({
             average_hourly_rate: previousWeekLaborRate
           }
         }));
-        message.success(`Using last week's rate of $${previousWeekLaborRate.toFixed(2)}`);
+        message.success(`Using last week's average hourly rate of $${previousWeekLaborRate.toFixed(2)}`);
         setShowLaborRateInput(false);
         setLaborRateConfirmed(true);
       }
-    } else if (choice === 'budgeted') {
-      // User wants to use budgeted labor rate
+    } else if (choice === 'useDefault') {
+      // User confirms the setup avg hourly rate (Budget assumptions rate)
       setShowLaborRateConfirmationModal(false);
-      setSelectedLaborRateChoice('budgeted');
-      const budgetedRate = restaurantGoals?.avg_hourly_rate || formData.weeklyTotals.average_hourly_rate || 0;
+      setSelectedLaborRateChoice('default');
+      const rate = defaultAvgHourlyRate || formData.weeklyTotals.average_hourly_rate || 0;
       setFormData(prev => ({
         ...prev,
         weeklyTotals: {
           ...prev.weeklyTotals,
-          average_hourly_rate: budgetedRate
+          average_hourly_rate: rate
         }
       }));
-      message.success(`Using budgeted labor rate of $${budgetedRate.toFixed(2)}`);
+      message.success(`Using avg hourly rate of $${rate.toFixed(2)}`);
       setShowLaborRateInput(false);
       setLaborRateConfirmed(true);
     } else if (choice === 'setNew') {
@@ -1071,42 +1141,10 @@ const SalesDataModal = ({
       const initializeModal = async () => {
         await fetchAverageHourlyRate();
         initializeFormData();
+        autoApplyLaborRateForNewBudget();
       };
 
       await initializeModal();
-
-      // Show labor rate confirmation modal if needed
-      // Only show if there's no existing data (new entry only, not editing)
-      const hasExistingData = selectedWeekData.dailyData && selectedWeekData.dailyData.length > 0;
-
-      const hasPreviousWeekData = dashboardSummaryData?.is_previous_week_data === true;
-
-      if (restaurantGoals && restaurantGoals.forward_previous_week_rate === false && !hasExistingData && hasPreviousWeekData) {
-        setShowPopupDelay(true);
-
-        const popupTimer = setTimeout(() => {
-          setShowLaborRateConfirmationModal(true);
-          setLaborRateConfirmed(false);
-          setShowPopupDelay(false);
-        }, 1500);
-
-        return () => {
-          clearTimeout(popupTimer);
-        };
-      } else if (restaurantGoals && restaurantGoals.forward_previous_week_rate === true) {
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-      } else if (hasExistingData) {
-        // If editing existing data, skip the confirmation modal
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-      } else if (!hasPreviousWeekData) {
-        // No previous week data available: do not show confirmation popup.
-        setLaborRateConfirmed(true);
-        setShowLaborRateInput(false);
-        setShowLaborRateConfirmationModal(false);
-        setShowPopupDelay(false);
-      }
     } else {
       // User cancelled - close the modal
       onCancel();
@@ -1914,11 +1952,14 @@ const SalesDataModal = ({
       >
         <div>
           <Title level={3} className="mb-6 text-center" style={{ fontWeight: 700 }}>
-            {previousWeekLaborRate ?
-              `Would you like to use last week's average labor rate of $${previousWeekLaborRate.toFixed(2)}?` :
-              'Would you like to update your average hourly labor rate?'
-            }
+            Confirm your avg hourly rate for this week
           </Title>
+
+          <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-center">
+            <Text className="text-sm text-gray-600">
+              This rate is used to calculate your labor budget for each day.
+            </Text>
+          </div>
 
           <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
             <Text className="block mb-2">
@@ -1935,31 +1976,30 @@ const SalesDataModal = ({
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <Button
-              onClick={() => handleLaborRateConfirmationChoice('yes')}
-              className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
-              style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
-            >
-              Yes
-            </Button>
-
-            <Button
-              onClick={() => handleLaborRateConfirmationChoice('budgeted')}
-              className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
-              style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
-            >
-              {restaurantGoals?.avg_hourly_rate ?
-                `No, Use Budgeted Labor Rate of $${parseFloat(restaurantGoals.avg_hourly_rate).toFixed(2)}` :
-                `No, Use Budgeted Labor Rate of $${(formData.weeklyTotals.average_hourly_rate || 0).toFixed(2)}`
-              }
-            </Button>
+            {previousWeekHasBudget && previousWeekLaborRate ? (
+              <Button
+                onClick={() => handleLaborRateConfirmationChoice('yes')}
+                className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
+                style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+              >
+                {`Use last week's average hourly rate: $${previousWeekLaborRate.toFixed(2)}`}
+              </Button>
+            ) : defaultAvgHourlyRate > 0 ? (
+              <Button
+                onClick={() => handleLaborRateConfirmationChoice('useDefault')}
+                className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
+                style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
+              >
+                {`Use avg hourly rate: $${defaultAvgHourlyRate.toFixed(2)}`}
+              </Button>
+            ) : null}
 
             <Button
               onClick={() => handleLaborRateConfirmationChoice('setNew')}
               className="w-2/3 h-10 rounded-lg !text-white font-normal text-base"
               style={{ backgroundColor: '#84cc16', borderColor: '#84cc16' }}
             >
-              Set New Labor Rate
+              Enter new labor rate
             </Button>
           </div>
         </div>
