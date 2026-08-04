@@ -59,8 +59,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
 
   // Store integration
   const { 
-    saveDashboardData, 
-    loading: storeLoading, 
+    saveDashboardData,
+    setError,
+    loading: storeLoading,
     error: storeError,
     restaurantGoals
   } = useStore();
@@ -487,7 +488,13 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         }, 2000); // Increased delay to ensure DOM is ready
       }
     } catch (error) {
-      message.error(`Failed to ${isEditMode ? 'update' : 'save'} COGS data: ${error.message}`);
+      const backendError =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error.message;
+      message.error(`Failed to ${isEditMode ? 'update' : 'save'} COGS data: ${backendError}`);
+      // Clear store error so the page banner doesn't also show Axios's generic message
+      setError(null);
     } finally {
       setIsSubmitting(false);
     }

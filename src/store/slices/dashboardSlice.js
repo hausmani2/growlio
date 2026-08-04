@@ -720,7 +720,9 @@ const createDashboardSlice = (set, get) => {
                 
                 return response.data;
             } catch (error) {
-                set({ error: error.message, loading: false });
+                // Leave error display to callers (they show the backend message).
+                // Avoid setting Axios's generic "Request failed with status code …" in store.
+                set({ loading: false });
                 throw error;
             }
         },
