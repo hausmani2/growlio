@@ -470,6 +470,30 @@ const createDashboardSlice = (set, get) => {
                         dashboardData: null, 
                         lastFetchedDate: null 
                     });
+
+                    const created = response?.data?.notifications || [];
+                    if (created.length > 0) {
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(
+                                new CustomEvent('lio-notifications-refresh')
+                            );
+                        }
+                        try {
+                            const { message } = await import('antd');
+                            const first = created[0];
+                            const more =
+                                created.length > 1
+                                    ? ` (+${created.length - 1} more)`
+                                    : '';
+                            message.warning({
+                                content: `${first.title || 'LIO alert'}${more}`,
+                                duration: 6,
+                                key: 'lio-closeout-notifications',
+                            });
+                        } catch {
+                            // toast is best-effort
+                        }
+                    }
                     
                     return response.data;
                 }

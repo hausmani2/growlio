@@ -5,6 +5,7 @@ import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Dropdown, Menu, Modal, Button, message, Select } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
+import NotificationBell from './NotificationBell';
 import { getEffectiveLocationCap } from '../../utils/locationLimits';
 import {
   ONBOARDING_ROUTES,
@@ -310,6 +311,7 @@ const Header = ({ onMenuClick }) => {
                         onChange={(value) => changeLocation(value)}
                     />
                 )}
+                {!isSimulationMode ? <NotificationBell /> : null}
                 {/* Avatar with initials */}
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 border-orange-300 bg-orange-100 text-orange-700 font-bold text-sm sm:text-base shadow-sm">
                     {getInitials(name)}

@@ -28,6 +28,7 @@ const SUGGESTED_QUESTIONS = [
   { label: 'Analyze My Budget', focus: 'budget' },
   { label: 'How Can I Make More Money', focus: 'revenue' },
   { label: 'Why is my labor so high', focus: 'labor' },
+  { label: 'Weekly Recovery Plan', focus: 'weekly_recovery' },
 ];
 
 const QUICK_RANGES = [

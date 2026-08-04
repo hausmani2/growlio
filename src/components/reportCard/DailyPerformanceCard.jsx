@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
-import { CalendarOutlined, FlagOutlined, CheckOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { DatePicker, Spin, Empty, Alert, Popover, Tooltip } from "antd";
+import { CalendarOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { DatePicker, Spin, Empty, Alert, Tooltip } from "antd";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import useStore from "../../store/store";
 import useTooltips from "../../utils/useTooltips";
+import KeyFindingsActionPlan from "./KeyFindingsActionPlan";
 
 dayjs.extend(weekOfYear);
 
@@ -83,26 +84,6 @@ const DailyGauge = ({ score, day, date, profitLoss }) => {
   );
 };
 
-// Key Finding Item Component
-const FindingItem = ({ text, type = "success", onClick }) => {
-  const iconClass = 
-    type === "error" ? "text-red-600" :
-    type === "warning" ? "text-yellow-500" :
-    "text-green-600";
-  
-  const Icon = type === "success" ? CheckOutlined : FlagOutlined;
-
-  return (
-    <div 
-      className={`flex items-start gap-2 ${onClick ? 'cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors' : ''}`}
-      onClick={onClick}
-    >
-      <Icon className={`${iconClass} text-lg flex-shrink-0 mt-0.5`} />
-      <span className="text-sm text-gray-700">{text}</span>
-    </div>
-  );
-};
-
 const DailyPerformanceCard = ({ onCloseOutDays }) => {
   // Store hooks
   const { 
@@ -110,7 +91,6 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     dailyPerformanceData, 
     dailyPerformanceLoading, 
     dailyPerformanceError,
-    setPendingChatMessage
   } = useStore();
   const selectedLocationId = useStore((s) => s.selectedLocationId);
 
@@ -291,30 +271,6 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
     return { over, under };
   }, [closedDayRows]);
 
-  // Handle clicking on a finding - send summary to chat
-  const handleFindingClick = useCallback((finding) => {
-    if (!finding.item || !finding.item.summary) {
-      return;
-    }
-
-    // Extract summary - it might be an object with 'user' property or a string
-    const summaryData = finding.item.summary;
-    const summaryText = typeof summaryData === 'string' 
-      ? summaryData 
-      : (summaryData?.user || JSON.stringify(summaryData));
-    
-    if (!summaryText) {
-      return;
-    }
-
-    const findingText = finding.text;
-    
-    // Create a prompt that includes the summary and asks about the specific finding
-    const prompt = `${summaryText}\n\nBased on this performance data, can you provide insights and suggestions regarding: ${findingText}?`;
-    
-    // Send to chat widget
-    setPendingChatMessage(prompt);
-  }, [setPendingChatMessage]);
 
   const tooltips = useTooltips('report-card');
 
@@ -420,73 +376,14 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         )}
       </div>
 
-      {/* Key Findings Section */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <h2 className="text-2xl font-bold text-orange-600 mb-0">Key Findings</h2>
-          <Popover
-            trigger="click"
-            placement="rightTop"
-            content={(
-              <div className="max-w-[320px] text-sm text-gray-700">
-                <div className="font-semibold text-gray-900 mb-1">What are Key Findings?</div>
-                <div>
-                  These are the biggest “over goal” and “under goal” items for the selected week.
-                  Click any finding to jump into the details and see what drove the result.
-                </div>
-              </div>
-            )}
-          >
-            <button
-              type="button"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500"
-              aria-label="Key Findings info"
-            >
-              <InfoCircleOutlined />
-            </button>
-          </Popover>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column - Over */}
-          <div className="">
-            {keyFindings.over.length > 0 ? (
-              keyFindings.over.map((finding, idx) => (
-                <FindingItem
-                  key={idx}
-                  text={finding.text}
-                  type={finding.type}
-                  onClick={() => handleFindingClick(finding)}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-gray-400 italic">No over-goal items</div>
-            )}
-          </div>
+      <KeyFindingsActionPlan
+        startDate={dateRange?.[0]}
+        endDate={dateRange?.[1]}
+        statusFindings={keyFindings}
+        showNoClosedDaysGuidance={showNoClosedDaysGuidance}
+        autoRun
+      />
 
-          {/* Right Column - Under */}
-          <div className="">
-            {keyFindings.under.length > 0 ? (
-              keyFindings.under.map((finding, idx) => (
-                <FindingItem
-                  key={idx}
-                  text={finding.text}
-                  type={finding.type}
-                  onClick={() => handleFindingClick(finding)}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-gray-400 italic">No under-goal items</div>
-            )}
-          </div>
-
-          {showNoClosedDaysGuidance ? (
-            <div className="md:col-span-2 text-sm font-medium text-orange-600 text-center not-italic">
-              {"Key findings will appear once you've entered your daily numbers and closed out the day."}
-            </div>
-          ) : null}
-        </div>
-      </div>
     </div>
   );
 };
