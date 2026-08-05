@@ -738,8 +738,27 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    })()}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                   style={(() => {
+                     const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                     const remaining = totalBudget - totalActual;
+                     const isOverBudget = remaining < 0;
+                     return {
+                       backgroundColor: isOverBudget ? '#ffebee' : '#e8f5e8',
+                       color: isOverBudget ? '#d32f2f' : '#2e7d32'
+                     };
+                   })()}
                  />
+                 {(() => {
+                   const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                   const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                   if (totalBudget - totalActual >= 0) return null;
+                   return (
+                     <Text type="danger" className="text-xs mt-1 block">
+                       Over budget for the week
+                     </Text>
+                   );
+                 })()}
                </div>
             
              </div>
@@ -1070,8 +1089,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                   const isNegative = weeklyRemainingCog < 0;
                                   return (
                                     <Text style={{ 
-                                      backgroundColor: isNegative ? '#ffebee' : '#f0f8ff', 
-                                      color: isNegative ? '#d32f2f' : '#1890ff',
+                                      backgroundColor: isNegative ? '#ffebee' : '#e8f5e8', 
+                                      color: isNegative ? '#d32f2f' : '#2e7d32',
                                       padding: '2px 6px', 
                                       borderRadius: '3px' 
                                     }}>
@@ -1228,30 +1247,41 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                      <Text strong>Weekly Remaining COGS:</Text>
                      <Input
                        value={`$${(() => {
-                         if (weeklyData.length === 0) return 0;
+                         if (weeklyData.length === 0) return '0.00';
                          const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                          const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
-                         return Math.round(totalBudget - totalActual);
+                         return (totalBudget - totalActual).toFixed(2);
                        })()}`}
                        className="mt-1"
                        disabled
                        style={{ 
                          backgroundColor: (() => {
-                           if (weeklyData.length === 0) return '#fff7ed';
+                           if (weeklyData.length === 0) return '#e8f5e8';
                            const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                            const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
                            const remaining = totalBudget - totalActual;
-                           return remaining < 0 ? '#ffebee' : '#fff7ed';
+                           return remaining < 0 ? '#ffebee' : '#e8f5e8';
                          })(),
                          color: (() => {
-                           if (weeklyData.length === 0) return '#1890ff';
+                           if (weeklyData.length === 0) return '#2e7d32';
                            const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
                            const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
                            const remaining = totalBudget - totalActual;
-                           return remaining < 0 ? '#d32f2f' : '#1890ff';
+                           return remaining < 0 ? '#d32f2f' : '#2e7d32';
                          })()
                        }}
                      />
+                     {(() => {
+                       if (weeklyData.length === 0) return null;
+                       const totalBudget = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
+                       const totalActual = weeklyData[0].dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
+                       if (totalBudget - totalActual >= 0) return null;
+                       return (
+                         <Text type="danger" className="text-xs mt-1 block">
+                           Over budget for the week
+                         </Text>
+                       );
+                     })()}
                    </div>
                </Space>
              )}
