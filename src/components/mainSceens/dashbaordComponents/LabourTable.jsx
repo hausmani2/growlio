@@ -898,6 +898,20 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
                   className="w-full"
                 />
+                {(() => {
+                  const totalBudgetLabor = weekFormData.dailyData.reduce((sum, day) => {
+                    return sum + (parseFloat(day.budgetedLaborDollars) || 0);
+                  }, 0);
+                  const totalActualLabor = weekFormData.dailyData.reduce((sum, day) => {
+                    return sum + (parseFloat(day.actualLaborDollars) || 0);
+                  }, 0);
+                  if (totalBudgetLabor - totalActualLabor >= 0) return null;
+                  return (
+                    <Text type="danger" className="text-xs mt-1 block">
+                      Over budget for the week
+                    </Text>
+                  );
+                })()}
               </div>
             </div>
           </Card>
@@ -1627,6 +1641,21 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     disabled
                     style={{ backgroundColor: '#fff3e0', color: '#f57c00' }}
                   />
+                  {(() => {
+                    if (weeklyData.length === 0) return null;
+                    const totalBudgetLabor = weeklyData[0].dailyData.reduce((sum, day) => {
+                      return day.restaurantOpen !== false ? sum + (parseFloat(day.budgetedLaborDollars) || 0) : sum;
+                    }, 0);
+                    const totalActualLabor = weeklyData[0].dailyData.reduce((sum, day) => {
+                      return day.restaurantOpen !== false ? sum + (parseFloat(day.actualLaborDollars) || 0) : sum;
+                    }, 0);
+                    if (totalBudgetLabor - totalActualLabor >= 0) return null;
+                    return (
+                      <Text type="danger" className="text-xs mt-1 block">
+                        Over budget for the week
+                      </Text>
+                    );
+                  })()}
                 </div>
               </Space>
             )}
