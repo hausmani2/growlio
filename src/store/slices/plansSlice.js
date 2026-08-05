@@ -10,6 +10,8 @@ const createPlansSlice = (set, get) => ({
   subscriptionDetails: null,
   subscriptionDetailsLoading: false,
   subscriptionDetailsTimestamp: null,
+  receipts: [],
+  receiptsLoading: false,
   packagesLoading: false,
   currentPackageLoading: false,
   loading: false,
@@ -233,6 +235,46 @@ const createPlansSlice = (set, get) => ({
       return { success: false, error: errorMessage };
     }
   },
+
+  fetchSubscriptionReceipts: async () => {
+    set({ receiptsLoading: true, error: null });
+    try {
+      const response = await apiGet('/restaurant_v2/subscription/receipts/');
+      const receipts = response.data?.receipts || response.data?.data?.receipts || [];
+      set({ receipts, receiptsLoading: false, error: null });
+      return { success: true, data: receipts };
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error.message ||
+        'Failed to fetch receipts';
+      set({ receiptsLoading: false, error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  cancelSubscription: async () => {
+    set({ error: null });
+    try {
+      const response = await apiPost('/restaurant_v2/subscription/cancel/', {});
+      const responseData = response.data || {};
+      await get().fetchCurrentSubscriptionDetails?.(true);
+      return {
+        success: true,
+        data: responseData,
+        message: responseData.message,
+      };
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error.message ||
+        'Failed to cancel subscription';
+      set({ error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
   
   // Update restaurant subscription
   updateSubscription: async (data) => {
@@ -320,6 +362,8 @@ const createPlansSlice = (set, get) => ({
       subscriptionDetails: null,
       subscriptionDetailsLoading: false,
       subscriptionDetailsTimestamp: null,
+      receipts: [],
+      receiptsLoading: false,
       packagesLoading: false,
       currentPackageLoading: false,
       loading: false,
