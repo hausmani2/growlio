@@ -31,11 +31,16 @@ const ForgotPassword = () => {
       
       if (response.data.message) {
         setEmailSent(true);
-        message.success('If the email is valid, a reset link has been sent.');
+        message.success(response.data.message || 'Password reset link has been sent.');
       }
     } catch (error) {
       console.error('Error sending reset email:', error);
-      message.error('Failed to send reset email. Please try again.');
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        (typeof error?.response?.data === 'string' ? error.response.data : null) ||
+        'Failed to send reset email. Please try again.';
+      message.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
