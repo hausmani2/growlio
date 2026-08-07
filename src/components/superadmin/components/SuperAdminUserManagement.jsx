@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Popconfirm, message, Space, Card, Tag, Avatar, Switch, notification } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Popconfirm, message, Space, Card, Tag, Avatar, Switch, notification } from 'antd';
 import { 
   UserOutlined, 
   PlusOutlined, 
@@ -10,9 +10,11 @@ import {
   CloseCircleOutlined,
   SearchOutlined,
   LockOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  GiftOutlined,
+  RollbackOutlined
 } from '@ant-design/icons';
-import { apiGet, apiPost, apiPut, apiDelete } from '../../../utils/axiosInterceptors';
+import { apiGet, apiPost, apiPut, apiDelete, apiGetWithTimeout } from '../../../utils/axiosInterceptors';
 import api from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import { normalizeSuperAdminUsersResponse } from '../../../utils/superAdminUsers';
@@ -90,6 +92,9 @@ const SuperAdminUserManagement = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [resetPasswordForm] = Form.useForm();
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isCompUpgradeOpen, setIsCompUpgradeOpen] = useState(false);
+  const [compUpgradeForm] = Form.useForm();
+  const [compUpgradeLoading, setCompUpgradeLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -133,7 +138,8 @@ const SuperAdminUserManagement = () => {
         page_size: String(pageSize),
         ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
       }).toString();
-      const res = await apiGet(`/authentication/users/?${params}`);
+      // Admin list can be slow on remote DB; keep above default 30s axios timeout
+      const res = await apiGetWithTimeout(`/authentication/users/?${params}`, 90000);
       const { users: incoming, total } = normalizeSuperAdminUsersResponse(res.data);
       setUsers(incoming);
       setPagination(prev => ({
@@ -142,29 +148,26 @@ const SuperAdminUserManagement = () => {
         pageSize: pageSize,
         total
       }));
+      return true;
     } catch (err) {
+      console.error('Failed to load users', err);
       message.error('Failed to load users');
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Prevent multiple simultaneous calls
-    if (isFetchingRef.current) {
-      return;
-    }
-
-    // Only fetch if we don't have users yet
-    if (hasFetchedRef.current && users.length > 0) {
+    if (isFetchingRef.current || hasFetchedRef.current) {
       return;
     }
 
     const loadUsers = async () => {
       isFetchingRef.current = true;
       try {
-        await fetchUsers(pagination.current, pagination.pageSize);
-        hasFetchedRef.current = true;
+        const ok = await fetchUsers(pagination.current, pagination.pageSize);
+        if (ok) hasFetchedRef.current = true;
       } finally {
         isFetchingRef.current = false;
       }
@@ -275,6 +278,72 @@ const SuperAdminUserManagement = () => {
     resetPasswordForm.resetFields();
   };
 
+  const openCompUpgrade = (user) => {
+    setSelectedUser(user);
+    const planKey = String(user.plan_key || 'lite').toLowerCase();
+    compUpgradeForm.setFieldsValue({
+      package_name: planKey === 'pro' ? 'pro' : 'grow',
+      allowed_locations: user.plan_allowed_locations || (planKey === 'pro' ? 10 : 5),
+      reason: '',
+    });
+    setIsCompUpgradeOpen(true);
+  };
+
+  const closeCompUpgrade = () => {
+    setIsCompUpgradeOpen(false);
+    setSelectedUser(null);
+    compUpgradeForm.resetFields();
+  };
+
+  const handleCompUpgrade = async () => {
+    try {
+      const values = await compUpgradeForm.validateFields();
+      if (!selectedUser?.restaurant_id) {
+        message.error('This user has no restaurant to upgrade');
+        return;
+      }
+      setCompUpgradeLoading(true);
+      const res = await apiPost('/authentication/admin/grant-complimentary-subscription/', {
+        restaurant_id: selectedUser.restaurant_id,
+        package_name: values.package_name,
+        allowed_locations: values.allowed_locations,
+        reason: values.reason || '',
+      });
+      message.success(res.data?.message || 'Complimentary plan granted');
+      closeCompUpgrade();
+      fetchUsers(pagination.current, pagination.pageSize, search);
+    } catch (err) {
+      if (err?.errorFields) return;
+      message.error(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          'Failed to grant complimentary plan'
+      );
+    } finally {
+      setCompUpgradeLoading(false);
+    }
+  };
+
+  const handleRevokeToLite = async (user) => {
+    if (!user?.restaurant_id) {
+      message.error('This user has no restaurant');
+      return;
+    }
+    try {
+      const res = await apiPost('/authentication/admin/revoke-complimentary-subscription/', {
+        restaurant_id: user.restaurant_id,
+      });
+      message.success(res.data?.message || 'Moved to Lite');
+      fetchUsers(pagination.current, pagination.pageSize, search);
+    } catch (err) {
+      message.error(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          'Failed to move restaurant to Lite'
+      );
+    }
+  };
+
   const handleResetPassword = async () => {
     try {
       const values = await resetPasswordForm.validateFields();
@@ -353,7 +422,12 @@ const SuperAdminUserManagement = () => {
         <div>
           <div className="font-medium text-gray-900">{record.restaurant_name || '-'}</div>
           {record.plan_display_name && (
-            <div className="text-xs text-gray-500">Plan: {record.plan_display_name}</div>
+            <div className="text-xs text-gray-500 flex items-center gap-1 flex-wrap">
+              <span>Plan: {record.plan_display_name}</span>
+              {record.plan_is_complimentary && (
+                <Tag color="purple" className="m-0 text-[10px] leading-4 px-1">Comp</Tag>
+              )}
+            </div>
           )}
         </div>
       ),
@@ -444,35 +518,69 @@ const SuperAdminUserManagement = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Space size="small">
-          <Button 
-            type="default"
-            size="small"
-            icon={<LockOutlined />}
-            onClick={() => openResetPassword(record)}
-            className="border-blue-500 text-blue-600 hover:bg-blue-50"
-          >
-            Reset Password
-          </Button>
-          <Popconfirm 
-            title="Delete user?" 
-            description="Are you sure you want to delete this user? This action cannot be undone."
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
+      render: (_, record) => {
+        const planKey = String(record.plan_key || '').toLowerCase();
+        const hasRestaurant = Boolean(record.restaurant_id);
+        const isPaid = planKey === 'grow' || planKey === 'pro';
+        return (
+          <Space size="small" wrap>
+            {hasRestaurant && (
+              <Button
+                type="default"
+                size="small"
+                icon={<GiftOutlined />}
+                onClick={() => openCompUpgrade(record)}
+                className="border-purple-500 text-purple-600 hover:bg-purple-50"
+              >
+                Comp Upgrade
+              </Button>
+            )}
+            {hasRestaurant && isPaid && (
+              <Popconfirm
+                title="Move to Lite?"
+                description="This removes the paid plan (including complimentary). Any Stripe subscription will also be cleared."
+                onConfirm={() => handleRevokeToLite(record)}
+                okText="Yes, move to Lite"
+                cancelText="Cancel"
+              >
+                <Button
+                  type="default"
+                  size="small"
+                  icon={<RollbackOutlined />}
+                  className="border-gray-400 text-gray-600"
+                >
+                  To Lite
+                </Button>
+              </Popconfirm>
+            )}
             <Button 
-              danger 
+              type="default"
               size="small"
-              icon={<DeleteOutlined />}
-              disabled={record.is_superuser}
+              icon={<LockOutlined />}
+              onClick={() => openResetPassword(record)}
+              className="border-blue-500 text-blue-600 hover:bg-blue-50"
             >
-              Delete
+              Reset Password
             </Button>
-          </Popconfirm>
-        </Space>
-      )
+            <Popconfirm 
+              title="Delete user?" 
+              description="Are you sure you want to delete this user? This action cannot be undone."
+              onConfirm={() => handleDelete(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button 
+                danger 
+                size="small"
+                icon={<DeleteOutlined />}
+                disabled={record.is_superuser}
+              >
+                Delete
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      }
     }
   ], []);
 
@@ -487,7 +595,7 @@ const SuperAdminUserManagement = () => {
       // Set role if provided and not USER
       if (values.role && values.role !== 'USER') {
         // Get the created user and update role
-        const res = await apiGet('/authentication/users/');
+        const res = await apiGet('/authentication/users/?format=flat&search=' + encodeURIComponent(values.email));
         const { users: createdUsers } = normalizeSuperAdminUsersResponse(res.data);
         const created = createdUsers.find((u) => u.email === values.email);
         if (created) {
@@ -634,8 +742,8 @@ const SuperAdminUserManagement = () => {
             total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total, range) => 
-              `${range[0]}-${range[1]} of ${total} users`,
+            // Backend pages by restaurant; each page may include multiple user rows
+            showTotal: (total) => `${total} restaurants`,
           }}
           onChange={handleTableChange}
           scroll={{ x: 'max-content' }}
@@ -759,6 +867,77 @@ const SuperAdminUserManagement = () => {
             <Input.Password 
               placeholder="Confirm new password" 
               size="large"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Complimentary Upgrade Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <GiftOutlined className="text-purple-600" />
+            <span>Complimentary Plan Upgrade</span>
+          </div>
+        }
+        open={isCompUpgradeOpen}
+        onOk={handleCompUpgrade}
+        onCancel={closeCompUpgrade}
+        okText="Grant at no cost"
+        cancelText="Cancel"
+        width={520}
+        confirmLoading={compUpgradeLoading}
+        okButtonProps={{
+          className: 'bg-purple-600 border-0 hover:bg-purple-700',
+        }}
+      >
+        {selectedUser && (
+          <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200 space-y-1">
+            <p className="text-sm text-gray-700 mb-0">
+              <span className="font-medium">Restaurant:</span> {selectedUser.restaurant_name}
+            </p>
+            <p className="text-sm text-gray-700 mb-0">
+              <span className="font-medium">Owner:</span> {selectedUser.email}
+            </p>
+            <p className="text-sm text-gray-700 mb-0">
+              <span className="font-medium">Current plan:</span>{' '}
+              {selectedUser.plan_display_name || selectedUser.plan_key || '—'}
+              {selectedUser.plan_is_complimentary ? ' (comp)' : ''}
+            </p>
+            <p className="text-xs text-amber-700 mt-2 mb-0">
+              Any active Stripe subscription for this restaurant will be canceled. The account will not be billed.
+            </p>
+          </div>
+        )}
+        <Form form={compUpgradeForm} layout="vertical">
+          <Form.Item
+            name="package_name"
+            label="Plan"
+            rules={[{ required: true, message: 'Select a plan' }]}
+          >
+            <Select
+              options={[
+                { label: 'Grow', value: 'grow' },
+                { label: 'Pro', value: 'pro' },
+              ]}
+              size="large"
+            />
+          </Form.Item>
+          <Form.Item
+            name="allowed_locations"
+            label="Allowed locations"
+            rules={[
+              { required: true, message: 'Enter location allowance' },
+              { type: 'number', min: 1, message: 'Must be at least 1' },
+            ]}
+          >
+            <InputNumber min={1} size="large" className="w-full" />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason (optional)">
+            <Input.TextArea
+              rows={2}
+              placeholder="Partner deal, support goodwill, internal account…"
+              maxLength={255}
             />
           </Form.Item>
         </Form>

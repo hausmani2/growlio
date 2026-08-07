@@ -14,6 +14,8 @@ export const normalizeSuperAdminUsersResponse = (payload) => {
         restaurant_name: restaurant.name,
         plan_key: plan.key,
         plan_display_name: plan.display_name,
+        plan_is_complimentary: Boolean(plan.is_complimentary),
+        plan_allowed_locations: plan.allowed_locations,
       }) : null;
 
       return [
@@ -37,7 +39,14 @@ export const normalizeSuperAdminUsersResponse = (payload) => {
 
     return {
       users,
-      total: Number(payload?.count ?? payload?.total ?? users.length) || 0,
+      total: Number(
+        payload?.meta?.restaurant_count ??
+          payload?.count ??
+          payload?.total ??
+          users.length
+      ) || 0,
+      page: Number(payload?.meta?.page) || 1,
+      pageSize: Number(payload?.meta?.page_size) || 10,
     };
   }
 
