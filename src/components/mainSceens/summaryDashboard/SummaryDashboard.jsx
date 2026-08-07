@@ -11,6 +11,7 @@ import SummaryTableDashboard from './SummaryTableDashboard';
 import WeeklySummaryTable from './WeeklySummaryTable';
 import BudgetDashboard from './BudgetDashboard';
 import SalesDataModal from './SalesDataModal';
+import BudgetLioAnalysisCard from '../../growlioIQ/BudgetLioAnalysisCard';
 import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
@@ -937,6 +938,11 @@ const SummaryDashboard = () => {
               </Card>
             ) : (
               <>
+                <BudgetLioAnalysisCard
+                  startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
+                  endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
+                  autoRun
+                />
                 <BudgetDashboard
                   dashboardData={dashboardSummaryData}
                   loading={summaryLoading}

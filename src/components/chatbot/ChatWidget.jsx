@@ -1,11 +1,88 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2, FiImage } from 'react-icons/fi';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { FiMessageCircle, FiX, FiSend, FiLoader, FiClock, FiMaximize2, FiImage, FiMic, FiMicOff } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { Modal } from 'antd';
+import { Modal, message as antdMessage } from 'antd';
 import useStore from '../../store/store';
 import MessageBubble from './MessageBubble';
 import { apiGet, streamChatbotMessage, getChatbotContextPayload } from '../../utils/axiosInterceptors';
+import useSpeechToText from '../../hooks/useSpeechToText';
 import chatIcon from '../../assets/lio.png';
+
+const LIO_BUTTON_POSITION_KEY = 'lio_chat_button_position';
+const DRAG_THRESHOLD_PX = 6;
+const BUTTON_SIZE_MOBILE = 40;
+const BUTTON_SIZE_DESKTOP = 56;
+const PANEL_WIDTH = 384; // md:w-96
+const PANEL_HEIGHT = 600;
+const PANEL_GAP = 12;
+
+const getDefaultButtonPosition = () => {
+  if (typeof window === 'undefined') {
+    return { x: 24, y: 24 };
+  }
+  const size = window.innerWidth >= 768 ? BUTTON_SIZE_DESKTOP : BUTTON_SIZE_MOBILE;
+  return {
+    x: Math.max(8, window.innerWidth - size - 48),
+    y: Math.max(8, window.innerHeight - size - 24),
+  };
+};
+
+const clampButtonPosition = (x, y) => {
+  if (typeof window === 'undefined') return { x, y };
+  const size = window.innerWidth >= 768 ? BUTTON_SIZE_DESKTOP : BUTTON_SIZE_MOBILE;
+  const maxX = Math.max(8, window.innerWidth - size - 8);
+  const maxY = Math.max(8, window.innerHeight - size - 8);
+  return {
+    x: Math.min(Math.max(8, x), maxX),
+    y: Math.min(Math.max(8, y), maxY),
+  };
+};
+
+const loadSavedButtonPosition = () => {
+  try {
+    const raw = localStorage.getItem(LIO_BUTTON_POSITION_KEY);
+    if (!raw) return getDefaultButtonPosition();
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.x !== 'number' || typeof parsed?.y !== 'number') {
+      return getDefaultButtonPosition();
+    }
+    return clampButtonPosition(parsed.x, parsed.y);
+  } catch {
+    return getDefaultButtonPosition();
+  }
+};
+
+const getPanelStyle = (buttonPos) => {
+  if (typeof window === 'undefined') {
+    return { right: 24, bottom: 96 };
+  }
+
+  const size = window.innerWidth >= 768 ? BUTTON_SIZE_DESKTOP : BUTTON_SIZE_MOBILE;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const panelW = Math.min(PANEL_WIDTH, viewportW - 24);
+  const panelH = Math.min(PANEL_HEIGHT, viewportH - 96);
+
+  // Prefer opening above the button; flip below if needed
+  let top = buttonPos.y - panelH - PANEL_GAP;
+  if (top < 8) {
+    top = buttonPos.y + size + PANEL_GAP;
+  }
+  top = Math.min(Math.max(8, top), Math.max(8, viewportH - panelH - 8));
+
+  // Align panel toward the button, keep fully on-screen
+  let left = buttonPos.x + size - panelW;
+  if (left < 8) left = 8;
+  if (left + panelW > viewportW - 8) left = Math.max(8, viewportW - panelW - 8);
+
+  return {
+    left,
+    top,
+    width: panelW,
+    height: panelH,
+    maxHeight: panelH,
+  };
+};
 
 /**
  * ChatWidget Component
@@ -39,7 +116,147 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const speechBaseRef = useRef('');
   const [selectedImage, setSelectedImage] = useState(null);
+
+  const handleSpeechTranscript = useCallback((transcript, { isFinal } = {}) => {
+    const base = speechBaseRef.current.trim();
+    const next = base ? `${base} ${transcript}` : transcript;
+    setInputMessage(next);
+    if (isFinal) {
+      speechBaseRef.current = next;
+    }
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+    }
+  }, []);
+
+  const {
+    isSupported: isSpeechSupported,
+    isListening,
+    error: speechError,
+    clearError: clearSpeechError,
+    toggleListening,
+    stopListening,
+  } = useSpeechToText({
+    onTranscript: handleSpeechTranscript,
+    disabled: isLoading || !isOpen,
+  });
+
+  useEffect(() => {
+    if (!speechError) return;
+    antdMessage.warning(speechError);
+    clearSpeechError();
+  }, [speechError, clearSpeechError]);
+
+  const handleMicClick = () => {
+    if (!isSpeechSupported) {
+      antdMessage.warning('Voice input is not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+    if (!isListening) {
+      speechBaseRef.current = inputMessage;
+    }
+    toggleListening();
+  };
+
+  const [buttonPosition, setButtonPosition] = useState(loadSavedButtonPosition);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+    pointerId: null,
+  });
+
+  const persistButtonPosition = useCallback((pos) => {
+    try {
+      localStorage.setItem(LIO_BUTTON_POSITION_KEY, JSON.stringify(pos));
+    } catch {
+      // ignore quota / private mode errors
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setButtonPosition((prev) => {
+        const next = clampButtonPosition(prev.x, prev.y);
+        persistButtonPosition(next);
+        return next;
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [persistButtonPosition]);
+
+  const handleButtonPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    dragStateRef.current = {
+      active: true,
+      moved: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: buttonPosition.x,
+      originY: buttonPosition.y,
+      pointerId: e.pointerId,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const handleButtonPointerMove = (e) => {
+    const drag = dragStateRef.current;
+    if (!drag.active) return;
+
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+
+    drag.moved = true;
+    setIsDragging(true);
+    setButtonPosition(clampButtonPosition(drag.originX + dx, drag.originY + dy));
+  };
+
+  const endButtonDrag = (e) => {
+    const drag = dragStateRef.current;
+    if (!drag.active) return;
+
+    const wasDrag = drag.moved;
+    drag.active = false;
+    setIsDragging(false);
+
+    if (e?.currentTarget && drag.pointerId != null) {
+      try {
+        e.currentTarget.releasePointerCapture?.(drag.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (wasDrag) {
+      setButtonPosition((prev) => {
+        const next = clampButtonPosition(prev.x, prev.y);
+        persistButtonPosition(next);
+        return next;
+      });
+    }
+  };
+
+  const handleButtonClick = (e) => {
+    // Suppress click after a drag so repositioning doesn't open/close chat
+    if (dragStateRef.current.moved) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragStateRef.current.moved = false;
+      return;
+    }
+    setIsOpen((open) => !open);
+  };
+
+  const panelStyle = getPanelStyle(buttonPosition);
 
   const showLimitReachedModalOnce = (data) => {
     // Prevent multiple modals at once, but allow re-show after a short cooldown.
@@ -291,6 +508,9 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
   // Auto-resize textarea
   const handleInputChange = (e) => {
     setInputMessage(e.target.value);
+    if (!isListening) {
+      speechBaseRef.current = e.target.value;
+    }
     const textarea = e.target;
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
@@ -301,6 +521,8 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
    */
   const sendMessage = async (messageText) => {
     if (!messageText.trim() && !selectedImage) return;
+    stopListening();
+    speechBaseRef.current = '';
     const attachedImage = selectedImage;
     const displayText = [messageText.trim(), attachedImage ? `[Image attached: ${attachedImage.name}]` : '']
       .filter(Boolean)
@@ -535,31 +757,48 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
 
   return (
     <>
-      {/* Floating Chat Button */}
+      {/* Floating Chat Button — drag to reposition */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-12 z-50 w-10 h-10 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ease-in-out text-white opacity-50 hover:opacity-100 ${
+        type="button"
+        onClick={handleButtonClick}
+        onPointerDown={handleButtonPointerDown}
+        onPointerMove={handleButtonPointerMove}
+        onPointerUp={endButtonDrag}
+        onPointerCancel={endButtonDrag}
+        className={`fixed z-50 w-10 h-10 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center text-white opacity-50 hover:opacity-100 touch-none select-none ${
+          isDragging
+            ? 'cursor-grabbing opacity-100 scale-105 transition-none'
+            : 'cursor-grab transition-all duration-300 ease-in-out'
+        } ${
           isOpen
             ? 'bg-gray-600 hover:bg-gray-700 scale-95'
             : 'bg-[#FF8132] hover:bg-[#EB5B00] hover:scale-110'
         }`}
+        style={{
+          left: buttonPosition.x,
+          top: buttonPosition.y,
+          right: 'auto',
+          bottom: 'auto',
+        }}
         aria-label={isOpen ? 'Close chat' : 'Open chat'}
+        title="Drag to move · Click to open"
         data-guidance="lio_chat_widget"
       >
         {isOpen ? (
-          <FiX className="w-6 h-6 md:w-7 md:h-7" />
+          <FiX className="w-6 h-6 md:w-7 md:h-7 pointer-events-none" />
         ) : (
-          <img src={chatIcon} alt="Chat" className="w-full h-full object-contain" />
+          <img src={chatIcon} alt="Chat" className="w-full h-full object-contain pointer-events-none" />
         )}
       </button>
 
-      {/* Chat Window */}
+      {/* Chat Window — stays near the button */}
       <div
-        className={`fixed bottom-24 right-6 z-40 w-[calc(100vw-3rem)] md:w-96 h-[calc(100vh-8rem)] md:h-[600px] max-h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out ${
+        className={`fixed z-40 bg-white rounded-2xl shadow-2xl flex flex-col transition-all duration-300 ease-in-out ${
           isOpen
             ? 'opacity-100 translate-y-0 scale-100'
             : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
         }`}
+        style={panelStyle}
       >
         {/* Chat Header */}
         <div 
@@ -681,7 +920,7 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
               value={inputMessage}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
+              placeholder={isListening ? 'Listening...' : 'Type or talk to LIO...'}
               rows={1}
               disabled={isLoading}
               className="flex-1 resize-none border rounded-lg px-4 py-2.5 text-sm md:text-base focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed overflow-y-auto transition-all"
@@ -689,17 +928,33 @@ const ChatWidget = ({ botName = 'LIO Advisor ' }) => {
                 maxHeight: '120px', 
                 minHeight: '44px', 
                 height: '44px',
-                borderColor: '#d1d5db'
+                borderColor: isListening ? '#FF8132' : '#d1d5db'
               }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#FF8132';
                 e.target.style.boxShadow = '0 0 0 2px rgba(255, 129, 50, 0.2)';
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = '#d1d5db';
-                e.target.style.boxShadow = 'none';
+                if (!isListening) {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
+                }
               }}
             />
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={handleMicClick}
+              className={`w-10 h-10 md:w-11 md:h-11 rounded-lg border flex items-center justify-center transition-colors disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed ${
+                isListening
+                  ? 'border-[#FF8132] bg-[#FF8132] text-white animate-pulse'
+                  : 'border-gray-300 text-gray-600 hover:border-orange-300 hover:text-[#FF8132]'
+              }`}
+              aria-label={isListening ? 'Stop listening' : 'Talk to LIO'}
+              title={isListening ? 'Stop listening' : 'Talk to LIO'}
+            >
+              {isListening ? <FiMicOff className="w-5 h-5" /> : <FiMic className="w-5 h-5" />}
+            </button>
             <button
               type="submit"
               disabled={(!inputMessage.trim() && !selectedImage) || isLoading}
