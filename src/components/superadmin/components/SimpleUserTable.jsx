@@ -59,8 +59,7 @@ const SimpleUserTable = () => {
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: String(pageSize),
-        ordering: '-created_date',
+        page_size: String(pageSize),
         ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
       }).toString();
       

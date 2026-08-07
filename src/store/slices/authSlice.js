@@ -288,7 +288,10 @@ const createAuthSlice = (set, get) => {
               errorData.message ||
               `Please verify your email address${emailText} before logging in.`;
           }
-          
+          // Prefer explicit error string (no account / invalid password / lockout)
+          else if (typeof errorData.error === 'string') {
+            errorMessage = errorData.error;
+          }
           // Handle non_field_errors format
           else if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
             errorMessage = errorData.non_field_errors[0];
@@ -296,10 +299,6 @@ const createAuthSlice = (set, get) => {
           // Handle message format
           else if (errorData.message) {
             errorMessage = errorData.message;
-          }
-          // Handle error format
-          else if (errorData.error) {
-            errorMessage = errorData.error;
           }
           // Handle field-specific errors
           else if (typeof errorData === 'object') {

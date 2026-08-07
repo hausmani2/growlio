@@ -345,6 +345,10 @@ const Login = () => {
       // The store's login function sets the error state appropriately
       console.error('Login error:', err);
       isLoginInProgressRef.current = false;
+      const errMsg = err?.message || useStore.getState().error;
+      if (errMsg) {
+        message.error(errMsg);
+      }
     } finally {
       // Ensure both loading states are reset
       setIsSubmitting(false);
