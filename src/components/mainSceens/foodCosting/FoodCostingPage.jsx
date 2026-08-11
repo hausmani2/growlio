@@ -57,6 +57,7 @@ import {
   updateMenuItem,
   updateVendor,
 } from '../../../services/foodCostingApi';
+import MenuProfitabilitySimulator from './MenuProfitabilitySimulator';
 import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
 import {
   ACCEPT_IMAGE_OR_PDF,
@@ -1660,6 +1661,11 @@ const FoodCostingPage = () => {
                 />
               </Card>
             ),
+          },
+          {
+            key: 'simulator',
+            label: 'Simulator',
+            children: <MenuProfitabilitySimulator />,
           },
         ]}
       />

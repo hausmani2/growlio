@@ -230,3 +230,110 @@ export const discardInvoice = async (invoiceId) => {
   const res = await apiDelete(`/food_costing/invoices/${invoiceId}/`);
   return res.data;
 };
+
+/** Menu Profitability Simulator (Food Costing) — read-only preview APIs */
+export const fetchSimulatorBaseline = async ({ dateFrom, dateTo } = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  const res = await apiGet(`/food_costing/simulator/baseline/?${params.toString()}`);
+  return res.data;
+};
+
+export const previewSimulatorChanges = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/preview/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorOpportunities = async ({
+  dateFrom,
+  dateTo,
+  limit = 10,
+} = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  if (limit) params.set('limit', String(limit));
+  const res = await apiGet(
+    `/food_costing/simulator/opportunities/?${params.toString()}`
+  );
+  return res.data;
+};
+
+export const fetchSimulatorScenarios = async () => {
+  const { query } = withIds();
+  const res = await apiGet(`/food_costing/simulator/scenarios/?${query}`);
+  return res.data;
+};
+
+export const saveSimulatorScenario = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/scenarios/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const updateSimulatorScenario = async (id, payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPatch(`/food_costing/simulator/scenarios/${id}/`, {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const archiveSimulatorScenario = async (id) => {
+  const { restaurant_id, location_id, query } = withIds();
+  const res = await apiDelete(
+    `/food_costing/simulator/scenarios/${id}/?${query}`,
+    { data: { restaurant_id, location_id } }
+  );
+  return res.data;
+};
+
+export const previewSimulatorScenario = async (id) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost(`/food_costing/simulator/scenarios/${id}/preview/`, {
+    restaurant_id,
+    location_id,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorApplyPlan = async (changes) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/apply-plan/', {
+    restaurant_id,
+    location_id,
+    changes,
+  });
+  return res.data;
+};
+
+export const applySimulatorChanges = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/apply/', {
+    restaurant_id,
+    location_id,
+    confirm: true,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorSnapshots = async () => {
+  const { query } = withIds();
+  const res = await apiGet(`/food_costing/simulator/snapshots/?${query}`);
+  return res.data;
+};
