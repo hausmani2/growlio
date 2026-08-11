@@ -54,10 +54,17 @@ export const archiveVendor = async (id) => {
   return res.data;
 };
 
-export const fetchIngredients = async (search = '') => {
+export const fetchIngredients = async ({
+  search = '',
+  category = '',
+  ordering = 'name',
+} = {}) => {
   const { query } = withIds();
-  const q = search ? `${query}&search=${encodeURIComponent(search)}` : query;
-  const res = await apiGet(`/food_costing/ingredients/?${q}`);
+  const params = new URLSearchParams(query);
+  if (search) params.set('search', search);
+  if (category) params.set('category', category);
+  if (ordering) params.set('ordering', ordering);
+  const res = await apiGet(`/food_costing/ingredients/?${params.toString()}`);
   return res.data;
 };
 
@@ -84,6 +91,32 @@ export const archiveIngredient = async (id) => {
 export const fetchMenuItems = async () => {
   const { query } = withIds();
   const res = await apiGet(`/food_costing/menu-items/?${query}`);
+  return res.data;
+};
+
+export const importSquareMenuItems = async () => {
+  const { query } = withIds();
+  const res = await apiPost(`/square_pos/menu-items/?${query}`, {});
+  return res.data;
+};
+
+export const pollSquareImportStatus = async (jobId) => {
+  const { query } = withIds();
+  const res = await apiGet(`/square_pos/menu-items/status/${jobId}/?${query}`);
+  return res.data;
+};
+
+export const scanPrintedMenu = async ({ file }) => {
+  const { restaurant_id, location_id } = withIds();
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('restaurant_id', String(restaurant_id));
+  if (location_id) formData.append('location_id', String(location_id));
+  const res = await apiPostWithTimeout(
+    '/food_costing/menu-items/from-menu-scan/',
+    formData,
+    AI_UPLOAD_TIMEOUT
+  );
   return res.data;
 };
 
@@ -195,5 +228,112 @@ export const applyInvoiceCosts = async (
 
 export const discardInvoice = async (invoiceId) => {
   const res = await apiDelete(`/food_costing/invoices/${invoiceId}/`);
+  return res.data;
+};
+
+/** Menu Profitability Simulator (Food Costing) — read-only preview APIs */
+export const fetchSimulatorBaseline = async ({ dateFrom, dateTo } = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  const res = await apiGet(`/food_costing/simulator/baseline/?${params.toString()}`);
+  return res.data;
+};
+
+export const previewSimulatorChanges = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/preview/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorOpportunities = async ({
+  dateFrom,
+  dateTo,
+  limit = 10,
+} = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  if (limit) params.set('limit', String(limit));
+  const res = await apiGet(
+    `/food_costing/simulator/opportunities/?${params.toString()}`
+  );
+  return res.data;
+};
+
+export const fetchSimulatorScenarios = async () => {
+  const { query } = withIds();
+  const res = await apiGet(`/food_costing/simulator/scenarios/?${query}`);
+  return res.data;
+};
+
+export const saveSimulatorScenario = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/scenarios/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const updateSimulatorScenario = async (id, payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPatch(`/food_costing/simulator/scenarios/${id}/`, {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const archiveSimulatorScenario = async (id) => {
+  const { restaurant_id, location_id, query } = withIds();
+  const res = await apiDelete(
+    `/food_costing/simulator/scenarios/${id}/?${query}`,
+    { data: { restaurant_id, location_id } }
+  );
+  return res.data;
+};
+
+export const previewSimulatorScenario = async (id) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost(`/food_costing/simulator/scenarios/${id}/preview/`, {
+    restaurant_id,
+    location_id,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorApplyPlan = async (changes) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/apply-plan/', {
+    restaurant_id,
+    location_id,
+    changes,
+  });
+  return res.data;
+};
+
+export const applySimulatorChanges = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/simulator/apply/', {
+    restaurant_id,
+    location_id,
+    confirm: true,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const fetchSimulatorSnapshots = async () => {
+  const { query } = withIds();
+  const res = await apiGet(`/food_costing/simulator/snapshots/?${query}`);
   return res.data;
 };
