@@ -147,8 +147,8 @@ const ProfitabilityWizard = () => {
       message.success('Sales information saved successfully!');
 
       const locationId = useStore.getState().selectedLocationId;
-      if (locationId && typeof getRestaurantOnboarding === 'function') {
-        await getRestaurantOnboarding(true, locationId);
+      if (typeof getRestaurantOnboarding === 'function') {
+        await getRestaurantOnboarding(true, locationId || undefined);
       }
 
       navigate("/dashboard/report-card");

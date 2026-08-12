@@ -685,7 +685,7 @@ const createAuthSlice = (set, get) => {
       const lastCheckTime = sessionStorage.getItem('restaurantSimulationLastCheckTime');
       
       // If we've checked in the last 2 seconds, return cached data if available
-      if (hasCheckedGlobally === 'true' && lastCheckTime) {
+      if (!forceRefresh && hasCheckedGlobally === 'true' && lastCheckTime) {
         const timeSinceCheck = now - parseInt(lastCheckTime);
         if (timeSinceCheck < 2000) {
           // Too soon to check again - return cached data if available
@@ -876,7 +876,7 @@ const createAuthSlice = (set, get) => {
       const lastCheckTime = sessionStorage.getItem('restaurantOnboardingLastCheckTime');
       
       // If we've checked in the last 2 seconds, return cached data if available
-      if (hasCheckedGlobally === 'true' && lastCheckTime) {
+      if (!forceRefresh && hasCheckedGlobally === 'true' && lastCheckTime) {
         const timeSinceCheck = now - parseInt(lastCheckTime);
         if (timeSinceCheck < 2000) {
           // Too soon to check again - return cached data if available
