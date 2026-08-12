@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Input, DatePicker, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
-import { PlusOutlined, EditOutlined, CalculatorOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, CalculatorOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 dayjs.extend(weekOfYear);
 import useStore from '../../../store/store';
 import LoadingSpinner from '../../layout/LoadingSpinner';
 import { useGuidance } from '../../../contexts/GuidanceContext';
+import { useNavigate } from 'react-router-dom';
+import useRestaurantRole from '../../../hooks/useRestaurantRole';
+import {
+  captureCloseOutFingerprintsBeforeSave,
+  recordCloseOutSessionChanges,
+  flushCloseOutSessionNotification,
+  maybeWarnPreviousWeekIncomplete,
+} from '../../../utils/reportCardReminders';
+import {
+  SALES_FIRST_COGS_MESSAGE,
+  dispatchOpenSalesModal,
+  isSalesEnteredForDay,
+  getDatesMissingSalesForActuals,
+  hasOpenDaysMissingSales,
+} from '../../../utils/salesEnteredGate';
 
 const { Title, Text } = Typography;
 
@@ -38,6 +53,8 @@ const getWeeklyNetSalesFromDashboard = (dashboardData) => {
 };
 
 const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshDashboardData = null }) => {
+  const navigate = useNavigate();
+  const { canAccessReportCard } = useRestaurantRole();
   // Guidance hook for data guidance
   const { startDataGuidance, hasSeenDataGuidance } = useGuidance();
   
@@ -56,6 +73,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   const [dataNotFound, setDataNotFound] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingPreviousWeek, setIsCheckingPreviousWeek] = useState(false);
 
   // Store integration
   const { 
@@ -333,22 +351,61 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
     }
   };
 
+  const openCogsModalAfterPreviousWeekCheck = async (openModal) => {
+    if (isCheckingPreviousWeek) return;
+    const weekStartDate =
+      weekDays.length > 0 ? weekDays[0].date : selectedDate;
+    setIsCheckingPreviousWeek(true);
+    try {
+      await maybeWarnPreviousWeekIncomplete({
+        weekStartDate,
+        onProceed: openModal,
+      });
+    } finally {
+      setIsCheckingPreviousWeek(false);
+    }
+  };
+
   // Handle weekly data modal
   const showAddWeeklyModal = () => {
-    setEditingWeek(null);
-    setIsEditMode(false);
-    setIsModalVisible(true);
+    openCogsModalAfterPreviousWeekCheck(() => {
+      setEditingWeek(null);
+      setIsEditMode(false);
+      setIsModalVisible(true);
+    });
   };
 
   const showEditWeeklyModal = (weekData) => {
-    setEditingWeek(weekData);
-    setIsEditMode(true);
-    setIsModalVisible(true);
+    openCogsModalAfterPreviousWeekCheck(() => {
+      setEditingWeek(weekData);
+      setIsEditMode(true);
+      setIsModalVisible(true);
+    });
   };
 
   const handleWeeklySubmit = async (weekData) => {
     try {
       setIsSubmitting(true);
+
+      if (!weekData || !weekData.dailyData) {
+        message.warning('No weekly data to save. Please add weekly COGS data first.');
+        return;
+      }
+
+      const blockedDates = getDatesMissingSalesForActuals(weekData.dailyData, dashboardData, {
+        hasActual: (day) =>
+          day.restaurantOpen !== false && (parseFloat(day.actual) || 0) > 0,
+      });
+      if (blockedDates.length > 0) {
+        message.warning(SALES_FIRST_COGS_MESSAGE);
+        dispatchOpenSalesModal(
+          weekDays.length > 0
+            ? weekDays[0].date.format('YYYY-MM-DD')
+            : selectedDate?.format?.('YYYY-MM-DD')
+        );
+        return;
+      }
+
       let newWeekId = null;
       
       if (editingWeek) {
@@ -376,13 +433,6 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
             ? { ...week, weeklyTotals: weekData.weeklyTotals }
             : week
         ));
-      }
-
-      // Save data to API when modal is submitted
-      // Use the weekData from the modal instead of checking weeklyData state
-      if (!weekData || !weekData.dailyData) {
-        message.warning('No weekly data to save. Please add weekly COGS data first.');
-        return;
       }
 
       // Use the weekly totals from the form data
@@ -429,8 +479,19 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         }
       };
 
-             await saveDashboardData(transformedData);
+      const beforeFingerprints = captureCloseOutFingerprintsBeforeSave();
+      await saveDashboardData(transformedData);
       message.success(isEditMode ? 'COGS data updated successfully!' : 'COGS data saved successfully!');
+
+      // Refresh before sequential prompt / close-out check
+      if (refreshDashboardData) {
+        await refreshDashboardData();
+      } else {
+        processCogsData();
+      }
+
+      // Keep COGS date changes in the session (alongside any Sales dates)
+      recordCloseOutSessionChanges(beforeFingerprints, 'cogs');
       
       // Show confirmation popup asking if user wants to add Labor data
       Modal.confirm({
@@ -447,7 +508,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         cancelText: 'No, Later',
         okType: 'primary',
         onOk: () => {
-          // Close the COGS modal first
+          // Close the COGS modal first — session kept for Labor
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
@@ -463,20 +524,17 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           window.dispatchEvent(event);
         },
         onCancel: () => {
-          // Just close the COGS modal
+          // Chain ended — include Sales + COGS session dates
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
+          flushCloseOutSessionNotification({
+            navigate,
+            beforeFingerprints,
+            canAccessReportCard,
+          });
         }
       });
-      
-      // Refresh all dashboard data to show updated data across all components
-      if (refreshDashboardData) {
-        await refreshDashboardData();
-      } else {
-        // Fallback: reload data after saving to update totals and remaining COGS
-        processCogsData(); 
-      }
 
       if (hasSeenDataGuidance === false || hasSeenDataGuidance === null) {
         // Reset trigger refs to allow guidance to show again after data is added
@@ -626,6 +684,16 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
         return;
       }
 
+      if (field === 'actual' && !isSalesEnteredForDay(dashboardData, record.date)) {
+        message.warning(SALES_FIRST_COGS_MESSAGE);
+        dispatchOpenSalesModal(
+          weekDays.length > 0
+            ? weekDays[0].date.format('YYYY-MM-DD')
+            : selectedDate?.format?.('YYYY-MM-DD')
+        );
+        return;
+      }
+
       const newDailyData = [...weekFormData.dailyData];
       newDailyData[dayIndex] = { ...newDailyData[dayIndex], [field]: value };
       
@@ -639,6 +707,12 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
       handleWeeklySubmit(weekFormData);
     };
 
+    const showSalesFirstBanner = hasOpenDaysMissingSales(
+      weekFormData?.dailyData,
+      dashboardData,
+      { isFuture: isFutureDate }
+    );
+
     return (
       <Modal
         className={`${isSubmitting || storeLoading ? '!h-[70vh]' : ''}`}
@@ -648,12 +722,21 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           setIsModalVisible(false);
           setEditingWeek(null);
           setIsEditMode(false);
+          // User dismissed COGS without saving this step — still summarize prior session saves
+          flushCloseOutSessionNotification({
+            navigate,
+            canAccessReportCard,
+          });
         }}
         footer={[
           <Button key="cancel" onClick={() => {
             setIsModalVisible(false);
             setEditingWeek(null);
             setIsEditMode(false);
+            flushCloseOutSessionNotification({
+              navigate,
+              canAccessReportCard,
+            });
           }}>
             Cancel
           </Button>,
@@ -672,50 +755,112 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           />
         )}
         <Space direction="vertical" style={{ width: '100%' }} size="large" className="w-full">
-                     {/* Weekly COGS Totals Summary - Auto-calculated from daily inputs */}
-           <Card title="Weekly COGS Totals Summary" size="small" className='bg-gray-50 opacity-50'>
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
+           {showSalesFirstBanner && (
+           <div
+             style={{
+               background: '#fff7e6',
+               border: '1px solid #ffd591',
+               borderRadius: '6px',
+               padding: '12px 16px',
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'space-between',
+               gap: '12px',
+               flexWrap: 'wrap',
+             }}
+           >
+             <Text style={{ fontSize: '13px', color: '#ad6800', flex: 1, minWidth: 0 }}>
+               {SALES_FIRST_COGS_MESSAGE}
+             </Text>
+             <Button
+               type="primary"
+               size="small"
+               style={{ background: '#ff6b00', borderColor: '#ff6b00', flexShrink: 0 }}
+               onClick={() =>
+                 dispatchOpenSalesModal(
+                   weekDays.length > 0
+                     ? weekDays[0].date.format('YYYY-MM-DD')
+                     : selectedDate?.format?.('YYYY-MM-DD')
+                 )
+               }
+             >
+               Go to Sales
+             </Button>
+           </div>
+           )}
+           {/* Weekly COGS Totals Summary - Auto-calculated from daily inputs */}
+           <div
+             style={{
+               background: '#f5f5f5',
+               border: '1px solid #d9d9d9',
+               borderRadius: '6px',
+               padding: '16px',
+             }}
+           >
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                 <Text strong style={{ fontSize: '15px', color: '#262626' }}>Weekly COGS Totals Summary</Text>
+                 <span
+                   style={{
+                     display: 'inline-flex',
+                     alignItems: 'center',
+                     gap: '4px',
+                     fontSize: '11px',
+                     color: '#595959',
+                     backgroundColor: '#e8e8e8',
+                     border: '1px solid #d9d9d9',
+                     borderRadius: '4px',
+                     padding: '1px 8px',
+                     fontWeight: 500,
+                     lineHeight: '20px',
+                   }}
+                 >
+                   <LockOutlined style={{ fontSize: '10px' }} /> Read only
+                 </span>
+             </div>
+             <Text style={{ fontSize: '12px', color: '#8c8c8c', display: 'block', marginBottom: '14px' }}>
+               These values are calculated automatically from the weekly budget, sales, and recorded COGS.
+             </Text>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
              <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly Budget Sales:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Weekly Budget Sales</Text>
                  <Input
                   value={`$${formatNumber(weekFormData.weeklyTotals?.salesBudget ?? 0).toFixed(2)}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                   style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly COGS Budget:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Weekly COGS Budget</Text>
                  <Input
                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0).toFixed(2)}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                   style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                  />
                </div>
              
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly COGS Actual:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Weekly COGS Actual</Text>
                  <Input
                    value={`$${formatNumber(weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0)).toFixed(2)}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff',  color: '#1890ff' }}
+                   style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                  />
                </div>
 
-            
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Current Sales To Date:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Current Sales To Date</Text>
                  <Input
                    value={`$${weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.netSales) || 0), 0).toFixed(2)}`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                   style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Percentage COGS to Date:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Percentage COGS to Date</Text>
                  <Input
                    value={`${(() => {
                      const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + formatNumber(day.actual), 0);
@@ -725,11 +870,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    })()}%`}
                    className="mt-1"
                    disabled
-                   style={{ backgroundColor: '#f0f8ff', color: '#1890ff' }}
+                   style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
                  />
                </div>
                <div className="w-full">
-                 <Text strong className="text-sm sm:text-base">Weekly COGS Remaining:</Text>
+                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Weekly COGS Remaining</Text>
                  <Input
                    value={`$${(() => {
                      const totalBudget = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.budget) || 0), 0);
@@ -743,9 +888,14 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                      const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + (parseFloat(day.actual) || 0), 0);
                      const remaining = totalBudget - totalActual;
                      const isOverBudget = remaining < 0;
+                     const color = isOverBudget ? '#d32f2f' : '#2e7d32';
                      return {
                        backgroundColor: isOverBudget ? '#ffebee' : '#e8f5e8',
-                       color: isOverBudget ? '#d32f2f' : '#2e7d32'
+                       color,
+                       borderColor: isOverBudget ? '#ffcdd2' : '#c8e6c9',
+                       opacity: 1,
+                       WebkitTextFillColor: color,
+                       cursor: 'default'
                      };
                    })()}
                  />
@@ -760,9 +910,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                    );
                  })()}
                </div>
-            
              </div>
-           </Card>
+           </div>
 
           {/* Table Section - Responsive */}
           <div className="overflow-x-auto">
@@ -849,24 +998,41 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   width: 150,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
-                    const isDisabled = record.restaurantOpen === false || isFuture;
+                    const salesMissing =
+                      record.restaurantOpen !== false &&
+                      !isFuture &&
+                      !isSalesEnteredForDay(dashboardData, record.date);
+                    const isDisabled =
+                      record.restaurantOpen === false || isFuture || salesMissing;
                     return (
-                      <Input
-                        type="number"
-                        value={record.restaurantOpen === false ? 0 : value}
-                        onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0, record)}
-                        prefix="$"
-                        placeholder="0.00"
-                        className="w-full"
-                        disabled={isDisabled}
-                        readOnly={isFuture}
-                        style={{
-                          opacity: isDisabled ? 0.5 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'text',
-                          backgroundColor: isFuture ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
-                          color: record.restaurantOpen === false ? '#999' : undefined
-                        }}
-                      />
+                      <div>
+                        <Input
+                          type="number"
+                          value={record.restaurantOpen === false ? 0 : value}
+                          onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0, record)}
+                          onClick={() => {
+                            if (salesMissing) {
+                              message.warning(SALES_FIRST_COGS_MESSAGE);
+                            }
+                          }}
+                          prefix="$"
+                          placeholder="0.00"
+                          className="w-full"
+                          disabled={isDisabled}
+                          readOnly={isFuture || salesMissing}
+                          style={{
+                            opacity: isDisabled ? 0.5 : 1,
+                            cursor: isDisabled ? 'not-allowed' : 'text',
+                            backgroundColor: isFuture || salesMissing ? '#f5f5f5' : (record.restaurantOpen === false ? '#f5f5f5' : 'white'),
+                            color: record.restaurantOpen === false ? '#999' : undefined
+                          }}
+                        />
+                        {salesMissing && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            Sales required
+                          </Text>
+                        )}
+                      </div>
                     );
                   }
                 }
@@ -917,7 +1083,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   type="default" 
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
-                  disabled={!selectedDate}
+                  disabled={!selectedDate || isCheckingPreviousWeek}
+                  loading={isCheckingPreviousWeek}
                   style={{
                     backgroundColor: "#85d7a2",
                     borderColor: "#80ed99",

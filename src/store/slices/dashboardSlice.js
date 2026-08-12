@@ -1,5 +1,6 @@
 import { apiGet, apiPost } from "../../utils/axiosInterceptors";
 import dayjs from 'dayjs';
+import { assertLaborOrCogsAllowedBySales } from "../../utils/salesEnteredGate";
 
 const createDashboardSlice = (set, get) => {
     return {
@@ -455,6 +456,18 @@ const createDashboardSlice = (set, get) => {
                         ? await get().getSelectedLocationId()
                         : get().selectedLocationId;
 
+                    // Frontend Sales-first gate for manual Labor/COGS
+                    const salesGate = assertLaborOrCogsAllowedBySales(
+                        dashboardData,
+                        get().dashboardData,
+                        restaurantId,
+                        locationId
+                    );
+                    if (!salesGate.ok) {
+                        set({ loading: false, error: salesGate.message });
+                        throw new Error(salesGate.message);
+                    }
+
                     // Add restaurant_id to the new payload format
                     const payloadWithRestaurantId = {
                         ...dashboardData,
@@ -744,10 +757,22 @@ const createDashboardSlice = (set, get) => {
                 
                 return response.data;
             } catch (error) {
-                // Leave error display to callers (they show the backend message).
                 // Avoid setting Axios's generic "Request failed with status code …" in store.
-                set({ loading: false });
-                throw error;
+                const apiMessage =
+                    error?.response?.data?.message ||
+                    error?.response?.data?.error ||
+                    (typeof error?.response?.data?.detail === 'string'
+                      ? error.response.data.detail
+                      : null) ||
+                    (Array.isArray(error?.response?.data?.detail)
+                      ? error.response.data.detail.map((d) => d.msg || d).join(', ')
+                      : null) ||
+                    error?.message ||
+                    'Failed to save dashboard data';
+                const enrichedError = new Error(apiMessage);
+                enrichedError.response = error?.response;
+                set({ error: apiMessage, loading: false });
+                throw enrichedError;
             }
         },
 

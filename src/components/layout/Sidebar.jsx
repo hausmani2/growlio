@@ -5,7 +5,7 @@ import { FaArrowLeftLong } from 'react-icons/fa6';
 
 /**
  * Sidebar component
- * @param {Array} menuItems - Array of menu item objects: [{ key, icon, label, onClick, children }]
+ * @param {Array} menuItems - Array of menu item objects: [{ key, icon, label, onClick, children, badgeCount }]
  * @param {boolean} mobileMenuOpen - Mobile menu state from parent
  * @param {function} onMobileMenuToggle - Function to toggle mobile menu
  */
@@ -195,6 +195,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     const hasChildren = item.children && item.children.length > 0;
     const hasSelectedChild = hasChildren && isItemActiveParent(item);
     const isExpanded = expandedItems.has(item.key) || (hasSelectedChild && !manuallyCollapsedItems.has(item.key));
+    const badgeCount = item.badgeCount > 0 ? item.badgeCount : 0;
 
     return (
       <div key={item.key} className="relative">
@@ -202,6 +203,8 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
           onClick={() => handleMenuItemClick(item)}
           data-guidance={`sidebar_${item.key}`}
           className={`w-full flex items-center px-2 py-2 text-left transition-all duration-200 group ${
+            badgeCount > 0 && collapsed ? 'lg:relative' : ''
+          } ${
             isSelected
               ? 'bg-orange-50 border-r-2 border-orange-500 text-orange-700'
               : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
@@ -224,6 +227,18 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
           <span className={`font-medium flex-1 ${collapsed ? 'lg:hidden' : ''} ${!item.icon && level > 0 ? 'text-sm' : ''}`}>
             {item.label}
           </span>
+          {badgeCount > 0 && (
+            <span
+              className={`inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-semibold bg-orange-500 text-white shrink-0 ${
+                collapsed
+                  ? 'lg:absolute lg:top-1 lg:right-1 lg:min-w-[1rem] lg:h-4 lg:px-1 lg:text-[10px]'
+                  : 'ml-2'
+              }`}
+              aria-label={`${badgeCount} new report card findings`}
+            >
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
           {hasChildren && !collapsed && (
             <DownOutlined 
               className={`ml-auto text-xs transition-transform duration-200 ${
