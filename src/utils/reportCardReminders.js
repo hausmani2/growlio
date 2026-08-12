@@ -22,6 +22,8 @@ dayjs.extend(updateLocale);
 dayjs.updateLocale('en', { weekStart: 0 });
 
 let closeOutModalOpen = false;
+/** Prevents stacked "Previous week incomplete" modals while the async check is in flight */
+let previousWeekWarningInFlight = false;
 /** Session-only: `${scopeKey}:${currentWeekStart}` after user chooses Proceed Anyway */
 const previousWeekWarningDismissed = new Set();
 
@@ -29,14 +31,27 @@ const previousWeekWarningDismissed = new Set();
  * In-memory close-out flow session: accumulates dates updated across Sales → COGS → Labor
  * until the flow ends (save chain dismiss / labor save / modal cancel).
  * Not persisted — survives section navigation within the same page session only.
+ *
+ * baselineFingerprints = snapshot from the first save in this flow (the "before photo").
+ * Kept so cancel/dismiss flushes can still detect a newly completed week.
  */
 let closeOutFlowSession = {
   scopeKey: '',
   /** @type {Map<string, { sections: Set<string>, fingerprint: string }>} */
   dates: new Map(),
+  /** @type {Record<string, string>|null} */
+  baselineFingerprints: null,
 };
 
 export const NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT = 'navigateToCloseOutWeek';
+
+function createEmptyCloseOutFlowSession(scopeKey = '') {
+  return {
+    scopeKey,
+    dates: new Map(),
+    baselineFingerprints: null,
+  };
+}
 
 function parseCloseOutFingerprint(fp = '') {
   const parts = String(fp || '').split('|');
@@ -62,12 +77,34 @@ function didSectionChange(beforeFp, afterFp, section) {
 
 function ensureCloseOutFlowSession(scopeKey) {
   if (closeOutFlowSession.scopeKey !== scopeKey) {
-    closeOutFlowSession = { scopeKey, dates: new Map() };
+    closeOutFlowSession = createEmptyCloseOutFlowSession(scopeKey);
   }
 }
 
 export function clearCloseOutFlowSession() {
-  closeOutFlowSession = { scopeKey: '', dates: new Map() };
+  closeOutFlowSession = createEmptyCloseOutFlowSession('');
+}
+
+function hasFingerprintSnapshot(fingerprints) {
+  return (
+    fingerprints &&
+    typeof fingerprints === 'object' &&
+    Object.keys(fingerprints).length > 0
+  );
+}
+
+/**
+ * Prefer the caller's before-save snapshot; fall back to the session baseline
+ * so Labor/COGS cancel after a prior save still evaluates week completion.
+ */
+function resolveBeforeFingerprints(beforeFingerprints = {}) {
+  if (hasFingerprintSnapshot(beforeFingerprints)) {
+    return beforeFingerprints;
+  }
+  if (hasFingerprintSnapshot(closeOutFlowSession.baselineFingerprints)) {
+    return closeOutFlowSession.baselineFingerprints;
+  }
+  return {};
 }
 
 /**
@@ -80,6 +117,14 @@ export function recordCloseOutSessionChanges(beforeFingerprints = {}, section) {
   const state = useStore.getState();
   const scopeKey = getFindingsScopeKey(state.restaurantId, state.selectedLocationId);
   ensureCloseOutFlowSession(scopeKey);
+
+  // Keep the first save's "before photo" for the whole Sales → COGS → Labor flow
+  if (
+    hasFingerprintSnapshot(beforeFingerprints) &&
+    !hasFingerprintSnapshot(closeOutFlowSession.baselineFingerprints)
+  ) {
+    closeOutFlowSession.baselineFingerprints = { ...beforeFingerprints };
+  }
 
   const afterFingerprints = snapshotCloseOutFingerprints(state.dashboardData);
   const allDates = new Set([
@@ -208,6 +253,7 @@ function isNoWeeklyDashboardResponse(data) {
 
 /**
  * Show week close-out congratulations when all open days have Sales + COGS + Labor.
+ * Owners get a Report Card CTA; managers (no report-card access) get dismiss-only.
  */
 export async function maybeShowWeekCloseoutComplete({
   navigate,
@@ -216,7 +262,7 @@ export async function maybeShowWeekCloseoutComplete({
   sessionCoversFullWeek = false,
   weekStart: weekStartOverride = '',
 } = {}) {
-  if (!canAccessReportCard || closeOutModalOpen) {
+  if (closeOutModalOpen) {
     return { shown: false };
   }
 
@@ -243,24 +289,43 @@ export async function maybeShowWeekCloseoutComplete({
     state.markWeekCloseOutNotified(eligible);
   }
 
-  Modal.confirm({
-    title: 'Week close-out complete',
-    content:
-      'Congratulations! You have successfully completed and closed out the entire week.',
-    okText: 'View Report Card',
-    cancelText: 'Dismiss',
-    centered: true,
-    onOk: () => {
-      closeOutModalOpen = false;
-      if (navigate) navigate('/dashboard/report-card');
-    },
-    onCancel: () => {
-      closeOutModalOpen = false;
-    },
-    afterClose: () => {
-      closeOutModalOpen = false;
-    },
-  });
+  const weekContent =
+    'Congratulations! You have successfully completed and closed out the entire week.';
+
+  if (canAccessReportCard) {
+    Modal.confirm({
+      title: 'Week close-out complete',
+      content: weekContent,
+      okText: 'View Report Card',
+      cancelText: 'Dismiss',
+      centered: true,
+      onOk: () => {
+        closeOutModalOpen = false;
+        if (navigate) navigate('/dashboard/report-card');
+      },
+      onCancel: () => {
+        closeOutModalOpen = false;
+      },
+      afterClose: () => {
+        closeOutModalOpen = false;
+      },
+    });
+  } else {
+    // Same Modal.confirm style as owner (warning icon), without Report Card CTA
+    Modal.confirm({
+      title: 'Week close-out complete',
+      content: weekContent,
+      okText: 'Dismiss',
+      okCancel: false,
+      centered: true,
+      onOk: () => {
+        closeOutModalOpen = false;
+      },
+      afterClose: () => {
+        closeOutModalOpen = false;
+      },
+    });
+  }
 
   return { shown: true, weekStart: eligible.weekStart };
 }
@@ -277,7 +342,7 @@ export async function maybeShowDayCloseoutComplete({
   /** @type {'sales'|'cogs'|'labor'|null} */
   section = null,
 } = {}) {
-  if (!canAccessReportCard || closeOutModalOpen) {
+  if (closeOutModalOpen) {
     return { shown: false, days: [] };
   }
 
@@ -319,13 +384,14 @@ function getCompleteSessionCloseOutDays(sessionDays, dashboardData, scopeKey, no
 /**
  * End of close-out flow: show one notification only for dates that are fully
  * closed out in this session (Sales + COGS + Labor), not sales-only saves.
+ * Report Card CTA / findings only when the user can access Report Card.
  */
 export async function flushCloseOutSessionNotification({
   navigate,
   beforeFingerprints = {},
   canAccessReportCard = false,
 } = {}) {
-  if (!canAccessReportCard || closeOutModalOpen) {
+  if (closeOutModalOpen) {
     return { shown: false, days: [] };
   }
 
@@ -352,15 +418,13 @@ export async function flushCloseOutSessionNotification({
     openDays.length > 0 &&
     openDays.every((entry) => sessionTouchedDates.has(normalizeCloseOutDate(entry.date)));
 
-  // Only evaluate week congrats after a save (have beforeFingerprints). Plain cancel/dismiss
-  // must not treat an already-complete week as "newly finished".
-  const hasBeforeSnapshot =
-    beforeFingerprints && typeof beforeFingerprints === 'object' &&
-    Object.keys(beforeFingerprints).length > 0;
-  const weekEligible = hasBeforeSnapshot
+  // Use caller's snapshot, or the session baseline from the first save in this flow.
+  // Cancel/dismiss after COGS (without fingerprints) can still detect a newly completed week.
+  const effectiveBeforeFingerprints = resolveBeforeFingerprints(beforeFingerprints);
+  const weekEligible = hasFingerprintSnapshot(effectiveBeforeFingerprints)
     ? shouldShowWeekCloseOutNotification({
         dashboardData: state.dashboardData,
-        beforeFingerprints,
+        beforeFingerprints: effectiveBeforeFingerprints,
         notifiedByWeek: state.weekCloseOutNotifiedByWeek || {},
         scopeKey,
         weekStart,
@@ -372,15 +436,17 @@ export async function flushCloseOutSessionNotification({
   if (weekEligible) {
     if (completeSessionDays.length > 0) {
       const dates = completeSessionDays.map((day) => day.date).sort();
-      try {
-        if (typeof state.refreshFindingsAfterCloseOut === 'function') {
-          await state.refreshFindingsAfterCloseOut(dates[0], dates[dates.length - 1], {
-            requireCompleteDays: true,
-            hasCompleteDays: true,
-          });
+      if (canAccessReportCard) {
+        try {
+          if (typeof state.refreshFindingsAfterCloseOut === 'function') {
+            await state.refreshFindingsAfterCloseOut(dates[0], dates[dates.length - 1], {
+              requireCompleteDays: true,
+              hasCompleteDays: true,
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to refresh report card findings after close-out:', error);
         }
-      } catch (error) {
-        console.warn('Failed to refresh report card findings after close-out:', error);
       }
       if (typeof state.markCloseOutDaysNotified === 'function') {
         state.markCloseOutDaysNotified(completeSessionDays);
@@ -389,7 +455,7 @@ export async function flushCloseOutSessionNotification({
     clearCloseOutFlowSession();
     return maybeShowWeekCloseoutComplete({
       navigate,
-      beforeFingerprints,
+      beforeFingerprints: effectiveBeforeFingerprints,
       canAccessReportCard,
       sessionCoversFullWeek,
       weekStart: weekEligible.weekStart || weekStart,
@@ -407,16 +473,18 @@ export async function flushCloseOutSessionNotification({
   const rangeEnd = dates[dates.length - 1];
 
   let findingsCount = 0;
-  try {
-    if (typeof state.refreshFindingsAfterCloseOut === 'function') {
-      const result = await state.refreshFindingsAfterCloseOut(rangeStart, rangeEnd, {
-        requireCompleteDays: true,
-        hasCompleteDays: true,
-      });
-      findingsCount = result?.count || 0;
+  if (canAccessReportCard) {
+    try {
+      if (typeof state.refreshFindingsAfterCloseOut === 'function') {
+        const result = await state.refreshFindingsAfterCloseOut(rangeStart, rangeEnd, {
+          requireCompleteDays: true,
+          hasCompleteDays: true,
+        });
+        findingsCount = result?.count || 0;
+      }
+    } catch (error) {
+      console.warn('Failed to refresh report card findings after close-out:', error);
     }
-  } catch (error) {
-    console.warn('Failed to refresh report card findings after close-out:', error);
   }
 
   closeOutModalOpen = true;
@@ -427,12 +495,14 @@ export async function flushCloseOutSessionNotification({
 
   const daysPhrase = formatCloseOutDaysPhrase(completeSessionDays);
   const dayLabel = completeSessionDays.length === 1 ? 'day' : 'days';
-  const bodyText = `You've successfully closed out the ${dayLabel} ${daysPhrase}. Check your Report Card for the latest Profitability Score and key findings.`;
+  const bodyText = canAccessReportCard
+    ? `You've successfully closed out the ${dayLabel} ${daysPhrase}. Check your Report Card for the latest Profitability Score and key findings.`
+    : `You've successfully closed out the ${dayLabel} ${daysPhrase}.`;
 
   const attentionHint =
-    findingsCount === 1
+    canAccessReportCard && findingsCount === 1
       ? '1 finding needs your attention.'
-      : findingsCount > 1
+      : canAccessReportCard && findingsCount > 1
         ? `${findingsCount} findings need your attention.`
         : null;
 
@@ -445,23 +515,40 @@ export async function flushCloseOutSessionNotification({
       : null
   );
 
-  Modal.confirm({
-    title: 'Close-out complete',
-    content,
-    okText: 'View Report Card',
-    cancelText: 'Dismiss',
-    centered: true,
-    onOk: () => {
-      closeOutModalOpen = false;
-      if (navigate) navigate('/dashboard/report-card');
-    },
-    onCancel: () => {
-      closeOutModalOpen = false;
-    },
-    afterClose: () => {
-      closeOutModalOpen = false;
-    },
-  });
+  if (canAccessReportCard) {
+    Modal.confirm({
+      title: 'Close-out complete',
+      content,
+      okText: 'View Report Card',
+      cancelText: 'Dismiss',
+      centered: true,
+      onOk: () => {
+        closeOutModalOpen = false;
+        if (navigate) navigate('/dashboard/report-card');
+      },
+      onCancel: () => {
+        closeOutModalOpen = false;
+      },
+      afterClose: () => {
+        closeOutModalOpen = false;
+      },
+    });
+  } else {
+    // Same Modal.confirm style as owner (warning icon), without Report Card CTA
+    Modal.confirm({
+      title: 'Close-out complete',
+      content,
+      okText: 'Dismiss',
+      okCancel: false,
+      centered: true,
+      onOk: () => {
+        closeOutModalOpen = false;
+      },
+      afterClose: () => {
+        closeOutModalOpen = false;
+      },
+    });
+  }
 
   return { shown: true, days: completeSessionDays };
 }
@@ -470,9 +557,14 @@ export async function flushCloseOutSessionNotification({
  * When closing out the current week, warn if the immediately previous week
  * still has incomplete open days. Does not block — user may proceed anyway.
  *
+ * Duplicate clicks while a check is in flight (or a close-out modal is open)
+ * are ignored and do not call onProceed.
+ *
  * @returns {Promise<boolean>} true if the caller should continue with onProceed
- *   (either no warning, or user chose Proceed Anyway / already dismissed).
- *   false if user chose Complete Previous Week (navigation handled).
+ *   (either no warning, or user already dismissed / Proceed Anyway was chosen
+ *   synchronously because the warning was previously dismissed).
+ *   false if a warning modal was shown (Proceed Anyway may still call onProceed
+ *   later), user chose Complete Previous Week, or a duplicate click was ignored.
  */
 export async function maybeWarnPreviousWeekIncomplete({
   weekStartDate,
@@ -505,38 +597,47 @@ export async function maybeWarnPreviousWeekIncomplete({
   const currentWeekStart = weekStart.format('YYYY-MM-DD');
   const dismissKey = `${scopeKey}:${currentWeekStart}`;
 
-  if (previousWeekWarningDismissed.has(dismissKey) || closeOutModalOpen) {
+  if (previousWeekWarningDismissed.has(dismissKey)) {
     proceed();
     return true;
   }
 
-  const previousWeekStart = weekStart.subtract(1, 'week').startOf('week').format('YYYY-MM-DD');
+  // Ignore duplicate clicks while checking or while a close-out modal is already open
+  if (closeOutModalOpen || previousWeekWarningInFlight) {
+    return false;
+  }
 
-  let previousWeekData = null;
+  previousWeekWarningInFlight = true;
+  let openedModal = false;
+
   try {
-    previousWeekData = await fetchDashboardDataForWeek(previousWeekStart);
-  } catch (error) {
-    console.warn('Failed to check previous week close-out status:', error);
-    proceed();
-    return true;
-  }
+    const previousWeekStart = weekStart.subtract(1, 'week').startOf('week').format('YYYY-MM-DD');
 
-  if (!previousWeekData || isNoWeeklyDashboardResponse(previousWeekData)) {
-    proceed();
-    return true;
-  }
+    let previousWeekData = null;
+    try {
+      previousWeekData = await fetchDashboardDataForWeek(previousWeekStart);
+    } catch (error) {
+      console.warn('Failed to check previous week close-out status:', error);
+      proceed();
+      return true;
+    }
 
-  const incompleteDays = getIncompleteOpenDaysFromDashboard(previousWeekData);
-  if (incompleteDays.length === 0) {
-    proceed();
-    return true;
-  }
+    if (!previousWeekData || isNoWeeklyDashboardResponse(previousWeekData)) {
+      proceed();
+      return true;
+    }
 
-  const daysPhrase = formatDayNamesPhrase(incompleteDays.map((day) => day.date));
+    const incompleteDays = getIncompleteOpenDaysFromDashboard(previousWeekData);
+    if (incompleteDays.length === 0) {
+      proceed();
+      return true;
+    }
 
-  closeOutModalOpen = true;
+    const daysPhrase = formatDayNamesPhrase(incompleteDays.map((day) => day.date));
 
-  return new Promise((resolve) => {
+    closeOutModalOpen = true;
+    openedModal = true;
+
     Modal.confirm({
       title: 'Previous week incomplete',
       content: createElement(
@@ -561,6 +662,7 @@ export async function maybeWarnPreviousWeekIncomplete({
       maskClosable: false,
       onOk: () => {
         closeOutModalOpen = false;
+        previousWeekWarningInFlight = false;
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent(NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT, {
@@ -568,19 +670,27 @@ export async function maybeWarnPreviousWeekIncomplete({
             })
           );
         }
-        resolve(false);
       },
       onCancel: () => {
         previousWeekWarningDismissed.add(dismissKey);
         closeOutModalOpen = false;
+        previousWeekWarningInFlight = false;
         proceed();
-        resolve(true);
       },
       afterClose: () => {
         closeOutModalOpen = false;
+        previousWeekWarningInFlight = false;
       },
     });
-  });
+
+    // Modal is open; user may Proceed Anyway later via onCancel → onProceed.
+    // Return immediately so callers can clear button loading.
+    return false;
+  } finally {
+    if (!openedModal) {
+      previousWeekWarningInFlight = false;
+    }
+  }
 }
 
 /** @deprecated Kept for compatibility — prefer maybeShowDayCloseoutComplete */

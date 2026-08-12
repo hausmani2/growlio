@@ -73,6 +73,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   const [dataNotFound, setDataNotFound] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingPreviousWeek, setIsCheckingPreviousWeek] = useState(false);
 
   // Store integration
   const { 
@@ -350,12 +351,18 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
   };
 
   const openCogsModalAfterPreviousWeekCheck = async (openModal) => {
+    if (isCheckingPreviousWeek) return;
     const weekStartDate =
       weekDays.length > 0 ? weekDays[0].date : selectedDate;
-    await maybeWarnPreviousWeekIncomplete({
-      weekStartDate,
-      onProceed: openModal,
-    });
+    setIsCheckingPreviousWeek(true);
+    try {
+      await maybeWarnPreviousWeekIncomplete({
+        weekStartDate,
+        onProceed: openModal,
+      });
+    } finally {
+      setIsCheckingPreviousWeek(false);
+    }
   };
 
   // Handle weekly data modal
@@ -1045,7 +1052,8 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   type="default" 
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
-                  disabled={!selectedDate}
+                  disabled={!selectedDate || isCheckingPreviousWeek}
+                  loading={isCheckingPreviousWeek}
                   style={{
                     backgroundColor: "#85d7a2",
                     borderColor: "#80ed99",

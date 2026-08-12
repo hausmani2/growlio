@@ -213,9 +213,9 @@ export function wasWeekCompleteBeforeSave(dashboardData, beforeFingerprints = {}
 /**
  * Whether to show the week close-out congratulations modal.
  *
- * - Full week updated in this session (every open day touched) → week modal
- * - Week newly became complete (e.g. last day finished) → week modal once
- * - Otherwise → caller shows day modal for 1..n-1 complete days
+ * Show once when the week newly becomes complete (last day(s) finished, or all
+ * days completed together). Do not re-show for edits to an already-complete week,
+ * even if every open day was touched in this session.
  */
 export function shouldShowWeekCloseOutNotification({
   dashboardData,
@@ -223,7 +223,8 @@ export function shouldShowWeekCloseOutNotification({
   notifiedByWeek = {},
   scopeKey = '',
   weekStart = '',
-  sessionCoversFullWeek = false,
+  // Kept for callers; full-week touch no longer bypasses first-time / newly-complete checks
+  sessionCoversFullWeek: _sessionCoversFullWeek = false,
 } = {}) {
   if (!weekStart || !isWeekCompleteFromDashboard(dashboardData)) {
     return null;
@@ -232,15 +233,11 @@ export function shouldShowWeekCloseOutNotification({
   const fingerprint = getWeekCloseOutFingerprint(dashboardData);
   if (!fingerprint) return null;
 
-  // Entire open week touched/updated together → always prefer week notification
-  if (sessionCoversFullWeek) {
-    return { weekStart, fingerprint };
-  }
-
-  // Last day (or partial session) that newly completes the week — once only
+  // Already congratulated for this week — once only
   const notifiedKey = `${scopeKey}:${weekStart}`;
   if (notifiedByWeek[notifiedKey]) return null;
 
+  // Week newly became complete in this save/session (was incomplete before)
   if (!wasWeekCompleteBeforeSave(dashboardData, beforeFingerprints)) {
     return { weekStart, fingerprint };
   }

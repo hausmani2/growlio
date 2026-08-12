@@ -38,6 +38,7 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
   const [dataNotFound, setDataNotFound] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingPreviousWeek, setIsCheckingPreviousWeek] = useState(false);
   const [weeklyTotals, setWeeklyTotals] = useState({
     labor_hours_budget: "0",
     labor_hours_actual: "0",
@@ -463,12 +464,18 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
 
   const openLaborModalAfterPreviousWeekCheck = async (openModal) => {
+    if (isCheckingPreviousWeek) return;
     const weekStartDate =
       weekDays.length > 0 ? weekDays[0].date : selectedDate;
-    await maybeWarnPreviousWeekIncomplete({
-      weekStartDate,
-      onProceed: openModal,
-    });
+    setIsCheckingPreviousWeek(true);
+    try {
+      await maybeWarnPreviousWeekIncomplete({
+        weekStartDate,
+        onProceed: openModal,
+      });
+    } finally {
+      setIsCheckingPreviousWeek(false);
+    }
   };
 
   // Handle weekly data modal
@@ -1345,7 +1352,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                   type="default" 
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />} 
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
-                  disabled={!selectedDate}
+                  disabled={!selectedDate || isCheckingPreviousWeek}
+                  loading={isCheckingPreviousWeek}
                   style={{
                     backgroundColor: "#85d7a2",
                     borderColor: "#85d7a2",

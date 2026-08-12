@@ -412,6 +412,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   const [dataNotFound, setDataNotFound] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingPreviousWeek, setIsCheckingPreviousWeek] = useState(false);
   
   // Weekly average modal states
   const [isWeeklyAverageDataPopupVisible, setIsWeeklyAverageDataPopupVisible] = useState(false);
@@ -1255,6 +1256,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Handle weekly data modal - Directly open modal without checking for weekly average data
   const showAddWeeklyModal = async () => {
+    if (isCheckingPreviousWeek) return;
     if (!isSetupComplete) {
       showOnboardingRequiredModal();
       return;
@@ -1266,29 +1268,40 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     
     const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
     
-    // Check week status and show warning if needed
-    checkWeekStatusAndShowWarning(weekStartDate, () => {
-      setEditingWeek(null);
-      setIsEditMode(false);
-      setIsModalVisible(true);
-    });
+    setIsCheckingPreviousWeek(true);
+    try {
+      // Check week status and show warning if needed
+      await checkWeekStatusAndShowWarning(weekStartDate, () => {
+        setEditingWeek(null);
+        setIsEditMode(false);
+        setIsModalVisible(true);
+      });
+    } finally {
+      setIsCheckingPreviousWeek(false);
+    }
   };
 
   const showEditWeeklyModal = async (weekData) => {
+    if (isCheckingPreviousWeek) return;
     // Get week start date from weekData or selectedDate
     const weekStartDate = weekData?.startDate || 
                          (weekDays.length > 0 ? weekDays[0].date : selectedDate);
     
-    // Ensure restaurant goals are fetched before opening modal
-    // This ensures restaurant_days from API are available when generating daily data
-    await fetchRestaurantGoals();
-    
-    // Check week status and show warning if needed
-    checkWeekStatusAndShowWarning(weekStartDate, () => {
-      setEditingWeek(weekData);
-      setIsEditMode(true);
-      setIsModalVisible(true);
-    }, 'edit');
+    setIsCheckingPreviousWeek(true);
+    try {
+      // Ensure restaurant goals are fetched before opening modal
+      // This ensures restaurant_days from API are available when generating daily data
+      await fetchRestaurantGoals();
+      
+      // Check week status and show warning if needed
+      await checkWeekStatusAndShowWarning(weekStartDate, () => {
+        setEditingWeek(weekData);
+        setIsEditMode(true);
+        setIsModalVisible(true);
+      }, 'edit');
+    } finally {
+      setIsCheckingPreviousWeek(false);
+    }
   };
   
   // Handle week warning modal confirmation
@@ -2812,7 +2825,8 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   type="default"
                   icon={dataNotFound || areAllValuesZero(weeklyData) ? <PlusOutlined /> : <EditOutlined />}
                   onClick={dataNotFound || areAllValuesZero(weeklyData) ? showAddWeeklyModal : () => showEditWeeklyModal(weeklyData[0])}
-                  disabled={!selectedDate}
+                  disabled={!selectedDate || isCheckingPreviousWeek}
+                  loading={isCheckingPreviousWeek}
                   data-guidance="add-actual-weekly-sales"
                   style={{
                     backgroundColor: "#85d7a2",
