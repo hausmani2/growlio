@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  AutoComplete,
   Button,
   Card,
   Col,
@@ -200,6 +201,7 @@ const FoodCostingPage = () => {
 
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
+  const [menuItemSearch, setMenuItemSearch] = useState('');
   const [importingMenuFromSquare, setImportingMenuFromSquare] = useState(false);
   const [scanningPrintedMenu, setScanningPrintedMenu] = useState(false);
   const [menuScanModalOpen, setMenuScanModalOpen] = useState(false);
@@ -208,6 +210,7 @@ const FoodCostingPage = () => {
   const [squareImportJobId, setSquareImportJobId] = useState(null);
   const squareImportPollRef = React.useRef(null);
   const [menuForm] = Form.useForm();
+  const [recipeIngredientChoices, setRecipeIngredientChoices] = useState([]);
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -391,6 +394,46 @@ const FoodCostingPage = () => {
     ],
     [dashboard, drafts.length, invoices]
   );
+
+  const recipeIngredientSelectOptions = useMemo(() => {
+    const source =
+      recipeIngredientChoices.length > 0 ? recipeIngredientChoices : ingredients;
+    const options = source.map((ing) => ({
+      value: ing.name,
+      label: ing.name,
+    }));
+    const seen = new Set(options.map((opt) => String(opt.value).toLowerCase()));
+    const lines = menuForm.getFieldValue('recipe_lines') || [];
+    lines.forEach((line) => {
+      const name = String(line?.name || '').trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        options.push({
+          value: name,
+          label: name,
+        });
+      }
+    });
+    return options;
+  }, [recipeIngredientChoices, ingredients, menuModalOpen, menuForm]);
+
+  const filteredMenuItems = useMemo(() => {
+    const query = menuItemSearch.trim().toLowerCase();
+    if (!query) return menuItems;
+    return menuItems.filter((item) => {
+      const name = String(item.name || '').toLowerCase();
+      const category = String(item.category || '').toLowerCase();
+      return name.includes(query) || category.includes(query);
+    });
+  }, [menuItems, menuItemSearch]);
+
+  const menuItemSearchOptions = useMemo(() => {
+    if (!menuItemSearch.trim()) return [];
+    return filteredMenuItems.slice(0, 8).map((item) => ({
+      value: item.name,
+      label: item.category ? `${item.name} · ${item.category}` : item.name,
+    }));
+  }, [filteredMenuItems, menuItemSearch]);
 
   const openDraftReview = (draft) => {
     setDraftResult({
@@ -651,14 +694,32 @@ const FoodCostingPage = () => {
     }
   };
 
+  const loadRecipeIngredientChoices = async () => {
+    try {
+      const ings = await fetchIngredients({ ordering: 'name' });
+      setRecipeIngredientChoices(Array.isArray(ings) ? ings : []);
+    } catch {
+      setRecipeIngredientChoices(Array.isArray(ingredients) ? ingredients : []);
+    }
+  };
+
+  const emptyRecipeLine = () => ({
+    ingredient_id: undefined,
+    name: '',
+    quantity: 1,
+    unit: 'oz',
+    is_confirmed: true,
+  });
+
   const openCreateMenuItem = () => {
     setEditingMenuItem(null);
     menuForm.resetFields();
     menuForm.setFieldsValue({
       selling_price: '0.00',
-      recipe_lines: [{ name: '', quantity: 1, unit: 'oz', is_confirmed: true }],
+      recipe_lines: [emptyRecipeLine()],
     });
     setMenuModalOpen(true);
+    loadRecipeIngredientChoices();
   };
 
   const openEditMenuItem = (record) => {
@@ -677,11 +738,10 @@ const FoodCostingPage = () => {
       category: record.category,
       selling_price: record.selling_price != null ? String(record.selling_price) : '0.00',
       notes: record.notes,
-      recipe_lines: lines.length
-        ? lines
-        : [{ name: '', quantity: 1, unit: 'oz', is_confirmed: true }],
+      recipe_lines: lines.length ? lines : [emptyRecipeLine()],
     });
     setMenuModalOpen(true);
+    loadRecipeIngredientChoices();
   };
 
   const saveMenuItem = async () => {
@@ -727,7 +787,7 @@ const FoodCostingPage = () => {
       }
       const jobId = result.job_id;
       setSquareImportJobId(jobId);
-      message.loading({ content: 'Fetching menu from Square POS…', key: 'sq-import', duration: 0 });
+      message.loading({ content: 'Fetching menu from POS…', key: 'sq-import', duration: 0 });
 
       squareImportPollRef.current = setInterval(async () => {
         try {
@@ -757,7 +817,7 @@ const FoodCostingPage = () => {
     } catch (error) {
       setImportingMenuFromSquare(false);
       setSquareImportJobId(null);
-      message.error(error?.response?.data?.error || 'Failed to fetch menu from Square POS');
+      message.error(error?.response?.data?.error || 'Failed to fetch menu from POS');
     }
   };
 
@@ -1295,8 +1355,23 @@ const FoodCostingPage = () => {
               <Card
                 className="shadow-sm"
                 extra={
-                  <Space wrap>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AutoComplete
+                      className="w-56 sm:w-64 [&_.ant-select-selector]:!h-8 [&_.ant-select-selector]:!py-0 [&_.ant-select-selector]:flex [&_.ant-select-selector]:items-center"
+                      options={menuItemSearchOptions}
+                      value={menuItemSearch}
+                      onChange={setMenuItemSearch}
+                      onSelect={setMenuItemSearch}
+                      allowClear
+                    >
+                      <Input.Search
+                        allowClear
+                        placeholder="Search menu items…"
+                        className="h-8"
+                      />
+                    </AutoComplete>
                     <Button
+                      className="h-8"
                       icon={<CameraOutlined />}
                       loading={scanningPrintedMenu}
                       onClick={() => {
@@ -1308,27 +1383,28 @@ const FoodCostingPage = () => {
                       Scan printed menu with LIO
                     </Button>
                     <Button
+                      className="h-8"
                       icon={<ReloadOutlined />}
                       loading={importingMenuFromSquare}
                       onClick={handleImportMenuFromSquare}
                     >
-                      Fetch from Square POS
+                      Fetch from POS
                     </Button>
                     <Button
                       type="primary"
                       icon={<PlusOutlined />}
-                      className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+                      className="h-8 !bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
                       onClick={openCreateMenuItem}
                     >
                       Add menu item
                     </Button>
-                  </Space>
+                  </div>
                 }
               >
                 <Table
                   rowKey="id"
                   loading={loading}
-                  dataSource={menuItems}
+                  dataSource={filteredMenuItems}
                   columns={menuColumns}
                   pagination={{ pageSize: 10 }}
                   expandable={{
@@ -1858,19 +1934,55 @@ const FoodCostingPage = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-medium m-0">Recipe lines</p>
-                  <Button size="small" icon={<PlusOutlined />} onClick={() => add()}>
+                  <Button size="small" icon={<PlusOutlined />} onClick={() => add(emptyRecipeLine())}>
                     Add line
                   </Button>
                 </div>
                 {fields.map((field) => (
                   <Row gutter={8} key={field.key} align="middle">
                     <Col span={8}>
+                      <Form.Item {...field} name={[field.name, 'ingredient_id']} hidden>
+                        <Input />
+                      </Form.Item>
                       <Form.Item
                         {...field}
                         name={[field.name, 'name']}
                         rules={[{ required: true, message: 'Required' }]}
                       >
-                        <Input placeholder="Ingredient" />
+                        <AutoComplete
+                          allowClear
+                          placeholder="Search or add ingredient"
+                          options={recipeIngredientSelectOptions}
+                          filterOption={(input, option) =>
+                            String(option?.label || option?.value || '')
+                              .toLowerCase()
+                              .includes(String(input || '').toLowerCase())
+                          }
+                          onChange={(typed) => {
+                            const source =
+                              recipeIngredientChoices.length > 0
+                                ? recipeIngredientChoices
+                                : ingredients;
+                            const match = source.find(
+                              (item) =>
+                                String(item.name || '').toLowerCase() ===
+                                String(typed || '').trim().toLowerCase()
+                            );
+                            const lines = [
+                              ...(menuForm.getFieldValue('recipe_lines') || []),
+                            ];
+                            const current = lines[field.name] || {};
+                            lines[field.name] = {
+                              ...current,
+                              name: typed || '',
+                              ingredient_id: match?.id,
+                              ...(match?.standardized_unit
+                                ? { unit: match.standardized_unit }
+                                : {}),
+                            };
+                            menuForm.setFieldsValue({ recipe_lines: lines });
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={4}>
@@ -1892,7 +2004,11 @@ const FoodCostingPage = () => {
                         {() => {
                           const lines = menuForm.getFieldValue('recipe_lines') || [];
                           const line = lines[field.name] || {};
-                          const match = ingredients.find(
+                          const source =
+                            recipeIngredientChoices.length > 0
+                              ? recipeIngredientChoices
+                              : ingredients;
+                          const match = source.find(
                             (ing) =>
                               ing.id === line.ingredient_id ||
                               (line.name &&
@@ -1905,7 +2021,11 @@ const FoodCostingPage = () => {
                           const qty = Number(line.quantity || 0);
                           const lineCost = unitCost * qty;
                           if (!match) {
-                            return <Tag color="orange">Needs pricing</Tag>;
+                            return line.name ? (
+                              <Tag color="blue">New ingredient</Tag>
+                            ) : (
+                              <Tag color="orange">Needs pricing</Tag>
+                            );
                           }
                           return (
                             <span className="text-xs text-gray-600">
