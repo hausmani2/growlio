@@ -1,269 +1,225 @@
 import React, { useMemo, useState } from 'react';
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Modal } from 'antd';
+import { PlayCircleFilled, SearchOutlined, BookOutlined } from '@ant-design/icons';
+import { Modal, Input } from 'antd';
 import useTooltips from '../../../utils/useTooltips';
 import TooltipIcon from '../../common/TooltipIcon';
 
-const TRAINING_VIDEOS = {
-  budgetDashboard: {
-    title: 'How to create a Budget Dashboard',
+const TRAINING_VIDEOS = [
+  {
+    key: 'budgetDashboard',
+    title: 'How to Create a Budget Dashboard',
+    description: 'Set up your budget dashboard and get a clear view of your restaurant targets.',
+    category: 'Budget',
     modalTitle: 'Budget Dashboard Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/2-9RvD6wQq8?rel=0'
+    videoId: '2-9RvD6wQq8',
   },
-  budgetUse: {
+  {
+    key: 'budgetUse',
     title: 'How to Use My Budget',
+    description: 'Learn how to read, update, and manage your budget day to day.',
+    category: 'Budget',
     modalTitle: 'How to Use My Budget Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/KYXWhQk_kGA?rel=0'
+    videoId: 'KYXWhQk_kGA',
   },
-  weeklyData: {
-    title: 'How To Enter My Weekly Data',
+  {
+    key: 'weeklyData',
+    title: 'How to Enter Weekly Data',
+    description: 'Enter weekly numbers accurately so your reports stay trustworthy.',
+    category: 'Operations',
     modalTitle: 'Enter Weekly Data Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/iEWn2Atanws?rel=0'
+    videoId: 'iEWn2Atanws',
   },
-  operatingExpenses: {
-    title: 'Operating Expenses I Have',
+  {
+    key: 'operatingExpenses',
+    title: 'Operating Expenses',
+    description: 'Track and organize the operating expenses that impact your margins.',
+    category: 'Operations',
     modalTitle: 'Operating Expenses Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/XYxZacU_zsk?rel=0'
+    videoId: 'XYxZacU_zsk',
   },
-  reportCard: {
-    title: 'Report Card Tutorial',
+  {
+    key: 'reportCard',
+    title: 'Report Card',
+    description: 'Understand your Report Card metrics and what to improve next.',
+    category: 'Insights',
     modalTitle: 'Report Card Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/XexAdO4ocK0?rel=0'
+    videoId: 'XexAdO4ocK0',
   },
-  simulator: {
-    title: 'How To Use The Simulator',
+  {
+    key: 'simulator',
+    title: 'How to Use the Simulator',
+    description: 'Model scenarios and see how changes affect your restaurant performance.',
+    category: 'Tools',
     modalTitle: 'How To Use The Simulator Tutorial',
-    embedUrl: 'https://www.youtube.com/embed/6EPt76Z-CqM?rel=0'
-  }
-};
+    videoId: '6EPt76Z-CqM',
+  },
+];
+
+const CATEGORIES = ['All', 'Budget', 'Operations', 'Insights', 'Tools'];
+
+const getThumbnailUrl = (videoId) =>
+  `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+const getEmbedUrl = (videoId) =>
+  `https://www.youtube.com/embed/${videoId}?rel=0&autoplay=1`;
 
 const Training = () => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
-  const [activeVideoKey, setActiveVideoKey] = useState('budgetDashboard');
+  const [activeVideoKey, setActiveVideoKey] = useState(TRAINING_VIDEOS[0].key);
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const tooltips = useTooltips('training');
 
   const activeVideo = useMemo(
-    () => TRAINING_VIDEOS[activeVideoKey] || TRAINING_VIDEOS.budgetDashboard,
+    () => TRAINING_VIDEOS.find((v) => v.key === activeVideoKey) || TRAINING_VIDEOS[0],
     [activeVideoKey]
   );
 
+  const filteredVideos = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return TRAINING_VIDEOS.filter((video) => {
+      const matchesCategory = activeCategory === 'All' || video.category === activeCategory;
+      const matchesSearch =
+        !query ||
+        video.title.toLowerCase().includes(query) ||
+        video.description.toLowerCase().includes(query) ||
+        video.category.toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeCategory, searchQuery]);
+
+  const openVideo = (key) => {
+    setActiveVideoKey(key);
+    setIsVideoModalVisible(true);
+  };
+
   return (
     <div className="w-full mx-auto">
+      {/* Header */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 border-b border-gray-200">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-3xl font-bold text-orange-600">
-                Training
-                <TooltipIcon text={tooltips?.header} />
-              </h1>
-              <button
-                onClick={() => {
-                  setActiveVideoKey('budgetDashboard');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-orange-600 hover:text-orange-700 transition-colors"
-                title="Watch tutorial video"
-                aria-label="Watch training video"
-                type="button"
-              >
-                <InfoCircleOutlined className="text-lg" />
-              </button>
+        <div className="flex flex-col gap-4 pb-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-11 h-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                <BookOutlined className="text-xl text-[#FF8132]" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-orange-600 flex items-center gap-2">
+                  Tutorials
+                  <TooltipIcon text={tooltips?.header} />
+                </h1>
+                <p className="text-gray-600 text-base mt-1 max-w-2xl">
+                  Short video guides to help you master Growlio — budgets, weekly data, reports, and more.
+                </p>
+              </div>
             </div>
-            <p className="text-gray-600 text-lg">
-              Comprehensive training resources and guides to help you master Growlio
-            </p>
+            <div className="text-sm text-gray-500 sm:text-right shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200">
+                {TRAINING_VIDEOS.length} tutorials
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <Input
+              allowClear
+              prefix={<SearchOutlined className="text-gray-400" />}
+              placeholder="Search tutorials..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="lg:max-w-sm"
+              size="large"
+            />
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((category) => {
+                const isActive = activeCategory === category;
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                      isActive
+                        ? 'bg-[#FF8132] border-[#FF8132] text-white shadow-sm'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-600'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on the{' '}
+      {/* Video grid */}
+      {filteredVideos.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-10 text-center">
+          <p className="text-gray-700 font-medium text-lg">No tutorials found</p>
+          <p className="text-gray-500 mt-1">Try a different search or category.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setActiveCategory('All');
+            }}
+            className="mt-4 inline-flex items-center px-4 py-2 rounded-lg bg-[#FF8132] hover:bg-[#EB5B00] text-white font-medium transition-colors"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredVideos.map((video) => (
+            <article
+              key={video.key}
+              className="group bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col transition-all duration-200 hover:shadow-xl hover:border-orange-200"
+            >
               <button
                 type="button"
-                onClick={() => {
-                  setActiveVideoKey('reportCard');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch Report Card Tutorial"
+                onClick={() => openVideo(video.key)}
+                className="relative block w-full aspect-video bg-gray-100 overflow-hidden text-left"
+                aria-label={`Watch ${video.title}`}
               >
-                Report Card
+                <img
+                  src={getThumbnailUrl(video.videoId)}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="w-14 h-14 rounded-full bg-white/95 text-[#FF8132] shadow-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                    <PlayCircleFilled className="text-3xl" />
+                  </span>
+                </div>
+                <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-xs font-semibold bg-white/95 text-gray-700 border border-white/80">
+                  {video.category}
+                </span>
               </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('reportCard');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch Report Card Tutorial"
-              aria-label="Watch Report Card Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
-        </div>
 
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on how to create a{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveVideoKey('budgetDashboard');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch Budget Dashboard Tutorial"
-              >
-                Budget Dashboard
-              </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('budgetDashboard');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch Budget Dashboard Tutorial"
-              aria-label="Watch Budget Dashboard Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
+              <div className="p-4 flex flex-col flex-1">
+                <h2 className="text-base font-semibold text-gray-900 leading-snug group-hover:text-orange-600 transition-colors">
+                  {video.title}
+                </h2>
+                <p className="mt-1.5 text-sm text-gray-500 leading-relaxed flex-1">
+                  {video.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openVideo(video.key)}
+                  className="mt-4 inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg bg-[#FF8132] hover:bg-[#EB5B00] text-white font-medium text-sm transition-colors"
+                  aria-label={`Watch ${video.title}`}
+                >
+                  <PlayCircleFilled />
+                  Watch Video
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
-
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveVideoKey('budgetUse');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch How to Use My Budget Tutorial"
-              >
-                How to Use My Budget
-              </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('budgetUse');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch How to Use My Budget Tutorial"
-              aria-label="Watch How to Use My Budget Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
-        </div>
-
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveVideoKey('weeklyData');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch Enter Weekly Data Tutorial"
-              >
-                How To Enter My Weekly Data
-              </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('weeklyData');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch Enter Weekly Data Tutorial"
-              aria-label="Watch Enter Weekly Data Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
-        </div>
-
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveVideoKey('operatingExpenses');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch Operating Expenses Tutorial"
-              >
-                Operating Expenses I Have
-              </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('operatingExpenses');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch Operating Expenses Tutorial"
-              aria-label="Watch Operating Expenses Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
-        </div>
-
-        <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-base text-orange-600">
-              Watch a tutorial on{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveVideoKey('simulator');
-                  setIsVideoModalVisible(true);
-                }}
-                className="text-purple-600 hover:text-purple-700 underline decoration-transparent hover:decoration-current transition-colors"
-                title="Watch How To Use The Simulator Tutorial"
-              >
-                How To Use The Simulator
-              </button>
-            </p>
-            <button
-              onClick={() => {
-                setActiveVideoKey('simulator');
-                setIsVideoModalVisible(true);
-              }}
-              className="text-blue-600 hover:text-blue-800 transition-colors font-medium text-base border border-blue-600 rounded-md px-4 py-2"
-              title="Watch How To Use The Simulator Tutorial"
-              aria-label="Watch How To Use The Simulator Tutorial"
-              type="button"
-            >
-              Watch Video
-            </button>
-          </div>
-        </div>
-      </div>
+      )}
 
       <Modal
         title={activeVideo.modalTitle}
@@ -272,24 +228,20 @@ const Training = () => {
         footer={null}
         width={900}
         centered
-        destroyOnClose={true}
+        destroyOnClose
       >
-        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', maxWidth: '100%' }}>
+        <div className="relative w-full overflow-hidden rounded-lg bg-black" style={{ paddingBottom: '56.25%' }}>
           <iframe
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              border: 0
-            }}
-            src={activeVideo.embedUrl}
+            className="absolute inset-0 w-full h-full border-0"
+            src={getEmbedUrl(activeVideo.videoId)}
             title={activeVideo.title}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         </div>
+        {activeVideo.description && (
+          <p className="mt-3 text-sm text-gray-600">{activeVideo.description}</p>
+        )}
       </Modal>
     </div>
   );
