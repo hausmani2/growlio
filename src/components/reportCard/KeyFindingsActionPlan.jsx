@@ -32,7 +32,7 @@ const metricLabel = (metric) => {
   if (value === 'labor' || value === 'labour') return 'Labor';
   if (value === 'cogs') return 'COGS';
   if (value === 'sales') return 'Sales';
-  if (value === 'expenses') return 'Expenses';
+  if (value === 'expenses') return 'Operating Expenses';
   return metric || 'Metric';
 };
 
