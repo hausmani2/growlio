@@ -58,6 +58,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/training': 'training',
     '/dashboard/pricing': 'pricing',
     '/dashboard/pos-integrations': 'pos-integrations',
+    '/dashboard/food-costing': 'food-costing',
     '/dashboard/square': 'square',
     '/dashboard/pos/orders': 'pos-orders',
     '/dashboard/pos/locations': 'pos-locations',
