@@ -202,6 +202,7 @@ const FoodCostingPage = () => {
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
   const [menuItemSearch, setMenuItemSearch] = useState('');
+  const [menuSortBy, setMenuSortBy] = useState('item');
   const [importingMenuFromSquare, setImportingMenuFromSquare] = useState(false);
   const [scanningPrintedMenu, setScanningPrintedMenu] = useState(false);
   const [menuScanModalOpen, setMenuScanModalOpen] = useState(false);
@@ -434,6 +435,27 @@ const FoodCostingPage = () => {
       label: item.category ? `${item.name} · ${item.category}` : item.name,
     }));
   }, [filteredMenuItems, menuItemSearch]);
+
+  const menuItemsByCategory = useMemo(() => {
+    const groups = new Map();
+    filteredMenuItems.forEach((item) => {
+      const category = String(item.category || '').trim() || 'Uncategorized';
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push(item);
+    });
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, items]) => ({
+        key: category,
+        category,
+        count: items.length,
+        items: items
+          .slice()
+          .sort((a, b) =>
+            String(a.name || '').localeCompare(String(b.name || ''))
+          ),
+      }));
+  }, [filteredMenuItems]);
 
   const openDraftReview = (draft) => {
     setDraftResult({
@@ -1142,6 +1164,30 @@ const FoodCostingPage = () => {
     },
   ];
 
+  const menuItemExpandable = {
+    expandedRowRender: (record) => (
+      <div className="text-sm text-gray-600 space-y-1">
+        {(record.improvement_suggestions || []).length === 0 ? (
+          <p>No improvement suggestions.</p>
+        ) : (
+          (record.improvement_suggestions || []).map((tip, idx) => (
+            <p key={idx}>• {tip}</p>
+          ))
+        )}
+      </div>
+    ),
+  };
+
+  const categoryColumns = [
+    { title: 'Category', dataIndex: 'category', key: 'category' },
+    {
+      title: 'Items',
+      dataIndex: 'count',
+      key: 'count',
+      width: 120,
+    },
+  ];
+
   return (
     <div className="p-2 md:p-4">
       <PageHeaderSection
@@ -1356,6 +1402,15 @@ const FoodCostingPage = () => {
                 className="shadow-sm"
                 extra={
                   <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      className="w-36 [&_.ant-select-selector]:!h-8 [&_.ant-select-selector]:flex [&_.ant-select-selector]:items-center"
+                      value={menuSortBy}
+                      onChange={setMenuSortBy}
+                      options={[
+                        { value: 'item', label: 'Menu item' },
+                        { value: 'category', label: 'Category' },
+                      ]}
+                    />
                     <AutoComplete
                       className="w-56 sm:w-64 [&_.ant-select-selector]:!h-8 [&_.ant-select-selector]:!py-0 [&_.ant-select-selector]:flex [&_.ant-select-selector]:items-center"
                       options={menuItemSearchOptions}
@@ -1401,26 +1456,36 @@ const FoodCostingPage = () => {
                   </div>
                 }
               >
-                <Table
-                  rowKey="id"
-                  loading={loading}
-                  dataSource={filteredMenuItems}
-                  columns={menuColumns}
-                  pagination={{ pageSize: 10 }}
-                  expandable={{
-                    expandedRowRender: (record) => (
-                      <div className="text-sm text-gray-600 space-y-1">
-                        {(record.improvement_suggestions || []).length === 0 ? (
-                          <p>No improvement suggestions.</p>
-                        ) : (
-                          (record.improvement_suggestions || []).map((tip, idx) => (
-                            <p key={idx}>• {tip}</p>
-                          ))
-                        )}
-                      </div>
-                    ),
-                  }}
-                />
+                {menuSortBy === 'category' ? (
+                  <Table
+                    rowKey="key"
+                    loading={loading}
+                    dataSource={menuItemsByCategory}
+                    columns={categoryColumns}
+                    pagination={{ pageSize: 10 }}
+                    expandable={{
+                      expandedRowRender: (group) => (
+                        <Table
+                          rowKey="id"
+                          size="small"
+                          dataSource={group.items}
+                          columns={menuColumns}
+                          pagination={false}
+                          expandable={menuItemExpandable}
+                        />
+                      ),
+                    }}
+                  />
+                ) : (
+                  <Table
+                    rowKey="id"
+                    loading={loading}
+                    dataSource={filteredMenuItems}
+                    columns={menuColumns}
+                    pagination={{ pageSize: 10 }}
+                    expandable={menuItemExpandable}
+                  />
+                )}
               </Card>
             ),
           },
