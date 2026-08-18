@@ -941,7 +941,6 @@ const SummaryDashboard = () => {
                 <BudgetLioAnalysisCard
                   startDate={calendarDateRange?.[0]?.format('YYYY-MM-DD')}
                   endDate={calendarDateRange?.[1]?.format('YYYY-MM-DD')}
-                  autoRun
                 />
                 <BudgetDashboard
                   dashboardData={dashboardSummaryData}

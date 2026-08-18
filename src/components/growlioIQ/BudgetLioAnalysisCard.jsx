@@ -30,7 +30,7 @@ const healthColor = (label) => {
  * Compact LIO budget feedback for the Budget screen.
  * Reuses Growlio IQ with focus=budget for the selected week.
  */
-const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = true }) => {
+const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
   const navigate = useNavigate();
   const fetchCurrentSubscriptionDetails = useStore(
     (s) => s.fetchCurrentSubscriptionDetails
@@ -151,7 +151,7 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = true }) => {
     }
   }, [startDate, endDate, rangeKey, stopPoll]);
 
-  // Auto-run once per selected week for Grow/Pro users.
+  // Only auto-run when the parent explicitly opts in (budget page does not).
   useEffect(() => {
     if (!autoRun || !allowed || planLoading || !rangeKey) return;
     if (autoRanRef.current === rangeKey) return;
