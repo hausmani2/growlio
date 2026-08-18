@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import growlioLogo from "../../assets/svgs/growlio-logo.png";
-import PrimaryBtn from "../buttons/Buttons";
-import ImageLayout from "../imageWrapper/ImageLayout";
-import OnBoard from "../../assets/pngs/onBoard.png";
 import { CheckOutlined } from '@ant-design/icons';
 import { message } from "antd";
 import useStore from "../../store/store";
 import { isImpersonating } from "../../utils/tokenManager";
 import LoadingSpinner from "../layout/LoadingSpinner";
+import OnboardingPosImport from "./OnboardingPosImport";
 import {
     ONBOARDING_ROUTES,
     shouldAutoZeroProfitabilityFromSimulation,
@@ -16,6 +14,13 @@ import {
     ZERO_PROFITABILITY_PAYLOAD,
 } from "../../utils/onboardingUtils";
 import { getRoleLandingRoute } from "../../utils/rolePermissions";
+
+const getPlanName = (plan) =>
+    String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
+        .trim()
+        .toLowerCase();
+
+const isPaidPosPlan = (planName) => planName.includes('grow') || planName.includes('pro');
 
 const ProfitabilityScore = () => {
     const navigate = useNavigate();
@@ -27,8 +32,18 @@ const ProfitabilityScore = () => {
     const createSalesInformation = useStore((state) => state.createSalesInformation);
     const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
     const user = useStore((state) => state.user);
+    const subscriptionDetails = useStore((state) => state.subscriptionDetails);
+    const currentPackage = useStore((state) => state.currentPackage);
+    const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
     const impersonating = isImpersonating();
     const autoZeroStartedRef = useRef(false);
+    const restaurantId = localStorage.getItem('restaurant_id');
+    const currentPlanName = getPlanName(subscriptionDetails?.package || currentPackage);
+    const canImportFromPos = isPaidPosPlan(currentPlanName);
+
+    useEffect(() => {
+        fetchCurrentSubscriptionDetails?.(true);
+    }, [fetchCurrentSubscriptionDetails]);
 
     // Simulation → restaurant: zeros already submitted on Plans — never paint Score UI
     useEffect(() => {
@@ -112,7 +127,7 @@ const ProfitabilityScore = () => {
         <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex items-center justify-center bg-gray-50">
             {/* Content Section - Left Side */}
             <div className="w-full flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-0 min-h-screen lg:min-h-0 h-full">
-                <div className="w-full max-w-xl mx-auto flex flex-col h-full justify-center">
+                <div className="w-full max-w-2xl mx-auto flex flex-col h-full justify-center">
                     <div className="flex flex-col gap-2 bg-white rounded-2xl shadow-lg p-6 py-16">
                         {impersonating && (
                             <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
@@ -174,6 +189,10 @@ const ProfitabilityScore = () => {
                                 Get My Score!
                             </button>
                         </div>
+
+                        {canImportFromPos && (
+                            <OnboardingPosImport restaurantId={restaurantId} />
+                        )}
 
                         {/* What if I don't have this info link */}
                         <div className="text-center">

@@ -7,7 +7,8 @@ import { apiGet, apiPatch, apiPost } from '../../utils/axiosInterceptors';
 import { getMerchantSyncStatus, triggerPosSync } from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
-import { parseOAuthState } from '../../utils/squareOAuth';
+import { parseOAuthState, isSquareConnectFromOnboardingScore, clearSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
+import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
 
 /**
  * Square Callback Handler Component
@@ -31,6 +32,7 @@ const SquareCallbackHandler = () => {
   
   const handleSquareCallback = useStore((state) => state.handleSquareCallback);
   const squareError = useStore((state) => state.squareError);
+  const fromOnboardingScore = isSquareConnectFromOnboardingScore();
 
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
@@ -193,6 +195,9 @@ const SquareCallbackHandler = () => {
       if (growlioLocationId) {
         syncQuery.set('location_id', String(growlioLocationId));
       }
+      if (fromOnboardingScore) {
+        syncQuery.set('skip_sync', 'true');
+      }
 
       await apiPatch(`/square_pos/locations/update-sync/?${syncQuery.toString()}`, {
         locations: [
@@ -202,6 +207,13 @@ const SquareCallbackHandler = () => {
           },
         ],
       });
+
+      if (fromOnboardingScore) {
+        clearSquareConnectFromOnboardingScore();
+        setIsStartingSync(false);
+        navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+        return;
+      }
 
       // Start realtime listeners + polling BEFORE triggering sync.
       websocketRef.current = createPosSyncWebSocket({
@@ -258,6 +270,7 @@ const SquareCallbackHandler = () => {
     }
   }, [
     cleanupRealtimeResources,
+    fromOnboardingScore,
     locationIdFromState,
     navigate,
     restaurantIdForSync,
