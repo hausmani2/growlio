@@ -6,7 +6,6 @@ import {
   Collapse,
   DatePicker,
   Select,
-  Space,
   Spin,
   Tag,
   message,
@@ -18,9 +17,14 @@ import {
   RocketOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import useStore from '../../store/store';
-import { pollGrowlioIQStatus, runGrowlioIQAnalysis } from '../../services/growlioIqApi';
+import useLioFeatureUsage from '../../hooks/useLioFeatureUsage';
+import {
+  LIO_FEATURE,
+  pollGrowlioIQStatus,
+  runGrowlioIQAnalysis,
+} from '../../services/growlioIqApi';
 
 const { RangePicker } = DatePicker;
 
@@ -60,14 +64,6 @@ const QUICK_RANGES = [
   },
 ];
 
-const getPlanName = (plan) =>
-  String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
-    .trim()
-    .toLowerCase();
-
-const isGrowlioIQPlan = (planName) =>
-  planName.includes('grow') || planName.includes('pro');
-
 const healthColor = (label) => {
   const value = String(label || '').toLowerCase();
   if (value.includes('healthy')) return 'success';
@@ -76,12 +72,9 @@ const healthColor = (label) => {
 };
 
 const GrowlioIQPanel = ({ initialDateRange }) => {
-  const fetchCurrentSubscriptionDetails = useStore(
-    (s) => s.fetchCurrentSubscriptionDetails
-  );
-  const [planLoading, setPlanLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [planName, setPlanName] = useState('');
+  const navigate = useNavigate();
+  const { planLoading, locked, remainingCopy, applyUsage, lockFeature } =
+    useLioFeatureUsage(LIO_FEATURE.GROWLIO_IQ);
   const [expanded, setExpanded] = useState(false);
   const [dateRange, setDateRange] = useState(
     initialDateRange || [
@@ -100,39 +93,6 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
     }
   }, [initialDateRange]);
 
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      setPlanLoading(true);
-      try {
-        const result = await fetchCurrentSubscriptionDetails?.(false);
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          result?.data?.package ||
-            storeState.subscriptionDetails?.package ||
-            storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } catch {
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          storeState.subscriptionDetails?.package || storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } finally {
-        if (mounted) setPlanLoading(false);
-      }
-    };
-    run();
-    return () => {
-      mounted = false;
-    };
-  }, [fetchCurrentSubscriptionDetails]);
-
   useEffect(
     () => () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -148,6 +108,10 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
   };
 
   const handleRun = useCallback(async () => {
+    if (locked) {
+      navigate('/dashboard/pricing');
+      return;
+    }
     if (!dateRange?.[0] || !dateRange?.[1]) {
       message.error('Select a date range first');
       return;
@@ -164,7 +128,13 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
     try {
       const startDate = dateRange[0].format('YYYY-MM-DD');
       const endDate = dateRange[1].format('YYYY-MM-DD');
-      const start = await runGrowlioIQAnalysis({ startDate, endDate, focus });
+      const start = await runGrowlioIQAnalysis({
+        startDate,
+        endDate,
+        focus,
+        feature: LIO_FEATURE.GROWLIO_IQ,
+      });
+      if (start?.usage) applyUsage(start.usage);
       if (!start?.job_id) {
         throw new Error(start?.error || 'Failed to start Growlio IQ analysis');
       }
@@ -197,13 +167,15 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
     } catch (error) {
       stopPoll();
       setRunning(false);
+      const data = error?.response?.data;
+      if (data?.upgrade_required) lockFeature(data);
       message.error({
-        content: error?.response?.data?.error || error.message || 'Analysis failed',
+        content: data?.error || error.message || 'Analysis failed',
         key: 'growlio-iq',
         duration: 5,
       });
     }
-  }, [dateRange, focus]);
+  }, [applyUsage, dateRange, focus, lockFeature, locked, navigate]);
 
   const periodLabel = useMemo(() => {
     if (!dateRange?.[0] || !dateRange?.[1]) return '';
@@ -220,23 +192,6 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
     );
   }
 
-  if (!allowed) {
-    return (
-      <Card className="shadow-sm border border-gray-100">
-        <div className="flex items-start gap-3">
-          <BulbOutlined className="text-2xl text-[#FF8132] mt-1" />
-          <div>
-            <h3 className="text-lg font-semibold m-0">Growlio IQ</h3>
-            <p className="text-gray-600 mt-2 mb-0">
-              AI-powered business analysis is available on Grow and Pro plans.
-              {planName ? ` Your current plan: ${planName}.` : ''}
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <Card className="shadow-sm border border-gray-100">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -247,12 +202,34 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
             <p className="text-sm text-gray-500 m-0">
               AI consultant review of your restaurant data
             </p>
+            {remainingCopy ? (
+              <p className="text-xs text-gray-500 m-0 mt-1">{remainingCopy}</p>
+            ) : null}
           </div>
         </div>
         <Button onClick={() => setExpanded((v) => !v)}>
           {expanded ? 'Collapse' : 'Expand'}
         </Button>
       </div>
+
+      {locked ? (
+        <Alert
+          type="warning"
+          showIcon
+          className="mb-4"
+          message="You've used all 5 free LIO reviews for this feature this month. Upgrade to Grow or Pro to keep using LIO."
+          action={
+            <Button
+              type="primary"
+              size="small"
+              className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+              onClick={() => navigate('/dashboard/pricing')}
+            >
+              Upgrade
+            </Button>
+          }
+        />
+      ) : null}
 
       {expanded ? (
         <div className="space-y-4">
@@ -297,15 +274,25 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
               value={dateRange}
               onChange={(dates) => dates && setDateRange(dates)}
             />
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              loading={running}
-              className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
-              onClick={handleRun}
-            >
-              Run Growlio IQ
-            </Button>
+            {locked ? (
+              <Button
+                type="primary"
+                className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+                onClick={() => navigate('/dashboard/pricing')}
+              >
+                Upgrade to Grow or Pro
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                loading={running}
+                className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+                onClick={handleRun}
+              >
+                Run Growlio IQ
+              </Button>
+            )}
           </div>
 
           {periodLabel ? (

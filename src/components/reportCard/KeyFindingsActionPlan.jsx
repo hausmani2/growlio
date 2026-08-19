@@ -8,17 +8,14 @@ import {
   RocketOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import useStore from '../../store/store';
-import { pollGrowlioIQStatus, runGrowlioIQAnalysis } from '../../services/growlioIqApi';
-
-const getPlanName = (plan) =>
-  String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
-    .trim()
-    .toLowerCase();
-
-const isGrowlioIQPlan = (planName) =>
-  planName.includes('grow') || planName.includes('pro');
+import useLioFeatureUsage from '../../hooks/useLioFeatureUsage';
+import {
+  LIO_FEATURE,
+  pollGrowlioIQStatus,
+  runGrowlioIQAnalysis,
+} from '../../services/growlioIqApi';
 
 const priorityColor = (priority) => {
   const value = String(priority || '').toLowerCase();
@@ -54,12 +51,9 @@ const KeyFindingsActionPlan = ({
   showNoClosedDaysGuidance = false,
   autoRun = true,
 }) => {
-  const fetchCurrentSubscriptionDetails = useStore(
-    (s) => s.fetchCurrentSubscriptionDetails
-  );
-  const [planLoading, setPlanLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [planName, setPlanName] = useState('');
+  const navigate = useNavigate();
+  const { planLoading, unlimited, locked, remainingCopy, applyUsage, lockFeature } =
+    useLioFeatureUsage(LIO_FEATURE.ACTION_PLAN);
   const [running, setRunning] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
@@ -85,39 +79,6 @@ const KeyFindingsActionPlan = ({
     return `${start.format('MMM D')} – ${end.format('MMM D, YYYY')}`;
   }, [startDate, endDate]);
 
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      setPlanLoading(true);
-      try {
-        const result = await fetchCurrentSubscriptionDetails?.(false);
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          result?.data?.package ||
-            storeState.subscriptionDetails?.package ||
-            storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } catch {
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          storeState.subscriptionDetails?.package || storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } finally {
-        if (mounted) setPlanLoading(false);
-      }
-    };
-    run();
-    return () => {
-      mounted = false;
-    };
-  }, [fetchCurrentSubscriptionDetails]);
-
   const stopPoll = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -133,6 +94,10 @@ const KeyFindingsActionPlan = ({
   );
 
   const handleRun = useCallback(async () => {
+    if (locked) {
+      navigate('/dashboard/pricing');
+      return;
+    }
     if (!rangeKey) return;
     const [start, end] = rangeKey.split('|');
     stopPoll();
@@ -145,7 +110,9 @@ const KeyFindingsActionPlan = ({
         startDate: start,
         endDate: end,
         focus: 'weekly_recovery',
+        feature: LIO_FEATURE.ACTION_PLAN,
       });
+      if (startRes?.usage) applyUsage(startRes.usage);
       if (!startRes?.job_id) {
         throw new Error(startRes?.error || 'Failed to start LIO action plan');
       }
@@ -169,21 +136,21 @@ const KeyFindingsActionPlan = ({
     } catch (err) {
       stopPoll();
       setRunning(false);
-      setError(
-        err?.response?.data?.error || err.message || 'LIO action plan failed'
-      );
+      const data = err?.response?.data;
+      if (data?.upgrade_required) lockFeature(data);
+      setError(data?.error || err.message || 'LIO action plan failed');
     }
-  }, [rangeKey, stopPoll]);
+  }, [applyUsage, lockFeature, locked, navigate, rangeKey, stopPoll]);
 
   useEffect(() => {
-    if (!autoRun || !allowed || planLoading || !rangeKey) return;
+    if (!autoRun || !unlimited || planLoading || !rangeKey) return;
     if (showNoClosedDaysGuidance) return;
     if (autoRanRef.current === rangeKey) return;
     autoRanRef.current = rangeKey;
     handleRun();
   }, [
     autoRun,
-    allowed,
+    unlimited,
     planLoading,
     rangeKey,
     showNoClosedDaysGuidance,
@@ -223,7 +190,16 @@ const KeyFindingsActionPlan = ({
             {periodLabel ? ` · ${periodLabel}` : ''}
           </p>
         </div>
-        {allowed && !showNoClosedDaysGuidance ? (
+        {locked && !showNoClosedDaysGuidance ? (
+          <Button
+            type="primary"
+            size="small"
+            className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+            onClick={() => navigate('/dashboard/pricing')}
+          >
+            Upgrade to Grow or Pro
+          </Button>
+        ) : !showNoClosedDaysGuidance ? (
           <Button
             type="primary"
             size="small"
@@ -244,16 +220,16 @@ const KeyFindingsActionPlan = ({
         </div>
       ) : null}
 
-      {!planLoading && !allowed ? (
+      {remainingCopy && !showNoClosedDaysGuidance ? (
+        <p className="text-sm text-gray-500 mb-3 m-0">{remainingCopy}</p>
+      ) : null}
+
+      {locked && !showNoClosedDaysGuidance ? (
         <Alert
-          type="info"
+          type="warning"
           showIcon
-          message="AI weekly action plans are available on Grow and Pro."
-          description={
-            planName
-              ? `Your current plan: ${planName}. Upgrade to get daily recovery targets from LIO.`
-              : 'Upgrade to get daily recovery targets from LIO.'
-          }
+          className="mb-4"
+          message="You've used all 5 free LIO reviews for this feature this month. Upgrade to Grow or Pro to keep using LIO."
         />
       ) : null}
 
@@ -264,7 +240,7 @@ const KeyFindingsActionPlan = ({
         </div>
       ) : null}
 
-      {allowed && !showNoClosedDaysGuidance ? (
+      {!showNoClosedDaysGuidance ? (
         <>
           {running && !analysis ? (
             <div className="flex items-center gap-3 py-6">

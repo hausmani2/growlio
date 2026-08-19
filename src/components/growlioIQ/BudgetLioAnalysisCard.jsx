@@ -8,16 +8,12 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import useStore from '../../store/store';
-import { pollGrowlioIQStatus, runGrowlioIQAnalysis } from '../../services/growlioIqApi';
-
-const getPlanName = (plan) =>
-  String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
-    .trim()
-    .toLowerCase();
-
-const isGrowlioIQPlan = (planName) =>
-  planName.includes('grow') || planName.includes('pro');
+import useLioFeatureUsage from '../../hooks/useLioFeatureUsage';
+import {
+  LIO_FEATURE,
+  pollGrowlioIQStatus,
+  runGrowlioIQAnalysis,
+} from '../../services/growlioIqApi';
 
 const healthColor = (label) => {
   const value = String(label || '').toLowerCase();
@@ -32,12 +28,8 @@ const healthColor = (label) => {
  */
 const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
   const navigate = useNavigate();
-  const fetchCurrentSubscriptionDetails = useStore(
-    (s) => s.fetchCurrentSubscriptionDetails
-  );
-  const [planLoading, setPlanLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
-  const [planName, setPlanName] = useState('');
+  const { planLoading, unlimited, locked, remainingCopy, applyUsage, lockFeature } =
+    useLioFeatureUsage(LIO_FEATURE.BUDGET);
   const [running, setRunning] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
@@ -58,39 +50,6 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
     return `${start.format('MMM D')} – ${end.format('MMM D, YYYY')}`;
   }, [startDate, endDate]);
 
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      setPlanLoading(true);
-      try {
-        const result = await fetchCurrentSubscriptionDetails?.(false);
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          result?.data?.package ||
-            storeState.subscriptionDetails?.package ||
-            storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } catch {
-        const storeState = useStore.getState();
-        const name = getPlanName(
-          storeState.subscriptionDetails?.package || storeState.currentPackage
-        );
-        if (!mounted) return;
-        setPlanName(name);
-        setAllowed(isGrowlioIQPlan(name));
-      } finally {
-        if (mounted) setPlanLoading(false);
-      }
-    };
-    run();
-    return () => {
-      mounted = false;
-    };
-  }, [fetchCurrentSubscriptionDetails]);
-
   const stopPoll = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
@@ -106,6 +65,10 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
   );
 
   const handleRun = useCallback(async () => {
+    if (locked) {
+      navigate('/dashboard/pricing');
+      return;
+    }
     if (!startDate || !endDate) {
       message.error('Select a budget week first');
       return;
@@ -121,7 +84,9 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
         startDate,
         endDate,
         focus: 'budget',
+        feature: LIO_FEATURE.BUDGET,
       });
+      if (start?.usage) applyUsage(start.usage);
       if (!start?.job_id) {
         throw new Error(start?.error || 'Failed to start LIO budget analysis');
       }
@@ -145,19 +110,28 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
     } catch (err) {
       stopPoll();
       setRunning(false);
-      setError(
-        err?.response?.data?.error || err.message || 'LIO budget analysis failed'
-      );
+      const data = err?.response?.data;
+      if (data?.upgrade_required) lockFeature(data);
+      setError(data?.error || err.message || 'LIO budget analysis failed');
     }
-  }, [startDate, endDate, rangeKey, stopPoll]);
+  }, [
+    applyUsage,
+    endDate,
+    lockFeature,
+    locked,
+    navigate,
+    rangeKey,
+    startDate,
+    stopPoll,
+  ]);
 
-  // Only auto-run when the parent explicitly opts in (budget page does not).
+  // Only auto-run when the parent explicitly opts in, and never on Lite quota.
   useEffect(() => {
-    if (!autoRun || !allowed || planLoading || !rangeKey) return;
+    if (!autoRun || !unlimited || planLoading || !rangeKey) return;
     if (autoRanRef.current === rangeKey) return;
     autoRanRef.current = rangeKey;
     handleRun();
-  }, [autoRun, allowed, planLoading, rangeKey, handleRun]);
+  }, [autoRun, unlimited, planLoading, rangeKey, handleRun]);
 
   if (planLoading) {
     return (
@@ -165,23 +139,6 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
         <div className="flex items-center gap-3 py-2">
           <Spin size="small" />
           <span className="text-gray-600 text-sm">Loading LIO Budget Analysis…</span>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!allowed) {
-    return (
-      <Card className="shadow-sm border border-orange-100">
-        <div className="flex items-start gap-3">
-          <BulbOutlined className="text-xl text-[#FF8132] mt-0.5" />
-          <div>
-            <h3 className="text-base font-semibold m-0">LIO Budget Analysis</h3>
-            <p className="text-gray-600 text-sm mt-1 mb-0">
-              Quick AI feedback on your week’s budget is available on Grow and Pro.
-              {planName ? ` Current plan: ${planName}.` : ''}
-            </p>
-          </div>
         </div>
       </Card>
     );
@@ -207,21 +164,45 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="primary"
-            size="small"
-            icon={analysis ? <ReloadOutlined /> : <ThunderboltOutlined />}
-            loading={running}
-            className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
-            onClick={handleRun}
-          >
-            {analysis ? 'Refresh' : 'Analyze this week'}
-          </Button>
+          {locked ? (
+            <Button
+              type="primary"
+              size="small"
+              className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+              onClick={() => navigate('/dashboard/pricing')}
+            >
+              Upgrade to Grow or Pro
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              size="small"
+              icon={analysis ? <ReloadOutlined /> : <ThunderboltOutlined />}
+              loading={running}
+              className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+              onClick={handleRun}
+            >
+              {analysis ? 'Refresh' : 'Analyze this week'}
+            </Button>
+          )}
           <Button size="small" onClick={() => navigate('/dashboard/report-card')}>
             Full analysis
           </Button>
         </div>
       </div>
+
+      {remainingCopy ? (
+        <p className="text-sm text-gray-500 mb-3 m-0">{remainingCopy}</p>
+      ) : null}
+
+      {locked ? (
+        <Alert
+          type="warning"
+          showIcon
+          className="mb-3"
+          message="You've used all 5 free LIO reviews for this feature this month. Upgrade to Grow or Pro to keep using LIO."
+        />
+      ) : null}
 
       {running && !analysis ? (
         <div className="flex items-center gap-3 py-4">
@@ -246,7 +227,7 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
         />
       ) : null}
 
-      {!running && !error && !analysis ? (
+      {!running && !error && !analysis && !locked ? (
         <p className="text-gray-600 text-sm m-0">
           Run analysis to get quick notes like high labor, overspending on specific
           expenses, or where you’re ahead of budget.
