@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
-import { Select, Modal, Switch } from "antd";
+import React from "react";
+import { Select, Modal } from "antd";
 import PrimaryButton from "../../../../buttons/Buttons";
+import ToggleSwitch from "../../../../buttons/ToggleSwitch";
 
 const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
   // Create percentage options from 1 to 50
@@ -105,16 +106,31 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 px-4 py-3">
-        <div>
-          <div className="text-xs font-semibold text-gray-700">
+      <div
+        onClick={() => handleToggle(!isEnabled)}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 gap-3 sm:gap-0 cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+      >
+        <div className="flex flex-col gap-1 flex-1">
+          <span className="text-sm font-semibold text-gray-700">
             Do you use third-party delivery?
-          </div>
-          <div className="text-xs text-gray-500 mt-0.5">
-            Turn on to add delivery providers and their fees.
-          </div>
+          </span>
+          <span className="text-xs text-gray-600">
+            Select Yes to add delivery providers and their fees.
+          </span>
         </div>
-        <Switch checked={isEnabled} onChange={handleToggle} />
+        <div className="flex items-center gap-3">
+          <span className={`text-sm font-medium ${isEnabled ? "text-gray-400" : "text-gray-700"}`}>
+            No
+          </span>
+          <ToggleSwitch
+            isOn={isEnabled}
+            setIsOn={() => handleToggle(!isEnabled)}
+            size="large"
+          />
+          <span className={`text-sm font-medium ${isEnabled ? "text-gray-700" : "text-gray-400"}`}>
+            Yes
+          </span>
+        </div>
       </div>
 
       {isEnabled && (
