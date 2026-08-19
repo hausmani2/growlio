@@ -412,6 +412,71 @@ export const isRentExpense = (expense) => {
   return name === 'rent' || category === 'rent';
 };
 
+export const SETUP_LATER_TOOLTIP =
+  "Skip for now. We'll save your Rent from the profitability score and leave the other expenses off.";
+
+export const SETUP_LATER_DISCLAIMER =
+  "If you are not ready to complete this step, click Setup later. We'll carry forward your Rent from the profitability score and leave every other expense off.";
+
+/**
+ * Normalize sales-information payloads (array, { data }, { results }) into records.
+ */
+export const getSalesInformationRecords = (salesInformationData) => {
+  if (!salesInformationData) return [];
+
+  if (Array.isArray(salesInformationData)) {
+    return salesInformationData.filter((row) => row && typeof row === 'object');
+  }
+
+  if (Array.isArray(salesInformationData.results)) {
+    return salesInformationData.results.filter((row) => row && typeof row === 'object');
+  }
+
+  if (salesInformationData.results && typeof salesInformationData.results === 'object') {
+    return [salesInformationData.results];
+  }
+
+  if (Array.isArray(salesInformationData.data)) {
+    return salesInformationData.data.filter((row) => row && typeof row === 'object');
+  }
+
+  if (salesInformationData.data && typeof salesInformationData.data === 'object') {
+    if (Array.isArray(salesInformationData.data.data)) {
+      return salesInformationData.data.data.filter((row) => row && typeof row === 'object');
+    }
+    if (Array.isArray(salesInformationData.data.results)) {
+      return salesInformationData.data.results.filter((row) => row && typeof row === 'object');
+    }
+    return [salesInformationData.data];
+  }
+
+  if (typeof salesInformationData === 'object') {
+    return [salesInformationData];
+  }
+
+  return [];
+};
+
+/**
+ * Monthly rent from profitability / sales-information.expenses.
+ */
+export const getProfitabilityMonthlyRent = (salesInformationData, locationId = null) => {
+  const records = getSalesInformationRecords(salesInformationData);
+  if (!records.length) return 0;
+
+  let record = records[0];
+  if (locationId != null && locationId !== '') {
+    const match = records.find((row) =>
+      Number(row.location_id) === Number(locationId) ||
+      Number(row.location) === Number(locationId)
+    );
+    if (match) record = match;
+  }
+
+  const rent = Number(record?.expenses);
+  return Number.isFinite(rent) ? rent : 0;
+};
+
 /**
  * Build Expense payload for "Setup Later": all inactive except Rent,
  * with Rent amount from profitability score (sales-information.expenses).
@@ -421,17 +486,31 @@ export const isRentExpense = (expense) => {
  * @returns {Array}
  */
 export const buildSetupLaterExpenses = (expenses, monthlyRent) => {
-  const list = Array.isArray(expenses) ? expenses : [];
+  let list = Array.isArray(expenses) ? [...expenses] : [];
   const rentAmount = Number(monthlyRent);
   const resolvedRent = Number.isFinite(rentAmount) ? rentAmount : 0;
+
+  if (!list.some(isRentExpense)) {
+    list = [
+      {
+        category: 'Rent',
+        name: 'Rent',
+        amount: resolvedRent,
+        is_value_type: true,
+        expense_type: 'monthly',
+        fixed_expense_type: 'MONTHLY',
+        is_active: true,
+      },
+      ...list,
+    ];
+  }
 
   return list.map((expense) => {
     const rent = isRentExpense(expense);
     const existingAmount = Number(expense?.amount);
+    // Setup Later must use profitability rent, never the $2500 default guide amount.
     const amount = rent
-      ? (resolvedRent > 0
-          ? resolvedRent
-          : (Number.isFinite(existingAmount) ? existingAmount : 0))
+      ? resolvedRent
       : (Number.isFinite(existingAmount) ? existingAmount : Number(expense?.amount) || 0);
 
     return {

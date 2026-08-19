@@ -5,7 +5,6 @@ import weekOfYear from 'dayjs/plugin/weekOfYear';
 import updateLocale from 'dayjs/plugin/updateLocale';
 import useStore from '../store/store';
 import { apiGet } from './axiosInterceptors';
-import { CalendarHelpers } from './CalendarHelpers';
 import {
   getDailyEntries,
   getFindingsScopeKey,
@@ -24,7 +23,7 @@ dayjs.updateLocale('en', { weekStart: 0 });
 let closeOutModalOpen = false;
 /** Prevents stacked "Previous week incomplete" modals while the async check is in flight */
 let previousWeekWarningInFlight = false;
-/** Session-only: `${scopeKey}:${currentWeekStart}` after user chooses Proceed Anyway */
+/** Session-only: `${scopeKey}:${selectedWeekStart}` after user chooses Proceed Anyway */
 const previousWeekWarningDismissed = new Set();
 
 /**
@@ -554,8 +553,9 @@ export async function flushCloseOutSessionNotification({
 }
 
 /**
- * When closing out the current week, warn if the immediately previous week
- * still has incomplete open days. Does not block — user may proceed anyway.
+ * Warn if the week immediately before the selected week still has incomplete
+ * open days. Runs for any selected week (not only the current calendar week).
+ * Does not block — user may proceed anyway.
  *
  * Duplicate clicks while a check is in flight (or a close-out modal is open)
  * are ignored and do not call onProceed.
@@ -585,17 +585,10 @@ export async function maybeWarnPreviousWeekIncomplete({
     return true;
   }
 
-  const weekStatus = CalendarHelpers.getWeekStatus(weekStart);
-  // Only when starting / working the current (new) week
-  if (!weekStatus?.isCurrentWeek) {
-    proceed();
-    return true;
-  }
-
   const state = useStore.getState();
   const scopeKey = getFindingsScopeKey(state.restaurantId, state.selectedLocationId);
-  const currentWeekStart = weekStart.format('YYYY-MM-DD');
-  const dismissKey = `${scopeKey}:${currentWeekStart}`;
+  const selectedWeekStart = weekStart.format('YYYY-MM-DD');
+  const dismissKey = `${scopeKey}:${selectedWeekStart}`;
 
   if (previousWeekWarningDismissed.has(dismissKey)) {
     proceed();
@@ -652,7 +645,7 @@ export async function maybeWarnPreviousWeekIncomplete({
         createElement(
           'p',
           { style: { marginTop: 12 } },
-          'Would you like to return and complete these days, or proceed with the new week?'
+          'Would you like to return and complete these days, or proceed with this week?'
         )
       ),
       okText: 'Complete Previous Week',

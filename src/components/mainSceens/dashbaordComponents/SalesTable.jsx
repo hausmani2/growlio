@@ -1230,27 +1230,29 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       return;
     }
     
-    // If it's not the current week (but is past week), show warning modal
-    if (!weekStatus.isCurrentWeek && weekStatus.isPastWeek) {
-      setWeekWarningData({
-        isPastWeek: weekStatus.isPastWeek,
-        isFutureWeek: weekStatus.isFutureWeek,
-        weekStart: weekStatus.weekStart,
-        weekEnd: weekStatus.weekEnd,
-        currentWeekStart: weekStatus.currentWeekStart,
-        currentWeekEnd: weekStatus.currentWeekEnd,
-        daysDifference: weekStatus.daysDifference
-      });
-      setPendingModalAction(() => onConfirm);
-      setPendingActionType(actionType);
-      setShowWeekWarningModal(true);
-      return;
-    }
+    const showPastWeekWarningThenConfirm = () => {
+      if (!weekStatus.isCurrentWeek && weekStatus.isPastWeek) {
+        setWeekWarningData({
+          isPastWeek: weekStatus.isPastWeek,
+          isFutureWeek: weekStatus.isFutureWeek,
+          weekStart: weekStatus.weekStart,
+          weekEnd: weekStatus.weekEnd,
+          currentWeekStart: weekStatus.currentWeekStart,
+          currentWeekEnd: weekStatus.currentWeekEnd,
+          daysDifference: weekStatus.daysDifference
+        });
+        setPendingModalAction(() => onConfirm);
+        setPendingActionType(actionType);
+        setShowWeekWarningModal(true);
+        return;
+      }
+      onConfirm();
+    };
 
-    // Current week — warn if the immediately previous week is still incomplete
+    // Any selected week — warn if the immediately previous week is still incomplete
     await maybeWarnPreviousWeekIncomplete({
       weekStartDate,
-      onProceed: onConfirm,
+      onProceed: showPastWeekWarningThenConfirm,
     });
   };
 
@@ -1330,7 +1332,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   };
 
   // Handle weekly average data popup actions
-  const handleAutoAverage = async () => {
+  const applyAutoAverage = async () => {
     try {
       if (selectedDate) {
         const weekStartDate = dayjs(selectedDate).startOf('week');
@@ -1409,13 +1411,24 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     }
   };
 
-  const handleManualEntry = () => {
+  const handleAutoAverage = async () => {
+    if (!selectedDate) return;
     setIsWeeklyAverageDataPopupVisible(false);
-    
-    // Directly open sales modal for manual entry
-    setEditingWeek(null);
-    setIsEditMode(false);
-    setIsModalVisible(true);
+    await maybeWarnPreviousWeekIncomplete({
+      weekStartDate: dayjs(selectedDate).startOf('week'),
+      onProceed: applyAutoAverage,
+    });
+  };
+
+  const handleManualEntry = async () => {
+    setIsWeeklyAverageDataPopupVisible(false);
+
+    const weekStartDate = weekDays.length > 0 ? weekDays[0].date : selectedDate;
+    await checkWeekStatusAndShowWarning(weekStartDate, () => {
+      setEditingWeek(null);
+      setIsEditMode(false);
+      setIsModalVisible(true);
+    });
   };
 
   const handleCloseWeeklyAverageDataPopup = () => {
@@ -2269,7 +2282,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - {provider.provider_name}</Text>
                     <Input
                       type='number'
-                      value={weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
+                      value={Math.round(weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0)}
                       prefix="$"
                       placeholder="0.00"
                       className="w-full mt-1"
