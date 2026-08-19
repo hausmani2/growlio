@@ -3,6 +3,7 @@ import { Button, Input, Modal, Switch, InputNumber, Select, Tooltip, message } f
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, SaveOutlined } from "@ant-design/icons";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
+import { SETUP_LATER_TOOLTIP } from "../../../../../utils/onboardingUtils";
 
 // Removed COST_TYPES - no longer using fixed/variable distinction
 
@@ -71,7 +72,8 @@ const convertDefaultExpenseToField = (expense, index = 0) => ({
   value: expense.amount ? expense.amount.toString() : "0",
   key: `dynamic_expense_${Date.now()}_${index}_${Math.random()}`,
   expense_type: expense.fixed_expense_type === 'MONTHLY' ? 'monthly' : 'weekly',
-  is_active: expense.is_active !== undefined ? expense.is_active : true,
+  // First-visit defaults start off; user turns on what applies, or uses Setup later.
+  is_active: false,
   is_value_type: expense.is_value_type !== undefined ? expense.is_value_type : true,
   category: expense.category || 'Other',
 });
@@ -99,6 +101,8 @@ const OperatingExpenses = ({
   onInlineSave,
   loading = false,
   lastSavedExpenseRows = {},
+  showSetupLater = false,
+  onSetupLater,
 }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
@@ -198,7 +202,7 @@ const OperatingExpenses = ({
         value: "",
         key: `dynamic_expense_royalty_${Date.now()}_${Math.random()}`,
         expense_type: "monthly",
-        is_active: true,
+        is_active: false,
         is_value_type: false, // Royalty is typically a percentage
         category: "Royalty + Ad Fund",
       });
@@ -210,7 +214,7 @@ const OperatingExpenses = ({
         value: "",
         key: `dynamic_expense_brand_ad_fund_${Date.now()}_${Math.random()}`,
         expense_type: "monthly",
-        is_active: true,
+        is_active: false,
         is_value_type: false, // Brand/Ad Fund is typically a percentage
         category: "Royalty + Ad Fund",
       });
@@ -451,7 +455,20 @@ const OperatingExpenses = ({
           <h3 className="text-xl font-bold text-orange-600">Expenses</h3>
           <p className="text-gray-600 text-sm">Non-negotiable. Always plan for them.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          {showSetupLater && typeof onSetupLater === "function" && (
+            <Tooltip placement="top" title={SETUP_LATER_TOOLTIP}>
+              <Button
+                type="default"
+                onClick={onSetupLater}
+                disabled={loading}
+                aria-label="Setup later"
+                className="h-10 min-w-[140px] px-6 font-semibold text-sm rounded-lg !bg-gray-200 !text-gray-700 !border-orange-600 shadow-sm hover:!bg-gray-300 hover:!text-gray-800 hover:!border-orange-700"
+              >
+                Setup later
+              </Button>
+            </Tooltip>
+          )}
           <Button
             type="primary"
             icon={<PlusOutlined />}

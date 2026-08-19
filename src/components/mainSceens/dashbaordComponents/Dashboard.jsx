@@ -18,7 +18,7 @@ import SyncModal from '../../SyncModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
-import { NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT } from '../../../utils/reportCardReminders';
+import { maybeWarnPreviousWeekIncomplete, NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT } from '../../../utils/reportCardReminders';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -322,13 +322,17 @@ const Dashboard = () => {
     onSyncCompleted: handlePosSyncCompleted,
   });
 
-  const handleSyncPosClick = useCallback(() => {
+  const handleSyncPosClick = useCallback(async () => {
     if (isFutureWeekSelected) {
       message.warning('Sync is only available for current or past weeks.');
       return;
     }
-    handleSquareSyncNow();
-  }, [handleSquareSyncNow, isFutureWeekSelected]);
+    const weekStartDate = getDateSelection()?.weekStartDate;
+    await maybeWarnPreviousWeekIncomplete({
+      weekStartDate,
+      onProceed: handleSquareSyncNow,
+    });
+  }, [getDateSelection, handleSquareSyncNow, isFutureWeekSelected]);
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();

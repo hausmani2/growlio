@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { message, Modal, Select } from "antd";
+import { message, Modal, Select, Tooltip } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import OperatingExpenses from "./OperatingExpenses";
 import TotalExpense from "./TotalExpense";
@@ -16,6 +16,9 @@ import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocatio
 import {
     shouldShowDefaultExpenses,
     buildSetupLaterExpenses,
+    getProfitabilityMonthlyRent,
+    SETUP_LATER_TOOLTIP,
+    SETUP_LATER_DISCLAIMER,
 } from "../../../../../utils/onboardingUtils";
 import { DEFAULT_EXPENSES } from "../../../../../utils/simulationUtils";
 
@@ -442,14 +445,15 @@ const ExpenseWrapperContent = () => {
 
     const handleSetupLater = async () => {
         try {
-            let salesInfo = salesInformationData;
-            if (!salesInfo) {
-                const salesResult = await getSalesInformation();
-                salesInfo = salesResult?.data ?? useStore.getState().salesInformationData;
-            }
-
-            const record = Array.isArray(salesInfo) ? salesInfo[0] : salesInfo;
-            const monthlyRent = Number(record?.expenses) || 0;
+            const salesResult = await getSalesInformation();
+            const salesInfo =
+                salesResult?.data ??
+                useStore.getState().salesInformationData ??
+                salesInformationData;
+            const monthlyRent = getProfitabilityMonthlyRent(
+                salesInfo,
+                selectedLocationId
+            );
 
             let sourceExpenses = apiExpenseData.expenses;
             if (!sourceExpenses?.length) {
@@ -617,6 +621,8 @@ const ExpenseWrapperContent = () => {
                                 onInlineSave={handleSave}
                                 loading={loading}
                                 lastSavedExpenseRows={lastSavedExpenseRows}
+                                showSetupLater={showSetupLater}
+                                onSetupLater={handleSetupLater}
                             />
                             <TotalExpense
                                 data={expenseData}
@@ -628,16 +634,18 @@ const ExpenseWrapperContent = () => {
                         {isUpdateMode && (
                             <div className="flex justify-end gap-3 mt-8 pt-6">
                                 {showSetupLater ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleSetupLater}
-                                        disabled={loading}
-                                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
-                                        }`}
-                                    >
-                                        Setup Later
-                                    </button>
+                                    <Tooltip placement="top" title={SETUP_LATER_TOOLTIP}>
+                                        <button
+                                            type="button"
+                                            onClick={handleSetupLater}
+                                            disabled={loading}
+                                            className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                                            }`}
+                                        >
+                                            Setup Later
+                                        </button>
+                                    </Tooltip>
                                 ) : (
                                     <button
                                         type="button"
@@ -688,14 +696,18 @@ const ExpenseWrapperContent = () => {
             >
                 <div className="space-y-3">
                     <p className="text-gray-800">
-                        These expenses are preloaded as a guide. The amounts shown are not your actual numbers—replace
-                        them with your real costs.
+                        These expenses are preloaded as a guide. They start off. The amounts shown are not your actual
+                        numbers—turn on the ones that apply and replace them with your real costs.
                     </p>
                     <ul className="list-disc pl-5 text-gray-700 space-y-1">
-                        <li>Only keep the expenses that apply to your restaurant and turn off anything you don’t use.</li>
+                        <li>Turn on only the expenses that apply to your restaurant.</li>
                         <li>Do not include Labor or Cost of Goods (COGS) here. Growlio calculates those separately.</li>
                         <li>Not sure about an expense? Ask LIO for help.</li>
                     </ul>
+                    <p className="text-gray-800">
+                        <span className="font-semibold">Setup later: </span>
+                        {SETUP_LATER_DISCLAIMER}
+                    </p>
                     <div className="pt-3 flex justify-end">
                         <button
                             type="button"
@@ -784,6 +796,8 @@ const ExpenseWrapperContent = () => {
                     onInlineSave={handleSave}
                     loading={loading}
                     lastSavedExpenseRows={lastSavedExpenseRows}
+                    showSetupLater={showSetupLater}
+                    onSetupLater={handleSetupLater}
                 />
                 <TotalExpense
                     data={expenseData}
@@ -794,16 +808,18 @@ const ExpenseWrapperContent = () => {
 
             <div className="flex justify-end gap-3 mt-8 pt-6">
                 {showSetupLater ? (
-                    <button
-                        type="button"
-                        onClick={handleSetupLater}
-                        disabled={loading}
-                        className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
-                            loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
-                        }`}
-                    >
-                        Setup Later
-                    </button>
+                    <Tooltip placement="top" title={SETUP_LATER_TOOLTIP}>
+                        <button
+                            type="button"
+                            onClick={handleSetupLater}
+                            disabled={loading}
+                            className={`bg-gray-200 text-gray-700 px-8 py-3 rounded-lg transition-colors flex items-center gap-2 font-semibold ${
+                                loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-300'
+                            }`}
+                        >
+                            Setup Later
+                        </button>
+                    </Tooltip>
                 ) : (
                     <button
                         type="button"
