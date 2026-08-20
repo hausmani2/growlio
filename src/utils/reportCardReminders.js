@@ -1,4 +1,4 @@
-import { Modal } from 'antd';
+import { Button, Modal, message } from 'antd';
 import { createElement } from 'react';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -11,10 +11,12 @@ import {
   getIncompleteOpenDaysFromDashboard,
   getOpenDailyEntries,
   isDayCompleteFromDashboardEntry,
+  isWeekMarkedClosedFromDashboard,
   normalizeCloseOutDate,
   shouldShowWeekCloseOutNotification,
   snapshotCloseOutFingerprints,
 } from './reportCardFindings';
+import { isWeekClosedLocal, markWeekClosedLocal } from './weekCloseoutStorage';
 
 dayjs.extend(weekOfYear);
 dayjs.extend(updateLocale);
@@ -173,21 +175,6 @@ function formatCloseOutDaysPhrase(days = []) {
     .filter(Boolean)
     .sort()
     .map(formatCloseOutDayLabel);
-
-  if (labels.length === 0) return '';
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
-}
-
-function formatDayNamesPhrase(dates = []) {
-  const labels = [...dates]
-    .filter(Boolean)
-    .sort()
-    .map((dateStr) => {
-      const date = dayjs(dateStr);
-      return date.isValid() ? date.format('dddd') : dateStr;
-    });
 
   if (labels.length === 0) return '';
   if (labels.length === 1) return labels[0];
@@ -552,10 +539,55 @@ export async function flushCloseOutSessionNotification({
   return { shown: true, days: completeSessionDays };
 }
 
+function formatIncompleteDayNamesPhrase(days = []) {
+  const labels = [...days]
+    .filter((day) => day?.date)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .map((day) => {
+      const parsed = dayjs(day.date);
+      return parsed.isValid() ? parsed.format('dddd') : day.date;
+    });
+
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+function isCurrentCalendarWeek(weekStart) {
+  return weekStart.isSame(dayjs().startOf('week'), 'day');
+}
+
+function persistPreviousWeekCloseout(previousWeekStart, incompleteDays = []) {
+  const state = useStore.getState();
+  const restaurantId =
+    state.restaurantId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('restaurant_id') : null);
+  const locationId =
+    state.selectedLocationId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_location_id') : null);
+  const scopeKey = getFindingsScopeKey(restaurantId, locationId);
+
+  const exceptions = incompleteDays.map((day) => ({
+    date: day.date,
+    missing: day.missingCategories || [],
+  }));
+  const hasExceptions = exceptions.some((item) => (item.missing || []).length > 0);
+
+  markWeekClosedLocal(scopeKey, previousWeekStart, {
+    status: hasExceptions ? 'closed_with_exceptions' : 'closed',
+    closed_at: new Date().toISOString(),
+    exceptions,
+  });
+}
+
 /**
- * Warn if the week immediately before the selected week still has incomplete
- * open days. Runs for any selected week (not only the current calendar week).
- * Does not block — user may proceed anyway.
+ * Warn if the week immediately before the *current calendar week* still has
+ * incomplete open days. Past weeks are not checked, so reviewing last week
+ * does not bounce the user to the week before that.
+ *
+ * Does not block — user may proceed anyway, review last week, or mark it complete.
+ * Mark complete does not write $0 into missing Sales / COGS / Labor.
  *
  * Duplicate clicks while a check is in flight (or a close-out modal is open)
  * are ignored and do not call onProceed.
@@ -564,7 +596,7 @@ export async function flushCloseOutSessionNotification({
  *   (either no warning, or user already dismissed / Proceed Anyway was chosen
  *   synchronously because the warning was previously dismissed).
  *   false if a warning modal was shown (Proceed Anyway may still call onProceed
- *   later), user chose Complete Previous Week, or a duplicate click was ignored.
+ *   later), user chose Review previous week, or a duplicate click was ignored.
  */
 export async function maybeWarnPreviousWeekIncomplete({
   weekStartDate,
@@ -581,6 +613,11 @@ export async function maybeWarnPreviousWeekIncomplete({
 
   const weekStart = dayjs(weekStartDate).startOf('week');
   if (!weekStart.isValid()) {
+    proceed();
+    return true;
+  }
+
+  if (!isCurrentCalendarWeek(weekStart)) {
     proceed();
     return true;
   }
@@ -606,6 +643,11 @@ export async function maybeWarnPreviousWeekIncomplete({
   try {
     const previousWeekStart = weekStart.subtract(1, 'week').startOf('week').format('YYYY-MM-DD');
 
+    if (isWeekClosedLocal(scopeKey, previousWeekStart)) {
+      proceed();
+      return true;
+    }
+
     let previousWeekData = null;
     try {
       previousWeekData = await fetchDashboardDataForWeek(previousWeekStart);
@@ -620,18 +662,30 @@ export async function maybeWarnPreviousWeekIncomplete({
       return true;
     }
 
+    if (isWeekMarkedClosedFromDashboard(previousWeekData)) {
+      proceed();
+      return true;
+    }
+
     const incompleteDays = getIncompleteOpenDaysFromDashboard(previousWeekData);
     if (incompleteDays.length === 0) {
       proceed();
       return true;
     }
 
-    const daysPhrase = formatDayNamesPhrase(incompleteDays.map((day) => day.date));
+    const daysPhrase = formatIncompleteDayNamesPhrase(incompleteDays);
 
     closeOutModalOpen = true;
     openedModal = true;
 
-    Modal.confirm({
+    const releaseModal = () => {
+      closeOutModalOpen = false;
+      previousWeekWarningInFlight = false;
+    };
+
+    let markingComplete = false;
+
+    const modal = Modal.confirm({
       title: 'Previous week incomplete',
       content: createElement(
         'div',
@@ -644,36 +698,75 @@ export async function maybeWarnPreviousWeekIncomplete({
         createElement('p', { style: { marginTop: 8, fontWeight: 600 } }, daysPhrase),
         createElement(
           'p',
-          { style: { marginTop: 12 } },
-          'Would you like to return and complete these days, or proceed with this week?'
+          { style: { marginTop: 12, color: '#595959' } },
+          'To close a week, add Sales, Labor, and COGS for each open day. You can also mark the week closed.'
         )
       ),
-      okText: 'Complete Previous Week',
-      cancelText: 'Proceed Anyway',
       centered: true,
       closable: false,
       maskClosable: false,
-      onOk: () => {
-        closeOutModalOpen = false;
-        previousWeekWarningInFlight = false;
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent(NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT, {
-              detail: { weekStart: previousWeekStart },
-            })
-          );
-        }
-      },
-      onCancel: () => {
-        previousWeekWarningDismissed.add(dismissKey);
-        closeOutModalOpen = false;
-        previousWeekWarningInFlight = false;
-        proceed();
-      },
-      afterClose: () => {
-        closeOutModalOpen = false;
-        previousWeekWarningInFlight = false;
-      },
+      okCancel: false,
+      footer: createElement(
+        'div',
+        {
+          style: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 8,
+            width: '100%',
+          },
+        },
+        createElement(
+          Button,
+          {
+            block: true,
+            onClick: () => {
+              previousWeekWarningDismissed.add(dismissKey);
+              releaseModal();
+              modal.destroy();
+              proceed();
+            },
+          },
+          'Proceed anyway'
+        ),
+        createElement(
+          Button,
+          {
+            block: true,
+            onClick: () => {
+              releaseModal();
+              modal.destroy();
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(
+                  new CustomEvent(NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT, {
+                    detail: { weekStart: previousWeekStart },
+                  })
+                );
+              }
+            },
+          },
+          'Review previous week'
+        ),
+        createElement(
+          Button,
+          {
+            type: 'primary',
+            block: true,
+            style: { gridColumn: '1 / -1' },
+            onClick: () => {
+              if (markingComplete) return;
+              markingComplete = true;
+              persistPreviousWeekCloseout(previousWeekStart, incompleteDays);
+              releaseModal();
+              modal.destroy();
+              message.success('Previous week marked closed.');
+              proceed();
+            },
+          },
+          'Mark previous week as closed'
+        )
+      ),
+      afterClose: releaseModal,
     });
 
     // Modal is open; user may Proceed Anyway later via onCancel → onProceed.

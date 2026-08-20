@@ -50,6 +50,37 @@ function toPositiveNumber(value) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
+/** Sales / COGS / Labor still missing for an open day (0 and empty both count as missing). */
+export function getMissingCloseOutCategories(entry) {
+  if (!entry || !isRestaurantOpenOnEntry(entry)) return [];
+
+  const missing = [];
+  if (toPositiveNumber(entry['Sales Performance']?.net_sales_actual) <= 0) missing.push('Sales');
+  if (toPositiveNumber(entry['COGS Performance']?.cogs_actual) <= 0) missing.push('COGS');
+  const hasLabor =
+    toPositiveNumber(entry['Labor Performance']?.actual_labor_dollars) > 0 ||
+    toPositiveNumber(entry['Labor Performance']?.labor_hours_actual) > 0;
+  if (!hasLabor) missing.push('Labor');
+  return missing;
+}
+
+export function getWeekCloseoutRecord(dashboardData) {
+  if (!dashboardData || typeof dashboardData !== 'object') return null;
+  const root =
+    dashboardData.data && typeof dashboardData.data === 'object' && !Array.isArray(dashboardData.data)
+      ? dashboardData.data
+      : dashboardData;
+  return root['Week Closeout'] || root.week_closeout || root.weekCloseout || null;
+}
+
+export function isWeekMarkedClosedFromDashboard(dashboardData) {
+  const record = getWeekCloseoutRecord(dashboardData);
+  if (!record || typeof record !== 'object') return false;
+  if (record.is_closed === true) return true;
+  const status = String(record.status || record.week_status || '').toLowerCase();
+  return status === 'closed' || status === 'closed_with_exceptions';
+}
+
 /**
  * Day complete when open and that date has Sales + COGS + Labor actuals.
  * Values must be > 0 so untouched week rows saved as 0 do not count as complete.
@@ -180,6 +211,7 @@ export function getIncompleteOpenDaysFromDashboard(dashboardData) {
     .map((entry) => ({
       date: normalizeCloseOutDate(entry.date),
       fingerprint: getDayCloseOutFingerprint(entry),
+      missingCategories: getMissingCloseOutCategories(entry),
     }))
     .filter((day) => day.date)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
