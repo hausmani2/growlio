@@ -2569,7 +2569,7 @@ const FoodCostingPage = () => {
               size="small"
               pagination={false}
               dataSource={invoiceLines}
-              scroll={{ x: 900 }}
+              scroll={{ x: 1200 }}
               columns={[
                 {
                   title: 'Invoice item',
@@ -2617,6 +2617,7 @@ const FoodCostingPage = () => {
                   render: (value, record, index) => (
                     <InputNumber
                       className="w-full"
+                      controls={false}
                       min={0}
                       value={value}
                       onChange={(val) => {
@@ -2652,14 +2653,14 @@ const FoodCostingPage = () => {
                 {
                   title: 'Total $',
                   dataIndex: 'total_cost',
-                  width: 110,
+                  width: 150,
                   render: (value, record, index) => (
                     <InputNumber
                       className="w-full"
+                      controls={false}
                       min={0}
                       step={0.01}
                       precision={2}
-                      stringMode
                       value={value}
                       onChange={(val) => {
                         const next = [...invoiceLines];
@@ -2672,14 +2673,14 @@ const FoodCostingPage = () => {
                 {
                   title: '$/oz',
                   dataIndex: 'cost_per_oz',
-                  width: 90,
+                  width: 100,
                   render: (v) =>
                     v != null ? `$${Number(v).toFixed(4)}` : '—',
                 },
                 {
                   title: 'Matched cost',
                   dataIndex: 'matched_unit_cost',
-                  width: 110,
+                  width: 120,
                   render: (v) =>
                     v != null ? `$${Number(v).toFixed(4)}` : '—',
                 },
