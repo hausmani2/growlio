@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, message } from 'antd';
 import Lock from '../../../assets/svgs/lock.svg';
@@ -17,11 +17,6 @@ const SetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
-  const canSubmit = useMemo(
-    () => Boolean(token) && password.length >= 8 && password === confirmPassword,
-    [token, password, confirmPassword]
-  );
 
   const applyAuth = (payload) => {
     const { access, refresh, ...userData } = payload?.data || payload || {};
@@ -147,13 +142,17 @@ const SetPassword = () => {
                   setPassword(e.target.value);
                   if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
                 }}
-                placeholder="At least 8 characters"
+                placeholder="Enter password"
                 prefix={<img src={Lock} alt="" className="h-5 w-5" />}
                 className="!h-11"
                 status={errors.password ? 'error' : ''}
               />
-              {errors.password && (
+              {errors.password ? (
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              ) : (
+                <p className="text-gray-500 text-sm mt-1">
+                  Password must be at least 8 characters
+                </p>
               )}
             </div>
             <div>
@@ -191,7 +190,6 @@ const SetPassword = () => {
             htmlType="submit"
             size="large"
             loading={loading}
-            disabled={!canSubmit}
             className="w-full mt-6 h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0"
           >
             Save password & continue
