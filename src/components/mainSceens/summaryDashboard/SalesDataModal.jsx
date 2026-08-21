@@ -967,12 +967,27 @@ const SalesDataModal = ({
         }
       }
 
-      // Transform data to API format with proper null checks
-      const transformedData = {
-        week_start: weekStartSunday,
-        section: "Sales Performance",
-        section_data: {
-          weekly: {
+      const toRestaurantOpen = (value) => {
+        if (typeof value === 'boolean') {
+          return value ? 1 : 0;
+        }
+        if (value === null || value === undefined || value === false) {
+          return 0;
+        }
+        if (typeof value === 'string') {
+          return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+        }
+        return value !== 0 ? 1 : 0;
+      };
+
+      // Budget page (Edit Budget) must not send actual sales/tickets/third-party as 0,
+      // or Close Out Your Days data for that week gets overwritten.
+      const weeklyPayload = autoOpenFromSummary
+        ? {
+            sales_budget: (weeklyTotals.budgetedSales || 0).toFixed(2),
+            average_hourly_rate: (formData.weeklyTotals.average_hourly_rate || 0).toFixed(2),
+          }
+        : {
             sales_budget: (weeklyTotals.budgetedSales || 0).toFixed(2),
             actual_sales_in_store: (weeklyTotals.actualSalesInStore || 0).toFixed(2),
             actual_sales_app_online: (weeklyTotals.actualSalesAppOnline || 0).toFixed(2),
@@ -980,14 +995,28 @@ const SalesDataModal = ({
             daily_tickets: weeklyTotals.dailyTickets || 0,
             average_daily_ticket: weeklyTotals.dailyTickets > 0 ? ((weeklyTotals.netSalesActual || 0) / weeklyTotals.dailyTickets).toFixed(2) : '0.00',
             average_hourly_rate: (formData.weeklyTotals.average_hourly_rate || 0).toFixed(2),
-            // Add dynamic provider fields to weekly data
             ...currentProviders.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = (weeklyTotals[providerKey] || 0).toFixed(2);
               return acc;
             }, {})
-          },
+          };
+
+      const transformedData = {
+        week_start: weekStartSunday,
+        section: "Sales Performance",
+        section_data: {
+          weekly: weeklyPayload,
           daily: completeDailyData.map(day => {
+            if (autoOpenFromSummary) {
+              return {
+                date: day.date.format('YYYY-MM-DD'),
+                day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
+                sales_budget: (parseFloat(day.budgetedSales) || 0).toFixed(2),
+                restaurant_open: toRestaurantOpen(day.restaurant_open),
+              };
+            }
+
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
@@ -995,22 +1024,7 @@ const SalesDataModal = ({
               actual_sales_in_store: (parseFloat(day.actualSalesInStore) || 0).toFixed(2),
               actual_sales_app_online: (parseFloat(day.actualSalesAppOnline) || 0).toFixed(2),
               daily_tickets: parseFloat(day.dailyTickets) || 0,
-              restaurant_open: (() => {
-                const value = day.restaurant_open;
-
-                // Ensure we always send integer values (0 or 1)
-                if (typeof value === 'boolean') {
-                  return value ? 1 : 0;
-                }
-                if (value === null || value === undefined || value === false) {
-                  return 0;
-                }
-                if (typeof value === 'string') {
-                  return value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
-                }
-                return value !== 0 ? 1 : 0;
-              })(), // Include the new field
-              // Add dynamic provider fields to daily data
+              restaurant_open: toRestaurantOpen(day.restaurant_open),
               ...currentProviders.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                 acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = (parseFloat(day[providerKey]) || 0).toFixed(2);
@@ -1018,7 +1032,6 @@ const SalesDataModal = ({
               }, {})
             };
 
-            // Calculate net sales actual including dynamic providers
             const baseSales = (parseFloat(day.actualSalesInStore) || 0) + (parseFloat(day.actualSalesAppOnline) || 0);
             const providerSales = currentProviders.reduce((sum, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
