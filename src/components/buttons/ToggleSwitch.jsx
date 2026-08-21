@@ -1,6 +1,15 @@
 import React from 'react';
+import { Tooltip } from 'antd';
 
-const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '', disabled = false }) => {
+const ToggleSwitch = ({
+  isOn,
+  setIsOn,
+  size = 'default',
+  className = '',
+  disabled = false,
+  locked = false,
+  tooltip,
+}) => {
     const sizeClasses = {
         small: 'w-[28px] h-[28px]',
         default: 'w-[36px] h-[24px]',
@@ -19,10 +28,19 @@ const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '', disable
         large: { on: 'ml-[22px]', off: 'ml-[2px]' }
     };
 
-    return (
+    const cursorClass = disabled
+      ? 'cursor-not-allowed opacity-50'
+      : locked
+        ? 'cursor-help'
+        : 'cursor-pointer';
+
+    const switchEl = (
         <div
-            onClick={() => !disabled && setIsOn(!isOn)}
-            className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${sizeClasses[size]} rounded-[8px] flex items-center transition-colors duration-300 shadow-md ${isOn ? 'bg-orange-600' : 'bg-gray-200'} ${className}`}
+            onClick={() => {
+              if (disabled) return;
+              setIsOn(!isOn);
+            }}
+            className={`${cursorClass} ${sizeClasses[size]} rounded-[8px] flex items-center transition-colors duration-300 shadow-md ${isOn ? 'bg-orange-600' : 'bg-gray-200'} ${className}`}
             style={{ boxShadow: '0 8px 16px 0 rgba(0,0,0,0.10)' }}
         >
             <div
@@ -30,6 +48,19 @@ const ToggleSwitch = ({ isOn, setIsOn, size = 'default', className = '', disable
             ></div>
         </div>
     );
+
+    if (!tooltip) return switchEl;
+
+    return (
+      <Tooltip
+        title={tooltip}
+        mouseEnterDelay={0}
+        mouseLeaveDelay={0}
+        placement="top"
+      >
+        <span className="inline-flex">{switchEl}</span>
+      </Tooltip>
+    );
 };
 
-export default ToggleSwitch; 
+export default ToggleSwitch;

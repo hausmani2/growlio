@@ -25,6 +25,11 @@ import {
   markSalesEnteredDates,
   normalizeCloseOutDate,
 } from '../../../utils/salesEnteredGate';
+import {
+  CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE,
+  dayHasExistingOperatingData,
+  isDayCurrentlyOpen,
+} from '../../../utils/dayCloseGuard';
 import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 const { Title, Text } = Typography;
 
@@ -2039,6 +2044,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         return;
       }
 
+      if (field === 'restaurant_open' && (value === 0 || value === false) && isDayCurrentlyOpen(record)) {
+        if (dayHasExistingOperatingData(record, dashboardData)) {
+          message.warning(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+          return;
+        }
+      }
+
       // Track intentional day edits (supports marking valid $0 sales days)
       const dateKey = record?.date?.format
         ? record.date.format('YYYY-MM-DD')
@@ -2457,6 +2469,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   width: 100,
                   render: (value, record, index) => {
                     const isFuture = isFutureDate(record.date);
+                    const closeBlocked = isDayCurrentlyOpen(record) && dayHasExistingOperatingData(record, dashboardData);
                     return (
                       <div className="flex items-center gap-2" data-guidance="close-your-days">
                         <ToggleSwitch
@@ -2466,11 +2479,17 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               message.warning(`Cannot change restaurant status for ${record.dayName} - This date is in the future.`);
                               return;
                             }
+                            if (!isOn && closeBlocked) {
+                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              return;
+                            }
                             const newValue = isOn ? 1 : 0;
                             handleDailyDataChange(index, 'restaurant_open', newValue, record);
                           }}
                           size="small"
                           disabled={isFuture}
+                          locked={closeBlocked}
+                          tooltip={closeBlocked ? CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE : undefined}
                         />
                         <span className="text-xs text-gray-600">
                           {value === 1 ? 'Open' : 'Closed'}

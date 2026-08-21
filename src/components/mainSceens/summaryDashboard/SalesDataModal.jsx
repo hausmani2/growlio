@@ -8,6 +8,11 @@ import useStore from '../../../store/store';
 import { apiGet } from '../../../utils/axiosInterceptors';
 import ToggleSwitch from '../../buttons/ToggleSwitch';
 import { CalendarHelpers } from '../../../utils/CalendarHelpers';
+import {
+  CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE,
+  dayHasExistingOperatingData,
+  isDayCurrentlyOpen,
+} from '../../../utils/dayCloseGuard';
 
 const getSummaryEntries = (summary) => {
   if (Array.isArray(summary?.data)) return summary.data;
@@ -40,7 +45,8 @@ const SalesDataModal = ({
     getRestaurentGoal,
     dashboardSummaryData,
     fetchDashboardSummary,
-    hasAverageHourlyRateForWeek
+    hasAverageHourlyRateForWeek,
+    dashboardData,
   } = useStore();
 
   // Get providers from onboarding data
@@ -709,6 +715,13 @@ const SalesDataModal = ({
     const newDailyData = [...formData.dailyData];
     const currentDay = newDailyData[dayIndex];
 
+    if (field === 'restaurant_open' && (value === 0 || value === false) && isDayCurrentlyOpen(currentDay)) {
+      if (dayHasExistingOperatingData(currentDay, dashboardData)) {
+        message.warning(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+        return;
+      }
+    }
+
     // When toggling day to closed, set all that day's input values to zero
     if (field === 'restaurant_open' && (value === 0 || value === false)) {
       console.log('[SalesDataModal] Toggle day to CLOSED, zeroing row', { dayIndex, key: currentDay?.key });
@@ -1172,6 +1185,11 @@ const SalesDataModal = ({
     return record.restaurant_open === 0;
   };
 
+  const cannotCloseDay = (record) => (
+    isDayCurrentlyOpen(record) &&
+    dayHasExistingOperatingData(record, dashboardData)
+  );
+
   // Check if a date is in the future (after today)
   // Returns true for tomorrow and beyond, false for today and past dates
   const isFutureDate = (date) => {
@@ -1626,16 +1644,21 @@ const SalesDataModal = ({
                   key: 'restaurant_open',
                   width: 140,
                   render: (isOpen, record, index) => {
-                    const isFuture = isFutureDate(record.date);
+                    const closeBlocked = cannotCloseDay(record);
                     return (
                       <div className="flex items-center gap-3 min-w-[140px]">
                         <ToggleSwitch
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
-                            // Allow restaurant_open toggle for future dates (needed for budget planning)
+                            if (!checked && closeBlocked) {
+                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              return;
+                            }
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
                           }}
                           size="large"
+                          locked={closeBlocked}
+                          tooltip={closeBlocked ? CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE : undefined}
                         />
                         <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
                           {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
@@ -1714,16 +1737,21 @@ const SalesDataModal = ({
                   key: 'restaurant_open',
                   width: 140,
                   render: (isOpen, record, index) => {
-                    const isFuture = isFutureDate(record.date);
+                    const closeBlocked = cannotCloseDay(record);
                     return (
                       <div className="flex items-center gap-3 min-w-[140px]">
                         <ToggleSwitch
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
-                            // Allow restaurant_open toggle for future dates (needed for budget planning)
+                            if (!checked && closeBlocked) {
+                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              return;
+                            }
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
                           }}
                           size="large"
+                          locked={closeBlocked}
+                          tooltip={closeBlocked ? CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE : undefined}
                         />
                         <span className={`text-xs font-medium ${(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'text-green-600' : 'text-red-600'}`}>
                           {(typeof isOpen === 'boolean' ? isOpen : isOpen === 1) ? 'Open' : 'Closed'}
