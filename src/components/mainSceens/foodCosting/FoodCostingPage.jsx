@@ -94,6 +94,27 @@ const UNIT_OPTIONS = [
   { value: 'each', label: 'each' },
 ];
 
+const WEIGHT_TO_G = {
+  g: 1,
+  oz: 28.3495,
+  kg: 1000,
+};
+const VOLUME_TO_ML = { ml: 1, mL: 1, l: 1000 };
+const qtyInCostUnit = (qty, fromUnit, toUnit) => {
+  const amount = Number(qty);
+  if (!(amount >= 0) || Number.isNaN(amount)) return 0;
+  const src = String(fromUnit || '').toLowerCase();
+  const dst = String(toUnit || '').toLowerCase();
+  if (!dst || src === dst) return amount;
+  if (WEIGHT_TO_G[src] != null && WEIGHT_TO_G[dst] != null) {
+    return (amount * WEIGHT_TO_G[src]) / WEIGHT_TO_G[dst];
+  }
+  if (VOLUME_TO_ML[src] != null && VOLUME_TO_ML[dst] != null) {
+    return (amount * VOLUME_TO_ML[src]) / VOLUME_TO_ML[dst];
+  }
+  return amount;
+};
+
 const handleImageFileSelect = (file, setFile) => {
   const sizeError = validateImageFileSize(file);
   if (sizeError) {
@@ -1910,7 +1931,11 @@ const FoodCostingPage = () => {
                           const unitCost = match
                             ? Number(match.cost_per_standardized_unit || 0)
                             : 0;
-                          const qty = Number(line.quantity || 0);
+                          const qty = qtyInCostUnit(
+                            line.quantity,
+                            line.unit,
+                            match?.standardized_unit
+                          );
                           const lineCost = unitCost * qty;
                           if (!match) {
                             return line.name ? (
