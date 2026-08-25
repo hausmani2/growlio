@@ -205,6 +205,14 @@ const MenuProfitabilitySimulator = () => {
         changes: payload,
       });
       setPreview(result);
+      if (result?.current_totals) {
+        setBaseline((prev) => ({
+          ...(prev || {}),
+          totals: result.current_totals,
+          sales_meta: result.sales_meta || prev?.sales_meta,
+          items: result.current_items || prev?.items,
+        }));
+      }
       if (result?.warnings?.length) message.warning(result.warnings[0]);
       else message.success('Simulation preview ready');
     } catch (error) {

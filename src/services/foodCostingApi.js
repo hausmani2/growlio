@@ -78,6 +78,15 @@ export const createIngredient = async (payload) => {
   return res.data;
 };
 
+export const estimateIngredientYield = async (payload) => {
+  const { restaurant_id } = withIds();
+  const res = await apiPost('/food_costing/ingredients/estimate-yield/', {
+    ...payload,
+    restaurant_id,
+  });
+  return res.data;
+};
+
 export const updateIngredient = async (id, payload) => {
   const res = await apiPatch(`/food_costing/ingredients/${id}/`, payload);
   return res.data;

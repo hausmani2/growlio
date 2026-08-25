@@ -59,6 +59,7 @@ import {
   updateVendor,
 } from '../../../services/foodCostingApi';
 import MenuProfitabilitySimulator from './MenuProfitabilitySimulator';
+import IngredientEntryModal from './IngredientEntryModal';
 import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
 import {
   ACCEPT_IMAGE_OR_PDF,
@@ -87,66 +88,31 @@ const confidenceTag = (score) => {
 
 const UNIT_OPTIONS = [
   { value: 'oz', label: 'oz' },
-  { value: 'mL', label: 'mL' },
-  { value: 'kg', label: 'kg' },
-  { value: 'each', label: 'each' },
-];
-
-const PURCHASE_CONTENT_UNIT_OPTIONS = [
-  { value: 'lb', label: 'lb' },
-  { value: 'oz', label: 'oz' },
-  { value: 'kg', label: 'kg' },
   { value: 'g', label: 'g' },
-  { value: 'gal', label: 'gal' },
-  { value: 'L', label: 'L' },
   { value: 'mL', label: 'mL' },
+  { value: 'kg', label: 'kg' },
   { value: 'each', label: 'each' },
 ];
 
-const TO_OZ = { oz: 1, ounce: 1, ounces: 1, lb: 16, lbs: 16, pound: 16, pounds: 16, g: 0.03527396, gram: 0.03527396, grams: 0.03527396 };
-const TO_ML = { ml: 1, milliliter: 1, milliliters: 1, l: 1000, liter: 1000, liters: 1000, gal: 3785.41, gallon: 3785.41, gallons: 3785.41 };
-const TO_KG = { kg: 1, kilogram: 1, kilograms: 1 };
-
-const previewPurchaseConversion = ({
-  packQty = 1,
-  contentsQty,
-  contentsUnit,
-  totalCost,
-  targetUnit = 'oz',
-  yieldPercent,
-}) => {
-  const pack = Number(packQty || 1);
-  const contents = Number(contentsQty);
-  const cost = Number(totalCost);
-  if (!(contents > 0) || !(cost >= 0) || Number.isNaN(cost)) return null;
-  const raw = String(contentsUnit || 'oz').trim().toLowerCase().replace('.', '');
-  let qty = pack * contents;
-  let unit = targetUnit || 'oz';
-  if (TO_OZ[raw] != null) {
-    qty = qty * TO_OZ[raw];
-    unit = 'oz';
-  } else if (TO_ML[raw] != null) {
-    qty = qty * TO_ML[raw];
-    unit = 'mL';
-  } else if (TO_KG[raw] != null) {
-    qty = qty * TO_KG[raw];
-    unit = 'kg';
-  } else if (['each', 'ea', 'pc', 'pcs'].includes(raw)) {
-    unit = 'each';
+const WEIGHT_TO_G = {
+  g: 1,
+  oz: 28.3495,
+  kg: 1000,
+};
+const VOLUME_TO_ML = { ml: 1, mL: 1, l: 1000 };
+const qtyInCostUnit = (qty, fromUnit, toUnit) => {
+  const amount = Number(qty);
+  if (!(amount >= 0) || Number.isNaN(amount)) return 0;
+  const src = String(fromUnit || '').toLowerCase();
+  const dst = String(toUnit || '').toLowerCase();
+  if (!dst || src === dst) return amount;
+  if (WEIGHT_TO_G[src] != null && WEIGHT_TO_G[dst] != null) {
+    return (amount * WEIGHT_TO_G[src]) / WEIGHT_TO_G[dst];
   }
-  if (targetUnit === 'oz' && unit === 'kg') {
-    qty *= 35.27396;
-    unit = 'oz';
+  if (VOLUME_TO_ML[src] != null && VOLUME_TO_ML[dst] != null) {
+    return (amount * VOLUME_TO_ML[src]) / VOLUME_TO_ML[dst];
   }
-  let divisor = qty;
-  const yp = Number(yieldPercent);
-  if (yp > 0) divisor = qty * (yp / 100);
-  if (!(divisor > 0)) return null;
-  return {
-    purchasedQty: qty,
-    unit,
-    costPerUnit: cost / divisor,
-  };
+  return amount;
 };
 
 const handleImageFileSelect = (file, setFile) => {
@@ -193,7 +159,6 @@ const FoodCostingPage = () => {
 
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
-  const [ingredientForm] = Form.useForm();
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [ingredientCategory, setIngredientCategory] = useState('');
   const [ingredientOrdering, setIngredientOrdering] = useState('name');
@@ -681,38 +646,21 @@ const FoodCostingPage = () => {
 
   const openCreateIngredient = () => {
     setEditingIngredient(null);
-    ingredientForm.resetFields();
-    ingredientForm.setFieldsValue({
-      standardized_unit: 'oz',
-      purchase_pack_qty: 1,
-      purchase_contents_unit: 'lb',
-      cost_per_standardized_unit: 0,
-      is_estimated_cost: true,
-    });
     setIngredientModalOpen(true);
   };
 
   const openEditIngredient = (record) => {
     setEditingIngredient(record);
-    ingredientForm.setFieldsValue(record);
     setIngredientModalOpen(true);
   };
 
-  const saveIngredient = async () => {
-    try {
-      const values = await ingredientForm.validateFields();
-      if (editingIngredient) {
-        await updateIngredient(editingIngredient.id, values);
-        message.success('Ingredient updated');
-      } else {
-        await createIngredient(values);
-        message.success('Ingredient created');
-      }
-      setIngredientModalOpen(false);
-      loadAll();
-    } catch (error) {
-      if (error?.errorFields) return;
-      message.error(error?.response?.data?.error || 'Failed to save ingredient');
+  const persistIngredient = async (payload, editing) => {
+    if (editing) {
+      await updateIngredient(editing.id, payload);
+      message.success('Ingredient updated');
+    } else {
+      await createIngredient(payload);
+      message.success('Ingredient created');
     }
   };
 
@@ -1042,13 +990,34 @@ const FoodCostingPage = () => {
     {
       title: 'Purchase',
       key: 'purchase',
-      render: (_, r) =>
-        r.purchase_unit_label ||
-        (r.purchase_contents_qty
-          ? `${r.purchase_pack_qty || 1} × ${r.purchase_contents_qty} ${r.purchase_contents_unit || ''}`
-          : '—'),
+      render: (_, r) => {
+        const inner =
+          r.purchase_inner_pack_qty && r.purchase_inner_pack_type
+            ? `${r.purchase_inner_pack_qty} ${r.purchase_inner_pack_type}`
+            : '';
+        const contents = r.purchase_contents_qty
+          ? `${r.purchase_contents_qty} ${r.purchase_contents_unit || ''}`.trim()
+          : '';
+        const pack = r.purchase_unit_label || 'case';
+        if (inner && contents) return `${r.purchase_pack_qty || 1} ${pack} · ${inner} · ${contents}`;
+        if (contents) return `${r.purchase_pack_qty || 1} ${pack} · ${contents}`;
+        return r.purchase_unit_label || '—';
+      },
     },
     { title: 'Unit', dataIndex: 'standardized_unit', key: 'unit', width: 90 },
+    {
+      title: 'Yield',
+      key: 'yield',
+      width: 110,
+      render: (_, r) => {
+        const source = r.yield_source;
+        if (source === 'lio_estimate') return <Tag color="orange">LIO est.</Tag>;
+        if (r.yield_percent != null && r.yield_percent !== '') {
+          return `${Number(r.yield_percent).toFixed(1)}%`;
+        }
+        return '—';
+      },
+    },
     {
       title: 'Cost / unit',
       dataIndex: 'cost_per_standardized_unit',
@@ -1811,148 +1780,27 @@ const FoodCostingPage = () => {
         ]}
       />
 
-      {/* Ingredient modal */}
-      <Modal
-        title={editingIngredient ? 'Edit ingredient' : 'Add ingredient'}
+      <IngredientEntryModal
         open={ingredientModalOpen}
-        onCancel={() => setIngredientModalOpen(false)}
-        onOk={saveIngredient}
-        okText="Save"
-        width={640}
-        okButtonProps={{ className: '!bg-[#FF8132] border-none' }}
-        destroyOnClose
-      >
-        <Form form={ingredientForm} layout="vertical" className="mt-4">
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Name is required' }]}
-          >
-            <Input placeholder="Romaine Lettuce" />
-          </Form.Item>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="category" label="Category">
-                <Input placeholder="Produce" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="vendor" label="Vendor">
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="Select vendor"
-                  options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="vendor_item_number" label="Vendor item #">
-            <Input placeholder="Optional SKU" />
-          </Form.Item>
-
-          <Alert
-            className="mb-3"
-            type="info"
-            showIcon
-            message="Enter ingredients as purchased. Growlio converts to recipe unit cost automatically."
-          />
-          <Row gutter={12}>
-            <Col span={8}>
-              <Form.Item name="purchase_unit_label" label="Purchase unit">
-                <Input placeholder="case / bag / can" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="purchase_pack_qty" label="Pack qty">
-                <InputNumber className="w-full" min={0} step={1} placeholder="1" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="purchase_total_cost" label="Total cost ($)">
-                <InputNumber
-                  className="w-full"
-                  min={0}
-                  step={0.01}
-                  precision={2}
-                  stringMode
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="purchase_contents_qty" label="Contents per pack">
-                <InputNumber className="w-full" min={0} step={0.1} placeholder="6" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="purchase_contents_unit" label="Contents unit">
-                <Select options={PURCHASE_CONTENT_UNIT_OPTIONS} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="standardized_unit" label="Recipe costing unit" required>
-                <Select options={UNIT_OPTIONS} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="yield_percent" label="Yield % (optional)">
-                <InputNumber className="w-full" min={0} max={100} step={1} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item shouldUpdate noStyle>
-            {() => {
-              const values = ingredientForm.getFieldsValue();
-              const preview = previewPurchaseConversion({
-                packQty: values.purchase_pack_qty,
-                contentsQty: values.purchase_contents_qty,
-                contentsUnit: values.purchase_contents_unit,
-                totalCost: values.purchase_total_cost,
-                targetUnit: values.standardized_unit || 'oz',
-                yieldPercent: values.yield_percent,
-              });
-              if (!preview) {
-                return (
-                  <p className="text-sm text-gray-500 mb-3">
-                    Enter pack contents and total cost to preview cost per recipe unit.
-                  </p>
-                );
-              }
-              return (
-                <Alert
-                  className="mb-3"
-                  type="success"
-                  showIcon
-                  message={`= ${preview.purchasedQty.toFixed(2)} ${preview.unit} @ $${preview.costPerUnit.toFixed(4)} per ${preview.unit}`}
-                />
-              );
-            }}
-          </Form.Item>
-          <Form.Item
-            name="cost_per_standardized_unit"
-            label="Cost per recipe unit (override)"
-            extra="Leave blank or 0 to auto-calculate from purchase pack above."
-          >
-            <InputNumber className="w-full" min={0} step={0.0001} stringMode />
-          </Form.Item>
-          <Form.Item name="is_catch_weight" label="Catch weight" initialValue={false}>
-            <Select
-              options={[
-                { value: false, label: 'No' },
-                { value: true, label: 'Yes' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="notes" label="Notes">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-        </Form>
-      </Modal>
+        editingIngredient={editingIngredient}
+        ingredients={ingredients}
+        vendors={vendors}
+        onCancel={() => {
+          setIngredientModalOpen(false);
+          setEditingIngredient(null);
+        }}
+        saveIngredient={persistIngredient}
+        onVendorsChanged={loadAll}
+        onSaved={(result) => {
+          if (result?.useExisting) {
+            setEditingIngredient(result.useExisting);
+            return;
+          }
+          setIngredientModalOpen(false);
+          setEditingIngredient(null);
+          loadAll();
+        }}
+      />
 
       {/* Menu item modal */}
       <Modal
@@ -2083,7 +1931,11 @@ const FoodCostingPage = () => {
                           const unitCost = match
                             ? Number(match.cost_per_standardized_unit || 0)
                             : 0;
-                          const qty = Number(line.quantity || 0);
+                          const qty = qtyInCostUnit(
+                            line.quantity,
+                            line.unit,
+                            match?.standardized_unit
+                          );
                           const lineCost = unitCost * qty;
                           if (!match) {
                             return line.name ? (
