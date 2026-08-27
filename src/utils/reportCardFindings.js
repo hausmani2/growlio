@@ -253,6 +253,7 @@ export function countOverGoalFindings(dailyPerformanceData) {
     if (item.cogs_status === 'over_goal' && item.cogs_difference) count += 1;
     if (item.labour_status === 'over_goal' && item.labour_difference) count += 1;
     if (item.expense_status === 'over_goal' && item.expense_difference) count += 1;
+    if (item.rent_status === 'over_goal' && item.rent_difference) count += 1;
   });
   return count;
 }

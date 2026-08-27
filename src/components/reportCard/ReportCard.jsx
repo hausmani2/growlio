@@ -296,11 +296,12 @@ const ReportCard = ({
   title = "Report Card",
   dateLabel = "Last 30 Days (10/30/25 - Present)",
   score = 0,
-  goals = { labor: 30, cogs: 32, rent: 10 },
+  goals = { labor: 30, cogs: 32, rent: 20, operatingExpenses: 10 },
   metrics = {
     labor: { value: 38, amount: 15000, deltaPct: 13 },
     cogs: { value: 31, amount: 12000, deltaPct: 6 },
     rent: { value: 18, amount: 7000, deltaPct: -2 },
+    operatingExpenses: { value: 8, amount: 3000, deltaPct: -1 },
   },
   summary = { sales: 40000, profit: 6000 },
   onDateRangeChange,
@@ -636,6 +637,16 @@ const ReportCard = ({
               amount={metrics.rent?.amount}
               deltaPct={metrics.rent?.deltaPct}
             />
+            <MiniGauge
+              label="Expenses"
+              metricKey="operating_expenses"
+              tooltipsMap={tooltips}
+              goal={goals.operatingExpenses}
+              value={metrics.operatingExpenses?.value}
+              percentage={metrics.operatingExpenses?.percentage}
+              amount={metrics.operatingExpenses?.amount}
+              deltaPct={metrics.operatingExpenses?.deltaPct}
+            />
           </div>
 
           <div className="flex flex-row  items-center justify-center gap-6">
@@ -676,7 +687,7 @@ const ReportCard = ({
       >
         <div className="py-1">
           <p className="text-base text-gray-700 leading-relaxed mb-3">
-            This page summarizes your profitability performance for the selected date range and highlights the biggest drivers (Labor, COGS, and Rent/Expenses).
+            This page summarizes your profitability performance for the selected date range and highlights the biggest drivers (Labor, COGS, Rent, and Operating Expenses).
           </p>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
             <p className="text-sm text-gray-700 m-0">

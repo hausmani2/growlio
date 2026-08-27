@@ -112,7 +112,7 @@ const NotificationBell = () => {
         {!loading && items.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No notifications yet. LIO will alert you after close-out if labor, COGS, or expenses are off track."
+            description="No notifications yet. LIO will alert you after close-out if labor, COGS, rent, or operating expenses are off track."
           />
         ) : null}
 
