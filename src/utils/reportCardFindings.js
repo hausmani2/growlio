@@ -50,20 +50,28 @@ function toPositiveNumber(value) {
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
 
+function hasPositiveSales(entry) {
+  return toPositiveNumber(entry?.['Sales Performance']?.net_sales_actual) > 0;
+}
+
+function hasPositiveCogs(entry) {
+  return toPositiveNumber(entry?.['COGS Performance']?.cogs_actual) > 0;
+}
+
+function hasPositiveLabor(entry) {
+  return (
+    toPositiveNumber(entry?.['Labor Performance']?.actual_labor_dollars) > 0 ||
+    toPositiveNumber(entry?.['Labor Performance']?.labor_hours_actual) > 0
+  );
+}
+
 /**
  * Day complete when open and that date has Sales + COGS + Labor actuals.
  * Values must be > 0 so untouched week rows saved as 0 do not count as complete.
  */
 export function isDayCompleteFromDashboardEntry(entry) {
   if (!entry || !isRestaurantOpenOnEntry(entry)) return false;
-
-  const hasSales = toPositiveNumber(entry['Sales Performance']?.net_sales_actual) > 0;
-  const hasCogs = toPositiveNumber(entry['COGS Performance']?.cogs_actual) > 0;
-  const hasLabor =
-    toPositiveNumber(entry['Labor Performance']?.actual_labor_dollars) > 0 ||
-    toPositiveNumber(entry['Labor Performance']?.labor_hours_actual) > 0;
-
-  return hasSales && hasCogs && hasLabor;
+  return hasPositiveSales(entry) && hasPositiveCogs(entry) && hasPositiveLabor(entry);
 }
 
 export function isDayCompleteFromCloseOut({
@@ -149,13 +157,39 @@ export function getOpenDailyEntries(dashboardData) {
 }
 
 /**
- * Week is complete when every open day has Sales + COGS + Labor actuals.
+ * Actual week completion: every open day has Sales + COGS + Labor actuals.
  * Returns false when there are no open days (nothing to close out).
+ * Do not use this for previous-week incomplete warnings — those use a
+ * looser COGS rule (see shouldWarnAboutPreviousWeek).
  */
 export function isWeekCompleteFromDashboard(dashboardData) {
   const openDays = getOpenDailyEntries(dashboardData);
   if (openDays.length === 0) return false;
   return openDays.every(isDayCompleteFromDashboardEntry);
+}
+
+/**
+ * True when the week has at least one COGS actual > 0 on any day.
+ * Used only by previous-week warning eligibility, not actual week completion.
+ */
+export function weekHasAtLeastOneValidCogsEntry(dashboardData) {
+  return getDailyEntries(dashboardData).some(hasPositiveCogs);
+}
+
+/**
+ * Previous-week warning eligibility (NOT actual week completion):
+ * existing Sales criteria + existing Labor criteria + at least one COGS entry
+ * anywhere in that week. Closed/shut days are excluded from Sales/Labor checks.
+ */
+export function shouldWarnAboutPreviousWeek(dashboardData) {
+  const openDays = getOpenDailyEntries(dashboardData);
+  if (openDays.length === 0) return false;
+
+  const salesComplete = openDays.every(hasPositiveSales);
+  const laborComplete = openDays.every(hasPositiveLabor);
+  const cogsSatisfiedForWarning = weekHasAtLeastOneValidCogsEntry(dashboardData);
+
+  return !salesComplete || !laborComplete || !cogsSatisfiedForWarning;
 }
 
 /** Stable fingerprint of the full week's close-out state (open days only). */
@@ -170,19 +204,43 @@ export function getWeekCloseOutFingerprint(dashboardData) {
     .join(';');
 }
 
-/**
- * Open days that still need Sales, COGS, or Labor — for previous-week warnings.
- * Sorted chronologically.
- */
-export function getIncompleteOpenDaysFromDashboard(dashboardData) {
-  return getOpenDailyEntries(dashboardData)
-    .filter((entry) => !isDayCompleteFromDashboardEntry(entry))
+function mapOpenDaysToIncompleteList(entries) {
+  return entries
     .map((entry) => ({
       date: normalizeCloseOutDate(entry.date),
       fingerprint: getDayCloseOutFingerprint(entry),
     }))
     .filter((day) => day.date)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+/**
+ * Open days that still need Sales, COGS, or Labor under the strict
+ * actual-completion rule (all three required per day). Sorted chronologically.
+ */
+export function getIncompleteOpenDaysFromDashboard(dashboardData) {
+  return mapOpenDaysToIncompleteList(
+    getOpenDailyEntries(dashboardData).filter((entry) => !isDayCompleteFromDashboardEntry(entry))
+  );
+}
+
+/**
+ * Incomplete open days for the previous-week warning list.
+ *
+ * Sales and Labor still use the existing per-day rules.
+ * If the week has at least one valid COGS entry, missing COGS on other days
+ * does not mark those days incomplete for this warning.
+ */
+export function getIncompleteOpenDaysForPreviousWeekWarning(dashboardData) {
+  const cogsSatisfiedForWarning = weekHasAtLeastOneValidCogsEntry(dashboardData);
+
+  return mapOpenDaysToIncompleteList(
+    getOpenDailyEntries(dashboardData).filter((entry) => {
+      if (!hasPositiveSales(entry) || !hasPositiveLabor(entry)) return true;
+      if (!cogsSatisfiedForWarning && !hasPositiveCogs(entry)) return true;
+      return false;
+    })
+  );
 }
 
 /**

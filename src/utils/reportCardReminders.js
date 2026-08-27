@@ -4,15 +4,17 @@ import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import updateLocale from 'dayjs/plugin/updateLocale';
 import useStore from '../store/store';
+import { CalendarHelpers } from './CalendarHelpers';
 import { apiGet } from './axiosInterceptors';
 import {
   getDailyEntries,
   getFindingsScopeKey,
-  getIncompleteOpenDaysFromDashboard,
+  getIncompleteOpenDaysForPreviousWeekWarning,
   getOpenDailyEntries,
   isDayCompleteFromDashboardEntry,
   normalizeCloseOutDate,
   shouldShowWeekCloseOutNotification,
+  shouldWarnAboutPreviousWeek,
   snapshotCloseOutFingerprints,
 } from './reportCardFindings';
 
@@ -289,7 +291,7 @@ export async function maybeShowWeekCloseoutComplete({
   }
 
   const weekContent =
-    'Congratulations! You have successfully completed and closed out the entire week.';
+    'Congratulations! You have successfully closed out the entire week.';
 
   if (canAccessReportCard) {
     Modal.confirm({
@@ -553,9 +555,12 @@ export async function flushCloseOutSessionNotification({
 }
 
 /**
- * Warn if the week immediately before the selected week still has incomplete
- * open days. Runs for any selected week (not only the current calendar week).
- * Does not block — user may proceed anyway.
+ * Warn if the week immediately before the *current* calendar week still fails
+ * previous-week warning eligibility (Sales + Labor + at least one COGS entry).
+ *
+ * Only runs when the selected/viewed week is the actual current week.
+ * Historical week selection and "Complete Previous Week" navigation must not
+ * recursively check older weeks. Does not block — user may proceed anyway.
  *
  * Duplicate clicks while a check is in flight (or a close-out modal is open)
  * are ignored and do not call onProceed.
@@ -581,6 +586,12 @@ export async function maybeWarnPreviousWeekIncomplete({
 
   const weekStart = dayjs(weekStartDate).startOf('week');
   if (!weekStart.isValid()) {
+    proceed();
+    return true;
+  }
+
+  // Reminder is only for entering the current week — never while editing history.
+  if (!CalendarHelpers.isCurrentWeek(weekStart, weekStart.endOf('week'))) {
     proceed();
     return true;
   }
@@ -620,7 +631,12 @@ export async function maybeWarnPreviousWeekIncomplete({
       return true;
     }
 
-    const incompleteDays = getIncompleteOpenDaysFromDashboard(previousWeekData);
+    if (!shouldWarnAboutPreviousWeek(previousWeekData)) {
+      proceed();
+      return true;
+    }
+
+    const incompleteDays = getIncompleteOpenDaysForPreviousWeekWarning(previousWeekData);
     if (incompleteDays.length === 0) {
       proceed();
       return true;

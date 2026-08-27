@@ -1254,7 +1254,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       onConfirm();
     };
 
-    // Any selected week — warn if the immediately previous week is still incomplete
+    // Current week only — warn if the immediately previous week is still incomplete
     await maybeWarnPreviousWeekIncomplete({
       weekStartDate,
       onProceed: showPastWeekWarningThenConfirm,
