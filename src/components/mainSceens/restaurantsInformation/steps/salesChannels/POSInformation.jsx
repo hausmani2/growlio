@@ -172,7 +172,7 @@ const POSInformation = ({ data, updateData, errors = {}, onSaveAndContinue, load
                         >
                             <div className='flex flex-col gap-1 flex-1'>
                                 <span className="text-sm font-semibold text-gray-700">
-                                    Do your third-party delivery orders (like Uber Eats or DoorDash) go directly into your POS?
+                                    Do your third-party delivery orders (like Uber Eats, DoorDash, or EZ Cater) go directly into your POS?
                                 </span>
                             </div>
                             <div className="flex items-center gap-3">

@@ -51,3 +51,28 @@ export const formatPercentage = (value, decimals = 2) => {
   
   return `${value.toFixed(decimals)}%`;
 };
+
+/**
+ * Keep in-progress decimal strings in controlled inputs.
+ * parseFloat("10.0") === 10, so storing a number on each keystroke
+ * makes zeros after the decimal impossible to type.
+ */
+export const sanitizeDecimalInput = (rawValue, maxDecimals = 2) => {
+  if (rawValue === null || rawValue === undefined) return '';
+  let str = String(rawValue).replace(/[^\d.]/g, '');
+  const firstDot = str.indexOf('.');
+  if (firstDot !== -1) {
+    str = str.slice(0, firstDot + 1) + str.slice(firstDot + 1).replace(/\./g, '');
+    if (maxDecimals >= 0) {
+      str = str.slice(0, firstDot + 1 + maxDecimals);
+    }
+  }
+  str = str.replace(/^0+(?=\d)/, '');
+  return str;
+};
+
+export const roundToCents = (value) => {
+  const num = parseFloat(value);
+  if (!Number.isFinite(num)) return 0;
+  return Math.round(num * 100) / 100;
+};

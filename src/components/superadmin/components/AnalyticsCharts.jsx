@@ -292,7 +292,7 @@ const AnalyticsCharts = ({ loading, dashboardData }) => {
                       Third-Party Delivery Integration
                     </Text>
                     <Text type="secondary" className="text-sm">
-                      Do your third-party delivery orders (like Uber Eats or DoorDash) go directly into your POS?
+                      Do your third-party delivery orders (like Uber Eats, DoorDash, or EZ Cater) go directly into your POS?
                     </Text>
                   </div>
                   <div className="space-y-3 mt-4">

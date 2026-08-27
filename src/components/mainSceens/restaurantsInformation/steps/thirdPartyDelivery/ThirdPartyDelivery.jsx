@@ -19,6 +19,7 @@ const ThirdPartyDelivery = ({ data, updateData, errors = {} }) => {
     { value: "Skip The Dishes", label: "Skip The Dishes" },
     { value: "Grubhub", label: "Grubhub" },
     { value: "Uber Eats", label: "Uber Eats" },
+    { value: "EZ Cater", label: "EZ Cater" },
     { value: "Other", label: "Other" },
   ];
 
