@@ -295,7 +295,7 @@ export async function maybeShowWeekCloseoutComplete({
 
   if (canAccessReportCard) {
     Modal.confirm({
-      title: 'Week close-out complete',
+      title: 'Week closed out',
       content: weekContent,
       okText: 'View Report Card',
       cancelText: 'Dismiss',
@@ -314,7 +314,7 @@ export async function maybeShowWeekCloseoutComplete({
   } else {
     // Same Modal.confirm style as owner (warning icon), without Report Card CTA
     Modal.confirm({
-      title: 'Week close-out complete',
+      title: 'Week closed out',
       content: weekContent,
       okText: 'Dismiss',
       okCancel: false,
