@@ -29,6 +29,7 @@ import {
   CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE,
   dayHasExistingOperatingData,
   isDayCurrentlyOpen,
+  showCannotCloseDayWithDataModal,
 } from '../../../utils/dayCloseGuard';
 import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 import { roundToCents, sanitizeDecimalInput } from '../../../utils/formatUtils';
@@ -2047,7 +2048,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
       if (field === 'restaurant_open' && (value === 0 || value === false) && isDayCurrentlyOpen(record)) {
         if (dayHasExistingOperatingData(record, dashboardData)) {
-          message.warning(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+          showCannotCloseDayWithDataModal();
           return;
         }
       }
@@ -2481,7 +2482,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               return;
                             }
                             if (!isOn && closeBlocked) {
-                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              showCannotCloseDayWithDataModal();
                               return;
                             }
                             const newValue = isOn ? 1 : 0;

@@ -1,10 +1,22 @@
+import { Modal } from 'antd';
 import {
   getDailyEntryForDate,
   normalizeCloseOutDate,
 } from './salesEnteredGate';
 
 export const CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE =
-  'Set this day’s sales, labor, and food cost to 0 first, then you can turn it off.';
+  'This day contains actual sales, labor, or COGS data and cannot be closed. Closing this day would cause that data to no longer appear in Growlio.';
+
+export function showCannotCloseDayWithDataModal() {
+  Modal.warning({
+    title: 'This day cannot be closed',
+    content: CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE,
+    okText: 'OK',
+    centered: true,
+    closable: false,
+    maskClosable: false,
+  });
+}
 
 function toNumber(value) {
   if (value === null || value === undefined || value === '' || value === '-') return 0;

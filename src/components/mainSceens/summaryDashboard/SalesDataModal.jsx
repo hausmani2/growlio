@@ -12,6 +12,7 @@ import {
   CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE,
   dayHasExistingOperatingData,
   isDayCurrentlyOpen,
+  showCannotCloseDayWithDataModal,
 } from '../../../utils/dayCloseGuard';
 
 const getSummaryEntries = (summary) => {
@@ -717,7 +718,7 @@ const SalesDataModal = ({
 
     if (field === 'restaurant_open' && (value === 0 || value === false) && isDayCurrentlyOpen(currentDay)) {
       if (dayHasExistingOperatingData(currentDay, dashboardData)) {
-        message.warning(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+        showCannotCloseDayWithDataModal();
         return;
       }
     }
@@ -1664,7 +1665,7 @@ const SalesDataModal = ({
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
                             if (!checked && closeBlocked) {
-                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              showCannotCloseDayWithDataModal();
                               return;
                             }
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
@@ -1757,7 +1758,7 @@ const SalesDataModal = ({
                           isOn={typeof isOpen === 'boolean' ? isOpen : isOpen === 1}
                           setIsOn={(checked) => {
                             if (!checked && closeBlocked) {
-                              message.info(CANNOT_CLOSE_DAY_WITH_DATA_MESSAGE);
+                              showCannotCloseDayWithDataModal();
                               return;
                             }
                             handleDailyDataChange(index, 'restaurant_open', checked ? 1 : 0);
