@@ -31,6 +31,7 @@ import {
   isDayCurrentlyOpen,
 } from '../../../utils/dayCloseGuard';
 import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
+import { roundToCents, sanitizeDecimalInput } from '../../../utils/formatUtils';
 const { Title, Text } = Typography;
 
 function isDayClosedForWtd(record) {
@@ -843,11 +844,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         section: "Sales Performance",
         section_data: {
           weekly: {
-            sales_budget: Math.round(weeklyGoals.budgetedSales || 0),
-            actual_sales_in_store: Math.round(weeklyGoals.actualSalesInStore || 0),
-            actual_sales_app_online: Math.round(weeklyGoals.actualSalesAppOnline || 0),
-            actual_sales_online: Math.round(weeklyGoals.actualSalesOnline || 0),
-            net_sales_actual: Math.round(weeklyGoals.netSalesActual || 0),
+            sales_budget: roundToCents(weeklyGoals.budgetedSales || 0),
+            actual_sales_in_store: roundToCents(weeklyGoals.actualSalesInStore || 0),
+            actual_sales_app_online: roundToCents(weeklyGoals.actualSalesAppOnline || 0),
+            actual_sales_online: roundToCents(weeklyGoals.actualSalesOnline || 0),
+            net_sales_actual: roundToCents(weeklyGoals.netSalesActual || 0),
             actual_vs_budget_sales: (() => {
               const wtdVar = computeWtdActualVsBudgetVariance(completeDailyData, providerList);
               return wtdVar.percent != null ? wtdVar.percent : 0;
@@ -857,7 +858,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             // Add dynamic provider fields to weekly data
             ...providerList.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-              acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(weeklyGoals[providerKey] || 0);
+              acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = roundToCents(weeklyGoals[providerKey] || 0);
               return acc;
             }, {})
           },
@@ -865,10 +866,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1),
-              sales_budget: Math.round(parseFloat(day.budgetedSales) || 0),
-              actual_sales_in_store: Math.round(parseFloat(day.actualSalesInStore) || 0),
-              actual_sales_app_online: Math.round(parseFloat(day.actualSalesAppOnline) || 0),
-              actual_sales_online: Math.round(parseFloat(day.actualSalesOnline) || 0),
+              sales_budget: roundToCents(day.budgetedSales),
+              actual_sales_in_store: roundToCents(day.actualSalesInStore),
+              actual_sales_app_online: roundToCents(day.actualSalesAppOnline),
+              actual_sales_online: roundToCents(day.actualSalesOnline),
               daily_tickets: ensureWholeNumberTickets(day.dailyTickets),
               average_daily_ticket: Math.round(parseFloat(day.averageDailyTicket) || 0),
               restaurant_open: (() => {
@@ -888,7 +889,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               // Add dynamic provider fields to daily data
               ...providerList.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(parseFloat(day[providerKey]) || 0);
+                acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = roundToCents(day[providerKey]);
                 return acc;
               }, {})
             };
@@ -901,7 +902,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               return sum + (parseFloat(day[providerKey]) || 0);
             }, 0);
-            dailyData.net_sales_actual = Math.round(baseSales + providerSales);
+            dailyData.net_sales_actual = roundToCents(baseSales + providerSales);
 
             return dailyData;
           })
@@ -1583,18 +1584,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         section: "Sales Performance",
         section_data: {
           weekly: {
-            sales_budget: Math.round(finalTotals.budgetedSales),
-            actual_sales_in_store: Math.round(finalTotals.actualSalesInStore),
-            actual_sales_app_online: Math.round(finalTotals.actualSalesAppOnline),
-            actual_sales_online: Math.round(finalTotals.actualSalesOnline || 0),
-            net_sales_actual: Math.round(finalTotals.netSalesActual),
+            sales_budget: roundToCents(finalTotals.budgetedSales),
+            actual_sales_in_store: roundToCents(finalTotals.actualSalesInStore),
+            actual_sales_app_online: roundToCents(finalTotals.actualSalesAppOnline),
+            actual_sales_online: roundToCents(finalTotals.actualSalesOnline || 0),
+            net_sales_actual: roundToCents(finalTotals.netSalesActual),
             actual_vs_budget_sales: finalTotals.actualVsBudgetSales || 0,
             daily_tickets: finalTotals.dailyTickets || 0,
             average_daily_ticket: Math.round(finalTotals.averageDailyTicket || 0),
             // Add dynamic provider fields to weekly data
             ...providerList.reduce((acc, provider) => {
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-              acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(finalTotals[providerKey] || 0);
+              acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = roundToCents(finalTotals[providerKey] || 0);
               return acc;
             }, {})
           },
@@ -1602,10 +1603,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
             const dailyData = {
               date: day.date.format('YYYY-MM-DD'),
               day: day.dayName.charAt(0).toUpperCase() + day.dayName.slice(1), // Capitalize first letter
-              sales_budget: Math.round(parseFloat(day.budgetedSales) || 0),
-              actual_sales_in_store: Math.round(parseFloat(day.actualSalesInStore) || 0),
-              actual_sales_app_online: Math.round(parseFloat(day.actualSalesAppOnline) || 0),
-              actual_sales_online: Math.round(parseFloat(day.actualSalesOnline) || 0),
+              sales_budget: roundToCents(day.budgetedSales),
+              actual_sales_in_store: roundToCents(day.actualSalesInStore),
+              actual_sales_app_online: roundToCents(day.actualSalesAppOnline),
+              actual_sales_online: roundToCents(day.actualSalesOnline),
               daily_tickets: ensureWholeNumberTickets(day.dailyTickets),
               average_daily_ticket: Math.round(parseFloat(day.averageDailyTicket) || 0),
               restaurant_open: (() => {
@@ -1625,7 +1626,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               // Add dynamic provider fields to daily data
               ...providerList.reduce((acc, provider) => {
                 const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = Math.round(parseFloat(day[providerKey]) || 0);
+                acc[`actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`] = roundToCents(day[providerKey]);
                 return acc;
               }, {})
             };
@@ -1638,7 +1639,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
               const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
               return sum + (parseFloat(day[providerKey]) || 0);
             }, 0);
-            dailyData.net_sales_actual = Math.round(baseSales + providerSales);
+            dailyData.net_sales_actual = roundToCents(baseSales + providerSales);
 
             return dailyData;
           })
@@ -2168,7 +2169,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - In Store</Text>
                   <Input
                     type='number'
-                    value={Math.round(weekFormData.weeklyTotals.actualSalesInStore || 0)}
+                    value={roundToCents(weekFormData.weeklyTotals.actualSalesInStore || 0)}
                     prefix="$"
                     placeholder="0.00"
                     className="w-full mt-1"
@@ -2189,7 +2190,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - App</Text>
                   <Input
                     type='number'
-                    value={Math.round(weekFormData.weeklyTotals.actualSalesAppOnline || 0)}
+                    value={roundToCents(weekFormData.weeklyTotals.actualSalesAppOnline || 0)}
                     prefix="$"
                     placeholder="0.00"
                     className="w-full mt-1"
@@ -2210,7 +2211,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - Online</Text>
                   <Input
                     type='number'
-                    value={Math.round(weekFormData.weeklyTotals.actualSalesOnline || 0)}
+                    value={roundToCents(weekFormData.weeklyTotals.actualSalesOnline || 0)}
                     prefix="$"
                     placeholder="0.00"
                     className="w-full mt-1"
@@ -2251,7 +2252,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 <Text strong style={{ color: '#434343', fontSize: '13px' }}>Net Sales - Actual</Text>
                 <Input
                   type='number'
-                  value={Math.round(weekFormData.weeklyTotals.netSalesActual || 0)}
+                  value={roundToCents(weekFormData.weeklyTotals.netSalesActual || 0)}
                   prefix="$"
                   placeholder="0.00"
                   className="w-full mt-1"
@@ -2294,7 +2295,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     <Text strong style={{ color: '#434343', fontSize: '13px' }}>Actual Sales - {provider.provider_name}</Text>
                     <Input
                       type='number'
-                      value={Math.round(weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0)}
+                      value={roundToCents(weekFormData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0)}
                       prefix="$"
                       placeholder="0.00"
                       className="w-full mt-1"
@@ -2388,17 +2389,17 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     </Table.Summary.Cell>
                     {salesChannelsConfig.in_store && (
                       <Table.Summary.Cell index={cellIndex++}>
-                        <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesInStore)}</Text>
+                        <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesInStore)}</Text>
                       </Table.Summary.Cell>
                     )}
                     {salesChannelsConfig.from_app && (
                       <Table.Summary.Cell index={cellIndex++}>
-                        <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesAppOnline)}</Text>
+                        <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesAppOnline)}</Text>
                       </Table.Summary.Cell>
                     )}
                     {salesChannelsConfig.online && (
                       <Table.Summary.Cell index={cellIndex++}>
-                        <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesOnline)}</Text>
+                        <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesOnline)}</Text>
                       </Table.Summary.Cell>
                     )}
                     {/* Dynamic Provider Summary Cells */}
@@ -2406,12 +2407,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                       const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                       return (
                         <Table.Summary.Cell key={providerKey} index={cellIndex++}>
-                          <Text strong style={{ color: '#1890ff' }}>${Math.round(totals[providerKey] || 0)}</Text>
+                          <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals[providerKey] || 0)}</Text>
                         </Table.Summary.Cell>
                       );
                     })}
                     <Table.Summary.Cell index={cellIndex++}>
-                      <Text strong style={{ color: '#1890ff' }}>${Math.round(netSalesActualTotal)}</Text>
+                      <Text strong style={{ color: '#1890ff' }}>${roundToCents(netSalesActualTotal)}</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={cellIndex++}>
                       <Text strong style={{ color: '#1890ff' }}>{Math.round(totals.dailyTickets)}</Text>
@@ -2529,9 +2530,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     const isDisabled = isDayClosed(record) || isFuture;
                     return (
                       <Input
-                        type='number'
-                        value={value || 0}
-                        onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
+                        type='text'
+                        inputMode='decimal'
+                        autoComplete='off'
+                        value={value ?? ''}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesInStore', sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -2555,9 +2558,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     const isDisabled = isDayClosed(record) || isFuture;
                     return (
                       <Input
-                        type='number'
-                        value={value || 0}
-                        onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
+                        type='text'
+                        inputMode='decimal'
+                        autoComplete='off'
+                        value={value ?? ''}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesAppOnline', sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -2581,9 +2586,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     const isDisabled = isDayClosed(record) || isFuture;
                     return (
                       <Input
-                        type='number'
-                        value={value || 0}
-                        onChange={(e) => handleDailyDataChange(index, 'actualSalesOnline', parseFloat(e.target.value) || 0, record)}
+                        type='text'
+                        inputMode='decimal'
+                        autoComplete='off'
+                        value={value ?? ''}
+                        onChange={(e) => handleDailyDataChange(index, 'actualSalesOnline', sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -2608,9 +2615,11 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     const isDisabled = isDayClosed(record) || isFuture;
                     return (
                       <Input
-                        type='number'
-                        value={value || 0}
-                        onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
+                        type='text'
+                        inputMode='decimal'
+                        autoComplete='off'
+                        value={value ?? ''}
+                        onChange={(e) => handleDailyDataChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -2975,17 +2984,17 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                 </Table.Summary.Cell>
                                 {salesChannelsConfig.in_store && (
                                   <Table.Summary.Cell index={cellIndex++}>
-                                    <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesInStore)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesInStore)}</Text>
                                   </Table.Summary.Cell>
                                 )}
                                 {salesChannelsConfig.from_app && (
                                   <Table.Summary.Cell index={cellIndex++}>
-                                    <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesAppOnline)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesAppOnline)}</Text>
                                   </Table.Summary.Cell>
                                 )}
                                 {salesChannelsConfig.online && (
                                   <Table.Summary.Cell index={cellIndex++}>
-                                    <Text strong style={{ color: '#1890ff' }}>${Math.round(totals.actualSalesOnline)}</Text>
+                                    <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals.actualSalesOnline)}</Text>
                                   </Table.Summary.Cell>
                                 )}
                                 {/* Dynamic Provider Summary Cells */}
@@ -2993,12 +3002,12 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                                   const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
                                   return (
                                     <Table.Summary.Cell key={providerKey} index={cellIndex++}>
-                                      <Text strong style={{ color: '#1890ff' }}>${Math.round(totals[providerKey] || 0)}</Text>
+                                      <Text strong style={{ color: '#1890ff' }}>${roundToCents(totals[providerKey] || 0)}</Text>
                                     </Table.Summary.Cell>
                                   );
                                 })}
                                 <Table.Summary.Cell index={cellIndex++}>
-                                  <Text strong style={{ color: '#1890ff' }}>${Math.round(netSalesActualTotal)}</Text>
+                                  <Text strong style={{ color: '#1890ff' }}>${roundToCents(netSalesActualTotal)}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={cellIndex++}>
                                   <Text strong style={{ color: '#1890ff' }}>{Math.round(totals.dailyTickets)}</Text>

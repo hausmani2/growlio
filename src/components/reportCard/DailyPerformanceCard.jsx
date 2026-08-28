@@ -252,7 +252,7 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
         });
       }
 
-      // Check Expense status
+      // Check Expense status (operating expenses excluding rent)
       if (item.expense_status === 'over_goal' && item.expense_difference) {
         over.push({
           text: `${dayName} Expenses over ${Math.round(Math.abs(item.expense_difference))}%`,
@@ -262,6 +262,20 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       } else if (item.expense_status === 'under_goal' && item.expense_difference) {
         under.push({
           text: `${dayName} Expenses under ${Math.round(Math.abs(item.expense_difference))}%`,
+          type: "success",
+          item: item
+        });
+      }
+
+      if (item.rent_status === 'over_goal' && item.rent_difference) {
+        over.push({
+          text: `${dayName} Rent over ${Math.round(Math.abs(item.rent_difference))}%`,
+          type: "error",
+          item: item
+        });
+      } else if (item.rent_status === 'under_goal' && item.rent_difference) {
+        under.push({
+          text: `${dayName} Rent under ${Math.round(Math.abs(item.rent_difference))}%`,
           type: "success",
           item: item
         });

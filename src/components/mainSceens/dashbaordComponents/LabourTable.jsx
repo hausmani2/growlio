@@ -22,6 +22,7 @@ import {
   getDatesMissingSalesForActuals,
   hasOpenDaysMissingSales,
 } from '../../../utils/salesEnteredGate';
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 
 const { Title, Text } = Typography;
 
@@ -105,10 +106,12 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
     return 50;
   };
 
-  // Helper function to format display values - show "0" instead of "0.00" for zero values
+  // Keep in-progress decimals (e.g. "10.0") so trailing zeros can be typed
   const formatDisplayValue = (value) => {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'string') return value;
     const numValue = parseFloat(value) || 0;
-    return numValue === 0 ? "0" : numValue.toString();
+    return numValue === 0 ? '0' : String(numValue);
   };
 
   // Function to fetch average hourly rate from API
@@ -1147,9 +1150,11 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     return (
                       <div>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
                           value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                          onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', parseFloat(e.target.value) || 0, record)}
+                          onChange={(e) => handleDailyDataChange(index, 'laborHoursActual', sanitizeDecimalInput(e.target.value), record)}
                           onClick={() => {
                             if (salesMissing) message.warning(SALES_FIRST_LABOR_MESSAGE);
                           }}
@@ -1190,9 +1195,11 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                     return (
                       <div>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
                           value={record.restaurantOpen === false ? 0 : formatDisplayValue(value)}
-                          onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', parseFloat(e.target.value) || 0, record)}
+                          onChange={(e) => handleDailyDataChange(index, 'actualLaborDollars', sanitizeDecimalInput(e.target.value), record)}
                           onClick={() => {
                             if (salesMissing) message.warning(SALES_FIRST_LABOR_MESSAGE);
                           }}

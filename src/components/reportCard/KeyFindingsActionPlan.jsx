@@ -29,7 +29,8 @@ const metricLabel = (metric) => {
   if (value === 'labor' || value === 'labour') return 'Labor';
   if (value === 'cogs') return 'COGS';
   if (value === 'sales') return 'Sales';
-  if (value === 'expenses') return 'Operating Expenses';
+  if (value === 'expenses' || value === 'operating_expenses' || value === 'opex') return 'Operating Expenses';
+  if (value === 'rent') return 'Rent';
   return metric || 'Metric';
 };
 

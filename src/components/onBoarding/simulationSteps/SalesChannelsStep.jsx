@@ -17,6 +17,7 @@ const PROVIDER_OPTIONS = [
   { value: "Grubhub", label: "Grubhub" },
   { value: "Uber Eats", label: "Uber Eats" },
   { value: "UberEats", label: "UberEats" },
+  { value: "EZ Cater", label: "EZ Cater" },
   { value: "Other", label: "Other" },
 ];
 

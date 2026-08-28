@@ -265,11 +265,14 @@ const ReportCardPage = () => {
   const goals = {
     labor: salesInfoGoal?.labour || salesInfoGoal?.labor || apiSummary?.labour?.goal || apiSummary?.labor?.goal || 18,
     cogs: salesInfoGoal?.cogs || apiSummary?.cogs?.goal || 16,
-    rent: salesInfoGoal?.expenses || apiSummary?.expenses?.goal || 10,
+    rent: salesInfoGoal?.rent || apiSummary?.rent?.goal || 20,
+    operatingExpenses: salesInfoGoal?.expenses || apiSummary?.expenses?.goal || 10,
   };
   
   // Map metrics from API response - ensure all values are properly extracted
   // Note: percentage prop in MiniGauge is actually the score, deltaPct prop is the percentage
+  const rentSummary = apiSummary?.rent;
+  const opexSummary = apiSummary?.expenses;
   const metrics = {
     labor: {
       value: Number(apiSummary?.labour?.value) || Number(apiSummary?.labor?.value) || 0,
@@ -284,10 +287,16 @@ const ReportCardPage = () => {
       deltaPct: Number(apiSummary?.cogs?.percentage) || 0, // percentage goes to deltaPct prop
     },
     rent: {
-      value: Number(apiSummary?.expenses?.value) || 0,
-      percentage: Number(apiSummary?.expenses?.score) || 0, // score goes to percentage prop
-      amount: Number(apiSummary?.expenses?.value) || 0,
-      deltaPct: Number(apiSummary?.expenses?.percentage) || 0, // percentage goes to deltaPct prop
+      value: Number(rentSummary?.value) || 0,
+      percentage: Number(rentSummary?.score) || 0,
+      amount: Number(rentSummary?.value) || 0,
+      deltaPct: Number(rentSummary?.percentage) || 0,
+    },
+    operatingExpenses: {
+      value: Number(opexSummary?.value) || 0,
+      percentage: Number(opexSummary?.score) || 0,
+      amount: Number(opexSummary?.value) || 0,
+      deltaPct: Number(opexSummary?.percentage) || 0,
     },
   };
   

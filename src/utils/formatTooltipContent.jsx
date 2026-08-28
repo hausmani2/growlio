@@ -5,6 +5,8 @@ const HIGHLIGHT_PHRASES = [
   'Labor performance',
   'COGS performance',
   'Rent performance',
+  'Operating expenses',
+  'operating expenses',
   'Target percentage',
   'goal percentage',
   'labor target',

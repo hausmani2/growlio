@@ -22,6 +22,7 @@ import {
   getDatesMissingSalesForActuals,
   hasOpenDaysMissingSales,
 } from '../../../utils/salesEnteredGate';
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 
 const { Title, Text } = Typography;
 
@@ -1007,9 +1008,11 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                     return (
                       <div>
                         <Input
-                          type="number"
-                          value={record.restaurantOpen === false ? 0 : value}
-                          onChange={(e) => handleDailyDataChange(index, 'actual', parseFloat(e.target.value) || 0, record)}
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
+                          value={record.restaurantOpen === false ? 0 : (value ?? '')}
+                          onChange={(e) => handleDailyDataChange(index, 'actual', sanitizeDecimalInput(e.target.value), record)}
                           onClick={() => {
                             if (salesMissing) {
                               message.warning(SALES_FIRST_COGS_MESSAGE);
