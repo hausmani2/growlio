@@ -837,7 +837,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       title: (
         <div>
           <div className="font-semibold text-sm text-gray-900">Totals</div>
-          <div className="text-xs text-gray-500">{totalsSubtitle}</div>
+          
         </div>
       ),
       dataIndex: 'period_totals',
