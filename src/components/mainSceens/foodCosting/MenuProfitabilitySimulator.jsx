@@ -31,10 +31,7 @@ import {
   applySimulatorChanges,
   archiveSimulatorScenario,
   fetchSimulatorApplyPlan,
-  fetchSimulatorBaseline,
-  fetchSimulatorOpportunities,
-  fetchSimulatorScenarios,
-  fetchSimulatorSnapshots,
+  fetchSimulatorBootstrap,
   previewSimulatorChanges,
   previewSimulatorScenario,
   saveSimulatorScenario,
@@ -124,31 +121,40 @@ const MenuProfitabilitySimulator = () => {
   const dateFrom = range?.[0]?.format('YYYY-MM-DD');
   const dateTo = range?.[1]?.format('YYYY-MM-DD');
 
+  const loadAbortRef = React.useRef(null);
+
   const load = useCallback(async () => {
+    if (loadAbortRef.current) {
+      loadAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+
     setLoading(true);
     try {
-      const [base, opps, sc, snaps] = await Promise.all([
-        fetchSimulatorBaseline({ dateFrom, dateTo }),
-        fetchSimulatorOpportunities({ dateFrom, dateTo, limit: 8 }),
-        fetchSimulatorScenarios().catch(() => ({ scenarios: [] })),
-        fetchSimulatorSnapshots().catch(() => ({ snapshots: [] })),
-      ]);
-      setBaseline(base);
-      setOpportunities(opps?.opportunities || []);
-      setScenarios(sc?.scenarios || []);
-      setSnapshots(snaps?.snapshots || []);
+      const data = await fetchSimulatorBootstrap({ dateFrom, dateTo, limit: 8 });
+      if (controller.signal.aborted) return;
+
+      setBaseline(data?.baseline ?? null);
+      setOpportunities(data?.opportunities || []);
+      setScenarios(data?.scenarios || []);
+      setSnapshots(data?.snapshots || []);
     } catch (error) {
+      if (controller.signal.aborted) return;
       const data = error?.response?.data;
-      message.error(data?.error || 'Failed to load simulator baseline');
+      message.error(data?.error || 'Failed to load simulator data');
       setBaseline(null);
       setOpportunities([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [dateFrom, dateTo]);
 
   useEffect(() => {
     load();
+    return () => {
+      if (loadAbortRef.current) loadAbortRef.current.abort();
+    };
   }, [load]);
 
   const menuOptions = useMemo(

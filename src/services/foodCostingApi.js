@@ -4,7 +4,9 @@ import {
   apiPatch,
   apiPost,
   apiPostWithTimeout,
+  apiGetWithTimeout,
   AI_UPLOAD_TIMEOUT,
+  API_TIMEOUT,
 } from '../utils/axiosInterceptors';
 
 const withIds = (params = {}) => {
@@ -19,6 +21,24 @@ const withIds = (params = {}) => {
     restaurant_id: restaurantId ? Number(restaurantId) : null,
     location_id: locationId ? Number(locationId) : null,
     query: query.toString(),
+  };
+};
+
+/** Normalize paginated API responses; still accepts legacy bare arrays. */
+export const normalizePaginated = (data) => {
+  if (Array.isArray(data)) {
+    return {
+      count: data.length,
+      page: 1,
+      page_size: data.length,
+      results: data,
+    };
+  }
+  return {
+    count: data?.count ?? (data?.results?.length || 0),
+    page: data?.page ?? 1,
+    page_size: data?.page_size ?? (data?.results?.length || 0),
+    results: Array.isArray(data?.results) ? data.results : [],
   };
 };
 
@@ -58,14 +78,18 @@ export const fetchIngredients = async ({
   search = '',
   category = '',
   ordering = 'name',
+  page = 1,
+  pageSize = 25,
 } = {}) => {
   const { query } = withIds();
   const params = new URLSearchParams(query);
   if (search) params.set('search', search);
   if (category) params.set('category', category);
   if (ordering) params.set('ordering', ordering);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
   const res = await apiGet(`/food_costing/ingredients/?${params.toString()}`);
-  return res.data;
+  return normalizePaginated(res.data);
 };
 
 export const createIngredient = async (payload) => {
@@ -97,10 +121,31 @@ export const archiveIngredient = async (id) => {
   return res.data;
 };
 
-export const fetchMenuItems = async () => {
+export const fetchMenuItems = async ({
+  search = '',
+  page = 1,
+  pageSize = 25,
+} = {}) => {
   const { query } = withIds();
-  const res = await apiGet(`/food_costing/menu-items/?${query}`);
-  return res.data;
+  const params = new URLSearchParams(query);
+  if (search) params.set('search', search);
+  params.set('page', String(page));
+  params.set('page_size', String(pageSize));
+  const res = await apiGet(`/food_costing/menu-items/?${params.toString()}`);
+  return normalizePaginated(res.data);
+};
+
+/** Fetch every menu item (for category grouping view). Pages at 100 (API max). */
+export const fetchAllMenuItems = async ({ search = '' } = {}) => {
+  const pageSize = 100;
+  const first = await fetchMenuItems({ search, page: 1, pageSize });
+  let results = [...first.results];
+  const totalPages = Math.ceil(first.count / pageSize);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await fetchMenuItems({ search, page, pageSize });
+    results = results.concat(next.results);
+  }
+  return { count: first.count, results };
 };
 
 export const importSquareMenuItems = async () => {
@@ -166,11 +211,13 @@ export const createPhotoDraft = async ({ image, menuItemId, menuItemName }) => {
   return res.data;
 };
 
-export const fetchRecipeDrafts = async (status = 'pending') => {
+export const fetchRecipeDrafts = async (status = 'pending', { page = 1, pageSize = 20 } = {}) => {
   const { query } = withIds();
   const statusParam = status ? `&status=${encodeURIComponent(status)}` : '';
-  const res = await apiGet(`/food_costing/drafts/?${query}${statusParam}`);
-  return res.data;
+  const res = await apiGet(
+    `/food_costing/drafts/?${query}${statusParam}&page=${page}&page_size=${pageSize}`
+  );
+  return normalizePaginated(res.data);
 };
 
 export const fetchRecipeDraft = async (draftId) => {
@@ -188,11 +235,13 @@ export const discardRecipeDraft = async (draftId) => {
   return res.data;
 };
 
-export const fetchInvoices = async (status = '') => {
+export const fetchInvoices = async (status = '', { page = 1, pageSize = 20 } = {}) => {
   const { query } = withIds();
   const statusParam = status ? `&status=${encodeURIComponent(status)}` : '';
-  const res = await apiGet(`/food_costing/invoices/?${query}${statusParam}`);
-  return res.data;
+  const res = await apiGet(
+    `/food_costing/invoices/?${query}${statusParam}&page=${page}&page_size=${pageSize}`
+  );
+  return normalizePaginated(res.data);
 };
 
 export const createInvoice = async ({
@@ -240,13 +289,30 @@ export const discardInvoice = async (invoiceId) => {
   return res.data;
 };
 
+/** Menu Profitability Simulator — single bootstrap (baseline computed once). */
+export const fetchSimulatorBootstrap = async ({ dateFrom, dateTo, limit = 8 } = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  if (limit) params.set('limit', String(limit));
+  const res = await apiGetWithTimeout(
+    `/food_costing/simulator/bootstrap/?${params.toString()}`,
+    Math.max(API_TIMEOUT, 60000)
+  );
+  return res.data;
+};
+
 /** Menu Profitability Simulator (Food Costing) — read-only preview APIs */
 export const fetchSimulatorBaseline = async ({ dateFrom, dateTo } = {}) => {
   const { query } = withIds();
   const params = new URLSearchParams(query);
   if (dateFrom) params.set('date_from', dateFrom);
   if (dateTo) params.set('date_to', dateTo);
-  const res = await apiGet(`/food_costing/simulator/baseline/?${params.toString()}`);
+  const res = await apiGetWithTimeout(
+    `/food_costing/simulator/baseline/?${params.toString()}`,
+    Math.max(API_TIMEOUT, 60000)
+  );
   return res.data;
 };
 

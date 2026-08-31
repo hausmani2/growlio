@@ -45,6 +45,7 @@ import {
   discardInvoice,
   discardRecipeDraft,
   fetchFoodCostingDashboard,
+  fetchAllMenuItems,
   fetchIngredients,
   fetchInvoices,
   fetchMenuItems,
@@ -151,11 +152,42 @@ const FoodCostingPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [dashboard, setDashboard] = useState(null);
+  const [dashboardMenuItems, setDashboardMenuItems] = useState([]);
+  const [dashboardMenuTotal, setDashboardMenuTotal] = useState(0);
+  const [dashboardMenuPage, setDashboardMenuPage] = useState(1);
+  const dashboardMenuPageSize = 10;
   const [ingredients, setIngredients] = useState([]);
+  const [ingredientTotal, setIngredientTotal] = useState(0);
+  const [ingredientPage, setIngredientPage] = useState(1);
+  const [ingredientPageSize, setIngredientPageSize] = useState(25);
   const [menuItems, setMenuItems] = useState([]);
+  const [menuTotal, setMenuTotal] = useState(0);
+  const [menuPage, setMenuPage] = useState(1);
+  const [menuPageSize, setMenuPageSize] = useState(25);
+  const [menuItemsForCategory, setMenuItemsForCategory] = useState([]);
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [categoryPageSize, setCategoryPageSize] = useState(10);
+  const [loadingCategoryMenu, setLoadingCategoryMenu] = useState(false);
   const [drafts, setDrafts] = useState([]);
+  const [draftTotal, setDraftTotal] = useState(0);
+  const [draftPage, setDraftPage] = useState(1);
   const [invoices, setInvoices] = useState([]);
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [invoicePage, setInvoicePage] = useState(1);
   const [vendors, setVendors] = useState([]);
+  const [vendorsLoaded, setVendorsLoaded] = useState(false);
+  const loadAbortRef = React.useRef(null);
+  const loadTabDataRef = React.useRef(null);
+  const paginationRef = React.useRef({
+    draftPage: 1,
+    menuPage: 1,
+    menuPageSize: 25,
+    menuItemSearch: '',
+    invoicePage: 1,
+    ingredientPage: 1,
+    ingredientPageSize: 25,
+    dashboardMenuPage: 1,
+  });
 
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
@@ -213,6 +245,18 @@ const FoodCostingPage = () => {
     ordering: ingredientOrdering,
   };
 
+  paginationRef.current = {
+    draftPage,
+    menuPage,
+    menuPageSize,
+    menuItemSearch,
+    menuSortBy,
+    invoicePage,
+    ingredientPage,
+    ingredientPageSize,
+    dashboardMenuPage,
+  };
+
   useEffect(() => {
     let mounted = true;
     setPlanLoading(true);
@@ -251,63 +295,359 @@ const FoodCostingPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadAll = useCallback(async () => {
-    if (!allowed || !restaurantId) return;
-    setLoading(true);
-    try {
-      const [dash, ings, items, pendingDrafts, invoiceList, vendorList] =
-        await Promise.all([
-          fetchFoodCostingDashboard(),
-          fetchIngredients({
-            search: ingredientFilterRef.current.search,
-            category: ingredientFilterRef.current.category,
-            ordering: ingredientFilterRef.current.ordering,
-          }),
-          fetchMenuItems(),
-          fetchRecipeDrafts('pending'),
-          fetchInvoices(),
-          fetchVendors(),
-        ]);
-      setDashboard(dash);
-      setIngredients(Array.isArray(ings) ? ings : []);
-      setMenuItems(Array.isArray(items) ? items : []);
-      setDrafts(Array.isArray(pendingDrafts) ? pendingDrafts : []);
-      setInvoices(Array.isArray(invoiceList) ? invoiceList : []);
-      setVendors(Array.isArray(vendorList) ? vendorList : []);
-    } catch (error) {
-      const data = error?.response?.data;
-      if (data?.upgrade_required) {
-        setAllowed(false);
-      } else {
-        message.error(data?.error || 'Failed to load Food Costing data');
+  const loadTabData = useCallback(
+    async (tab, opts = {}) => {
+      if (!allowed || !restaurantId) return;
+      if (loadAbortRef.current) {
+        loadAbortRef.current.abort();
       }
-    } finally {
-      setLoading(false);
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+
+      const pg = paginationRef.current;
+
+      setLoading(true);
+      try {
+        switch (tab) {
+          case 'dashboard': {
+            const page = opts.page ?? pg.dashboardMenuPage;
+            const pageSize = opts.pageSize ?? dashboardMenuPageSize;
+            const [dash, menuData] = await Promise.all([
+              fetchFoodCostingDashboard(),
+              fetchMenuItems({ page, pageSize }),
+            ]);
+            if (controller.signal.aborted) return;
+            setDashboard(dash);
+            setDashboardMenuItems(menuData.results);
+            setDashboardMenuTotal(menuData.count);
+            setDashboardMenuPage(page);
+            break;
+          }
+          case 'drafts': {
+            const page = opts.page ?? pg.draftPage;
+            const draftData = await fetchRecipeDrafts('pending', { page, pageSize: 20 });
+            if (controller.signal.aborted) return;
+            setDrafts(draftData.results);
+            setDraftTotal(draftData.count);
+            setDraftPage(page);
+            break;
+          }
+          case 'menu': {
+            if (pg.menuSortBy === 'category') {
+              break;
+            }
+            const page = opts.page ?? pg.menuPage;
+            const pageSize = opts.pageSize ?? pg.menuPageSize;
+            const search = opts.search ?? pg.menuItemSearch;
+            const menuData = await fetchMenuItems({ page, pageSize, search });
+            if (controller.signal.aborted) return;
+            setMenuItems(menuData.results);
+            setMenuTotal(menuData.count);
+            setMenuPage(page);
+            setMenuPageSize(pageSize);
+            break;
+          }
+          case 'vendors': {
+            const [vendorList, ingData, invData] = await Promise.all([
+              fetchVendors(),
+              fetchIngredients({ page: 1, pageSize: 500, ordering: 'name' }),
+              fetchInvoices('', { page: 1, pageSize: 500 }),
+            ]);
+            if (controller.signal.aborted) return;
+            setVendors(Array.isArray(vendorList) ? vendorList : []);
+            setVendorsLoaded(true);
+            setIngredients(ingData.results);
+            setInvoices(invData.results);
+            break;
+          }
+          case 'invoices': {
+            const page = opts.page ?? pg.invoicePage;
+            const invData = await fetchInvoices('', { page, pageSize: 20 });
+            if (controller.signal.aborted) return;
+            setInvoices(invData.results);
+            setInvoiceTotal(invData.count);
+            setInvoicePage(page);
+            if (!vendorsLoaded) {
+              const vendorList = await fetchVendors();
+              if (controller.signal.aborted) return;
+              setVendors(Array.isArray(vendorList) ? vendorList : []);
+              setVendorsLoaded(true);
+            }
+            break;
+          }
+          case 'ingredients': {
+            const page = opts.page ?? pg.ingredientPage;
+            const pageSize = opts.pageSize ?? pg.ingredientPageSize;
+            const ingData = await fetchIngredients({
+              search: ingredientFilterRef.current.search,
+              category: ingredientFilterRef.current.category,
+              ordering: ingredientFilterRef.current.ordering,
+              page,
+              pageSize,
+            });
+            if (controller.signal.aborted) return;
+            setIngredients(ingData.results);
+            setIngredientTotal(ingData.count);
+            setIngredientPage(page);
+            setIngredientPageSize(pageSize);
+            if (!vendorsLoaded) {
+              const vendorList = await fetchVendors();
+              if (controller.signal.aborted) return;
+              setVendors(Array.isArray(vendorList) ? vendorList : []);
+              setVendorsLoaded(true);
+            }
+            break;
+          }
+          default:
+            break;
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const data = error?.response?.data;
+        if (data?.upgrade_required) {
+          setAllowed(false);
+        } else {
+          message.error(data?.error || 'Failed to load Food Costing data');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    },
+    [allowed, restaurantId, vendorsLoaded, dashboardMenuPageSize]
+  );
+
+  loadTabDataRef.current = loadTabData;
+
+  const refresh = useCallback(
+    async (scopes = ['dashboard']) => {
+      if (!allowed || !restaurantId) return;
+      const unique = [...new Set(scopes)];
+      setLoading(true);
+      try {
+        const tasks = [];
+        if (unique.includes('dashboard')) {
+          tasks.push(fetchFoodCostingDashboard().then(setDashboard));
+        }
+        if (unique.includes('menu')) {
+          const pg = paginationRef.current;
+          tasks.push(
+            fetchMenuItems({
+              page: pg.dashboardMenuPage,
+              pageSize: dashboardMenuPageSize,
+            }).then((data) => {
+              setDashboardMenuItems(data.results);
+              setDashboardMenuTotal(data.count);
+            })
+          );
+          if (activeTab === 'menu') {
+            if (pg.menuSortBy === 'category') {
+              tasks.push(
+                fetchAllMenuItems({ search: pg.menuItemSearch }).then((data) => {
+                  setMenuItemsForCategory(data.results);
+                  setMenuTotal(data.count);
+                })
+              );
+            } else {
+              tasks.push(
+                fetchMenuItems({
+                  page: pg.menuPage,
+                  pageSize: pg.menuPageSize,
+                  search: pg.menuItemSearch,
+                }).then((data) => {
+                  setMenuItems(data.results);
+                  setMenuTotal(data.count);
+                })
+              );
+            }
+          }
+        }
+        if (unique.includes('ingredients')) {
+          const pg = paginationRef.current;
+          tasks.push(
+            fetchIngredients({
+              search: ingredientFilterRef.current.search,
+              category: ingredientFilterRef.current.category,
+              ordering: ingredientFilterRef.current.ordering,
+              page: pg.ingredientPage,
+              pageSize: pg.ingredientPageSize,
+            }).then((data) => {
+              setIngredients(data.results);
+              setIngredientTotal(data.count);
+            })
+          );
+        }
+        if (unique.includes('drafts')) {
+          tasks.push(
+            fetchRecipeDrafts('pending', {
+              page: paginationRef.current.draftPage,
+              pageSize: 20,
+            }).then((data) => {
+              setDrafts(data.results);
+              setDraftTotal(data.count);
+            })
+          );
+        }
+        if (unique.includes('invoices')) {
+          tasks.push(
+            fetchInvoices('', {
+              page: paginationRef.current.invoicePage,
+              pageSize: 20,
+            }).then((data) => {
+              setInvoices(data.results);
+              setInvoiceTotal(data.count);
+            })
+          );
+        }
+        if (unique.includes('vendors')) {
+          tasks.push(
+            fetchVendors().then((list) => {
+              setVendors(Array.isArray(list) ? list : []);
+              setVendorsLoaded(true);
+            })
+          );
+        }
+        await Promise.all(tasks);
+      } catch (error) {
+        const data = error?.response?.data;
+        if (data?.upgrade_required) {
+          setAllowed(false);
+        } else {
+          message.error(data?.error || 'Failed to refresh Food Costing data');
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      allowed,
+      restaurantId,
+      activeTab,
+      dashboardMenuPageSize,
+    ]
+  );
+
+  const ensureModalData = useCallback(async () => {
+    const tasks = [];
+    if (!vendorsLoaded) {
+      tasks.push(
+        fetchVendors().then((list) => {
+          setVendors(Array.isArray(list) ? list : []);
+          setVendorsLoaded(true);
+        })
+      );
     }
-  }, [allowed, restaurantId]);
+    if (!ingredients.length) {
+      tasks.push(
+        fetchIngredients({ page: 1, pageSize: 500, ordering: 'name' }).then((data) => {
+          setIngredients(data.results);
+          setIngredientTotal(data.count);
+        })
+      );
+    }
+    if (tasks.length) await Promise.all(tasks);
+  }, [vendorsLoaded, ingredients.length]);
+
+  const ingredientFilterInitializedRef = React.useRef(false);
+  const menuSearchInitializedRef = React.useRef(false);
 
   useEffect(() => {
-    if (!allowed || !restaurantId) return undefined;
-    const timer = window.setTimeout(async () => {
-      try {
-        const ings = await fetchIngredients({
-          search: ingredientSearch,
-          category: ingredientCategory,
-          ordering: ingredientOrdering,
-        });
-        setIngredients(Array.isArray(ings) ? ings : []);
-      } catch {
-        // ignore transient search errors
-      }
+    if (!allowed || !restaurantId || activeTab !== 'ingredients') {
+      ingredientFilterInitializedRef.current = false;
+      return undefined;
+    }
+    if (!ingredientFilterInitializedRef.current) {
+      ingredientFilterInitializedRef.current = true;
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      loadTabDataRef.current?.('ingredients', { page: 1 });
     }, 300);
     return () => window.clearTimeout(timer);
   }, [
     allowed,
     restaurantId,
+    activeTab,
     ingredientSearch,
     ingredientCategory,
     ingredientOrdering,
   ]);
+
+  useEffect(() => {
+    if (!allowed || !restaurantId || activeTab !== 'menu') {
+      menuSearchInitializedRef.current = false;
+      return undefined;
+    }
+    if (menuSortBy === 'category') {
+      menuSearchInitializedRef.current = false;
+      return undefined;
+    }
+    if (!menuSearchInitializedRef.current) {
+      menuSearchInitializedRef.current = true;
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      loadTabDataRef.current?.('menu', { page: 1, search: menuItemSearch });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [allowed, restaurantId, activeTab, menuSortBy, menuItemSearch]);
+
+  useEffect(() => {
+    if (!allowed || !restaurantId || activeTab !== 'menu' || menuSortBy !== 'category') {
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingCategoryMenu(true);
+    fetchAllMenuItems({ search: menuItemSearch })
+      .then((data) => {
+        if (!cancelled) {
+          setMenuItemsForCategory(data.results);
+          setCategoryPage(1);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMenuItemsForCategory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCategoryMenu(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allowed, restaurantId, activeTab, menuSortBy, menuItemSearch]);
+
+  const handleMenuPageChange = useCallback(
+    (page, pageSize) => {
+      setMenuPage(page);
+      if (pageSize) setMenuPageSize(pageSize);
+      loadTabData('menu', { page, pageSize, search: menuItemSearch });
+    },
+    [loadTabData, menuItemSearch]
+  );
+
+  const handleDashboardMenuPageChange = useCallback(
+    (page) => {
+      setDashboardMenuPage(page);
+      loadTabData('dashboard', { page });
+    },
+    [loadTabData]
+  );
+
+  const handleIngredientPageChange = useCallback(
+    (page, pageSize) => {
+      setIngredientPage(page);
+      if (pageSize) setIngredientPageSize(pageSize);
+      loadTabData('ingredients', { page, pageSize });
+    },
+    [loadTabData]
+  );
+
+  const handleTabChange = useCallback(
+    (tab) => {
+      setActiveTab(tab);
+      loadTabData(tab);
+    },
+    [loadTabData]
+  );
 
   const handleSlowAiUpload = useCallback(
     (tab) => {
@@ -315,17 +655,23 @@ const FoodCostingPage = () => {
         'LIO is still processing your upload. Refreshing automatically — check the list in a moment.',
         7
       );
-      setActiveTab(tab);
+      handleTabChange(tab);
       [5000, 15000, 30000, 60000].forEach((delay) => {
-        window.setTimeout(() => loadAll(), delay);
+        window.setTimeout(() => {
+          refresh(['dashboard', tab === 'invoices' ? 'invoices' : 'drafts']);
+          loadTabData(tab);
+        }, delay);
       });
     },
-    [loadAll]
+    [handleTabChange, refresh, loadTabData]
   );
 
   useEffect(() => {
-    if (allowed) loadAll();
-  }, [allowed, loadAll]);
+    if (allowed) loadTabData('dashboard');
+    return () => {
+      if (loadAbortRef.current) loadAbortRef.current.abort();
+    };
+  }, [allowed, loadTabData]);
 
   const kpiCards = useMemo(
     () => [
@@ -384,6 +730,7 @@ const FoodCostingPage = () => {
   }, [recipeIngredientChoices, ingredients, menuModalOpen, menuForm]);
 
   const filteredMenuItems = useMemo(() => {
+    if (activeTab === 'menu') return menuItems;
     const query = menuItemSearch.trim().toLowerCase();
     if (!query) return menuItems;
     return menuItems.filter((item) => {
@@ -391,7 +738,7 @@ const FoodCostingPage = () => {
       const category = String(item.category || '').toLowerCase();
       return name.includes(query) || category.includes(query);
     });
-  }, [menuItems, menuItemSearch]);
+  }, [menuItems, menuItemSearch, activeTab]);
 
   const menuItemSearchOptions = useMemo(() => {
     if (!menuItemSearch.trim()) return [];
@@ -402,8 +749,10 @@ const FoodCostingPage = () => {
   }, [filteredMenuItems, menuItemSearch]);
 
   const menuItemsByCategory = useMemo(() => {
+    const source =
+      menuSortBy === 'category' ? menuItemsForCategory : filteredMenuItems;
     const groups = new Map();
-    filteredMenuItems.forEach((item) => {
+    source.forEach((item) => {
       const category = String(item.category || '').trim() || 'Uncategorized';
       if (!groups.has(category)) groups.set(category, []);
       groups.get(category).push(item);
@@ -420,7 +769,27 @@ const FoodCostingPage = () => {
             String(a.name || '').localeCompare(String(b.name || ''))
           ),
       }));
-  }, [filteredMenuItems]);
+  }, [menuSortBy, menuItemsForCategory, filteredMenuItems]);
+
+  const paginatedCategoryGroups = useMemo(() => {
+    const start = (categoryPage - 1) * categoryPageSize;
+    return menuItemsByCategory.slice(start, start + categoryPageSize);
+  }, [menuItemsByCategory, categoryPage, categoryPageSize]);
+
+  const handleMenuSortByChange = useCallback(
+    (value) => {
+      setMenuSortBy(value);
+      setCategoryPage(1);
+      if (value === 'item') {
+        loadTabData('menu', {
+          page: 1,
+          pageSize: menuPageSize,
+          search: menuItemSearch,
+        });
+      }
+    },
+    [loadTabData, menuPageSize, menuItemSearch]
+  );
 
   const openDraftReview = (draft) => {
     setDraftResult({
@@ -464,13 +833,14 @@ const FoodCostingPage = () => {
         setDraftResult(null);
         setDraftLines([]);
       }
-      loadAll();
+      refresh(['dashboard', 'drafts']);
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to discard draft');
     }
   };
 
-  const openInvoiceReview = (invoice) => {
+  const openInvoiceReview = async (invoice) => {
+    await ensureModalData();
     setSelectedInvoice(invoice);
     setInvoiceLines(
       (invoice.lines || []).map((line) => ({
@@ -520,9 +890,9 @@ const FoodCostingPage = () => {
       setInvoiceModalOpen(false);
       setInvoiceFile(null);
       invoiceForm.resetFields();
-      setActiveTab('invoices');
+      handleTabChange('invoices');
       if (result?.invoice) openInvoiceReview(result.invoice);
-      loadAll();
+      refresh(['dashboard']);
     } catch (error) {
       if (error?.errorFields) return;
       if (isApiTimeoutError(error)) {
@@ -564,7 +934,7 @@ const FoodCostingPage = () => {
         }))
       );
       message.success('Invoice lines updated');
-      loadAll();
+      refresh(['dashboard', 'invoices']);
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to update invoice');
     } finally {
@@ -603,7 +973,7 @@ const FoodCostingPage = () => {
           ingredient_id: line.ingredient || null,
         }))
       );
-      loadAll();
+      refresh(['dashboard', 'invoices', 'ingredients']);
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to apply invoice costs');
     } finally {
@@ -635,7 +1005,7 @@ const FoodCostingPage = () => {
         message.success('Vendor created');
       }
       setVendorModalOpen(false);
-      loadAll();
+      refresh(['vendors']);
     } catch (error) {
       if (error?.errorFields) return;
       message.error(error?.response?.data?.error || 'Failed to save vendor');
@@ -666,8 +1036,8 @@ const FoodCostingPage = () => {
 
   const loadRecipeIngredientChoices = async () => {
     try {
-      const ings = await fetchIngredients({ ordering: 'name' });
-      setRecipeIngredientChoices(Array.isArray(ings) ? ings : []);
+      const ings = await fetchIngredients({ ordering: 'name', page: 1, pageSize: 500 });
+      setRecipeIngredientChoices(ings.results);
     } catch {
       setRecipeIngredientChoices(Array.isArray(ingredients) ? ingredients : []);
     }
@@ -731,7 +1101,7 @@ const FoodCostingPage = () => {
         message.success('Menu item created');
       }
       setMenuModalOpen(false);
-      loadAll();
+      refresh(['dashboard', 'menu']);
     } catch (error) {
       if (error?.errorFields) return;
       message.error(error?.response?.data?.error || 'Failed to save menu item');
@@ -773,7 +1143,7 @@ const FoodCostingPage = () => {
               key: 'sq-import',
               duration: 4,
             });
-            await loadAll();
+            await refresh(['dashboard', 'menu']);
           } else if (poll.status === 'error') {
             _stopSquareImportPoll();
             setImportingMenuFromSquare(false);
@@ -826,8 +1196,8 @@ const FoodCostingPage = () => {
       setDraftLines(lines);
       setDraftSellingPrice('0.00');
       message.success('LIO created a draft. Review before confirming.');
-      setActiveTab('drafts');
-      loadAll();
+      handleTabChange('drafts');
+      refresh(['dashboard']);
     } catch (error) {
       const data = error?.response?.data;
       if (isApiTimeoutError(error)) {
@@ -869,11 +1239,11 @@ const FoodCostingPage = () => {
       setDraftLines([]);
       setPhotoMenuName('');
       setDraftSellingPrice('0.00');
-      await loadAll();
+      await refresh(['dashboard', 'menu', 'drafts']);
       if (menuItem) {
         openEditMenuItem(menuItem);
       }
-      setActiveTab('menu');
+      handleTabChange('menu');
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to confirm draft');
     } finally {
@@ -898,7 +1268,7 @@ const FoodCostingPage = () => {
       message.success(
         result?.message || `Imported ${result?.created_count || 0} menu item(s).`
       );
-      await loadAll();
+      await refresh(['dashboard', 'menu']);
     } catch (error) {
       const data = error?.response?.data;
       if (isApiTimeoutError(error)) {
@@ -907,7 +1277,7 @@ const FoodCostingPage = () => {
         );
         setMenuScanModalOpen(false);
         setMenuScanFile(null);
-        setActiveTab('menu');
+        handleTabChange('menu');
         return;
       }
       message.error(data?.error || 'Failed to scan printed menu');
@@ -1053,7 +1423,7 @@ const FoodCostingPage = () => {
             onConfirm={async () => {
               await archiveIngredient(record.id);
               message.success('Ingredient archived');
-              loadAll();
+              refresh(['dashboard', 'ingredients']);
             }}
           >
             <Button size="small" danger>
@@ -1118,7 +1488,7 @@ const FoodCostingPage = () => {
               try {
                 await archiveMenuItem(record.id);
                 message.success('Menu item deleted');
-                loadAll();
+                refresh(['dashboard', 'menu']);
               } catch (err) {
                 message.error(err?.response?.data?.error || 'Failed to delete menu item');
               }
@@ -1164,7 +1534,14 @@ const FoodCostingPage = () => {
         description="LIO builds first. You confirm and improve accuracy over time."
         right={
           <Space wrap>
-            <Button icon={<ReloadOutlined />} onClick={loadAll} loading={loading}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                refresh(['dashboard']);
+                loadTabData(activeTab);
+              }}
+              loading={loading}
+            >
               Refresh
             </Button>
             <Button
@@ -1182,7 +1559,8 @@ const FoodCostingPage = () => {
             </Button>
             <Button
               icon={<UploadOutlined />}
-              onClick={() => {
+              onClick={async () => {
+                await ensureModalData();
                 invoiceForm.resetFields();
                 setInvoiceFile(null);
                 setExtractWithAi(true);
@@ -1197,7 +1575,8 @@ const FoodCostingPage = () => {
 
       <Tabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
+        destroyInactiveTabPane
         items={[
           {
             key: 'dashboard',
@@ -1219,11 +1598,18 @@ const FoodCostingPage = () => {
                 <Card title="Menu items by confidence" className="shadow-sm">
                   <Table
                     rowKey="id"
-                    dataSource={menuItems}
+                    loading={loading}
+                    dataSource={dashboardMenuItems}
                     columns={menuColumns.filter((c) =>
                       ['name', 'fc', 'conf', 'source'].includes(c.key)
                     )}
-                    pagination={{ pageSize: 8 }}
+                    pagination={{
+                      current: dashboardMenuPage,
+                      pageSize: dashboardMenuPageSize,
+                      total: dashboardMenuTotal,
+                      showSizeChanger: false,
+                      onChange: handleDashboardMenuPageChange,
+                    }}
                   />
                 </Card>
               </Spin>
@@ -1231,7 +1617,11 @@ const FoodCostingPage = () => {
           },
           {
             key: 'drafts',
-            label: `Drafts${drafts.length ? ` (${drafts.length})` : ''}`,
+            label: `Drafts${
+              (dashboard?.pending_drafts ?? draftTotal)
+                ? ` (${dashboard?.pending_drafts ?? draftTotal})`
+                : ''
+            }`,
             children: (
               <Card
                 className="shadow-sm"
@@ -1262,7 +1652,13 @@ const FoodCostingPage = () => {
                   rowKey="id"
                   loading={loading}
                   dataSource={drafts}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: draftPage,
+                    pageSize: 20,
+                    total: draftTotal,
+                    showSizeChanger: false,
+                    onChange: (page) => loadTabData('drafts', { page }),
+                  }}
                   locale={{
                     emptyText:
                       'No pending drafts. Build from a photo here or attach a plate photo in Lio chat.',
@@ -1374,7 +1770,7 @@ const FoodCostingPage = () => {
                     <Select
                       className="w-36 [&_.ant-select-selector]:!h-8 [&_.ant-select-selector]:flex [&_.ant-select-selector]:items-center"
                       value={menuSortBy}
-                      onChange={setMenuSortBy}
+                      onChange={handleMenuSortByChange}
                       options={[
                         { value: 'item', label: 'Menu item' },
                         { value: 'category', label: 'Category' },
@@ -1428,10 +1824,20 @@ const FoodCostingPage = () => {
                 {menuSortBy === 'category' ? (
                   <Table
                     rowKey="key"
-                    loading={loading}
-                    dataSource={menuItemsByCategory}
+                    loading={loading || loadingCategoryMenu}
+                    dataSource={paginatedCategoryGroups}
                     columns={categoryColumns}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                      current: categoryPage,
+                      pageSize: categoryPageSize,
+                      total: menuItemsByCategory.length,
+                      showSizeChanger: true,
+                      pageSizeOptions: ['5', '10', '20', '50'],
+                      onChange: (page, pageSize) => {
+                        setCategoryPage(page);
+                        if (pageSize) setCategoryPageSize(pageSize);
+                      },
+                    }}
                     expandable={{
                       expandedRowRender: (group) => (
                         <Table
@@ -1451,7 +1857,13 @@ const FoodCostingPage = () => {
                     loading={loading}
                     dataSource={filteredMenuItems}
                     columns={menuColumns}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                      current: menuPage,
+                      pageSize: menuPageSize,
+                      total: menuTotal,
+                      showSizeChanger: true,
+                      onChange: handleMenuPageChange,
+                    }}
                     expandable={menuItemExpandable}
                   />
                 )}
@@ -1523,7 +1935,7 @@ const FoodCostingPage = () => {
                             onConfirm={async () => {
                               await archiveVendor(record.id);
                               message.success('Vendor archived');
-                              loadAll();
+                              refresh(['vendors']);
                             }}
                           >
                             <Button size="small" danger>
@@ -1581,7 +1993,13 @@ const FoodCostingPage = () => {
                   rowKey="id"
                   loading={loading}
                   dataSource={invoices}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: invoicePage,
+                    pageSize: 20,
+                    total: invoiceTotal,
+                    showSizeChanger: false,
+                    onChange: (page) => loadTabData('invoices', { page }),
+                  }}
                   locale={{ emptyText: 'No invoices yet. Upload one to update ingredient costs.' }}
                   expandable={{
                     expandedRowRender: (record) => (
@@ -1686,7 +2104,7 @@ const FoodCostingPage = () => {
                             onConfirm={async () => {
                               await discardInvoice(record.id);
                               message.success('Invoice discarded');
-                              loadAll();
+                              refresh(['dashboard', 'invoices']);
                             }}
                           >
                             <Button size="small" danger>
@@ -1767,7 +2185,14 @@ const FoodCostingPage = () => {
                   loading={loading}
                   dataSource={ingredients}
                   columns={ingredientColumns}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{
+                    current: ingredientPage,
+                    pageSize: ingredientPageSize,
+                    total: ingredientTotal,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['10', '25', '50'],
+                    onChange: handleIngredientPageChange,
+                  }}
                 />
               </Card>
             ),
@@ -1775,7 +2200,8 @@ const FoodCostingPage = () => {
           {
             key: 'simulator',
             label: 'Simulator',
-            children: <MenuProfitabilitySimulator />,
+            children:
+              activeTab === 'simulator' ? <MenuProfitabilitySimulator /> : null,
           },
         ]}
       />
@@ -1790,7 +2216,7 @@ const FoodCostingPage = () => {
           setEditingIngredient(null);
         }}
         saveIngredient={persistIngredient}
-        onVendorsChanged={loadAll}
+        onVendorsChanged={() => refresh(['vendors'])}
         onSaved={(result) => {
           if (result?.useExisting) {
             setEditingIngredient(result.useExisting);
@@ -1798,7 +2224,7 @@ const FoodCostingPage = () => {
           }
           setIngredientModalOpen(false);
           setEditingIngredient(null);
-          loadAll();
+          refresh(['dashboard', 'ingredients']);
         }}
       />
 
@@ -2677,7 +3103,7 @@ const FoodCostingPage = () => {
                 setMenuScanModalOpen(false);
                 setMenuScanResult(null);
                 setMenuScanFile(null);
-                setActiveTab('menu');
+                handleTabChange('menu');
               }}
             >
               Done

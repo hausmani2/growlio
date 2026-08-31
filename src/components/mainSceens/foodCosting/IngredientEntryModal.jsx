@@ -524,9 +524,13 @@ const IngredientEntryModal = ({
   useEffect(() => {
     if (!open) return undefined;
     let cancelled = false;
-    fetchIngredients({ ordering: 'name' })
+    fetchIngredients({ ordering: 'name', page: 1, pageSize: 500 })
       .then((data) => {
-        if (!cancelled) setCatalogIngredients(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          setCatalogIngredients(
+            Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : []
+          );
+        }
       })
       .catch(() => {
         if (!cancelled) setCatalogIngredients(ingredients);

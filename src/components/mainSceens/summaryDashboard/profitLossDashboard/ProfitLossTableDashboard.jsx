@@ -511,7 +511,165 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
     return finalResult;
   }, [formatCurrency, formatNumber, formatPercentage, printFormat, forceRender]);
 
+  // Period totals from visible days/weeks/months — percentages from totals, not summed daily %.
+  const calculateWeeklyTotals = useMemo(() => {
+    if (!tableData || tableData.length === 0) return {};
 
+    const totals = {
+      sales_budget: 0,
+      sales_actual: 0,
+      labour: 0,
+      labour_actual: 0,
+      food_cost: 0,
+      food_cost_actual: 0,
+      hours: 0,
+      hours_actual: 0,
+      fixed_costs: 0,
+      variable_costs: 0,
+      profit_loss: 0,
+      tickets: 0,
+      app_online_sales: 0,
+      in_store_sales: 0,
+      total_days: 0,
+      sales_vs_budget_pct: null,
+      labour_vs_budget_pct: null,
+      food_vs_budget_pct: null,
+      labour_pct_of_sales: null,
+      food_pct_of_sales: null,
+      variable_costs_percent: null,
+      profit_loss_pct_of_sales: null,
+    };
+
+    tableData.forEach((entry) => {
+      const salesActual = parseNumericValue(entry.sales_actual);
+      const labourActual = parseNumericValue(entry.labour_actual || entry.amount);
+      const foodActual = parseNumericValue(entry.food_cost_actual);
+      const variableCosts = Array.isArray(entry.variable_costs)
+        ? entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0)
+        : parseNumericValue(entry.varibale_cost_total || entry.variable_cost_total || 0);
+
+      totals.sales_budget += parseNumericValue(entry.sales_budget);
+      totals.sales_actual += salesActual;
+      totals.labour += parseNumericValue(entry.labour);
+      totals.labour_actual += labourActual;
+      totals.food_cost += parseNumericValue(entry.food_cost);
+      totals.food_cost_actual += foodActual;
+      totals.hours_actual += parseNumericValue(entry.hours_actual);
+      totals.tickets += parseNumericValue(entry.tickets);
+      totals.app_online_sales += parseNumericValue(entry.app_online_sales);
+      totals.in_store_sales += parseNumericValue(entry.in_store_sales || entry['in-store_sales']);
+      totals.variable_costs += variableCosts;
+      totals.total_days += 1;
+
+      if (Array.isArray(entry.fixed_costs)) {
+        entry.fixed_costs.forEach((cost) => {
+          totals.fixed_costs += parseNumericValue(cost.amount);
+        });
+      }
+
+      const dayProfit = entry.profit_loss != null && entry.profit_loss !== ''
+        ? parseNumericValue(entry.profit_loss)
+        : salesActual - labourActual - foodActual - variableCosts;
+      totals.profit_loss += dayProfit;
+    });
+
+    const vsBudget = (actual, budget) => (
+      budget > 0 ? ((actual - budget) / budget) * 100 : null
+    );
+    const ofSales = (amount) => (
+      totals.sales_actual > 0 ? (amount / totals.sales_actual) * 100 : null
+    );
+
+    totals.sales_vs_budget_pct = vsBudget(totals.sales_actual, totals.sales_budget);
+    totals.labour_vs_budget_pct = vsBudget(totals.labour_actual, totals.labour);
+    totals.food_vs_budget_pct = vsBudget(totals.food_cost_actual, totals.food_cost);
+    totals.labour_pct_of_sales = ofSales(totals.labour_actual);
+    totals.food_pct_of_sales = ofSales(totals.food_cost_actual);
+    totals.variable_costs_percent = ofSales(totals.variable_costs);
+    totals.profit_loss_pct_of_sales = ofSales(totals.profit_loss);
+
+    return totals;
+  }, [tableData, parseNumericValue]);
+
+  const getPeriodTotalCell = useCallback((categoryKey) => {
+    const totals = calculateWeeklyTotals;
+    if (!totals || Object.keys(totals).length === 0) {
+      return { amount: 0, percentage: null, percentageCategory: categoryKey };
+    }
+
+    switch (categoryKey) {
+      case 'sales_actual':
+        return {
+          amount: totals.sales_actual,
+          percentage: totals.sales_vs_budget_pct,
+          percentageCategory: 'sales_actual',
+        };
+      case 'labour_actual':
+        return {
+          amount: printFormat === 'percentage' ? totals.labour_pct_of_sales : totals.labour_actual,
+          percentage: printFormat === 'percentage' ? null : totals.labour_vs_budget_pct,
+          percentageCategory: 'labour_actual',
+        };
+      case 'food_cost_actual':
+        return {
+          amount: printFormat === 'percentage' ? totals.food_pct_of_sales : totals.food_cost_actual,
+          percentage: printFormat === 'percentage' ? null : totals.food_vs_budget_pct,
+          percentageCategory: 'food_cost_actual',
+        };
+      case 'variableCost':
+        return {
+          amount: printFormat === 'percentage' ? totals.variable_costs_percent : totals.variable_costs,
+          percentage: printFormat === 'percentage' ? null : totals.variable_costs_percent,
+          percentageCategory: 'variableCost',
+        };
+      case 'profit_loss':
+        return {
+          amount: printFormat === 'percentage' ? totals.profit_loss_pct_of_sales : totals.profit_loss,
+          percentage: printFormat === 'percentage' ? null : totals.profit_loss_pct_of_sales,
+          percentageCategory: 'profit_loss',
+        };
+      default:
+        return { amount: 0, percentage: null, percentageCategory: categoryKey };
+    }
+  }, [calculateWeeklyTotals, printFormat]);
+
+  const formatCompanionPercentage = useCallback((percentage, categoryKey) => {
+    if (percentage === null || percentage === undefined || percentage === '') {
+      return null;
+    }
+    const numValue = parseFloat(percentage);
+    if (Number.isNaN(numValue)) return null;
+    // Operating expenses companion is % of sales, not vs-budget.
+    if (categoryKey === 'variableCost') {
+      return `${Math.round(numValue)}%`;
+    }
+    return formatPercentage(percentage);
+  }, [formatPercentage]);
+
+  const renderPeriodTotalCell = useCallback((categoryKey) => {
+    const { amount, percentage, percentageCategory } = getPeriodTotalCell(categoryKey);
+    const formattedValue = categoryKey === 'profit_loss'
+      ? formatProfitLoss(amount || 0)
+      : formatValue(amount || 0, categoryKey);
+    const colorClass = categoryKey === 'profit_loss'
+      ? getProfitLossColor(amount || 0)
+      : 'text-gray-800';
+    const profitPercentage = formatCompanionPercentage(percentage, categoryKey);
+    const percentageColor = categoryKey === 'variableCost'
+      ? 'text-gray-600'
+      : getPercentageColor(percentage, percentageCategory);
+
+    return (
+      <div className="flex items-start justify-start font-semibold">
+        <span className={`text-sm ${colorClass}`}>{formattedValue}</span>
+        {profitPercentage && (
+          <span className={`text-xs ml-1 ${percentageColor} font-bold`}>
+            {profitPercentage}
+          </span>
+        )}
+      </div>
+    );
+  }, [getPeriodTotalCell, formatProfitLoss, formatValue, getProfitLossColor, formatCompanionPercentage, getPercentageColor]);
 
   // Generate grouped columns with multi-level headers
   const generateGroupedColumns = useMemo(() => {
@@ -667,8 +825,32 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       }
     });
 
+    const totalsSubtitle = viewMode === 'annual'
+      ? 'Year'
+      : viewMode === 'monthly'
+        ? 'Month'
+        : viewMode === 'weekly'
+          ? 'Weeks'
+          : 'Week';
+
+    groupedColumns.push({
+      title: (
+        <div>
+          <div className="font-semibold text-sm text-gray-900">Totals</div>
+          <div className="text-xs text-gray-500">{totalsSubtitle}</div>
+        </div>
+      ),
+      dataIndex: 'period_totals',
+      key: 'period_totals',
+      width: 160,
+      fixed: 'right',
+      className: 'pl-period-totals-col',
+      onHeaderCell: () => ({ className: 'pl-period-totals-col' }),
+      render: (_, record) => renderPeriodTotalCell(record.key),
+    });
+
     return groupedColumns;
-  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData, forceRender]);
+  }, [tableData, viewMode, formatDateForDisplay, expandedRows, categories, isWeeklyData, isMonthlyData, isAnnualData, forceRender, isDayClosed, renderPeriodTotalCell]);
 
   // Render cell value with proper formatting
   const renderCellValue = useCallback((value, record, entry, dateInfo) => {
@@ -1081,7 +1263,7 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
       // Use the same format as displayed in table columns
       return `${dateInfo.day} ${dateInfo.date}`;
     });
-    const headers = ['"Category"', ...dates.map(date => `"${date}"`)];
+    const headers = ['"Category"', ...dates.map(date => `"${date}"`), '"Totals"'];
     const rows = categories.map(category => {
       const rowData = [`"${category.label}"`];
       dates.forEach((_, index) => {
@@ -1132,10 +1314,16 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         // Wrap in quotes to preserve commas and other formatting in CSV
         rowData.push(`"${formattedValue}"`);
       });
+      const totalCell = getPeriodTotalCell(category.key);
+      const formattedTotal = category.key === 'profit_loss'
+        ? formatProfitLoss(totalCell.amount || 0)
+        : formatValue(totalCell.amount || 0, category.key);
+      const totalPercentage = formatCompanionPercentage(totalCell.percentage, category.key);
+      rowData.push(`"${formattedTotal}${totalPercentage ? ` ${totalPercentage}` : ''}"`);
       return rowData.join(',');
     });
     return [headers.join(','), ...rows].join('\n');
-  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, isAnnualData, printFormat, getDynamicVariableName, parseNumericValue, formatValue]);
+  }, [tableData, categories, processedData, formatDateForDisplay, isWeeklyData, isMonthlyData, isAnnualData, printFormat, getDynamicVariableName, parseNumericValue, formatValue, getPeriodTotalCell, formatProfitLoss, formatCompanionPercentage]);
 
   // Export handler
   const handleExport = useCallback(() => {
@@ -1210,68 +1398,6 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
         return '💰';
     }
   }, []);
-
-
-
-
-
-  // Calculate weekly totals - Memoized for performance
-  const calculateWeeklyTotals = useMemo(() => {
-    if (!tableData || tableData.length === 0) return {};
-
-    const totals = {
-      sales_budget: 0,
-      sales_actual: 0,
-      labour: 0,
-      labour_actual: 0,
-      food_cost: 0,
-      food_cost_actual: 0,
-      hours: 0,
-      hours_actual: 0,
-      fixed_costs: 0,
-      variable_costs: 0,
-      fixed_costs_percent: 0,
-      variable_costs_percent: 0,
-      tickets: 0,
-      app_online_sales: 0,
-      in_store_sales: 0,
-      total_days: 0
-    };
-
-         tableData.forEach(entry => {
-       totals.sales_budget += parseFloat(entry.sales_budget) || 0;
-       totals.sales_actual += parseFloat(entry.sales_actual) || 0;
-       totals.labour += parseFloat(entry.labour) || 0;
-       totals.labour_actual += parseFloat(entry.labour_actual || entry.amount) || 0;
-       totals.food_cost += parseFloat(entry.food_cost) || 0;
-       totals.food_cost_actual += parseFloat(entry.food_cost_actual) || 0;
-       totals.hours_actual += parseFloat(entry.hours_actual) || 0;
-       totals.tickets += parseFloat(entry.tickets) || 0;
-       totals.app_online_sales += parseFloat(entry.app_online_sales) || 0;
-       totals.in_store_sales += parseFloat(entry.in_store_sales || entry['in-store_sales']) || 0;
-
-       // Handle fixed costs array
-       if (Array.isArray(entry.fixed_costs)) {
-         entry.fixed_costs.forEach(cost => {
-           totals.fixed_costs += parseFloat(cost.amount) || 0;
-           totals.fixed_costs_percent += parseFloat(cost.percent_of_sales) || 0;
-         });
-       }
-
-       // Handle variable costs array
-       if (Array.isArray(entry.variable_costs)) {
-         entry.variable_costs.forEach(cost => {
-           totals.variable_costs += parseFloat(cost.amount) || 0;
-           totals.variable_costs_percent += parseFloat(cost.percent_of_sales) || 0;
-         });
-       }
-     });
-
-     // Show total costs without dividing by days
-     // totals.fixed_costs and totals.variable_costs are already the totals
-
-    return totals;
-     }, [tableData, dashboardSummaryData, dashboardData, parseNumericValue]);
 
   // Render period summary - Optimized for performance
   const renderWeeklySummary = useCallback((categoryKey, totals) => {
@@ -2225,6 +2351,15 @@ const ProfitLossTableDashboard = ({ dashboardData, dashboardSummaryData, loading
                       </div>
                     );
                   })}
+                  <div className="min-w-[180px] rounded-md border border-gray-300 bg-slate-50 px-3 py-2">
+                    <div className="text-[11px] text-gray-900 font-semibold">Totals</div>
+                    <div className="mt-1 text-xs flex items-center justify-between">
+                      <span className="text-gray-500">
+                        {viewMode === 'annual' ? 'Year' : viewMode === 'monthly' ? 'Month' : viewMode === 'weekly' ? 'Weeks' : 'Week'}
+                      </span>
+                      <span className="flex items-center">{renderPeriodTotalCell(row.key)}</span>
+                    </div>
+                  </div>
                   </div>
                 </div>
                 
