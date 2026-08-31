@@ -296,7 +296,7 @@ const ReportCard = ({
   title = "Report Card",
   dateLabel = "Last 30 Days (10/30/25 - Present)",
   score = 0,
-  goals = { labor: 30, cogs: 32, rent: 20, operatingExpenses: 10 },
+  goals = { labor: 30, cogs: 32, rent: 10, operatingExpenses: 15 },
   metrics = {
     labor: { value: 38, amount: 15000, deltaPct: 13 },
     cogs: { value: 31, amount: 12000, deltaPct: 6 },
@@ -638,7 +638,7 @@ const ReportCard = ({
               deltaPct={metrics.rent?.deltaPct}
             />
             <MiniGauge
-              label="Expenses"
+              label="Operational Expenses"
               metricKey="operating_expenses"
               tooltipsMap={tooltips}
               goal={goals.operatingExpenses}

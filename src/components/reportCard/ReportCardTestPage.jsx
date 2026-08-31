@@ -189,8 +189,8 @@ const ReportCardPage = () => {
   const goals = {
     labor: apiSummary?.labour?.goal || apiSummary?.labor?.goal || 18,
     cogs: apiSummary?.cogs?.goal || 16,
-    rent: apiSummary?.rent?.goal || 20,
-    operatingExpenses: apiSummary?.expenses?.goal || 10,
+    rent: apiSummary?.rent?.goal || 10,
+    operatingExpenses: apiSummary?.expenses?.goal || 15,
   };
   
   // Map metrics from API response - ensure all values are properly extracted
