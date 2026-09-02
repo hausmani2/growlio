@@ -359,7 +359,7 @@ const SquareCallbackHandler = () => {
                 onClick={() => startSyncFlow(selectedLocation?.id)}
                 disabled={!selectedLocation?.id || isStartingSync}
               >
-                Sync for this location
+                {fromOnboardingScore ? 'Select this location' : 'Sync for this location'}
               </Button>,
             ]}
             destroyOnClose
@@ -369,6 +369,11 @@ const SquareCallbackHandler = () => {
                 <span className="text-gray-500">Square Location:</span>{' '}
                 <span className="font-medium text-gray-900">{selectedLocation?.location_id ?? '—'}</span>
               </div>
+              {fromOnboardingScore ? (
+                <p className="text-gray-600 pt-1">
+                  After you select this location, you&apos;ll return to Profitability Score to import last month from Square.
+                </p>
+              ) : null}
             </div>
           </Modal>
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
@@ -376,7 +381,11 @@ const SquareCallbackHandler = () => {
               status="success"
               icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
               title="POS Integration Connected Successfully!"
-              subTitle="Click a location to sync your Square data, then we’ll take you to Close Out Your Day(s)."
+              subTitle={
+                fromOnboardingScore
+                  ? 'Click a Square location to continue. Next you can import last month on the Profitability Score page.'
+                  : "Click a location to sync your Square data, then we'll take you to Close Out Your Day(s)."
+              }
             />
 
             <div className="mt-4">

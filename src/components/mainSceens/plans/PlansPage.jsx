@@ -29,6 +29,29 @@ const isFreePlan = (plan) => (
   String(plan?.name || plan?.display_name || plan?.key || '').toLowerCase().includes('lite')
 );
 
+const getContinueButtonLabel = (plan) => {
+  if (!plan) return 'Continue';
+  if (isFreePlan(plan)) return 'Continue with Free Plan';
+  const planName = plan.display_name || plan.name;
+  return planName ? `Continue with ${planName}` : 'Continue';
+};
+
+const getContinueHelperText = (plan) => {
+  if (!plan || isFreePlan(plan)) {
+    return "You'll start on the free plan by default. You can upgrade after your restaurant is set up.";
+  }
+  const planName = plan.display_name || plan.name || 'your plan';
+  return `You're on the ${planName} plan. Continue to finish setting up your restaurant, or choose a different plan above.`;
+};
+
+const getOnboardingSubtitle = (plan) => {
+  if (!plan || isFreePlan(plan)) {
+    return 'Start with the free plan, then upgrade when your restaurant is ready for more tools.';
+  }
+  const planName = plan.display_name || plan.name || 'your plan';
+  return `You're on the ${planName} plan. Switch plans anytime, or continue to finish setting up your restaurant.`;
+};
+
 const PlansPage = ({
   onboardingMode = false,
   onContinue,
@@ -201,7 +224,7 @@ const PlansPage = ({
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-orange-600 mb-2">{title}</h1>
             <p className="text-gray-600 text-lg">
-              {subtitle}
+              {onboardingMode ? getOnboardingSubtitle(displayCurrentPlan) : subtitle}
             </p>
           </div>
 
@@ -275,7 +298,7 @@ const PlansPage = ({
         <div className="sticky bottom-0 z-10 -mx-2 bg-white/95 backdrop-blur border-t border-gray-200 px-2 py-4">
           <div className="mx-auto flex max-w-5xl flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <Text className="text-gray-600">
-              You&apos;ll start on the free plan by default. You can upgrade after your restaurant is set up.
+              {getContinueHelperText(displayCurrentPlan)}
             </Text>
             <Button
               type="primary"
@@ -283,7 +306,7 @@ const PlansPage = ({
               onClick={onContinue}
               className="h-12 px-8 text-base font-semibold bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0 shadow-lg hover:shadow-xl"
             >
-              Continue with Free Plan
+              {getContinueButtonLabel(displayCurrentPlan)}
             </Button>
           </div>
         </div>
