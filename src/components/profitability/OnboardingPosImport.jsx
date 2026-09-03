@@ -6,12 +6,18 @@ import {
   LinkOutlined,
   LoadingOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import useStore from '../../store/store';
 import SquareConnectButton from '../square/SquareConnectButton';
 import SyncModal from '../SyncModal';
+import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import {
+  formatPosDate,
   getLastCalendarMonthRange,
   getMerchantSyncStatus,
+  getPosImportRangeForPreset,
+  isPosImportRangeAllowed,
+  POS_IMPORT_MAX_DAYS,
   triggerPosSync,
 } from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
@@ -22,6 +28,12 @@ import { getRoleLandingRoute } from '../../utils/rolePermissions';
 
 const POLL_MS = 4000;
 const MAX_POLL_MS = 5 * 60 * 1000;
+
+const defaultImportRange = () =>
+  getPosImportRangeForPreset('last_month', dayjs) || (() => {
+    const { startDate, endDate } = getLastCalendarMonthRange();
+    return [dayjs(startDate), dayjs(endDate)];
+  })();
 
 const normalizeSquareLocations = (payload) => {
   const list =
@@ -55,6 +67,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [importRange, setImportRange] = useState(defaultImportRange);
 
   const pollRef = useRef(null);
   const socketRef = useRef(null);
@@ -63,13 +76,20 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const sawProcessingRef = useRef(false);
 
   const isConnected = squareStatus === 'connected';
-  const { startDate, endDate } = getLastCalendarMonthRange();
+  const startDate = formatPosDate(importRange?.[0]);
+  const endDate = formatPosDate(importRange?.[1]);
+  const hasValidImportRange = Boolean(startDate && endDate && startDate <= endDate);
   const hasSyncEnabledLocation = useMemo(
     () => locations.some((loc) => loc.sync_enabled && loc.id),
     [locations]
   );
   const canImport =
-    !planLocked && isConnected && hasSyncEnabledLocation && !isImporting && Boolean(restaurantId);
+    !planLocked &&
+    isConnected &&
+    hasSyncEnabledLocation &&
+    hasValidImportRange &&
+    !isImporting &&
+    Boolean(restaurantId);
 
   const loadLocations = useCallback(async () => {
     if (!restaurantId) return;
@@ -202,8 +222,16 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
       return;
     }
     if (!hasSyncEnabledLocation) {
-      message.warning('Select a Square location first, then import last month.');
+      message.warning('Select a Square location first, then import.');
       setIsLocationPickerOpen(true);
+      return;
+    }
+    if (!hasValidImportRange) {
+      message.warning('Select a start and end date for the import.');
+      return;
+    }
+    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
+      message.warning(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
       return;
     }
 
@@ -336,10 +364,12 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const helperText = planLocked
     ? 'Available on Grow & Pro — upgrade to connect Square and import automatically.'
     : !isConnected
-      ? `Connect Square, select a location, then pull ${startDate} to ${endDate}.`
+      ? 'Connect Square, select a location, then choose dates to import history.'
       : !hasSyncEnabledLocation
         ? 'Square connected. Select a location to enable import.'
-        : `Location selected. Import last month (${startDate} to ${endDate}).`;
+        : hasValidImportRange
+          ? `Import Square data from ${startDate} to ${endDate}.`
+          : 'Choose a date range to import from Square.';
 
   return (
     <div
@@ -371,7 +401,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
         destroyOnClose
       >
         <Typography.Paragraph className="text-gray-600 !mb-3">
-          Click a location to use it for importing last month from Square.
+          Click a location to use it for importing Square history.
         </Typography.Paragraph>
         {locationsError ? (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -428,7 +458,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
             </span>
           </div>
           <p className="text-gray-600 pt-1">
-            After selecting this location, you can import last month from Square.
+            After selecting this location, choose dates and import from Square.
           </p>
         </div>
       </Modal>
@@ -438,7 +468,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           compact ? 'text-sm sm:text-base md:text-lg mb-1' : 'text-sm mb-1'
         }`}
       >
-        Or import last month from Square
+        Or import history from Square
       </p>
       <p
         className={`text-gray-500 text-center ${
@@ -475,6 +505,21 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           </button>
         )}
 
+        {isConnected && !planLocked && (
+          <div className="w-full">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 text-center">
+              Import date range
+            </label>
+            <PosImportDateRangeSelect
+              value={importRange}
+              onChange={setImportRange}
+              disabled={planLocked || isImporting}
+              size={compact ? 'middle' : 'large'}
+              defaultPreset="last_month"
+            />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleImport}
@@ -494,7 +539,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           ) : (
             <LinkOutlined />
           )}
-          {isImporting ? 'Importing...' : 'Import last month from Square'}
+          {isImporting ? 'Importing...' : 'Import from Square'}
         </button>
 
         {planLocked && (

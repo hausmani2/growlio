@@ -1,12 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Modal, Table, message, Typography } from 'antd';
+import dayjs from 'dayjs';
 import useStore from '../../../store/store';
 import PageHeaderSection from '../../common/PageHeaderSection';
-import { apiPatch, apiPost } from '../../../utils/axiosInterceptors';
-import { getMerchantSyncStatus, triggerPosSync } from '../../../services/posApi';
+import PosImportDateRangeSelect from '../../common/PosImportDateRangeSelect';
+import { apiPatch } from '../../../utils/axiosInterceptors';
+import {
+  formatPosDate,
+  getPosImportRangeForPreset,
+  getMerchantSyncStatus,
+  isPosImportRangeAllowed,
+  POS_IMPORT_MAX_DAYS,
+  triggerPosSync,
+} from '../../../services/posApi';
 import { createPosSyncWebSocket } from '../../../services/websocket';
 import SyncModal from '../../SyncModal';
 import { useNavigate } from 'react-router-dom';
+
+const defaultSyncRange = () => getPosImportRangeForPreset('last_month', dayjs);
 
 const PosLocations = () => {
   const navigate = useNavigate();
@@ -17,6 +28,7 @@ const PosLocations = () => {
   const [isStartingSync, setIsStartingSync] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [syncRange, setSyncRange] = useState(defaultSyncRange);
 
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
@@ -54,6 +66,17 @@ const PosLocations = () => {
     }
     if (!locationId) {
       message.error('Please select a location first.');
+      return;
+    }
+
+    const startDate = formatPosDate(syncRange?.[0]);
+    const endDate = formatPosDate(syncRange?.[1]);
+    if (!startDate || !endDate || startDate > endDate) {
+      message.error('Please select a valid import date range.');
+      return;
+    }
+    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
+      message.error(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
       return;
     }
 
@@ -110,7 +133,7 @@ const PosLocations = () => {
         }
       }, 10000);
 
-      await triggerPosSync(restaurantId);
+      await triggerPosSync(restaurantId, { startDate, endDate });
     } catch (e) {
       cleanupRealtimeResources();
       setIsStartingSync(false);
@@ -121,7 +144,7 @@ const PosLocations = () => {
         'Failed to start sync.';
       message.error(msg);
     }
-  }, [cleanupRealtimeResources, navigate, restaurantId]);
+  }, [cleanupRealtimeResources, navigate, restaurantId, syncRange]);
 
   const columns = useMemo(
     () => [
@@ -186,7 +209,7 @@ const PosLocations = () => {
         ]}
         destroyOnClose
       >
-        <div className="space-y-2 text-sm">
+        <div className="space-y-3 text-sm">
           <div>
             <span className="text-gray-500">Status:</span>{' '}
             <span className="font-medium text-gray-900">{selectedLocation?.status ?? '—'}</span>
@@ -194,6 +217,15 @@ const PosLocations = () => {
           <div>
             <span className="text-gray-500">Timezone:</span>{' '}
             <span className="font-medium text-gray-900">{selectedLocation?.timezone ?? '—'}</span>
+          </div>
+          <div>
+            <label className="block text-gray-700 font-medium mb-1.5">Import date range</label>
+            <PosImportDateRangeSelect
+              value={syncRange}
+              onChange={setSyncRange}
+              disabled={isStartingSync}
+              defaultPreset="last_month"
+            />
           </div>
         </div>
       </Modal>
