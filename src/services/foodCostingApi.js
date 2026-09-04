@@ -125,10 +125,12 @@ export const fetchMenuItems = async ({
   search = '',
   page = 1,
   pageSize = 25,
+  ordering = '',
 } = {}) => {
   const { query } = withIds();
   const params = new URLSearchParams(query);
   if (search) params.set('search', search);
+  if (ordering) params.set('ordering', ordering);
   params.set('page', String(page));
   params.set('page_size', String(pageSize));
   const res = await apiGet(`/food_costing/menu-items/?${params.toString()}`);

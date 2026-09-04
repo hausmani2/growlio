@@ -155,6 +155,7 @@ const FoodCostingPage = () => {
   const [dashboardMenuItems, setDashboardMenuItems] = useState([]);
   const [dashboardMenuTotal, setDashboardMenuTotal] = useState(0);
   const [dashboardMenuPage, setDashboardMenuPage] = useState(1);
+  const [dashboardMenuOrdering, setDashboardMenuOrdering] = useState('name');
   const dashboardMenuPageSize = 10;
   const [ingredients, setIngredients] = useState([]);
   const [ingredientTotal, setIngredientTotal] = useState(0);
@@ -255,6 +256,7 @@ const FoodCostingPage = () => {
     ingredientPage,
     ingredientPageSize,
     dashboardMenuPage,
+    dashboardMenuOrdering,
   };
 
   useEffect(() => {
@@ -312,15 +314,17 @@ const FoodCostingPage = () => {
           case 'dashboard': {
             const page = opts.page ?? pg.dashboardMenuPage;
             const pageSize = opts.pageSize ?? dashboardMenuPageSize;
+            const ordering = opts.ordering ?? pg.dashboardMenuOrdering ?? 'name';
             const [dash, menuData] = await Promise.all([
               fetchFoodCostingDashboard(),
-              fetchMenuItems({ page, pageSize }),
+              fetchMenuItems({ page, pageSize, ordering }),
             ]);
             if (controller.signal.aborted) return;
             setDashboard(dash);
             setDashboardMenuItems(menuData.results);
             setDashboardMenuTotal(menuData.count);
             setDashboardMenuPage(page);
+            setDashboardMenuOrdering(ordering);
             break;
           }
           case 'drafts': {
@@ -625,9 +629,34 @@ const FoodCostingPage = () => {
   const handleDashboardMenuPageChange = useCallback(
     (page) => {
       setDashboardMenuPage(page);
-      loadTabData('dashboard', { page });
+      loadTabData('dashboard', { page, ordering: dashboardMenuOrdering });
     },
-    [loadTabData]
+    [loadTabData, dashboardMenuOrdering]
+  );
+
+  const handleDashboardMenuTableChange = useCallback(
+    (pagination, _filters, sorter) => {
+      const page = pagination?.current || 1;
+      const columnKey = sorter?.columnKey || sorter?.field;
+      let ordering = dashboardMenuOrdering;
+
+      if (columnKey && sorter?.order) {
+        const fieldMap = {
+          name: 'name',
+          selling_price: 'selling_price',
+          food_cost_percent: 'food_cost_percent',
+          confidence_score: 'confidence_score',
+          source: 'source',
+        };
+        const field = fieldMap[columnKey] || columnKey;
+        ordering = sorter.order === 'descend' ? `-${field}` : field;
+      }
+
+      setDashboardMenuPage(page);
+      setDashboardMenuOrdering(ordering);
+      loadTabData('dashboard', { page, ordering });
+    },
+    [loadTabData, dashboardMenuOrdering]
   );
 
   const handleIngredientPageChange = useCallback(
@@ -1532,6 +1561,72 @@ const FoodCostingPage = () => {
     },
   ];
 
+  const dashboardSortField = dashboardMenuOrdering.replace(/^-/, '');
+  const dashboardSortOrder = dashboardMenuOrdering.startsWith('-')
+    ? 'descend'
+    : 'ascend';
+
+  const dashboardMenuColumns = [
+    {
+      title: 'Item',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: true,
+      sortOrder: dashboardSortField === 'name' ? dashboardSortOrder : null,
+      sortDirections: ['ascend', 'descend', 'ascend'],
+      render: (name, record) => (
+        <button
+          type="button"
+          className="text-left font-medium text-[#FF8132] hover:underline bg-transparent border-0 p-0 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToMenuItem(record);
+          }}
+        >
+          {name}
+        </button>
+      ),
+    },
+    {
+      title: 'Selling price',
+      dataIndex: 'selling_price',
+      key: 'selling_price',
+      sorter: true,
+      sortOrder: dashboardSortField === 'selling_price' ? dashboardSortOrder : null,
+      sortDirections: ['ascend', 'descend', 'ascend'],
+      render: (v) => `$${Number(v || 0).toFixed(2)}`,
+    },
+    {
+      title: 'Food cost %',
+      key: 'food_cost_percent',
+      sorter: true,
+      sortOrder: dashboardSortField === 'food_cost_percent' ? dashboardSortOrder : null,
+      sortDirections: ['ascend', 'descend', 'ascend'],
+      render: (_, r) =>
+        r.current_recipe?.food_cost_percent != null
+          ? `${Number(r.current_recipe.food_cost_percent).toFixed(1)}%`
+          : '—',
+    },
+    {
+      title: 'Confidence',
+      dataIndex: 'confidence_score',
+      key: 'confidence_score',
+      sorter: true,
+      sortOrder: dashboardSortField === 'confidence_score' ? dashboardSortOrder : null,
+      sortDirections: ['ascend', 'descend', 'ascend'],
+      render: (v) => confidenceTag(v),
+    },
+    {
+      title: 'Source',
+      dataIndex: 'source',
+      key: 'source',
+      sorter: true,
+      sortOrder: dashboardSortField === 'source' ? dashboardSortOrder : null,
+      sortDirections: ['ascend', 'descend', 'ascend'],
+      render: (v) => <Tag>{v}</Tag>,
+    },
+  ];
+
   const menuItemExpandable = {
     expandedRowRender: (record) => (
       <div className="text-sm text-gray-600 space-y-1">
@@ -1635,16 +1730,14 @@ const FoodCostingPage = () => {
                     rowKey="id"
                     loading={loading}
                     dataSource={dashboardMenuItems}
-                    columns={menuColumns.filter((c) =>
-                      ['name', 'fc', 'conf', 'source'].includes(c.key)
-                    )}
+                    columns={dashboardMenuColumns}
                     pagination={{
                       current: dashboardMenuPage,
                       pageSize: dashboardMenuPageSize,
                       total: dashboardMenuTotal,
                       showSizeChanger: false,
-                      onChange: handleDashboardMenuPageChange,
                     }}
+                    onChange={handleDashboardMenuTableChange}
                     onRow={(record) => ({
                       onClick: () => goToMenuItem(record),
                       className: 'cursor-pointer',
