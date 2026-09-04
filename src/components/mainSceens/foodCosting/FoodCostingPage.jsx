@@ -439,26 +439,24 @@ const FoodCostingPage = () => {
               setDashboardMenuTotal(data.count);
             })
           );
-          if (activeTab === 'menu') {
-            if (pg.menuSortBy === 'category') {
-              tasks.push(
-                fetchAllMenuItems({ search: pg.menuItemSearch }).then((data) => {
-                  setMenuItemsForCategory(data.results);
-                  setMenuTotal(data.count);
-                })
-              );
-            } else {
-              tasks.push(
-                fetchMenuItems({
-                  page: pg.menuPage,
-                  pageSize: pg.menuPageSize,
-                  search: pg.menuItemSearch,
-                }).then((data) => {
-                  setMenuItems(data.results);
-                  setMenuTotal(data.count);
-                })
-              );
-            }
+          if (pg.menuSortBy === 'category') {
+            tasks.push(
+              fetchAllMenuItems({ search: pg.menuItemSearch }).then((data) => {
+                setMenuItemsForCategory(data.results);
+                setMenuTotal(data.count);
+              })
+            );
+          } else {
+            tasks.push(
+              fetchMenuItems({
+                page: pg.menuPage,
+                pageSize: pg.menuPageSize,
+                search: pg.menuItemSearch,
+              }).then((data) => {
+                setMenuItems(data.results);
+                setMenuTotal(data.count);
+              })
+            );
           }
         }
         if (unique.includes('ingredients')) {
@@ -973,7 +971,7 @@ const FoodCostingPage = () => {
           ingredient_id: line.ingredient || null,
         }))
       );
-      refresh(['dashboard', 'invoices', 'ingredients']);
+      refresh(['dashboard', 'invoices', 'ingredients', 'menu']);
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to apply invoice costs');
     } finally {
@@ -1423,7 +1421,7 @@ const FoodCostingPage = () => {
             onConfirm={async () => {
               await archiveIngredient(record.id);
               message.success('Ingredient archived');
-              refresh(['dashboard', 'ingredients']);
+              refresh(['dashboard', 'ingredients', 'menu']);
             }}
           >
             <Button size="small" danger>
@@ -2224,7 +2222,7 @@ const FoodCostingPage = () => {
           }
           setIngredientModalOpen(false);
           setEditingIngredient(null);
-          refresh(['dashboard', 'ingredients']);
+          refresh(['dashboard', 'ingredients', 'menu']);
         }}
       />
 
