@@ -1296,14 +1296,20 @@ const FoodCostingPage = () => {
     return (
       <div className="p-2 md:p-4">
         <PageHeaderSection
-          title="Food Costing"
-          description="AI-powered recipe costing and margin intelligence"
+          title="Menu Intelligence"
+          description={
+            <>
+              Growlio tells you how your restaurant is performing.
+              <br />
+              Menu Intelligence tells you how your menu is performing.
+            </>
+          }
         />
         <Card className="max-w-3xl mx-auto text-center py-8">
           <StarOutlined className="text-4xl text-[#FF8132] mb-4" />
           <h2 className="text-2xl font-semibold mb-2">Grow or Pro plan required</h2>
           <p className="text-gray-600 mb-6">
-            Food Costing (manual recipes, LIO photo builds, and confidence scores) is
+            Menu Intelligence (manual recipes, LIO photo builds, and confidence scores) is
             available on Grow and Pro. Your current plan
             {planName ? `: ${planName}` : ''} does not include this module.
           </p>
@@ -1528,8 +1534,14 @@ const FoodCostingPage = () => {
   return (
     <div className="p-2 md:p-4">
       <PageHeaderSection
-        title="Food Costing"
-        description="LIO builds first. You confirm and improve accuracy over time."
+        title="Menu Intelligence"
+        description={
+          <>
+            Growlio tells you how your restaurant is performing.
+            <br />
+            Menu Intelligence tells you how your menu is performing.
+          </>
+        }
         right={
           <Space wrap>
             <Button
