@@ -1082,6 +1082,15 @@ const FoodCostingPage = () => {
     loadRecipeIngredientChoices();
   };
 
+  const goToMenuItem = (record) => {
+    if (!record) return;
+    if (activeTab !== 'menu') {
+      setActiveTab('menu');
+      loadTabData('menu');
+    }
+    openEditMenuItem(record);
+  };
+
   const saveMenuItem = async () => {
     try {
       const values = await menuForm.validateFields();
@@ -1440,7 +1449,23 @@ const FoodCostingPage = () => {
   ];
 
   const menuColumns = [
-    { title: 'Item', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Item',
+      dataIndex: 'name',
+      key: 'name',
+      render: (name, record) => (
+        <button
+          type="button"
+          className="text-left font-medium text-[#FF8132] hover:underline bg-transparent border-0 p-0 cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToMenuItem(record);
+          }}
+        >
+          {name}
+        </button>
+      ),
+    },
     {
       title: 'Sell price',
       dataIndex: 'selling_price',
@@ -1620,6 +1645,10 @@ const FoodCostingPage = () => {
                       showSizeChanger: false,
                       onChange: handleDashboardMenuPageChange,
                     }}
+                    onRow={(record) => ({
+                      onClick: () => goToMenuItem(record),
+                      className: 'cursor-pointer',
+                    })}
                   />
                 </Card>
               </Spin>
