@@ -97,7 +97,7 @@ const TotalExpense = ({ data,  onSave }) => {
             <div className="mb-6">
                 <h3 className="text-xl font-bold text-orange-600">Total Expenses</h3>
                 <p className="text-gray-600 text-sm">
-                   Your total expenses are calculated by adding all your operational expenses.
+                   Your total expenses are calculated by adding all your operating expenses.
                 </p>
             </div>
             

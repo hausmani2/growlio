@@ -61,7 +61,7 @@ const EXPENSE_PIE_PALETTE = {
 const SLICE_INSIDE_LINE_SETS = [
   ['Labor Budget'],
   ['Food Cost', '(COGS)'],
-  ['Operational', 'Expense'],
+  ['Operating', 'Expense'],
 ];
 
 const getEntryVariableCostBudget = (entry) => {
@@ -99,7 +99,7 @@ const formatAssumptionRate = (value) => {
   return Number.isFinite(n) && n > 0 ? `$${n.toFixed(2)}/hr` : '—';
 };
 
-// Custom plugin: multi-line labels inside slices (avoids clipping long names like "Operational Expense")
+// Custom plugin: multi-line labels inside slices (avoids clipping long names like "Operating Expense")
 const SliceLabelsPlugin = {
   id: 'sliceLabels',
   afterDatasetsDraw(chart, args, pluginOptions) {
@@ -492,7 +492,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     return [
       { key: 'labor_budget', label: 'Labor Budget', value: labor },
       { key: 'food_cost', label: 'Food Cost (COGS)', value: food },
-      { key: 'expenses', label: 'Operational Expense', value: ops },
+      { key: 'expenses', label: 'Operating Expense', value: ops },
     ];
   }, [
     summaryData.totalLaborBudget,
@@ -771,7 +771,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
               />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p>This chart shows how your weekly expenses are allocated across Labor Budget, Food Cost (COGS), and Operational Expense.</p>
+              <p>This chart shows how your weekly expenses are allocated across Labor Budget, Food Cost (COGS), and Operating Expense.</p>
             </div>
           </Card>
         </Col>

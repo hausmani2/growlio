@@ -638,7 +638,7 @@ const ReportCard = ({
               deltaPct={metrics.rent?.deltaPct}
             />
             <MiniGauge
-              label="Operational Expenses"
+              label="Operating Expenses"
               metricKey="operating_expenses"
               tooltipsMap={tooltips}
               goal={goals.operatingExpenses}

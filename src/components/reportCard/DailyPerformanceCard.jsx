@@ -255,13 +255,13 @@ const DailyPerformanceCard = ({ onCloseOutDays }) => {
       // Check Expense status (operating expenses excluding rent)
       if (item.expense_status === 'over_goal' && item.expense_difference) {
         over.push({
-          text: `${dayName} Operational Expenses over ${Math.round(Math.abs(item.expense_difference))}%`,
+          text: `${dayName} Operating Expenses over ${Math.round(Math.abs(item.expense_difference))}%`,
           type: "error",
           item: item
         });
       } else if (item.expense_status === 'under_goal' && item.expense_difference) {
         under.push({
-          text: `${dayName} Operational Expenses under ${Math.round(Math.abs(item.expense_difference))}%`,
+          text: `${dayName} Operating Expenses under ${Math.round(Math.abs(item.expense_difference))}%`,
           type: "success",
           item: item
         });
