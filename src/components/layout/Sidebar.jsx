@@ -57,7 +57,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/support': 'support',
     '/dashboard/training': 'training',
     '/dashboard/pricing': 'pricing',
-    '/dashboard/pos-integrations': 'pos-integrations',
+    '/dashboard/pos-integrations': 'pos',
     '/dashboard/food-costing': 'food-costing',
     '/dashboard/square': 'square',
     '/dashboard/pos/orders': 'pos-orders',
@@ -97,8 +97,12 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     selectedKey = pathKeyMap[location.pathname];
   }
 
-  const isItemActiveParent = (item) =>
-    !!(item.children && item.children.some((child) => selectedKey === child.key));
+  const isItemActiveParent = (item) => {
+    if (!item.children?.length) return false;
+    return item.children.some(
+      (child) => selectedKey === child.key || isItemActiveParent(child)
+    );
+  };
 
   // Close sidebar on window resize if desktop
   useEffect(() => {
@@ -114,18 +118,24 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     return () => window.removeEventListener('resize', handleResize);
   }, [onMobileMenuToggle]);
 
-  // Auto-expand parent menu items when child is selected
+  // Auto-expand parent menu items when child/grandchild is selected
   useEffect(() => {
     setExpandedItems((currentExpandedItems) => {
       const nextExpandedItems = new Set(currentExpandedItems);
       let hasChanges = false;
 
-      menuItems.forEach((item) => {
-        if (isItemActiveParent(item) && !manuallyCollapsedItems.has(item.key) && !nextExpandedItems.has(item.key)) {
-          nextExpandedItems.add(item.key);
-          hasChanges = true;
-        }
-      });
+      const expandActiveParents = (items) => {
+        items.forEach((item) => {
+          if (!item.children?.length) return;
+          if (isItemActiveParent(item) && !manuallyCollapsedItems.has(item.key) && !nextExpandedItems.has(item.key)) {
+            nextExpandedItems.add(item.key);
+            hasChanges = true;
+          }
+          expandActiveParents(item.children);
+        });
+      };
+
+      expandActiveParents(menuItems);
 
       return hasChanges ? nextExpandedItems : currentExpandedItems;
     });

@@ -473,134 +473,135 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           key: 'go to your budget',
           label: 'Go to your budget',
           onClick: () => navigate('/dashboard/budget'),
-        }
-     
-       
-       
-     
+        },
+        {
+          key: 'pos',
+          icon: <ShoppingOutlined />,
+          label: 'POS',
+          onClick: () => navigate('/dashboard/pos-integrations'),
+        },
       ],
     }] : []),
+    ...(isRegularUser && canAccessSimulator
+      ? [
+          {
+            key: 'your-simulator',
+            icon: <FaChartLine />,
+            label: 'Your Simulator',
+            children: [
+              {
+                key: 'simulation-dashboard',
+                label: 'Simulation Dashboard',
+                onClick: handleSimulationDashboardClick,
+              },
+              {
+                key: 'simulation-setup',
+                label: 'Simulation Setup Process',
+                children: [
+                  {
+                    key: 'simulation-basic-information',
+                    label: 'Basic Information',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/basic-information'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-sales-channels-operating-days',
+                    label: 'Sales Channels & Operating Days',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/sales-channels-operating-days'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-labor-information',
+                    label: 'Labor Information',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/labor-information'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-expenses',
+                    label: 'Expenses',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/expenses'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                ],
+              },
+            ],
+          },
+        ]
+      : []),
+    {
+      key: 'food-costing',
+      icon: <MdOutlineFoodBank />,
+      label: 'Menu Intelligence',
+      onClick: () => navigate('/dashboard/food-costing'),
+    },
     {
       key: 'support',
       icon: <QuestionCircleOutlined />,
       label: 'Support',
       onClick: () => navigate('/dashboard/support'),
     },
-    // Training menu - only show if user can access training
- {
+    {
       key: 'training',
       icon: <BookOutlined />,
       label: 'Tutorials',
       onClick: () => navigate('/dashboard/training'),
-  },
-    // Simulation Dashboard
-    // Always show for regular users in the sidebar.
-    // If simulation isn't set up yet, route them to simulation onboarding.
-    ...(isRegularUser && canAccessSimulator ? [
-      {
-        key: 'simulation-dashboard',
-        icon: <FaChartLine />,
-        label: 'Simulation Dashboard',
-        onClick: handleSimulationDashboardClick,
-      },
-      // Always show Simulation Setup for regular users.
-      // If simulation isn't set up yet, route to Simulation onboarding instead of dead links.
-      {
-        key: 'simulation-setup',
-        icon: <UserOutlined />,
-        label: 'Simulation Setup Process',
-        children: [
-          {
-            key: 'simulation-basic-information',
-            label: 'Basic Information',
-            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/basic-information' : '/onboarding/simulation'),
-          },
-          {
-            key: 'simulation-sales-channels-operating-days',
-            label: 'Sales Channels & Operating Days',
-            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/sales-channels-operating-days' : '/onboarding/simulation'),
-          },
-          {
-            key: 'simulation-labor-information',
-            label: 'Labor Information',
-            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/labor-information' : '/onboarding/simulation'),
-          },
-          {
-            key: 'simulation-expenses',
-            label: 'Expenses',
-            onClick: () => navigate((hasSimulationRestaurants || restaurantSimulationData?.restaurant_simulation === true) ? '/simulation/expenses' : '/onboarding/simulation'),
-          },
-        ],
-      },
-    ] : []),
-    // {
-    //   key: 'pricing',
-    //   icon: <StarOutlined />,
-    //   label: 'Pricing',
-    //   onClick: () => navigate('/dashboard/pricing'),
-    // },
-    {
-      key: 'pos',
-      icon: <ShoppingOutlined />,
-      label: 'POS',
-      children: [
-        {
-          key: 'pos-integrations',
-          label: 'POS Integrations',
-          onClick: () => navigate('/dashboard/pos-integrations'),
-        },
-      ],
     },
-    {
-      key: 'food-costing',
-      icon: <MdOutlineFoodBank />,
-      label: 'Food Costing',
-      onClick: () => navigate('/dashboard/food-costing'),
-    },
-    ...(posEnabled ? [{
-      key: 'square',
-      icon: <ShoppingOutlined />,
-      label: 'POS Integration',
-      onClick: handleSquarePosClick,
-    }] : []),
-    ...(posEnabled && isPosConnected ? [{
-      key: 'pos-details',
-      icon: <ShopOutlined />,
-      label: 'POS Details',
-      children: [
-        {
-          key: 'pos-payments',
-          label: 'POS Payments',
-          onClick: () => navigate('/dashboard/pos/payments'),
-        },
-        {
-          key: 'pos-timecards',
-          label: 'POS Timecards',
-          onClick: () => navigate('/dashboard/pos/timecards'),
-        },
-        {
-          key: 'pos-locations',
-          label: 'Locations',
-          onClick: () => navigate('/dashboard/pos/locations'),
-        },
-        {
-          key: 'pos-orders',
-          label: 'Orders',
-          onClick: () => navigate('/dashboard/pos/orders'),
-        },
-      ],
-    }] : []),
+    ...(posEnabled && isPosConnected
+      ? [
+          {
+            key: 'square',
+            icon: <ShoppingOutlined />,
+            label: 'Square',
+            children: [
+              {
+                key: 'pos-payments',
+                label: 'Payments',
+                onClick: () => navigate('/dashboard/pos/payments'),
+              },
+              {
+                key: 'pos-timecards',
+                label: 'Timecards',
+                onClick: () => navigate('/dashboard/pos/timecards'),
+              },
+              {
+                key: 'pos-locations',
+                label: 'Locations',
+                onClick: () => navigate('/dashboard/pos/locations'),
+              },
+              {
+                key: 'pos-orders',
+                label: 'Orders',
+                onClick: () => navigate('/dashboard/pos/orders'),
+              },
+            ],
+          },
+        ]
+      : []),
     {
       key: 'leo-ai',
       icon: <img src={lioIcon} alt="LIO AI" className="w-6 h-6" />,
       label: 'LIO AI',
       children: [
-        // {
-        //   key: 'faq',
-        //   icon: <FileTextOutlined />,
-        //   label: 'FAQ',
-        //   onClick: () => navigate('/dashboard/faq'),
-        // },
         {
           key: 'chat',
           icon: <MessageOutlined />,

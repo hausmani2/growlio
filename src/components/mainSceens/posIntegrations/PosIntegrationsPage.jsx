@@ -25,6 +25,15 @@ const getPlanName = (plan) =>
 
 const isPaidPosPlan = (planName) => planName.includes('grow') || planName.includes('pro');
 
+const FALLBACK_SQUARE_INTEGRATION = {
+  id: 'square-fallback',
+  name: 'Square',
+  slug: 'square',
+  description: 'connect square',
+  is_active: true,
+  display_order: 1,
+};
+
 const PosIntegrationsPage = () => {
   const navigate = useNavigate();
   const integrations = useStore((s) => s.posIntegrations);
@@ -46,7 +55,9 @@ const PosIntegrationsPage = () => {
   const restaurantId = localStorage.getItem('restaurant_id');
 
   useEffect(() => {
-    fetchPosIntegrations();
+    fetchPosIntegrations().catch(() => {
+      // Error is stored in slice; keep page usable with Square fallback.
+    });
   }, [fetchPosIntegrations]);
 
   useEffect(() => {
@@ -81,17 +92,19 @@ const PosIntegrationsPage = () => {
   const currentPlanName = latestPlanName || getPlanName(subscriptionDetails?.package || currentPackage);
   const canUsePosIntegrations = isPaidPosPlan(currentPlanName);
 
-  const enhancedIntegrations = useMemo(
-    () =>
-      (integrations || []).map((integration) => ({
-        ...integration,
-        connectionStatus:
-          isSquareIntegration(integration) && squareStatus === 'connected'
-            ? 'connected'
-            : 'not_connected',
-      })),
-    [integrations, squareStatus]
-  );
+  const enhancedIntegrations = useMemo(() => {
+    const list = Array.isArray(integrations) && integrations.length > 0
+      ? integrations
+      : [FALLBACK_SQUARE_INTEGRATION];
+
+    return list.map((integration) => ({
+      ...integration,
+      connectionStatus:
+        isSquareIntegration(integration) && squareStatus === 'connected'
+          ? 'connected'
+          : 'not_connected',
+    }));
+  }, [integrations, squareStatus]);
 
   const connectedCount = enhancedIntegrations.filter(
     (integration) => integration.connectionStatus === 'connected'
