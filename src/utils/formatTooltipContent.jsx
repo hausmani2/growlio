@@ -7,6 +7,10 @@ const HIGHLIGHT_PHRASES = [
   'Rent performance',
   'Operating expenses',
   'operating expenses',
+  'Cost of Goods (COGS)',
+  'Cost of Goods',
+  'percent of sales',
+  'percentage of sales',
   'Target percentage',
   'goal percentage',
   'labor target',
@@ -22,9 +26,14 @@ const HIGHLIGHT_PHRASES = [
   'above goal',
   'Profitability',
   'profitability',
+  'personal AI restaurant advisor',
+  'percentages',
+  'percentage',
+  'dollars',
   'target %',
   'nickname',
   'label',
+  'COGS',
 ].sort((a, b) => b.length - a.length);
 
 /** Matches Report Card gauge colors already used in the design system. */
@@ -113,21 +122,37 @@ function extractInlineStatusSentences(text) {
 }
 
 /**
- * Apply **markdown** bold and highlight-phrase bolding to a string → React nodes.
+ * Apply **bold**, *italic*, and highlight-phrase bolding to a string → React nodes.
+ * Also strips orphan leading/trailing asterisks that aren't valid markdown.
  */
 function formatInlineText(text, keyPrefix) {
   if (!text) return null;
 
-  const mdParts = String(text).split(/(\*\*[^*]+\*\*)/g).filter((p) => p !== '');
+  let source = String(text).trim();
+  // Orphan markdown leftovers (e.g. "*Hi, I'm LIO..." with no closing *)
+  source = source.replace(/^\*(?!\*)(?![^*]*\*)/, '');
+  source = source.replace(/(?<!\*)\*(?!\*)$/, '');
+
+  // Bold first (**...**), then italics (*...*) on remaining plain segments.
+  const mdParts = source.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter((p) => p !== '');
 
   const nodes = [];
   mdParts.forEach((part, partIdx) => {
-    const mdMatch = /^\*\*([^*]+)\*\*$/.exec(part);
-    if (mdMatch) {
+    const boldMatch = /^\*\*([^*]+)\*\*$/.exec(part);
+    if (boldMatch) {
       nodes.push(
         <strong key={`${keyPrefix}-md-${partIdx}`} style={{ fontWeight: 700 }}>
-          {mdMatch[1]}
+          {boldMatch[1]}
         </strong>
+      );
+      return;
+    }
+    const italicMatch = /^\*([^*]+)\*$/.exec(part);
+    if (italicMatch) {
+      nodes.push(
+        <em key={`${keyPrefix}-em-${partIdx}`} style={{ fontStyle: 'italic' }}>
+          {italicMatch[1]}
+        </em>
       );
       return;
     }
@@ -198,12 +223,21 @@ function isTitleParagraph(text, hasMoreContent) {
 }
 
 /**
- * Format CMS tooltip plain text into semantic React nodes for Ant Design Tooltip title.
+ * Format CMS tooltip/guidance plain text into semantic React nodes.
  * Does not invent copy or use dangerouslySetInnerHTML. Passes ReactNode through unchanged.
+ *
+ * @param {string|React.ReactNode} text
+ * @param {{ variant?: 'dark' | 'light' }} [options]
+ *   - dark (default): Ant Design dark tooltip chrome
+ *   - light: white guidance popups (divider contrast)
  */
-export default function formatTooltipContent(text) {
+export default function formatTooltipContent(text, options = {}) {
   if (text == null || text === false) return null;
   if (typeof text !== 'string') return text;
+
+  const variant = options.variant === 'light' ? 'light' : 'dark';
+  const dividerColor =
+    variant === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.28)';
 
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -271,7 +305,7 @@ export default function formatTooltipContent(text) {
           <hr
             style={{
               border: 'none',
-              borderTop: '1px solid rgba(255, 255, 255, 0.28)',
+              borderTop: `1px solid ${dividerColor}`,
               margin: '12px 0',
               width: '100%',
             }}
@@ -297,7 +331,11 @@ export default function formatTooltipContent(text) {
           >
             {statusLines.map((line, i) => {
               const { label, connector, rest } = parseStatusLine(line);
-              const dotColor = label ? STATUS_DOT_COLORS[label] : '#ffffff';
+              const dotColor = label
+                ? STATUS_DOT_COLORS[label]
+                : variant === 'light'
+                  ? '#9ca3af'
+                  : '#ffffff';
 
               return (
                 <li

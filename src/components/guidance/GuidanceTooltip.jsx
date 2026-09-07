@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Card } from 'antd';
 import { CloseOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import formatTooltipContent from '../../utils/formatTooltipContent';
 
 const GuidanceTooltip = ({ popup, onNext, onSkip, onClose, isLast }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -301,10 +302,8 @@ const GuidanceTooltip = ({ popup, onNext, onSkip, onClose, isLast }) => {
           </div>
 
           {/* Content */}
-          <div className="mb-4">
-            <p className="text-gray-700 text-sm leading-relaxed mb-2">
-              {popup.text}
-            </p>
+          <div className="mb-4 text-gray-700 text-sm leading-relaxed">
+            {formatTooltipContent(popup.text, { variant: 'light' })}
           </div>
 
           {/* Footer */}

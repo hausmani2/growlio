@@ -614,12 +614,23 @@ const GuidancePopupsAdmin = () => {
             name="text"
             label="Text"
             rules={[{ required: true, message: 'Please enter popup text' }]}
-            tooltip="The main content of the guidance popup"
+            tooltip="Supports the same formatting as tooltips: blank lines for paragraphs, **bold** for emphasis"
+            extra={
+              <span className="text-xs text-gray-500">
+                Formatting (same as tooltips): use a blank line between paragraphs;
+                wrap words in <code>**double asterisks**</code> for bold or{' '}
+                <code>*single*</code> for italic. Long sentences are auto-split for
+                readability. Optional color legend lines like <code>Green means …</code>{' '}
+                render as a list.
+              </span>
+            }
           >
             <Input.TextArea
-              rows={4}
-              placeholder="Enter the guidance text that will be displayed to users..."
-              maxLength={500}
+              rows={6}
+              placeholder={
+                'Step 2: Close your day\n\nOnce your budget is set, take a few minutes at the end of each day to enter your **sales**, **COGS**, and **total labor**.'
+              }
+              maxLength={1000}
               showCount
             />
           </Form.Item>
