@@ -191,6 +191,7 @@ const FoodCostingPage = () => {
   });
 
   const [ingredientModalOpen, setIngredientModalOpen] = useState(false);
+  const [ingredientModalFocus, setIngredientModalFocus] = useState(null);
   const [editingIngredient, setEditingIngredient] = useState(null);
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [ingredientCategory, setIngredientCategory] = useState('');
@@ -1043,12 +1044,130 @@ const FoodCostingPage = () => {
 
   const openCreateIngredient = () => {
     setEditingIngredient(null);
+    setIngredientModalFocus(null);
     setIngredientModalOpen(true);
   };
 
-  const openEditIngredient = (record) => {
+  const openEditIngredient = (record, focus = null) => {
+    setIngredientModalFocus(focus);
     setEditingIngredient(record);
     setIngredientModalOpen(true);
+  };
+
+  const normalizeConfidenceSuggestion = (tip) => {
+    if (tip && typeof tip === 'object') {
+      return {
+        text: tip.text || tip.message || '',
+        action: tip.action || 'edit_menu_item',
+        ingredient_id: tip.ingredient_id,
+        ingredient_name: tip.ingredient_name,
+        menu_item_id: tip.menu_item_id,
+        secondary_action: tip.secondary_action,
+        focus: tip.focus,
+      };
+    }
+    const text = String(tip || '');
+    const lower = text.toLowerCase();
+    if (lower.includes('build from photo') || lower.includes('cost this item with lio')) {
+      return { text, action: 'build_recipe' };
+    }
+    if (lower.includes('upload invoice')) {
+      return { text, action: 'upload_invoice' };
+    }
+    const costMatch = text.match(
+      /(?:confirm cost|update pricing|usable yield|yield).*?\bfor\b\s+(.+?)(?:\.|$)/i
+    ) || text.match(/Improve Accuracy:\s*(.+?)\s+usable yield/i);
+    if (costMatch?.[1]) {
+      return {
+        text,
+        action: 'edit_ingredient',
+        ingredient_name: costMatch[1].trim(),
+      };
+    }
+    return { text, action: 'edit_menu_item' };
+  };
+
+  const openIngredientFromSuggestion = async (suggestion) => {
+    setActiveTab('ingredients');
+    loadTabData('ingredients');
+    const searchName = suggestion.ingredient_name || '';
+    if (searchName) setIngredientSearch(searchName);
+
+    try {
+      const data = await fetchIngredients({
+        search: searchName,
+        ordering: 'name',
+        page: 1,
+        pageSize: 50,
+      });
+      const results = data?.results || [];
+      const match =
+        results.find((ing) => String(ing.id) === String(suggestion.ingredient_id)) ||
+        results.find(
+          (ing) =>
+            String(ing.name || '').toLowerCase() === String(searchName).toLowerCase()
+        ) ||
+        results[0];
+      if (match) {
+        const focus =
+          suggestion.focus === 'yield'
+            ? 'yield'
+            : suggestion.focus === 'cost' ||
+                String(suggestion.text || '')
+                  .toLowerCase()
+                  .includes('cost') ||
+                String(suggestion.text || '')
+                  .toLowerCase()
+                  .includes('pricing')
+              ? 'cost'
+              : null;
+        openEditIngredient(match, focus);
+        message.info(
+          suggestion.focus === 'yield'
+            ? `Confirm usable yield for ${match.name} to raise confidence.`
+            : `Update ${match.name} to raise this menu item's confidence.`
+        );
+        return;
+      }
+    } catch {
+      // fall through
+    }
+    message.warning(
+      searchName
+        ? `Open Ingredients and find "${searchName}" to apply this fix.`
+        : 'Open Ingredients to apply this fix.'
+    );
+  };
+
+  const handleConfidenceSuggestionClick = async (menuItem, tip) => {
+    const suggestion = normalizeConfidenceSuggestion(tip);
+    switch (suggestion.action) {
+      case 'build_recipe':
+        setPhotoModalOpen(true);
+        setDraftResult(null);
+        setDraftLines([]);
+        setPhotoFile(null);
+        message.info('Build or confirm this recipe to raise confidence.');
+        break;
+      case 'upload_invoice':
+        setActiveTab('invoices');
+        loadTabData('invoices');
+        await ensureModalData();
+        invoiceForm.resetFields();
+        setInvoiceFile(null);
+        setExtractWithAi(true);
+        setInvoiceModalOpen(true);
+        message.info('Upload a vendor invoice to refresh ingredient costs.');
+        break;
+      case 'edit_ingredient':
+        await openIngredientFromSuggestion(suggestion);
+        break;
+      case 'edit_menu_item':
+      default:
+        goToMenuItem(menuItem);
+        message.info('Confirm portions and recipe details to raise confidence.');
+        break;
+    }
   };
 
   const persistIngredient = async (payload, editing) => {
@@ -1628,17 +1747,59 @@ const FoodCostingPage = () => {
   ];
 
   const menuItemExpandable = {
-    expandedRowRender: (record) => (
-      <div className="text-sm text-gray-600 space-y-1">
-        {(record.improvement_suggestions || []).length === 0 ? (
-          <p>No improvement suggestions.</p>
-        ) : (
-          (record.improvement_suggestions || []).map((tip, idx) => (
-            <p key={idx}>• {tip}</p>
-          ))
-        )}
-      </div>
-    ),
+    expandedRowRender: (record) => {
+      const tips = record.improvement_suggestions || [];
+      if (!tips.length) {
+        return (
+          <p className="text-sm text-gray-500 mb-0">
+            No improvement suggestions — confidence looks solid.
+          </p>
+        );
+      }
+      return (
+        <div className="space-y-2 py-1">
+          <p className="text-sm text-gray-600 mb-2">
+            Click a suggestion to jump to the fix (menu item, ingredient, or invoice):
+          </p>
+          {tips.map((tip, idx) => {
+            const suggestion = normalizeConfidenceSuggestion(tip);
+            return (
+              <div
+                key={`${record.id}-tip-${idx}`}
+                className="rounded-lg border border-orange-100 bg-orange-50/60 px-3 py-2"
+              >
+                <button
+                  type="button"
+                  className="w-full text-left text-sm text-gray-800 hover:text-[#FF8132] bg-transparent border-0 p-0 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleConfidenceSuggestionClick(record, tip);
+                  }}
+                >
+                  <span className="text-[#FF8132] font-medium mr-2">Fix →</span>
+                  {suggestion.text}
+                </button>
+                {suggestion.secondary_action === 'upload_invoice' ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-[#FF8132] hover:underline bg-transparent border-0 p-0 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleConfidenceSuggestionClick(record, {
+                        ...suggestion,
+                        action: 'upload_invoice',
+                      });
+                    }}
+                  >
+                    Or upload a vendor invoice instead
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      );
+    },
   };
 
   const categoryColumns = [
@@ -2343,9 +2504,11 @@ const FoodCostingPage = () => {
         editingIngredient={editingIngredient}
         ingredients={ingredients}
         vendors={vendors}
+        focus={ingredientModalFocus}
         onCancel={() => {
           setIngredientModalOpen(false);
           setEditingIngredient(null);
+          setIngredientModalFocus(null);
         }}
         saveIngredient={persistIngredient}
         onVendorsChanged={() => refresh(['vendors'])}
@@ -2356,6 +2519,7 @@ const FoodCostingPage = () => {
           }
           setIngredientModalOpen(false);
           setEditingIngredient(null);
+          setIngredientModalFocus(null);
           refresh(['dashboard', 'ingredients', 'menu']);
         }}
       />

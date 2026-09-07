@@ -476,6 +476,8 @@ const IngredientEntryModal = ({
   onSaved,
   onVendorsChanged,
   saveIngredient,
+  /** Jump to a step when opened from a confidence suggestion: 'yield' | 'cost' | 'purchase' */
+  focus = null,
 }) => {
   const [form] = Form.useForm();
   const [step, setStep] = useState(0);
@@ -542,7 +544,9 @@ const IngredientEntryModal = ({
 
   useEffect(() => {
     if (!open) return;
-    setStep(0);
+    const focusStep =
+      focus === 'yield' ? 4 : focus === 'cost' || focus === 'purchase' ? 1 : 0;
+    setStep(focusStep);
     setLioNote('');
     setNewCategory('');
     setNewVendorName('');
@@ -585,7 +589,7 @@ const IngredientEntryModal = ({
     }
     setWatched(form.getFieldsValue(true));
     setNameQuery(form.getFieldValue('name') || '');
-  }, [open, editingIngredient, form]);
+  }, [open, editingIngredient, form, focus]);
 
   const purchaseBy = watched.purchase_unit_label === 'each' ? 'each' : 'case';
   const innerType = watched.purchase_inner_pack_type || '';
