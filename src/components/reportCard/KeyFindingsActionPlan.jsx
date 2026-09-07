@@ -160,19 +160,37 @@ const KeyFindingsActionPlan = ({
 
   const weeklyPlan = useMemo(() => {
     const fromWeekly = analysis?.weekly_action_plan;
-    if (Array.isArray(fromWeekly) && fromWeekly.length) return fromWeekly;
+    const rentConfigured =
+      analysis?.metrics_snapshot?.weekly_recovery_authority?.rent_configured ??
+      analysis?.metrics_snapshot?.daily_week_progress?.rent_configured ??
+      analysis?.metrics_snapshot?.report_card?.rent_configured;
+    const filterRent = (items) => {
+      if (!Array.isArray(items)) return [];
+      // Hide rent cards when location has no rent expense configured.
+      if (rentConfigured === false) {
+        return items.filter(
+          (item) => String(item?.metric || '').toLowerCase() !== 'rent'
+        );
+      }
+      return items;
+    };
+    if (Array.isArray(fromWeekly) && fromWeekly.length) {
+      return filterRent(fromWeekly);
+    }
     // Fallback: map generic action_plan into actionable cards
-    return (analysis?.action_plan || []).map((item) => ({
-      metric: 'general',
-      status: 'over',
-      title: item.priority === 'high' ? 'Priority action' : 'Recommended action',
-      finding: '',
-      variance_amount: '',
-      remaining_days: null,
-      daily_target: '',
-      action: item.action,
-      priority: item.priority || 'medium',
-    }));
+    return filterRent(
+      (analysis?.action_plan || []).map((item) => ({
+        metric: 'general',
+        status: 'over',
+        title: item.priority === 'high' ? 'Priority action' : 'Recommended action',
+        finding: '',
+        variance_amount: '',
+        remaining_days: null,
+        daily_target: '',
+        action: item.action,
+        priority: item.priority || 'medium',
+      }))
+    );
   }, [analysis]);
 
   return (
