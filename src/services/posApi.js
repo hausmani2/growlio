@@ -23,6 +23,24 @@ export const triggerPosSync = async (restaurantId, options = {}) => {
   return response.data;
 };
 
+/**
+ * Before sync: dry-run Square labor for employees with no hourly wage.
+ */
+export const previewPosLaborRates = async (restaurantId, options = {}) => {
+  const { startDate, endDate, squareLocationId } = options;
+  const query = new URLSearchParams({
+    restaurant_id: String(restaurantId),
+  });
+  if (startDate) query.set('start_date', startDate);
+  if (endDate) query.set('end_date', endDate);
+  if (squareLocationId) query.set('square_location_id', String(squareLocationId));
+  const growlioLocationId = localStorage.getItem('selected_location_id');
+  if (growlioLocationId) query.set('location_id', growlioLocationId);
+
+  const response = await apiGet(`/square_pos/labor-rate-preview/?${query.toString()}`);
+  return response.data;
+};
+
 export const getLastCalendarMonthRange = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);

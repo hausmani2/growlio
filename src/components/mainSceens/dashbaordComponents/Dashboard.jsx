@@ -15,10 +15,12 @@ import NetProfitTable from './NetProfitTable';
 import RestaurantInfoCard from './RestaurantInfoCard';
 import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
 import SyncModal from '../../SyncModal';
+import MissingLaborRatesModal from '../../common/MissingLaborRatesModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 import { NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT } from '../../../utils/reportCardReminders';
+import { previewPosLaborRates } from '../../../services/posApi';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -51,6 +53,10 @@ const Dashboard = () => {
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
   const [isPosSyncCompletedModalVisible, setIsPosSyncCompletedModalVisible] = useState(false);
+  const [missingRatesOpen, setMissingRatesOpen] = useState(false);
+  const [missingEmployees, setMissingEmployees] = useState([]);
+  const [checkingLaborRates, setCheckingLaborRates] = useState(false);
+  const [proceedingAnyway, setProceedingAnyway] = useState(false);
   const tutorialLinkClassName = 'text-purple-600 cursor-pointer hover:text-purple-700 hover:underline';
   const openOperatingExpensesTutorial = () => {
         setIsOeTutorialModalVisible(true);
@@ -322,13 +328,62 @@ const Dashboard = () => {
     onSyncCompleted: handlePosSyncCompleted,
   });
 
-  const handleSyncPosClick = useCallback(() => {
+  const handleSyncPosClick = useCallback(async () => {
     if (isFutureWeekSelected) {
       message.warning('Sync is only available for current or past weeks.');
       return;
     }
-    handleSquareSyncNow();
-  }, [handleSquareSyncNow, isFutureWeekSelected]);
+    if (isPosSyncing || checkingLaborRates) return;
+
+    const weekStartDate = getDateSelection()?.weekStartDate;
+    if (!weekStartDate) {
+      message.warning('Please select a week first.');
+      return;
+    }
+
+    const restaurantId = await ensureRestaurantId?.();
+    if (!restaurantId) {
+      message.error('Restaurant ID not found. Please complete onboarding first.');
+      return;
+    }
+
+    const startDate = dayjs(weekStartDate).startOf('week').format('YYYY-MM-DD');
+    const endDate = dayjs(weekStartDate).endOf('week').format('YYYY-MM-DD');
+
+    setCheckingLaborRates(true);
+    try {
+      const preview = await previewPosLaborRates(restaurantId, { startDate, endDate });
+      if (preview?.has_missing_rates && (preview.employees || []).length > 0) {
+        setMissingEmployees(preview.employees);
+        setMissingRatesOpen(true);
+        return;
+      }
+      handleSquareSyncNow();
+    } catch {
+      // If preview fails, still allow sync.
+      handleSquareSyncNow();
+    } finally {
+      setCheckingLaborRates(false);
+    }
+  }, [
+    checkingLaborRates,
+    ensureRestaurantId,
+    getDateSelection,
+    handleSquareSyncNow,
+    isFutureWeekSelected,
+    isPosSyncing,
+  ]);
+
+  const handleProceedAnyway = useCallback(async () => {
+    setProceedingAnyway(true);
+    setMissingRatesOpen(false);
+    setMissingEmployees([]);
+    try {
+      await handleSquareSyncNow();
+    } finally {
+      setProceedingAnyway(false);
+    }
+  }, [handleSquareSyncNow]);
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();
@@ -879,8 +934,8 @@ const Dashboard = () => {
                       type="default"
                       data-testid="sync-pos-button"
                       onClick={handleSyncPosClick}
-                      loading={isPosSyncing}
-                      disabled={!isSquareConnected || isPosSyncing || !selectedWeekStart || isFutureWeekSelected}
+                      loading={isPosSyncing || checkingLaborRates}
+                      disabled={!isSquareConnected || isPosSyncing || checkingLaborRates || !selectedWeekStart || isFutureWeekSelected}
                       className="border-gray-200 bg-white text-gray-700 hover:!border-gray-300 hover:!bg-gray-50 hover:!text-gray-900"
                     >
                       <span className="inline-flex items-center gap-2">
@@ -1086,7 +1141,17 @@ const Dashboard = () => {
           />
         </div>
       </Modal>
-      <SyncModal open={isPosSyncing || posSyncStatus === 'pending'} />
+      <SyncModal open={isPosSyncing || checkingLaborRates || posSyncStatus === 'pending'} />
+      <MissingLaborRatesModal
+        open={missingRatesOpen}
+        loading={proceedingAnyway}
+        employees={missingEmployees}
+        onCancel={() => {
+          setMissingRatesOpen(false);
+          setMissingEmployees([]);
+        }}
+        onProceed={handleProceedAnyway}
+      />
       <Modal
         title="POS Data Sync Complete"
         open={isPosSyncCompletedModalVisible}
