@@ -164,9 +164,86 @@ const KeyFindingsActionPlan = ({
       analysis?.metrics_snapshot?.weekly_recovery_authority?.rent_configured ??
       analysis?.metrics_snapshot?.daily_week_progress?.rent_configured ??
       analysis?.metrics_snapshot?.report_card?.rent_configured;
+    const outlook =
+      analysis?.metrics_snapshot?.weekly_recovery_authority?.fixed_cost_outlook ||
+      analysis?.metrics_snapshot?.daily_week_progress?.fixed_cost_outlook ||
+      {};
+
+    const formatMoney = (n) =>
+      n == null || Number.isNaN(Number(n))
+        ? null
+        : `$${Number(n).toLocaleString(undefined, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })}`;
+    const formatPct = (n) =>
+      n == null || Number.isNaN(Number(n)) ? null : `${Number(n).toFixed(1)}%`;
+
+    const buildPeriodOutlook = (metric) => {
+      const key =
+        metric === 'rent'
+          ? 'rent'
+          : metric === 'expenses' ||
+              metric === 'operating_expenses' ||
+              metric === 'opex'
+            ? 'operating_expenses'
+            : null;
+      if (!key || !outlook?.[key]) return null;
+      const block = outlook[key];
+      const weekAmt = formatMoney(block.this_week_amount);
+      const weekPct = formatPct(block.this_week_pct_of_sales);
+      const mtdAmt = formatMoney(block.month_to_date_amount);
+      const mtdPct = formatPct(block.month_to_date_pct_of_sales);
+      const target = formatPct(block.monthly_target_pct);
+      const salesNeeded = formatMoney(block.sales_needed_for_target);
+      const projected = formatMoney(block.projected_month_sales);
+      const projectedPct = formatPct(block.projected_month_pct_of_sales);
+      let insight = '';
+      if (block.on_track) {
+        insight = `Currently on target for the month.${
+          salesNeeded
+            ? ` Keep monthly sales above ${salesNeeded} to stay at or below ${target}.`
+            : ''
+        }`;
+      } else if (block.points_above_target != null) {
+        insight = `Running ${Number(block.points_above_target).toFixed(1)} points above the monthly target.${
+          salesNeeded && projected
+            ? ` Need about ${salesNeeded} monthly sales (pace projects ${projected}${
+                projectedPct ? ` → ${projectedPct}` : ''
+              }).`
+            : ''
+        }`;
+      }
+      return {
+        this_week: [weekAmt && `${weekAmt} allocated`, weekPct && `${weekPct} of sales`]
+          .filter(Boolean)
+          .join(' · '),
+        month_to_date: [mtdAmt, mtdPct && `${mtdPct} of sales`].filter(Boolean).join(' · '),
+        monthly_target: target ? `≤ ${target}` : '',
+        insight,
+      };
+    };
+
+    const enrich = (items) =>
+      (items || []).map((item) => {
+        const metric = String(item?.metric || '').toLowerCase();
+        if (
+          metric !== 'rent' &&
+          metric !== 'expenses' &&
+          metric !== 'operating_expenses' &&
+          metric !== 'opex'
+        ) {
+          return item;
+        }
+        if (item.period_outlook?.this_week || item.period_outlook?.month_to_date) {
+          return item;
+        }
+        const period_outlook = buildPeriodOutlook(metric);
+        return period_outlook ? { ...item, period_outlook, daily_target: '' } : item;
+      });
+
     const filterRent = (items) => {
       if (!Array.isArray(items)) return [];
-      // Hide rent cards when location has no rent expense configured.
       if (rentConfigured === false) {
         return items.filter(
           (item) => String(item?.metric || '').toLowerCase() !== 'rent'
@@ -175,21 +252,22 @@ const KeyFindingsActionPlan = ({
       return items;
     };
     if (Array.isArray(fromWeekly) && fromWeekly.length) {
-      return filterRent(fromWeekly);
+      return enrich(filterRent(fromWeekly));
     }
-    // Fallback: map generic action_plan into actionable cards
-    return filterRent(
-      (analysis?.action_plan || []).map((item) => ({
-        metric: 'general',
-        status: 'over',
-        title: item.priority === 'high' ? 'Priority action' : 'Recommended action',
-        finding: '',
-        variance_amount: '',
-        remaining_days: null,
-        daily_target: '',
-        action: item.action,
-        priority: item.priority || 'medium',
-      }))
+    return enrich(
+      filterRent(
+        (analysis?.action_plan || []).map((item) => ({
+          metric: 'general',
+          status: 'over',
+          title: item.priority === 'high' ? 'Priority action' : 'Recommended action',
+          finding: '',
+          variance_amount: '',
+          remaining_days: null,
+          daily_target: '',
+          action: item.action,
+          priority: item.priority || 'medium',
+        }))
+      )
     );
   }, [analysis]);
 
@@ -323,7 +401,38 @@ const KeyFindingsActionPlan = ({
                               : ''}
                           </p>
                         ) : null}
-                        {item.daily_target ? (
+                        {item.period_outlook &&
+                        (item.period_outlook.this_week ||
+                          item.period_outlook.month_to_date ||
+                          item.period_outlook.monthly_target ||
+                          item.period_outlook.insight) ? (
+                          <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 mb-2 space-y-1">
+                            {item.period_outlook.this_week ? (
+                              <p className="text-sm text-gray-800 m-0">
+                                <span className="font-medium">This Week: </span>
+                                {item.period_outlook.this_week}
+                              </p>
+                            ) : null}
+                            {item.period_outlook.month_to_date ? (
+                              <p className="text-sm text-gray-800 m-0">
+                                <span className="font-medium">Month to Date: </span>
+                                {item.period_outlook.month_to_date}
+                              </p>
+                            ) : null}
+                            {item.period_outlook.monthly_target ? (
+                              <p className="text-sm text-gray-800 m-0">
+                                <span className="font-medium">Monthly Target: </span>
+                                {item.period_outlook.monthly_target}
+                              </p>
+                            ) : null}
+                            {item.period_outlook.insight ? (
+                              <p className="text-sm text-gray-700 m-0 pt-1">
+                                <span className="font-medium">LIO Insight: </span>
+                                {item.period_outlook.insight}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : item.daily_target ? (
                           <div className="rounded-lg bg-orange-50 border border-orange-100 px-3 py-2 mb-2">
                             <p className="text-xs uppercase tracking-wide text-orange-700 m-0 mb-0.5">
                               Daily target
