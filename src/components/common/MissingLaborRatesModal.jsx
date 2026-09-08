@@ -19,6 +19,17 @@ const MissingLaborRatesModal = ({
       render: (name, row) => name || row.team_member_id || 'Unknown',
     },
     {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role, row) => {
+        if (role) return role;
+        const roles = row.roles;
+        if (Array.isArray(roles) && roles.length) return roles.join(', ');
+        return '—';
+      },
+    },
+    {
       title: 'Shifts',
       dataIndex: 'shift_count',
       key: 'shift_count',
@@ -53,7 +64,7 @@ const MissingLaborRatesModal = ({
           Proceed anyway
         </Button>,
       ]}
-      width={560}
+      width={640}
       destroyOnClose
     >
       <Alert
