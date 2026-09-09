@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import PageHeaderSection from '../../common/PageHeaderSection';
+import TooltipIcon from '../../common/TooltipIcon';
 import useStore from '../../../store/store';
 import {
   archiveIngredient,
@@ -78,6 +79,22 @@ const getPlanName = (plan) =>
 
 const isFoodCostingPlan = (planName) =>
   planName.includes('grow') || planName.includes('pro');
+
+const CONFIDENCE_SCORE_TIP =
+  'Confidence Score shows how reliable your food cost is. Confirmed ingredient prices, portions, and yields increase confidence; missing information or unconfirmed LIO estimates lower it.';
+
+const ConfidenceLabel = ({ children }) => (
+  <span className="inline-flex items-center">
+    {children}
+    <span
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      role="presentation"
+    >
+      <TooltipIcon text={CONFIDENCE_SCORE_TIP} />
+    </span>
+  </span>
+);
 
 const confidenceTag = (score) => {
   const value = Number(score || 0);
@@ -710,6 +727,7 @@ const FoodCostingPage = () => {
       {
         title: 'High Confidence',
         value: dashboard?.high_confidence_items ?? 0,
+        showConfidenceTip: true,
       },
       {
         title: 'Needs Review',
@@ -1727,7 +1745,7 @@ const FoodCostingPage = () => {
           : '—',
     },
     {
-      title: 'Confidence',
+      title: <ConfidenceLabel>Confidence</ConfidenceLabel>,
       dataIndex: 'confidence_score',
       key: 'confidence_score',
       sorter: true,
@@ -1878,7 +1896,13 @@ const FoodCostingPage = () => {
                   {kpiCards.map((card) => (
                     <Col xs={24} sm={12} lg={8} xl={4} key={card.title}>
                       <Card className="shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm mb-1">{card.title}</p>
+                        <p className="text-gray-500 text-sm mb-1">
+                          {card.showConfidenceTip ? (
+                            <ConfidenceLabel>{card.title}</ConfidenceLabel>
+                          ) : (
+                            card.title
+                          )}
+                        </p>
                         <p className="text-2xl font-semibold text-[#FF8132]">
                           {card.value}
                         </p>
