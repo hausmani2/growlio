@@ -162,10 +162,18 @@ export const getMerchantSyncStatus = async (restaurantId) => {
     payload?.data?.merchant?.square_sync_status ??
     null;
 
+  const lastSyncHadData =
+    payload?.last_sync_had_data ??
+    payload?.data?.last_sync_had_data ??
+    payload?.merchant?.last_sync_had_data ??
+    payload?.data?.merchant?.last_sync_had_data ??
+    null;
+
   return {
     payload,
     squareSyncStatus: status,
     isCompleted: status === 'completed',
+    lastSyncHadData,
   };
 };
 

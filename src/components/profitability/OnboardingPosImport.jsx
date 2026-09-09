@@ -68,6 +68,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [importRange, setImportRange] = useState(defaultImportRange);
+  const [emptyImportMessage, setEmptyImportMessage] = useState(null);
 
   const pollRef = useRef(null);
   const socketRef = useRef(null);
@@ -153,8 +154,19 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     cleanup();
 
     try {
+      const merchantStatus = restaurantId
+        ? await getMerchantSyncStatus(restaurantId)
+        : null;
+      if (merchantStatus?.lastSyncHadData === false) {
+        const emptyMessage = 'No data found from Square for the selected dates.';
+        setEmptyImportMessage(emptyMessage);
+        message.warning(emptyMessage);
+        return;
+      }
+
       const locationId = useStore.getState().selectedLocationId;
       await getRestaurantOnboarding?.(true, locationId || undefined);
+      setEmptyImportMessage(null);
       message.success('Last month imported from Square.');
       navigate(
         getRoleLandingRoute(user?.restaurant_role) || ONBOARDING_ROUTES.REPORT_CARD,
@@ -167,7 +179,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     } finally {
       setIsImporting(false);
     }
-  }, [cleanup, getRestaurantOnboarding, navigate, user?.restaurant_role]);
+  }, [cleanup, getRestaurantOnboarding, navigate, restaurantId, user?.restaurant_role]);
 
   const saveSelectedLocation = useCallback(async () => {
     if (!restaurantId || !selectedLocation?.id) {
@@ -237,6 +249,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
 
     doneRef.current = false;
     sawProcessingRef.current = false;
+    setEmptyImportMessage(null);
     setIsImporting(true);
     cleanup();
 
@@ -541,6 +554,12 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           )}
           {isImporting ? 'Importing...' : 'Import from Square'}
         </button>
+
+        {emptyImportMessage ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+            {emptyImportMessage}
+          </div>
+        ) : null}
 
         {planLocked && (
           <button
