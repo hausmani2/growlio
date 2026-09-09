@@ -9,12 +9,13 @@ const { Text } = Typography;
  * Square Connect Button Component
  * Initiates the Square POS OAuth connection flow
  */
-const SquareConnectButton = ({ restaurantId, onConnect, className = '' }) => {
+const SquareConnectButton = ({ restaurantId, onConnect, className = '', disabled = false, size = 'large' }) => {
   const squareStatus = useStore((state) => state.squareStatus);
   const squareLoading = useStore((state) => state.squareLoading);
   const connectSquare = useStore((state) => state.connectSquare);
   
   const handleConnect = async () => {
+    if (disabled) return;
     const restaurantIdToUse = restaurantId || localStorage.getItem('restaurant_id');
     
     if (!restaurantIdToUse) {
@@ -39,7 +40,7 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '' }) => {
           icon={<CheckCircleOutlined />}
           disabled
           className="w-full"
-          size="large"
+          size={size}
         >
           POS Integration Connected
         </Button>
@@ -49,9 +50,9 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '' }) => {
           icon={isConnecting ? <LoadingOutlined /> : <LinkOutlined />}
           onClick={handleConnect}
           loading={isConnecting}
-          disabled={isConnecting || !restaurantId}
+          disabled={disabled || isConnecting || !restaurantId}
           className="w-full"
-          size="large"
+          size={size}
         >
           {isConnecting ? 'Connecting to Square...' : 'Connect POS Integration'}
         </Button>

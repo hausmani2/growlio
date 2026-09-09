@@ -2,13 +2,24 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Spin, Result, Button, Modal, Table, Typography, message } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import useStore from '../../store/store';
-import { apiGet, apiPatch, apiPost } from '../../utils/axiosInterceptors';
-import { getMerchantSyncStatus, triggerPosSync } from '../../services/posApi';
+import { apiGet, apiPatch } from '../../utils/axiosInterceptors';
+import {
+  formatPosDate,
+  getPosImportRangeForPreset,
+  getMerchantSyncStatus,
+  isPosImportRangeAllowed,
+  POS_IMPORT_MAX_DAYS,
+  triggerPosSync,
+} from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
-import { parseOAuthState } from '../../utils/squareOAuth';
+import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
+import { parseOAuthState, isSquareConnectFromOnboardingScore, clearSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
+import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
 
+const defaultSyncRange = () => getPosImportRangeForPreset('last_month', dayjs);
 /**
  * Square Callback Handler Component
  * Handles the OAuth callback from Square after user authorization
@@ -28,9 +39,11 @@ const SquareCallbackHandler = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isStartingSync, setIsStartingSync] = useState(false);
+  const [syncRange, setSyncRange] = useState(defaultSyncRange);
   
   const handleSquareCallback = useStore((state) => state.handleSquareCallback);
   const squareError = useStore((state) => state.squareError);
+  const fromOnboardingScore = isSquareConnectFromOnboardingScore();
 
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
@@ -179,6 +192,20 @@ const SquareCallbackHandler = () => {
       return;
     }
 
+    const startDate = formatPosDate(syncRange?.[0]);
+    const endDate = formatPosDate(syncRange?.[1]);
+    if (!fromOnboardingScore && (!startDate || !endDate || startDate > endDate)) {
+      message.error('Please select a valid import date range.');
+      return;
+    }
+    if (
+      !fromOnboardingScore &&
+      !isPosImportRangeAllowed(startDate, endDate, dayjs)
+    ) {
+      message.error(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
+      return;
+    }
+
     setIsStartingSync(true);
     completionHandledRef.current = false;
     cleanupRealtimeResources();
@@ -193,6 +220,9 @@ const SquareCallbackHandler = () => {
       if (growlioLocationId) {
         syncQuery.set('location_id', String(growlioLocationId));
       }
+      if (fromOnboardingScore) {
+        syncQuery.set('skip_sync', 'true');
+      }
 
       await apiPatch(`/square_pos/locations/update-sync/?${syncQuery.toString()}`, {
         locations: [
@@ -202,6 +232,13 @@ const SquareCallbackHandler = () => {
           },
         ],
       });
+
+      if (fromOnboardingScore) {
+        clearSquareConnectFromOnboardingScore();
+        setIsStartingSync(false);
+        navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+        return;
+      }
 
       // Start realtime listeners + polling BEFORE triggering sync.
       websocketRef.current = createPosSyncWebSocket({
@@ -235,17 +272,7 @@ const SquareCallbackHandler = () => {
         }
       }, 10000);
 
-      const syncStartResponse = await triggerPosSync(restaurantIdForSync);
-
-      // Backend may return `{ status: "sync_started" }` meaning work continues asynchronously.
-      // Keep the modal open until websocket/poll reports completed.
-      if (
-        syncStartResponse?.status &&
-        String(syncStartResponse.status).toLowerCase() !== 'sync_started'
-      ) {
-        // If backend returns an unexpected terminal state, stop loader.
-        // (Completion path will still close it if sync completes quickly.)
-      }
+      await triggerPosSync(restaurantIdForSync, { startDate, endDate });
     } catch (error) {
       cleanupRealtimeResources();
       setIsStartingSync(false);
@@ -258,9 +285,11 @@ const SquareCallbackHandler = () => {
     }
   }, [
     cleanupRealtimeResources,
+    fromOnboardingScore,
     locationIdFromState,
     navigate,
     restaurantIdForSync,
+    syncRange,
   ]);
   
   const handleGoToDashboard = () => {
@@ -346,16 +375,31 @@ const SquareCallbackHandler = () => {
                 onClick={() => startSyncFlow(selectedLocation?.id)}
                 disabled={!selectedLocation?.id || isStartingSync}
               >
-                Sync for this location
+                {fromOnboardingScore ? 'Select this location' : 'Sync for this location'}
               </Button>,
             ]}
             destroyOnClose
           >
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-sm">
               <div>
                 <span className="text-gray-500">Square Location:</span>{' '}
                 <span className="font-medium text-gray-900">{selectedLocation?.location_id ?? '—'}</span>
               </div>
+              {fromOnboardingScore ? (
+                <p className="text-gray-600 pt-1">
+                  After you select this location, you&apos;ll return to Profitability Score to import history from Square.
+                </p>
+              ) : (
+                <div>
+                  <label className="block text-gray-700 font-medium mb-1.5">Import date range</label>
+                  <PosImportDateRangeSelect
+                    value={syncRange}
+                    onChange={setSyncRange}
+                    disabled={isStartingSync}
+                    defaultPreset="last_month"
+                  />
+                </div>
+              )}
             </div>
           </Modal>
           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
@@ -363,7 +407,11 @@ const SquareCallbackHandler = () => {
               status="success"
               icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
               title="POS Integration Connected Successfully!"
-              subTitle="Click a location to sync your Square data, then we’ll take you to Close Out Your Day(s)."
+              subTitle={
+                fromOnboardingScore
+                  ? 'Click a Square location to continue. Next you can import last month on the Profitability Score page.'
+                  : "Click a location to sync your Square data, then we'll take you to Close Out Your Day(s)."
+              }
             />
 
             <div className="mt-4">

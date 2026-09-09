@@ -109,7 +109,6 @@ const OnboardingPlansPage = () => {
         <PlansWrapper
           onboardingMode
           title="Choose Your Plan"
-          subtitle="Start with the free plan, then upgrade when your restaurant is ready for more tools."
           onContinue={handleContinue}
         />
       </div>
