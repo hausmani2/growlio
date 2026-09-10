@@ -81,7 +81,7 @@ const isFoodCostingPlan = (planName) =>
   planName.includes('grow') || planName.includes('pro');
 
 const CONFIDENCE_SCORE_TIP =
-  'Confidence Score shows how reliable your food cost is. Confirmed ingredient prices, portions, and yields increase confidence; missing information or unconfirmed LIO estimates lower it.';
+  'Shows how reliable your food cost is. Confirmed prices, portions and yields increase confidence; missing information or unconfirmed LIO estimates lower it.';
 
 const ConfidenceLabel = ({ children }) => (
   <span className="inline-flex items-center">
@@ -1655,7 +1655,7 @@ const FoodCostingPage = () => {
           : '—',
     },
     {
-      title: 'Confidence',
+      title: <ConfidenceLabel>Confidence</ConfidenceLabel>,
       dataIndex: 'confidence_score',
       key: 'conf',
       render: (v) => confidenceTag(v),
@@ -2002,7 +2002,7 @@ const FoodCostingPage = () => {
                             render: (v) => <Tag>{v}</Tag>,
                           },
                           {
-                            title: 'Confidence',
+                            title: <ConfidenceLabel>Confidence</ConfidenceLabel>,
                             dataIndex: 'confidence',
                             key: 'conf',
                           },
@@ -2035,7 +2035,7 @@ const FoodCostingPage = () => {
                       render: (_, r) => (r.lines || []).length,
                     },
                     {
-                      title: 'Confidence',
+                      title: <ConfidenceLabel>Confidence</ConfidenceLabel>,
                       dataIndex: 'starting_confidence_score',
                       key: 'conf',
                       render: (v) => confidenceTag(v),
@@ -2770,7 +2770,7 @@ const FoodCostingPage = () => {
                   {draftResult.draft?.menu_item_name_guess || 'Draft recipe'}
                 </p>
                 <p className="text-sm text-gray-500 m-0">
-                  Starting confidence:{' '}
+                  <ConfidenceLabel>Starting confidence</ConfidenceLabel>:{' '}
                   {draftResult.draft?.starting_confidence_score}% · AI builds{' '}
                   {draftResult.ai_builds_used}/{draftResult.ai_builds_limit}
                 </p>
