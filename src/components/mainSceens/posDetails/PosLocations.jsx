@@ -15,6 +15,8 @@ import {
 } from '../../../services/posApi';
 import { createPosSyncWebSocket } from '../../../services/websocket';
 import SyncModal from '../../SyncModal';
+import MissingLaborRatesModal from '../../common/MissingLaborRatesModal';
+import useMissingLaborRatesCheck from '../../../hooks/useMissingLaborRatesCheck';
 import { useNavigate } from 'react-router-dom';
 
 const defaultSyncRange = () => getPosImportRangeForPreset('last_month', dayjs);
@@ -33,6 +35,11 @@ const PosLocations = () => {
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
   const completionHandledRef = useRef(false);
+  const {
+    checkingLaborRates,
+    runWithLaborRateCheck,
+    missingLaborRatesModalProps,
+  } = useMissingLaborRatesCheck();
 
   const restaurantId = useMemo(() => {
     const raw = localStorage.getItem('restaurant_id');
@@ -146,6 +153,33 @@ const PosLocations = () => {
     }
   }, [cleanupRealtimeResources, navigate, restaurantId, syncRange]);
 
+  const handleLocationSyncClick = useCallback(async () => {
+    const locationId = selectedLocation?.id;
+    if (!locationId) {
+      message.error('Please select a location first.');
+      return;
+    }
+
+    const startDate = formatPosDate(syncRange?.[0]);
+    const endDate = formatPosDate(syncRange?.[1]);
+    if (!startDate || !endDate || startDate > endDate) {
+      message.error('Please select a valid import date range.');
+      return;
+    }
+    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
+      message.error(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
+      return;
+    }
+
+    await runWithLaborRateCheck({
+      restaurantId,
+      startDate,
+      endDate,
+      squareLocationId: selectedLocation?.location_id,
+      onProceed: () => startSyncFlow(locationId),
+    });
+  }, [restaurantId, runWithLaborRateCheck, selectedLocation, startSyncFlow, syncRange]);
+
   const columns = useMemo(
     () => [
       {
@@ -189,7 +223,8 @@ const PosLocations = () => {
 
   return (
     <div className="w-full">
-      <SyncModal open={isStartingSync} />
+      <SyncModal open={isStartingSync || checkingLaborRates} />
+      <MissingLaborRatesModal {...missingLaborRatesModalProps} />
       <Modal
         title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
         open={isLocationModalOpen}
@@ -201,8 +236,8 @@ const PosLocations = () => {
           <Button
             key="sync"
             type="primary"
-            onClick={() => startSyncFlow(selectedLocation?.id)}
-            disabled={!selectedLocation?.id || isStartingSync}
+            onClick={handleLocationSyncClick}
+            disabled={!selectedLocation?.id || isStartingSync || checkingLaborRates}
           >
             Sync for this location
           </Button>,
@@ -223,7 +258,7 @@ const PosLocations = () => {
             <PosImportDateRangeSelect
               value={syncRange}
               onChange={setSyncRange}
-              disabled={isStartingSync}
+              disabled={isStartingSync || checkingLaborRates}
               defaultPreset="last_month"
             />
           </div>
@@ -240,7 +275,7 @@ const PosLocations = () => {
             Click a location to sync data for it.
           </Typography.Text>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => fetchPosLocations?.({ silent: true })} disabled={loading || isStartingSync}>
+            <Button onClick={() => fetchPosLocations?.({ silent: true })} disabled={loading || isStartingSync || checkingLaborRates}>
               Refresh
             </Button>
           </div>

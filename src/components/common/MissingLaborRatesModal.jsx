@@ -50,6 +50,7 @@ const MissingLaborRatesModal = ({
       title="Employees missing labor rate"
       closable={false}
       maskClosable={false}
+      zIndex={1200}
       footer={[
         <Button key="cancel" onClick={onCancel} disabled={loading}>
           Cancel

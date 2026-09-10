@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import useStore from '../../store/store';
 import SquareConnectButton from '../square/SquareConnectButton';
 import SyncModal from '../SyncModal';
+import MissingLaborRatesModal from '../common/MissingLaborRatesModal';
 import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import {
   formatPosDate,
@@ -25,6 +26,7 @@ import { apiGet, apiPatch } from '../../utils/axiosInterceptors';
 import { markSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
 import { getRoleLandingRoute } from '../../utils/rolePermissions';
+import useMissingLaborRatesCheck from '../../hooks/useMissingLaborRatesCheck';
 
 const POLL_MS = 4000;
 const MAX_POLL_MS = 5 * 60 * 1000;
@@ -75,6 +77,11 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const quickTimersRef = useRef([]);
   const doneRef = useRef(false);
   const sawProcessingRef = useRef(false);
+  const {
+    checkingLaborRates,
+    runWithLaborRateCheck,
+    missingLaborRatesModalProps,
+  } = useMissingLaborRatesCheck();
 
   const isConnected = squareStatus === 'connected';
   const startDate = formatPosDate(importRange?.[0]);
@@ -90,6 +97,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     hasSyncEnabledLocation &&
     hasValidImportRange &&
     !isImporting &&
+    !checkingLaborRates &&
     Boolean(restaurantId);
 
   const loadLocations = useCallback(async () => {
@@ -223,30 +231,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     }
   }, [loadLocations, restaurantId, selectedLocation]);
 
-  const handleImport = async () => {
-    if (planLocked) return;
-    if (!restaurantId) {
-      message.error('Restaurant not found. Please complete restaurant setup first.');
-      return;
-    }
-    if (!isConnected) {
-      message.warning('Connect Square first, then select a location.');
-      return;
-    }
-    if (!hasSyncEnabledLocation) {
-      message.warning('Select a Square location first, then import.');
-      setIsLocationPickerOpen(true);
-      return;
-    }
-    if (!hasValidImportRange) {
-      message.warning('Select a start and end date for the import.');
-      return;
-    }
-    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
-      message.warning(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
-      return;
-    }
-
+  const startImport = useCallback(async () => {
     doneRef.current = false;
     sawProcessingRef.current = false;
     setEmptyImportMessage(null);
@@ -334,6 +319,40 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
         'Failed to import last month from Square.';
       message.error(msg);
     }
+  }, [cleanup, endDate, finishImport, restaurantId, startDate]);
+
+  const handleImport = async () => {
+    if (planLocked) return;
+    if (!restaurantId) {
+      message.error('Restaurant not found. Please complete restaurant setup first.');
+      return;
+    }
+    if (!isConnected) {
+      message.warning('Connect Square first, then select a location.');
+      return;
+    }
+    if (!hasSyncEnabledLocation) {
+      message.warning('Select a Square location first, then import.');
+      setIsLocationPickerOpen(true);
+      return;
+    }
+    if (!hasValidImportRange) {
+      message.warning('Select a start and end date for the import.');
+      return;
+    }
+    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
+      message.warning(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
+      return;
+    }
+
+    const enabledLocation = locations.find((loc) => loc.sync_enabled);
+    await runWithLaborRateCheck({
+      restaurantId,
+      startDate,
+      endDate,
+      squareLocationId: enabledLocation?.location_id,
+      onProceed: startImport,
+    });
   };
 
   const locationColumns = [
@@ -388,7 +407,8 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     <div
       className={`border-t border-gray-200 ${compact ? 'pt-4 sm:pt-5' : 'mt-8 pt-6'} ${planLocked ? 'opacity-90' : ''}`}
     >
-      <SyncModal open={isImporting || isSavingLocation} />
+      <SyncModal open={isImporting || isSavingLocation || checkingLaborRates} />
+      <MissingLaborRatesModal {...missingLaborRatesModalProps} />
 
       <Modal
         title="Select Square Location"
@@ -526,7 +546,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
             <PosImportDateRangeSelect
               value={importRange}
               onChange={setImportRange}
-              disabled={planLocked || isImporting}
+              disabled={planLocked || isImporting || checkingLaborRates}
               size={compact ? 'middle' : 'large'}
               defaultPreset="last_month"
             />

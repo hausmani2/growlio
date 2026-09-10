@@ -15,9 +15,11 @@ import {
 } from '../../services/posApi';
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
+import MissingLaborRatesModal from '../common/MissingLaborRatesModal';
 import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import { parseOAuthState, isSquareConnectFromOnboardingScore, clearSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
+import useMissingLaborRatesCheck from '../../hooks/useMissingLaborRatesCheck';
 
 const defaultSyncRange = () => getPosImportRangeForPreset('last_month', dayjs);
 /**
@@ -48,6 +50,11 @@ const SquareCallbackHandler = () => {
   const pollingIntervalRef = useRef(null);
   const websocketRef = useRef(null);
   const completionHandledRef = useRef(false);
+  const {
+    checkingLaborRates,
+    runWithLaborRateCheck,
+    missingLaborRatesModalProps,
+  } = useMissingLaborRatesCheck();
 
   const restaurantIdFromState = useMemo(() => {
     return parseOAuthState(searchParams.get('state')).restaurantId;
@@ -291,6 +298,45 @@ const SquareCallbackHandler = () => {
     restaurantIdForSync,
     syncRange,
   ]);
+
+  const handleLocationSyncClick = useCallback(async () => {
+    const locationId = selectedLocation?.id;
+    if (!locationId) {
+      message.error('Please select a location first.');
+      return;
+    }
+
+    if (fromOnboardingScore) {
+      await startSyncFlow(locationId);
+      return;
+    }
+
+    const startDate = formatPosDate(syncRange?.[0]);
+    const endDate = formatPosDate(syncRange?.[1]);
+    if (!startDate || !endDate || startDate > endDate) {
+      message.error('Please select a valid import date range.');
+      return;
+    }
+    if (!isPosImportRangeAllowed(startDate, endDate, dayjs)) {
+      message.error(`Please select a range of ${POS_IMPORT_MAX_DAYS} days or fewer.`);
+      return;
+    }
+
+    await runWithLaborRateCheck({
+      restaurantId: restaurantIdForSync,
+      startDate,
+      endDate,
+      squareLocationId: selectedLocation?.location_id,
+      onProceed: () => startSyncFlow(locationId),
+    });
+  }, [
+    fromOnboardingScore,
+    restaurantIdForSync,
+    runWithLaborRateCheck,
+    selectedLocation,
+    startSyncFlow,
+    syncRange,
+  ]);
   
   const handleGoToDashboard = () => {
     navigate('/dashboard');
@@ -360,7 +406,8 @@ const SquareCallbackHandler = () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="w-full max-w-4xl px-4">
-          <SyncModal open={isStartingSync} />
+          <SyncModal open={isStartingSync || checkingLaborRates} />
+          <MissingLaborRatesModal {...missingLaborRatesModalProps} />
           <Modal
             title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
             open={isLocationModalOpen}
@@ -372,8 +419,8 @@ const SquareCallbackHandler = () => {
               <Button
                 key="sync"
                 type="primary"
-                onClick={() => startSyncFlow(selectedLocation?.id)}
-                disabled={!selectedLocation?.id || isStartingSync}
+                onClick={handleLocationSyncClick}
+                disabled={!selectedLocation?.id || isStartingSync || checkingLaborRates}
               >
                 {fromOnboardingScore ? 'Select this location' : 'Sync for this location'}
               </Button>,
@@ -395,7 +442,7 @@ const SquareCallbackHandler = () => {
                   <PosImportDateRangeSelect
                     value={syncRange}
                     onChange={setSyncRange}
-                    disabled={isStartingSync}
+                    disabled={isStartingSync || checkingLaborRates}
                     defaultPreset="last_month"
                   />
                 </div>
@@ -443,7 +490,7 @@ const SquareCallbackHandler = () => {
               />
 
               <div className="mt-4 flex flex-wrap gap-2 justify-end">
-                <Button onClick={loadLocations} disabled={locationsLoading || isStartingSync}>
+                <Button onClick={loadLocations} disabled={locationsLoading || isStartingSync || checkingLaborRates}>
                   Refresh Locations
                 </Button>
               </div>

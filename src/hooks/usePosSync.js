@@ -14,6 +14,8 @@ import { createPosSyncWebSocket } from '../services/websocket';
 const DEFAULT_SOCKET_ERROR_MESSAGE =
   'Realtime updates are temporarily unavailable. Polling will keep checking sync status.';
 
+const NO_POS_DATA_MESSAGE = 'No data found from Square for the selected dates.';
+
 export const usePosSync = ({
   getRestaurantId,
   getWeekStart,
@@ -26,6 +28,7 @@ export const usePosSync = ({
   const pollingIntervalRef = useRef(null);
   const completionHandledRef = useRef(false);
   const dashboardCallbackRef = useRef(onDashboardData);
+  const syncCompletedCallbackRef = useRef(onSyncCompleted);
 
   const {
     isSyncing,
@@ -41,6 +44,10 @@ export const usePosSync = ({
   useEffect(() => {
     dashboardCallbackRef.current = onDashboardData;
   }, [onDashboardData]);
+
+  useEffect(() => {
+    syncCompletedCallbackRef.current = onSyncCompleted;
+  }, [onSyncCompleted]);
 
   const cleanupRealtimeResources = useCallback(() => {
     if (pollingIntervalRef.current) {
@@ -65,6 +72,13 @@ export const usePosSync = ({
       markCompleted();
 
       try {
+        const merchantStatus = await queryClient.fetchQuery({
+          queryKey: posQueryKeys.merchantStatus(restaurantId),
+          queryFn: () => getMerchantSyncStatus(restaurantId),
+          staleTime: 0,
+        });
+        const hadData = merchantStatus?.lastSyncHadData !== false;
+
         const freshDashboardData = await queryClient.fetchQuery({
           queryKey: posQueryKeys.dashboard(restaurantId, weekStart),
           queryFn: () => getDashboardData({ restaurantId, weekStart }),
@@ -72,11 +86,15 @@ export const usePosSync = ({
         });
 
         dashboardCallbackRef.current?.(freshDashboardData);
-        onSyncCompleted?.();
+        syncCompletedCallbackRef.current?.({ hadData });
         queryClient.invalidateQueries({
           queryKey: ['dashboard', String(restaurantId)],
         });
-        message.success('POS data synced successfully');
+        if (hadData) {
+          message.success('POS data synced successfully');
+        } else {
+          message.warning(NO_POS_DATA_MESSAGE);
+        }
       } catch (error) {
         const errorMessage =
           error?.response?.data?.message ||
@@ -90,7 +108,7 @@ export const usePosSync = ({
         }, 0);
       }
     },
-    [cleanupRealtimeResources, markCompleted, onSyncCompleted, queryClient, resetSyncState]
+    [cleanupRealtimeResources, markCompleted, queryClient, resetSyncState]
   );
 
   const checkMerchantStatus = useCallback(
