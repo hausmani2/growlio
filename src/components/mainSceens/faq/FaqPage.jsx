@@ -395,7 +395,7 @@ const FaqPage = () => {
                         </div>
                       ),
                       children: (
-                        <div className="text-gray-700 leading-relaxed p-2">
+                        <div className="text-gray-700 leading-relaxed p-2 whitespace-pre-wrap">
                           {faq.answer}
                         </div>
                       )

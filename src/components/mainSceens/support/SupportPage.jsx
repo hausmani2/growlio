@@ -131,7 +131,61 @@ const SupportPage = () => {
       key: '6',
       label: 'Can I cancel my subscription anytime?',
       children: 'Yes, you can cancel your subscription at any time. There are no long-term contracts or cancellation fees. You\'ll continue to have access to your data until the end of your current billing period.',
-    }
+    },
+    {
+      key: 'confidence-1',
+      label: 'What is the Confidence Score?',
+      children: (
+        <div className="whitespace-pre-wrap">
+          {`The Confidence Score tells you how reliable your food cost calculation is based on the information available. It does not change your food cost—it tells you how much confidence you can have in that number.
+
+Growlio considers the information used to calculate each menu item's cost, including:
+• Ingredient pricing — Is the pricing current and confirmed?
+• Recipe portions — Are ingredient quantities confirmed or estimated?
+• Usable yields — Has product lost through trimming, draining, cooking or prep been confirmed?
+• LIO estimates — Has information estimated by LIO been reviewed and confirmed?
+• Missing information — Are any ingredients or required values incomplete?`}
+        </div>
+      ),
+    },
+    {
+      key: 'confidence-2',
+      label: 'What does a low Confidence Score mean?',
+      children: (
+        <div className="whitespace-pre-wrap">
+          {`LIO builds a recipe for a Chicken Caesar Salad and estimates several ingredient portions. The chicken price is current, but the romaine yield hasn't been confirmed and the Parmesan price is missing.
+
+Growlio can still estimate the food cost, but the item may have a 55% Confidence Score because some of the information is estimated or incomplete.
+
+As you confirm the portions, add the missing price and confirm the romaine yield, the Confidence Score increases.`}
+        </div>
+      ),
+    },
+    {
+      key: 'confidence-3',
+      label: 'What does a 100% Confidence Score mean?',
+      children: (
+        <div className="whitespace-pre-wrap">
+          {`Your Margherita Pizza has confirmed ingredient portions, current pricing, confirmed yields, and no missing or estimated information.
+
+Growlio calculates a 27% food cost with a 100% Confidence Score.
+
+This means Growlio has complete, confirmed information for the calculation. It does not mean 27% is a good or bad food cost—it means Growlio has the highest level of confidence in the information used to calculate it.`}
+        </div>
+      ),
+    },
+    {
+      key: 'confidence-4',
+      label: 'How can I improve my Confidence Score?',
+      children:
+        'Improving your Confidence Score is simple: replace estimates with confirmed information. Review any items Growlio identifies as missing or estimated, confirm LIO-generated portions, keep ingredient prices current, and enter actual usable yields when product is lost during trimming, draining, cooking or prep. The more real information you confirm, the higher your Confidence Score becomes—and the more reliable your food cost will be.',
+    },
+    {
+      key: 'confidence-5',
+      label: "What's the easiest way to remember Confidence Score?",
+      children:
+        'Food Cost tells you the number. Confidence Score tells you how much you can trust the number.',
+    },
   ];
 
   const contactMethods = [
@@ -374,7 +428,7 @@ const SupportPage = () => {
                 <Collapse 
                   accordion 
                   size="large"
-                  className=""
+                  className="support-faq"
                   items={faqData}
                 />
               </div>
@@ -398,6 +452,7 @@ const SupportPage = () => {
         .support-faq .ant-collapse-content-box {
           color: #6b7280;
           line-height: 1.6;
+          white-space: pre-wrap;
         }
       `}</style>
     </div>
