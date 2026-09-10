@@ -6,6 +6,7 @@ import growlioLogo from '../../../assets/svgs/growlio-logo.png';
 import useStore from '../../../store/store';
 import { apiPost } from '../../../utils/axiosInterceptors';
 import { clearClientSessionStorage } from '../../../utils/clearClientSession';
+import { trackOpenAiRegistrationCompleted } from '../../../utils/openaiAdsPixel';
 
 const SetPassword = () => {
   const navigate = useNavigate();
@@ -87,6 +88,7 @@ const SetPassword = () => {
       });
       const ok = applyAuth(res.data);
       message.success('Password set successfully');
+      trackOpenAiRegistrationCompleted({ email });
       navigate(ok ? '/congratulations' : '/login', {
         replace: true,
         state: { skipSetupCheck: true },

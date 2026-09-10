@@ -7,6 +7,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Outfit:wght@400;700;900&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
     <title>Growlio</title>
+    <script>
+      (function (w, d, s, u) {
+        if (w.oaiq) return;
+        var q = function () {
+          q.q.push(arguments);
+        };
+        q.q = [];
+        w.oaiq = q;
+        var js = d.createElement(s);
+        js.async = true;
+        js.src = u;
+        var f = d.getElementsByTagName(s)[0];
+        f.parentNode.insertBefore(js, f);
+      })(window, document, "script", "https://bzrcdn.openai.com/sdk/oaiq.min.js");
+
+      oaiq("init", {
+        pixelId: "B8ZfZ4FfM4ofmxLkfncCv5"
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

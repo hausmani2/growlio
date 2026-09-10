@@ -8,6 +8,7 @@ import growlioLogo from '../../../assets/svgs/growlio-logo.png';
 import TermsOfService from '../../legal/TermsOfService';
 import PrivacyPolicy from '../../legal/PrivacyPolicy';
 import DataProcessingAgreement from '../../legal/DataProcessingAgreement';
+import { trackOpenAiRegistrationCompleted } from '../../../utils/openaiAdsPixel';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -77,6 +78,7 @@ const Register = () => {
         } else {
           // @grw.com (and any auto-authenticated signup): tokens returned
           message.success('Registration successful! Welcome to Growlio!');
+          trackOpenAiRegistrationCompleted({ email: email.trim().toLowerCase() });
           navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
         }
       } else {
