@@ -119,6 +119,9 @@ const VOLUME_TO_ML = {
   cup: 236.588,
   pint: 473.176,
   pt: 473.176,
+  oz: 29.5735,
+  ounce: 29.5735,
+  ounces: 29.5735,
 };
 
 const EACH_UNITS = new Set(['each', 'ea', 'pc', 'pcs', 'piece', 'pieces']);
@@ -140,7 +143,7 @@ const HOVER_TIPS = {
     'Enter how much product is in each package, then choose the unit. Example: 2 pounds per bag.',
   contents_unit: 'Select the measurement for the amount above, such as Oz, lb, g, kg, Cup, Pint, Gal, mL, L, or Each.',
   recipe_unit:
-    'Select how you measure this ingredient in recipes. Growlio converts the purchase pack and shows cost per recipe unit.',
+    'Select how you measure this ingredient in recipes. It must match the package type: weight with weight, volume with volume, or each with each. Gallons convert to fluid ounces.',
   use_all:
     'Yield is asked for every ingredient so draining, trim, peel, and cook loss are never missed. Choose whether you use the whole product.',
   usable_amount:
@@ -224,6 +227,7 @@ const convertUnits = (qty, fromUnit, toUnit) => {
   const dst = normalizeUnit(toUnit);
   if (!src || !dst) return null;
   if (src === dst) return amount;
+  // Weight path first so oz <-> lb stays avoirdupois. oz <-> gal uses fluid oz.
   if (WEIGHT_TO_OZ[src] != null && WEIGHT_TO_OZ[dst] != null) {
     return (amount * WEIGHT_TO_OZ[src]) / WEIGHT_TO_OZ[dst];
   }
@@ -234,15 +238,41 @@ const convertUnits = (qty, fromUnit, toUnit) => {
   return null;
 };
 
+const unitFamily = (unit) => {
+  const raw = normalizeUnit(unit);
+  if (EACH_UNITS.has(raw)) return 'count';
+  const isWeight = WEIGHT_TO_OZ[raw] != null;
+  const isVolume = VOLUME_TO_ML[raw] != null;
+  if (isWeight && isVolume) return 'weight_or_volume';
+  if (isWeight) return 'weight';
+  if (isVolume) return 'volume';
+  return '';
+};
+
+const familyLabel = (family) => {
+  if (family === 'weight') return 'weight';
+  if (family === 'volume') return 'volume';
+  if (family === 'count') return 'count';
+  if (family === 'weight_or_volume') return 'weight or volume';
+  return 'this unit';
+};
+
 const suggestedRecipeUnit = (contentsUnit) => {
   const raw = normalizeUnit(contentsUnit);
-  if (WEIGHT_TO_G[raw] != null) {
+  if (EACH_UNITS.has(raw)) return 'each';
+  if (WEIGHT_TO_G[raw] != null && VOLUME_TO_ML[raw] == null) {
     if (['g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms'].includes(raw)) return 'g';
     return 'oz';
   }
-  if (VOLUME_TO_ML[raw] != null) return 'mL';
-  if (EACH_UNITS.has(raw)) return 'each';
+  if (VOLUME_TO_ML[raw] != null) return 'oz';
   return 'oz';
+};
+
+const compatibleRecipeUnitOptions = (contentsUnit) => {
+  const matches = RECIPE_UNIT_OPTIONS.filter(
+    (opt) => convertUnits(1, contentsUnit, opt.value) != null
+  );
+  return matches.length ? matches : RECIPE_UNIT_OPTIONS;
 };
 
 const formatQty = (value) => {
@@ -478,6 +508,8 @@ const IngredientEntryModal = ({
   saveIngredient,
   /** Jump to a step when opened from a confidence suggestion: 'yield' | 'cost' | 'purchase' */
   focus = null,
+  /** Prefill create-flow fields from an unmatched invoice line. */
+  prefill = null,
 }) => {
   const [form] = Form.useForm();
   const [step, setStep] = useState(0);
@@ -585,11 +617,12 @@ const IngredientEntryModal = ({
         standardized_unit: 'oz',
         is_catch_weight: false,
         yield_usable_unit: 'lb',
+        ...(prefill || {}),
       });
     }
     setWatched(form.getFieldsValue(true));
     setNameQuery(form.getFieldValue('name') || '');
-  }, [open, editingIngredient, form, focus]);
+  }, [open, editingIngredient, form, focus, prefill]);
 
   const purchaseBy = watched.purchase_unit_label === 'each' ? 'each' : 'case';
   const innerType = watched.purchase_inner_pack_type || '';
@@ -598,6 +631,7 @@ const IngredientEntryModal = ({
     purchaseBy === 'each' ? 'Each unit contains' : 'Each case contains';
   const packContainsLabel = `Each ${innerLabel} contains`;
   const conversion = conversionSummary(preview);
+  const recipeUnitOptions = compatibleRecipeUnitOptions(watched.purchase_contents_unit);
 
   const applyExistingIngredient = (item) => {
     onSaved?.({ useExisting: item });
@@ -613,14 +647,18 @@ const IngredientEntryModal = ({
       if (step === 3) {
         const contentsUnit = form.getFieldValue('purchase_contents_unit');
         const recipeUnit = form.getFieldValue('standardized_unit');
-        if (
-          convertUnits(1, contentsUnit, recipeUnit) == null &&
-          !EACH_UNITS.has(normalizeUnit(contentsUnit))
-        ) {
-          message.error(
-            'Recipe unit must match the package unit type (weight to weight, volume to volume, or count to count).'
-          );
-          return;
+        if (convertUnits(1, contentsUnit, recipeUnit) == null) {
+          const suggested = suggestedRecipeUnit(contentsUnit);
+          if (convertUnits(1, contentsUnit, suggested) != null) {
+            form.setFieldValue('standardized_unit', suggested);
+          } else {
+            const packFamily = familyLabel(unitFamily(contentsUnit) || 'count');
+            const recipeFamily = familyLabel(unitFamily(recipeUnit) || 'count');
+            message.error(
+              `Recipe unit must match the package (${packFamily} to ${packFamily}). This package is ${packFamily}, but the recipe unit is ${recipeFamily}.`
+            );
+            return;
+          }
         }
       }
       setStep((current) => Math.min(current + 1, 4));
@@ -750,11 +788,17 @@ const IngredientEntryModal = ({
       };
       delete payload.yield_choice;
       delete payload.cost_per_standardized_unit;
-      await saveIngredient(payload, editingIngredient);
-      onSaved?.();
+      const saved = await saveIngredient(payload, editingIngredient);
+      onSaved?.(saved);
     } catch (error) {
       if (error?.errorFields) return;
-      message.error(error?.response?.data?.error || 'Failed to save ingredient');
+      const data = error?.response?.data;
+      const uniqueError = JSON.stringify(data || {}).includes('unique');
+      message.error(
+        uniqueError
+          ? 'An ingredient with this name already exists. Use the existing one or pick a different name.'
+          : data?.error || 'Failed to save ingredient'
+      );
     } finally {
       setSaving(false);
     }
@@ -777,6 +821,7 @@ const IngredientEntryModal = ({
       open={open}
       onCancel={onCancel}
       width={820}
+      zIndex={1200}
       destroyOnClose
       footer={
         <div className="flex justify-between">
@@ -868,6 +913,12 @@ const IngredientEntryModal = ({
               filterOption={false}
               defaultActiveFirstOption={false}
               onSearch={setNameQuery}
+              onSelect={(value) => {
+                const match = nameMatches.find(
+                  (item) => String(item.name).toLowerCase() === String(value).toLowerCase()
+                );
+                if (match) applyExistingIngredient(match);
+              }}
               notFoundContent={
                 String(nameQuery || watched.name || '').trim().length >= 2
                   ? 'No similar ingredients found. You can create this as new.'
@@ -1115,8 +1166,12 @@ const IngredientEntryModal = ({
             }
             rules={[{ required: true, message: 'Required' }]}
           >
-            <Select options={RECIPE_UNIT_OPTIONS} />
+            <Select options={recipeUnitOptions} />
           </Form.Item>
+          <p className="text-gray-500 text-xs -mt-2 mb-4">
+            Recipe unit has to match the package: weight (lb, oz, g) with ounces or grams,
+            volume (gal, cup, mL) with ounces or mL, and each with each.
+          </p>
           {preview && conversion.chain ? (
             <Alert
               type="success"

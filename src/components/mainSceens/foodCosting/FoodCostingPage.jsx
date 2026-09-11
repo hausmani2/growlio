@@ -245,6 +245,9 @@ const FoodCostingPage = () => {
   const [applyingInvoice, setApplyingInvoice] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoiceLines, setInvoiceLines] = useState([]);
+  const [ingredientPrefill, setIngredientPrefill] = useState(null);
+  const [invoiceLineAddingIndex, setInvoiceLineAddingIndex] = useState(null);
+  const [extraMatchIngredients, setExtraMatchIngredients] = useState([]);
   const [invoiceForm] = Form.useForm();
   const [vendorModalOpen, setVendorModalOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
@@ -887,14 +890,235 @@ const FoodCostingPage = () => {
 
   const openInvoiceReview = async (invoice) => {
     await ensureModalData();
+    let catalog = ingredients;
+    try {
+      const data = await fetchIngredients({ page: 1, pageSize: 500, ordering: 'name' });
+      if (Array.isArray(data?.results) && data.results.length) {
+        catalog = data.results;
+        setIngredients(data.results);
+        setIngredientTotal(data.count);
+      }
+    } catch {
+      /* keep current catalog */
+    }
+    const lookup = (id) => {
+      if (id == null || id === '') return null;
+      return catalog.find((ing) => String(ing.id) === String(id)) || null;
+    };
     setSelectedInvoice(invoice);
     setInvoiceLines(
-      (invoice.lines || []).map((line) => ({
-        ...line,
-        ingredient_id: line.ingredient || null,
-      }))
+      (invoice.lines || []).map((line) => {
+        const ingredientId = line.ingredient || line.ingredient_id || null;
+        return withMatchedIngredientFields(line, lookup(ingredientId), ingredientId);
+      })
     );
     setInvoiceReviewOpen(true);
+  };
+
+  const unwrapSavedIngredient = (result) => {
+    if (!result) return null;
+    if (result.id) return result;
+    if (result.data?.id) return result.data;
+    if (result.ingredient?.id) return result.ingredient;
+    return null;
+  };
+
+  const upsertMatchIngredient = (ingredient) => {
+    const saved = unwrapSavedIngredient(ingredient);
+    if (!saved?.id) return null;
+    setExtraMatchIngredients((prev) => {
+      const rest = prev.filter((ing) => String(ing.id) !== String(saved.id));
+      return [saved, ...rest];
+    });
+    setIngredients((prev) => {
+      const exists = prev.some((ing) => String(ing.id) === String(saved.id));
+      if (exists) {
+        return prev.map((ing) =>
+          String(ing.id) === String(saved.id) ? { ...ing, ...saved } : ing
+        );
+      }
+      return [saved, ...prev];
+    });
+    return saved;
+  };
+
+  const findIngredientById = (id) => {
+    if (id == null || id === '') return null;
+    return (
+      extraMatchIngredients.find((ing) => String(ing.id) === String(id)) ||
+      ingredients.find((ing) => String(ing.id) === String(id)) ||
+      null
+    );
+  };
+
+  const invoiceIngredientOptions = useMemo(() => {
+    const byId = new Map();
+    [...extraMatchIngredients, ...ingredients].forEach((ing) => {
+      if (ing?.id == null) return;
+      byId.set(String(ing.id), ing);
+    });
+    invoiceLines.forEach((line) => {
+      if (!line?.ingredient_id || byId.has(String(line.ingredient_id))) return;
+      byId.set(String(line.ingredient_id), {
+        id: line.ingredient_id,
+        name: line.ingredient_name || `Ingredient ${line.ingredient_id}`,
+      });
+    });
+    return [...byId.values()].map((ing) => ({
+      value: ing.id,
+      label: ing.name,
+    }));
+  }, [extraMatchIngredients, ingredients, invoiceLines]);
+
+  const normalizeInvoiceWeightUnit = (unit) => {
+    const raw = String(unit || '').trim().toLowerCase();
+    if (['lb', 'lbs', 'pound', 'pounds'].includes(raw)) return 'lb';
+    if (['oz', 'ounce', 'ounces'].includes(raw)) return 'oz';
+    if (['kg', 'kilogram', 'kilograms'].includes(raw)) return 'kg';
+    if (['g', 'gram', 'grams'].includes(raw)) return 'g';
+    if (['gal', 'gallon', 'gallons'].includes(raw)) return 'gal';
+    if (['ml', 'milliliter', 'milliliters'].includes(raw)) return 'mL';
+    if (['l', 'liter', 'liters'].includes(raw)) return 'L';
+    if (['each', 'ea', 'pc', 'pcs'].includes(raw)) return 'each';
+    return raw || 'lb';
+  };
+
+  const lineHasRealWeight = (line) => Number(line?.actual_weight) > 0;
+
+  const weightFromMatchedIngredient = (ingredient, line) => {
+    if (lineHasRealWeight(line)) {
+      return {
+        qty: Number(line.actual_weight),
+        unit: normalizeInvoiceWeightUnit(line.actual_weight_unit || 'lb'),
+      };
+    }
+    const inner =
+      Number(ingredient?.purchase_inner_pack_qty) > 0
+        ? Number(ingredient.purchase_inner_pack_qty)
+        : 1;
+    const contents = Number(ingredient?.purchase_contents_qty);
+    if (contents > 0) {
+      return {
+        qty: inner * contents,
+        unit: normalizeInvoiceWeightUnit(
+          ingredient.purchase_contents_unit || ingredient.standardized_unit || 'lb'
+        ),
+      };
+    }
+    const purchased = Number(ingredient?.purchased_qty);
+    if (purchased > 0) {
+      return {
+        qty: purchased,
+        unit: normalizeInvoiceWeightUnit(ingredient.standardized_unit || 'oz'),
+      };
+    }
+    return {
+      qty: null,
+      unit: normalizeInvoiceWeightUnit(line?.actual_weight_unit || 'lb'),
+    };
+  };
+
+  const withMatchedIngredientFields = (line, ingredient, ingredientId) => {
+    if (!ingredientId) {
+      return {
+        ...line,
+        ingredient_id: null,
+        ingredient: null,
+        matched_unit_cost: null,
+        is_catch_weight: false,
+      };
+    }
+    const isCatch = Boolean(ingredient?.is_catch_weight);
+    const weight = isCatch ? weightFromMatchedIngredient(ingredient, line) : null;
+    return {
+      ...line,
+      ingredient_id: ingredientId,
+      ingredient: ingredientId,
+      ingredient_name: ingredient?.name || line.ingredient_name,
+      matched_unit_cost:
+        ingredient?.cost_per_standardized_unit ?? line.matched_unit_cost ?? null,
+      is_catch_weight: isCatch,
+      ...(isCatch
+        ? {
+            actual_weight: weight.qty,
+            actual_weight_unit: weight.unit,
+          }
+        : {}),
+    };
+  };
+
+  const invoiceLineIsCatchWeight = (line) => {
+    if (!line?.ingredient_id) return false;
+    const matched = findIngredientById(line.ingredient_id);
+    if (matched) return Boolean(matched.is_catch_weight);
+    return Boolean(line.is_catch_weight);
+  };
+
+  const invoiceLineIsMatched = (line) => Boolean(line?.ingredient_id);
+
+  const qtyToOz = (qty, unit) => {
+    const amount = Number(qty);
+    if (!(amount > 0)) return null;
+    const raw = String(unit || '').trim().toLowerCase();
+    const weightToOz = {
+      oz: 1,
+      ounce: 1,
+      ounces: 1,
+      lb: 16,
+      lbs: 16,
+      pound: 16,
+      pounds: 16,
+      g: 0.03527396,
+      gram: 0.03527396,
+      grams: 0.03527396,
+      kg: 35.27396,
+      kilogram: 35.27396,
+      kilograms: 35.27396,
+    };
+    const volumeToFlOz = {
+      oz: 1,
+      'fl oz': 1,
+      floz: 1,
+      ml: 1 / 29.5735,
+      milliliter: 1 / 29.5735,
+      milliliters: 1 / 29.5735,
+      l: 1000 / 29.5735,
+      liter: 1000 / 29.5735,
+      liters: 1000 / 29.5735,
+      gal: 128,
+      gallon: 128,
+      gallons: 128,
+      cup: 8,
+      pint: 16,
+    };
+    if (weightToOz[raw] != null) return amount * weightToOz[raw];
+    if (volumeToFlOz[raw] != null) return amount * volumeToFlOz[raw];
+    return null;
+  };
+
+  const invoiceLineCostPerOz = (line) => {
+    if (!invoiceLineIsMatched(line)) return null;
+    const total = Number(line.total_cost);
+    if (invoiceLineIsCatchWeight(line)) {
+      const oz = qtyToOz(line.actual_weight, line.actual_weight_unit);
+      if (oz > 0 && Number.isFinite(total) && total >= 0) return total / oz;
+    }
+    const matched = findIngredientById(line.ingredient_id);
+    const unitCost = Number(
+      matched?.cost_per_standardized_unit ?? line.matched_unit_cost
+    );
+    if (Number.isFinite(unitCost)) {
+      const recipeUnit = String(
+        matched?.standardized_unit || 'oz'
+      ).trim().toLowerCase();
+      if (recipeUnit === 'oz' || recipeUnit === 'ounce' || recipeUnit === 'ounces') {
+        return unitCost;
+      }
+      const ozPerUnit = qtyToOz(1, recipeUnit);
+      if (ozPerUnit > 0) return unitCost / ozPerUnit;
+      return unitCost;
+    }
+    return null;
   };
 
   const handleCreateInvoice = async () => {
@@ -1062,13 +1286,62 @@ const FoodCostingPage = () => {
 
   const openCreateIngredient = () => {
     setEditingIngredient(null);
+    setIngredientPrefill(null);
+    setInvoiceLineAddingIndex(null);
     setIngredientModalFocus(null);
     setIngredientModalOpen(true);
   };
 
   const openEditIngredient = (record, focus = null) => {
+    setIngredientPrefill(null);
+    setInvoiceLineAddingIndex(null);
     setIngredientModalFocus(focus);
     setEditingIngredient(record);
+    setIngredientModalOpen(true);
+  };
+
+  const closeIngredientModal = () => {
+    setIngredientModalOpen(false);
+    setEditingIngredient(null);
+    setIngredientModalFocus(null);
+    setIngredientPrefill(null);
+    setInvoiceLineAddingIndex(null);
+  };
+
+  const attachIngredientToInvoiceLine = (index, ingredient) => {
+    const saved = upsertMatchIngredient(ingredient);
+    if (index == null || !saved?.id) return;
+    setInvoiceLines((prev) => {
+      const next = [...prev];
+      const line = next[index];
+      if (!line) return prev;
+      next[index] = withMatchedIngredientFields(line, saved, saved.id);
+      return next;
+    });
+  };
+
+  const openAddIngredientFromInvoiceLine = (record, index) => {
+    setEditingIngredient(null);
+    setIngredientModalFocus(null);
+    setInvoiceLineAddingIndex(index);
+    const vendorId =
+      selectedInvoice?.vendor ||
+      vendors.find(
+        (vendor) =>
+          String(vendor.name || '').toLowerCase() ===
+          String(selectedInvoice?.vendor_name || '').toLowerCase()
+      )?.id;
+    setIngredientPrefill({
+      name: record?.raw_name || '',
+      vendor: vendorId || undefined,
+      vendor_item_number: record?.vendor_item_number || '',
+      purchase_total_cost:
+        record?.total_cost != null && record.total_cost !== ''
+          ? Number(record.total_cost)
+          : undefined,
+      purchase_pack_qty: 1,
+      purchase_unit_label: 'case',
+    });
     setIngredientModalOpen(true);
   };
 
@@ -1190,12 +1463,13 @@ const FoodCostingPage = () => {
 
   const persistIngredient = async (payload, editing) => {
     if (editing) {
-      await updateIngredient(editing.id, payload);
+      const updated = await updateIngredient(editing.id, payload);
       message.success('Ingredient updated');
-    } else {
-      await createIngredient(payload);
-      message.success('Ingredient created');
+      return updated;
     }
+    const created = await createIngredient(payload);
+    message.success(created?.id ? 'Ingredient saved' : 'Ingredient created');
+    return created;
   };
 
   const loadRecipeIngredientChoices = async () => {
@@ -2337,7 +2611,7 @@ const FoodCostingPage = () => {
                             title: 'Weight',
                             key: 'wt',
                             render: (_, line) =>
-                              line.actual_weight != null
+                              line.is_catch_weight && line.actual_weight != null
                                 ? `${line.actual_weight} ${line.actual_weight_unit || ''}`
                                 : '—',
                           },
@@ -2529,22 +2803,25 @@ const FoodCostingPage = () => {
         ingredients={ingredients}
         vendors={vendors}
         focus={ingredientModalFocus}
-        onCancel={() => {
-          setIngredientModalOpen(false);
-          setEditingIngredient(null);
-          setIngredientModalFocus(null);
-        }}
+        prefill={ingredientPrefill}
+        onCancel={closeIngredientModal}
         saveIngredient={persistIngredient}
         onVendorsChanged={() => refresh(['vendors'])}
         onSaved={(result) => {
+          const lineIndex = invoiceLineAddingIndex;
           if (result?.useExisting) {
+            attachIngredientToInvoiceLine(lineIndex, result.useExisting);
+            if (lineIndex != null) {
+              closeIngredientModal();
+              refresh(['dashboard', 'menu']);
+              return;
+            }
             setEditingIngredient(result.useExisting);
             return;
           }
-          setIngredientModalOpen(false);
-          setEditingIngredient(null);
-          setIngredientModalFocus(null);
-          refresh(['dashboard', 'ingredients', 'menu']);
+          attachIngredientToInvoiceLine(lineIndex, result);
+          closeIngredientModal();
+          refresh(['dashboard', 'menu']);
         }}
       />
 
@@ -3148,8 +3425,11 @@ const FoodCostingPage = () => {
             : 'Review invoice'
         }
         open={invoiceReviewOpen}
-        onCancel={() => setInvoiceReviewOpen(false)}
-        width={960}
+        onCancel={() => {
+          setInvoiceReviewOpen(false);
+          setExtraMatchIngredients([]);
+        }}
+        width={1100}
         footer={null}
         destroyOnClose
       >
@@ -3167,7 +3447,7 @@ const FoodCostingPage = () => {
               size="small"
               pagination={false}
               dataSource={invoiceLines}
-              scroll={{ x: 1200 }}
+              scroll={{ x: 1320 }}
               columns={[
                 {
                   title: 'Invoice item',
@@ -3187,71 +3467,94 @@ const FoodCostingPage = () => {
                 {
                   title: 'Match ingredient',
                   dataIndex: 'ingredient_id',
-                  width: 200,
+                  width: 220,
                   render: (value, record, index) => (
-                    <Select
-                      allowClear
-                      showSearch
-                      className="w-full"
-                      placeholder="Select ingredient"
-                      optionFilterProp="label"
-                      value={value || undefined}
-                      options={ingredients.map((ing) => ({
-                        value: ing.id,
-                        label: ing.name,
-                      }))}
-                      onChange={(val) => {
-                        const next = [...invoiceLines];
-                        next[index] = { ...record, ingredient_id: val || null };
-                        setInvoiceLines(next);
-                      }}
-                    />
+                    <div className="flex flex-col gap-1">
+                      <Select
+                        allowClear
+                        showSearch
+                        className="w-full"
+                        placeholder="Select ingredient"
+                        optionFilterProp="label"
+                        value={value || undefined}
+                        options={invoiceIngredientOptions}
+                        onChange={(val) => {
+                          const matched = findIngredientById(val);
+                          const next = [...invoiceLines];
+                          next[index] = withMatchedIngredientFields(
+                            record,
+                            matched,
+                            val || null
+                          );
+                          setInvoiceLines(next);
+                        }}
+                      />
+                      {!value && !record.is_non_food ? (
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<PlusOutlined />}
+                          className="!px-0 !h-auto !text-[#FF8132]"
+                          onClick={() => openAddIngredientFromInvoiceLine(record, index)}
+                        >
+                          Add ingredient
+                        </Button>
+                      ) : null}
+                    </div>
                   ),
                 },
                 {
                   title: 'Weight',
                   dataIndex: 'actual_weight',
                   width: 100,
-                  render: (value, record, index) => (
-                    <InputNumber
-                      className="w-full"
-                      controls={false}
-                      min={0}
-                      value={value}
-                      onChange={(val) => {
-                        const next = [...invoiceLines];
-                        next[index] = { ...record, actual_weight: val };
-                        setInvoiceLines(next);
-                      }}
-                    />
-                  ),
+                  render: (value, record, index) =>
+                    invoiceLineIsCatchWeight(record) ? (
+                      <InputNumber
+                        className="w-full"
+                        controls={false}
+                        min={0}
+                        value={Number(value) > 0 ? Number(value) : null}
+                        onChange={(val) => {
+                          const next = [...invoiceLines];
+                          next[index] = { ...record, actual_weight: val };
+                          setInvoiceLines(next);
+                        }}
+                      />
+                    ) : (
+                      '—'
+                    ),
                 },
                 {
                   title: 'Unit',
                   dataIndex: 'actual_weight_unit',
                   width: 90,
-                  render: (value, record, index) => (
-                    <Select
-                      className="w-full"
-                      value={value || 'lb'}
-                      options={[
-                        { value: 'lb', label: 'lb' },
-                        { value: 'oz', label: 'oz' },
-                        { value: 'kg', label: 'kg' },
-                        { value: 'each', label: 'each' },
-                      ]}
-                      onChange={(val) => {
-                        const next = [...invoiceLines];
-                        next[index] = { ...record, actual_weight_unit: val };
-                        setInvoiceLines(next);
-                      }}
-                    />
-                  ),
+                  render: (value, record, index) =>
+                    invoiceLineIsCatchWeight(record) ? (
+                      <Select
+                        className="w-full"
+                        value={value || 'lb'}
+                        options={[
+                          { value: 'lb', label: 'lb' },
+                          { value: 'oz', label: 'oz' },
+                          { value: 'kg', label: 'kg' },
+                          { value: 'g', label: 'g' },
+                          { value: 'gal', label: 'gal' },
+                          { value: 'each', label: 'each' },
+                        ]}
+                        onChange={(val) => {
+                          const next = [...invoiceLines];
+                          next[index] = { ...record, actual_weight_unit: val };
+                          setInvoiceLines(next);
+                        }}
+                      />
+                    ) : (
+                      '—'
+                    ),
                 },
                 {
                   title: 'Total $',
                   dataIndex: 'total_cost',
-                  width: 150,
+                  width: 130,
                   render: (value, record, index) => (
                     <InputNumber
                       className="w-full"
@@ -3272,8 +3575,12 @@ const FoodCostingPage = () => {
                   title: '$/oz',
                   dataIndex: 'cost_per_oz',
                   width: 100,
-                  render: (v) =>
-                    v != null ? `$${Number(v).toFixed(4)}` : '—',
+                  render: (_, record) => {
+                    const cost = invoiceLineCostPerOz(record);
+                    return cost != null && cost !== ''
+                      ? `$${Number(cost).toFixed(4)}`
+                      : '—';
+                  },
                 },
                 {
                   title: 'Matched cost',
