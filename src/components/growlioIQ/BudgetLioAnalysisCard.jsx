@@ -146,6 +146,18 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
 
   const problems = (analysis?.problems || []).slice(0, 4);
   const actions = (analysis?.action_plan || []).slice(0, 3);
+  const authority = analysis?.metrics_snapshot?.budget_authority || null;
+
+  const formatMoney = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  };
+  const formatPct = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `${n.toFixed(1)}%`;
+  };
 
   return (
     <Card
@@ -158,8 +170,8 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
           <div>
             <h3 className="text-lg font-semibold m-0">LIO Budget Analysis</h3>
             <p className="text-sm text-gray-500 m-0">
-              Quick feedback for {periodLabel || 'this week'} — labor, food cost, and
-              overspending signals
+              This week’s budget plan ({periodLabel || 'selected week'}) — the same
+              Sales Goal, Labor Budget, COGS, and Operating Expense as the table below.
             </p>
           </div>
         </div>
@@ -251,6 +263,31 @@ const BudgetLioAnalysisCard = ({ startDate, endDate, autoRun = false }) => {
               {analysis.summary}
             </p>
           </div>
+
+          {authority ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="rounded-lg border border-gray-100 bg-white p-3">
+                <p className="text-xs uppercase tracking-wide text-gray-500 m-0 mb-1">
+                  Labor budget this week
+                </p>
+                <p className="text-sm text-gray-800 m-0">
+                  {formatMoney(authority.labour_budget)} (
+                  {formatPct(authority.labour_budget_pct_of_sales_goal)} of{' '}
+                  {formatMoney(authority.sales_budget)} sales goal)
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-white p-3">
+                <p className="text-xs uppercase tracking-wide text-gray-500 m-0 mb-1">
+                  Operating expense budget
+                </p>
+                <p className="text-sm text-gray-800 m-0">
+                  {formatMoney(authority.operating_expense_budget)} (
+                  {formatPct(authority.operating_expense_budget_pct_of_sales_goal)} of
+                  sales goal)
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {problems.length > 0 ? (
             <div className="space-y-2">
