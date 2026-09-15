@@ -8,7 +8,13 @@ export const posQueryKeys = {
 };
 
 export const triggerPosSync = async (restaurantId, options = {}) => {
-  const { startDate, endDate, createSalesInformation = false } = options;
+  const {
+    startDate,
+    endDate,
+    createSalesInformation = false,
+    dates,
+    skipExisting = false,
+  } = options;
   const query = new URLSearchParams({
     restaurant_id: String(restaurantId),
   });
@@ -16,6 +22,10 @@ export const triggerPosSync = async (restaurantId, options = {}) => {
   if (startDate) query.set('start_date', startDate);
   if (endDate) query.set('end_date', endDate);
   if (createSalesInformation) query.set('create_sales_information', 'true');
+  if (skipExisting) query.set('skip_existing', 'true');
+  if (Array.isArray(dates) && dates.length) {
+    query.set('dates', dates.join(','));
+  }
   const locationId = localStorage.getItem('selected_location_id');
   if (locationId) query.set('location_id', locationId);
 
@@ -184,12 +194,16 @@ export const getMerchantSyncStatus = async (restaurantId) => {
   };
 };
 
-export const getDashboardData = async ({ restaurantId, weekStart }) => {
-  const locationId = localStorage.getItem('selected_location_id');
-  const locationQuery = locationId ? `&location_id=${locationId}` : '';
-  const response = await apiGet(
-    `/restaurant/dashboard/?restaurant_id=${restaurantId}&week_start=${weekStart}${locationQuery}`
-  );
-
+export const getDashboardData = async ({ restaurantId, weekStart, locationId } = {}) => {
+  const resolvedLocationId =
+    locationId ||
+    localStorage.getItem('selected_location_id') ||
+    localStorage.getItem('location_id');
+  const params = new URLSearchParams({
+    restaurant_id: String(restaurantId),
+    week_start: weekStart,
+  });
+  if (resolvedLocationId) params.set('location_id', String(resolvedLocationId));
+  const response = await apiGet(`/restaurant/dashboard/?${params.toString()}`);
   return response.data;
 };

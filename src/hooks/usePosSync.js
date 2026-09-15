@@ -167,11 +167,11 @@ export const usePosSync = ({
   );
 
   const syncMutation = useMutation({
-    mutationFn: ({ restaurantId, startDate, endDate }) =>
-      triggerPosSync(restaurantId, { startDate, endDate }),
+    mutationFn: ({ restaurantId, startDate, endDate, dates, skipExisting }) =>
+      triggerPosSync(restaurantId, { startDate, endDate, dates, skipExisting }),
   });
 
-  const startSync = useCallback(async () => {
+  const startSync = useCallback(async (override = {}) => {
     if (isSyncing || syncMutation.isPending) {
       return { success: false, reason: 'already-running' };
     }
@@ -182,7 +182,7 @@ export const usePosSync = ({
       return { success: false, reason: 'missing-restaurant-id' };
     }
 
-    const weekStartValue = getWeekStart?.();
+    const weekStartValue = override.weekStart || getWeekStart?.();
     const normalizedWeekStart =
       typeof weekStartValue === 'string'
         ? weekStartValue
@@ -194,8 +194,11 @@ export const usePosSync = ({
     }
 
     const syncDateRange = getSyncDateRange?.() || {};
-    const startDate = syncDateRange.startDate || normalizedWeekStart;
-    const endDate = syncDateRange.endDate || null;
+    const startDate = override.startDate || syncDateRange.startDate || normalizedWeekStart;
+    const endDate = override.endDate || syncDateRange.endDate || null;
+    const dates = override.dates || syncDateRange.dates;
+    const skipExisting =
+      override.skipExisting ?? syncDateRange.skipExisting ?? false;
 
     cleanupRealtimeResources();
     setActiveRestaurantId(restaurantId);
@@ -205,7 +208,13 @@ export const usePosSync = ({
     startRealtimeListeners(restaurantId, normalizedWeekStart);
 
     try {
-      await syncMutation.mutateAsync({ restaurantId, startDate, endDate });
+      await syncMutation.mutateAsync({
+        restaurantId,
+        startDate,
+        endDate,
+        dates,
+        skipExisting,
+      });
       checkMerchantStatus(restaurantId, normalizedWeekStart).catch(() => {
         // Polling continues even if the immediate check fails.
       });

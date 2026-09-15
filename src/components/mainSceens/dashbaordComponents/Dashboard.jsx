@@ -16,6 +16,7 @@ import RestaurantInfoCard from './RestaurantInfoCard';
 import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
 import SyncModal from '../../SyncModal';
 import MissingLaborRatesModal from '../../common/MissingLaborRatesModal';
+import PosImportPeriodModal from './PosImportPeriodModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import useMissingLaborRatesCheck from '../../../hooks/useMissingLaborRatesCheck';
@@ -43,7 +44,9 @@ const Dashboard = () => {
     setSelectedMonth,
     setSelectedWeek,
     setAvailableWeeks,
-    getDateSelection
+    getDateSelection,
+    selectedLocationId,
+    completeOnboardingData,
   } = useStore();
 
   // Local loading states
@@ -54,6 +57,10 @@ const Dashboard = () => {
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
   const [isPosSyncCompletedModalVisible, setIsPosSyncCompletedModalVisible] = useState(false);
   const [posSyncHadData, setPosSyncHadData] = useState(true);
+  const [isPosImportModalOpen, setIsPosImportModalOpen] = useState(false);
+  const [posImportDayCount, setPosImportDayCount] = useState(0);
+  const [posImportOverwrote, setPosImportOverwrote] = useState(false);
+  const pendingPosImportRef = useRef(null);
   const {
     checkingLaborRates,
     runWithLaborRateCheck,
@@ -304,8 +311,16 @@ const Dashboard = () => {
   }, []);
 
   const handlePosSyncCompleted = useCallback((result) => {
+    const importedWeekStart = pendingPosImportRef.current?.weekStart;
+    const importedCount = pendingPosImportRef.current?.dates?.length || 0;
     setPosSyncHadData(result?.hadData !== false);
+    setPosImportDayCount(importedCount);
+    setPosImportOverwrote(pendingPosImportRef.current?.skipExisting === false);
     setIsPosSyncCompletedModalVisible(true);
+    if (importedWeekStart) {
+      handleWeekPickerChangeRef.current?.(dayjs(importedWeekStart));
+    }
+    pendingPosImportRef.current = null;
   }, []);
 
   const selectedWeekStart = getDateSelection()?.weekStartDate
@@ -332,15 +347,24 @@ const Dashboard = () => {
   });
 
   const handleSyncPosClick = useCallback(async () => {
-    if (isFutureWeekSelected) {
-      message.warning('Sync is only available for current or past weeks.');
-      return;
-    }
     if (isPosSyncing || checkingLaborRates) return;
 
-    const weekStartDate = getDateSelection()?.weekStartDate;
-    if (!weekStartDate) {
-      message.warning('Please select a week first.');
+    const restaurantId = await ensureRestaurantId?.();
+    if (!restaurantId) {
+      message.error('Restaurant ID not found. Please complete onboarding first.');
+      return;
+    }
+    if (!isSquareConnected) {
+      message.warning('Connect your POS Integration account to sync data.');
+      return;
+    }
+
+    setIsPosImportModalOpen(true);
+  }, [checkingLaborRates, ensureRestaurantId, isPosSyncing, isSquareConnected]);
+
+  const handlePosImportConfirm = useCallback(async ({ dates, weekStart, startDate, endDate, skipExisting = true }) => {
+    if (!dates?.length) {
+      message.info('All selected days already have data or are not available to import.');
       return;
     }
 
@@ -350,24 +374,25 @@ const Dashboard = () => {
       return;
     }
 
-    const startDate = dayjs(weekStartDate).startOf('week').format('YYYY-MM-DD');
-    const endDate = dayjs(weekStartDate).endOf('week').format('YYYY-MM-DD');
+    const rangeStart = startDate || dates[0];
+    const rangeEnd = endDate || dates[dates.length - 1];
+    pendingPosImportRef.current = { dates, weekStart, skipExisting };
+    setIsPosImportModalOpen(false);
 
     await runWithLaborRateCheck({
       restaurantId,
-      startDate,
-      endDate,
-      onProceed: handleSquareSyncNow,
+      startDate: rangeStart,
+      endDate: rangeEnd,
+      onProceed: () =>
+        handleSquareSyncNow({
+          startDate: rangeStart,
+          endDate: rangeEnd,
+          dates,
+          skipExisting,
+          weekStart,
+        }),
     });
-  }, [
-    checkingLaborRates,
-    ensureRestaurantId,
-    getDateSelection,
-    handleSquareSyncNow,
-    isFutureWeekSelected,
-    isPosSyncing,
-    runWithLaborRateCheck,
-  ]);
+  }, [ensureRestaurantId, handleSquareSyncNow, runWithLaborRateCheck]);
 
   // Used in the "Last 3 Weeks" modal copy (previous 3 weeks relative to the selected week)
   const { weekStartDate: selectedWeekStartDate } = getDateSelection();
@@ -908,7 +933,7 @@ const Dashboard = () => {
                   <Tooltip
                   title={
                     isSquareConnected
-                      ? 'Sync the latest sales and labor data from Square.'
+                      ? 'Import This Week, specific days, or previous weeks from Square without overwriting existing data.'
                       : 'Connect your POS Integration account to sync data.'
                   }
                 >
@@ -919,7 +944,7 @@ const Dashboard = () => {
                       data-testid="sync-pos-button"
                       onClick={handleSyncPosClick}
                       loading={isPosSyncing || checkingLaborRates}
-                      disabled={!isSquareConnected || isPosSyncing || checkingLaborRates || !selectedWeekStart || isFutureWeekSelected}
+                      disabled={!isSquareConnected || isPosSyncing || checkingLaborRates}
                       className="border-gray-200 bg-white text-gray-700 hover:!border-gray-300 hover:!bg-gray-50 hover:!text-gray-900"
                     >
                       <span className="inline-flex items-center gap-2">
@@ -1125,6 +1150,14 @@ const Dashboard = () => {
           />
         </div>
       </Modal>
+      <PosImportPeriodModal
+        open={isPosImportModalOpen}
+        restaurantId={completeOnboardingData?.restaurant_id || localStorage.getItem('restaurant_id')}
+        locationId={selectedLocationId || localStorage.getItem('selected_location_id')}
+        confirming={checkingLaborRates}
+        onCancel={() => setIsPosImportModalOpen(false)}
+        onImport={handlePosImportConfirm}
+      />
       <SyncModal open={isPosSyncing || checkingLaborRates || posSyncStatus === 'pending'} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
       <Modal
@@ -1145,7 +1178,13 @@ const Dashboard = () => {
       >
         <p className="text-gray-700 mb-0">
           {posSyncHadData
-            ? 'Your actual Sales and Labor data have been updated successfully. Please add COGS manually.'
+            ? posImportDayCount
+              ? `${posImportDayCount} day${posImportDayCount === 1 ? '' : 's'} imported successfully. ${
+                  posImportOverwrote
+                    ? 'Selected days with existing Growlio data were overwritten.'
+                    : 'Existing Growlio data was left unchanged.'
+                } Please add COGS manually.`
+              : 'Your actual Sales and Labor data have been updated successfully. Please add COGS manually.'
             : 'No data found from Square for the selected dates.'}
         </p>
       </Modal>
