@@ -178,9 +178,9 @@ const Header = ({ onMenuClick }) => {
                     }
                 }
 
-                // Plan selection first; Continue silently submits score zeros → Report Card
+                // Free score first (zeros if coming from simulation); plan and POS come after
                 message.success('Switched to Restaurant Dashboard');
-                navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
+                navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
                 setShowRestaurantModal(false);
             } else {
                 message.error(result?.error || 'Failed to switch to restaurant dashboard');

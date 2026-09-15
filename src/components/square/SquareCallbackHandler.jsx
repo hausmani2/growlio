@@ -243,7 +243,7 @@ const SquareCallbackHandler = () => {
       if (fromOnboardingScore) {
         clearSquareConnectFromOnboardingScore();
         setIsStartingSync(false);
-        navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+        navigate(ONBOARDING_ROUTES.CONNECT_POS, { replace: true });
         return;
       }
 
@@ -434,7 +434,7 @@ const SquareCallbackHandler = () => {
               </div>
               {fromOnboardingScore ? (
                 <p className="text-gray-600 pt-1">
-                  After you select this location, you&apos;ll return to Profitability Score to import history from Square.
+                  After you select this location, you&apos;ll return to setup to import the last 4 weeks from Square.
                 </p>
               ) : (
                 <div>
@@ -456,7 +456,7 @@ const SquareCallbackHandler = () => {
               title="POS Integration Connected Successfully!"
               subTitle={
                 fromOnboardingScore
-                  ? 'Click a Square location to continue. Next you can import last month on the Profitability Score page.'
+                  ? 'Click a Square location to continue. Next you can import the last 4 weeks on the setup screen.'
                   : "Click a location to sync your Square data, then we'll take you to Close Out Your Day(s)."
               }
             />

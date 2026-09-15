@@ -9,7 +9,17 @@ const { Text } = Typography;
  * Square Connect Button Component
  * Initiates the Square POS OAuth connection flow
  */
-const SquareConnectButton = ({ restaurantId, onConnect, className = '', disabled = false, size = 'large' }) => {
+const SquareConnectButton = ({
+  restaurantId,
+  onConnect,
+  className = '',
+  disabled = false,
+  size = 'large',
+  connectLabel = 'Connect POS Integration',
+  hideWhenConnected = false,
+  ctaClassName = '',
+  connectIcon = null,
+}) => {
   const squareStatus = useStore((state) => state.squareStatus);
   const squareLoading = useStore((state) => state.squareLoading);
   const connectSquare = useStore((state) => state.connectSquare);
@@ -31,6 +41,10 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '', disabled
   
   const isConnected = squareStatus === 'connected';
   const isConnecting = squareStatus === 'connecting' || squareLoading;
+
+  if (hideWhenConnected && isConnected) {
+    return null;
+  }
   
   return (
     <Space direction="vertical" size="middle" className={`w-full ${className}`}>
@@ -47,14 +61,14 @@ const SquareConnectButton = ({ restaurantId, onConnect, className = '', disabled
       ) : (
         <Button
           type="primary"
-          icon={isConnecting ? <LoadingOutlined /> : <LinkOutlined />}
+          icon={isConnecting ? <LoadingOutlined /> : (connectIcon || <LinkOutlined />)}
           onClick={handleConnect}
           loading={isConnecting}
           disabled={disabled || isConnecting || !restaurantId}
-          className="w-full"
+          className={`w-full !bg-orange-500 hover:!bg-orange-600 !border-orange-500 ${ctaClassName}`}
           size={size}
         >
-          {isConnecting ? 'Connecting to Square...' : 'Connect POS Integration'}
+          {isConnecting ? 'Connecting to Square...' : connectLabel}
         </Button>
       )}
       

@@ -2,45 +2,14 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircleFilled, WarningFilled, CloseCircleFilled } from '@ant-design/icons';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
-import useStore from "../../store/store";
+import {
+  getConnectPosRoute,
+} from "../../utils/onboardingUtils";
 
 const ProfitabilityResults = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { formData, scoreData } = location.state || {};
-    const { salesInformationData } = useStore();
-    
-    // Helper function to check if sales information exists
-    const hasSalesInformation = () => {
-        if (!salesInformationData) return false;
-        
-        // Handle array response
-        let data = null;
-        if (Array.isArray(salesInformationData)) {
-            if (salesInformationData.length === 0) return false;
-            data = salesInformationData[0];
-        } else if (salesInformationData.data) {
-            if (Array.isArray(salesInformationData.data) && salesInformationData.data.length > 0) {
-                data = salesInformationData.data[0];
-            } else {
-                data = salesInformationData.data;
-            }
-        } else {
-            data = salesInformationData;
-        }
-        
-        if (data) {
-            // All 4 fields (sales, expenses, labour, cogs) must be non-null to access dashboard
-            return (
-                (data.sales !== null && data.sales !== undefined) &&
-                (data.expenses !== null && data.expenses !== undefined) &&
-                (data.labour !== null && data.labour !== undefined) &&
-                (data.cogs !== null && data.cogs !== undefined)
-            );
-        }
-        
-        return false;
-    };
 
     if (!formData || !scoreData) {
         // If no data, redirect back to profitability page
@@ -175,12 +144,10 @@ const ProfitabilityResults = () => {
                         <div className="space-y-3 mt-4">
                             <button
                                 onClick={() => {
-                                    // Check if sales information exists - if yes, redirect to dashboard
-                                    if (hasSalesInformation()) {
-                                        navigate('/dashboard/budget');
-                                    } else {
-                                        navigate('/onboarding/basic-information');
-                                    }
+                                    navigate(getConnectPosRoute({
+                                        from: 'setup',
+                                        next: '/dashboard/basic-information',
+                                    }));
                                 }}
                                 className="w-full rounded-lg p-3 bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 transition-colors duration-200 shadow-md hover:shadow-lg"
                             >

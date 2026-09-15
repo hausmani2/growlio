@@ -467,6 +467,9 @@ const ProtectedRoutes = () => {
       '/simulation/labor-information',
       '/simulation/expenses',
     ];
+    if (oneMonthSalesInfoComplete) {
+      allowedOnboardingPaths.push(ONBOARDING_ROUTES.PLANS, ONBOARDING_ROUTES.CONNECT_POS);
+    }
 
     if (allowedOnboardingPaths.includes(location.pathname)) {
       hasRedirectedRef.current = false;
@@ -1006,6 +1009,8 @@ const ProtectedRoutes = () => {
   // Route path checks - be specific to avoid conflicts
   const isOnboardingMainPath = location.pathname === ONBOARDING_ROUTES.ONBOARDING;
   const isOnboardingPlansPath = location.pathname === ONBOARDING_ROUTES.PLANS;
+  const isOnboardingConnectPosPath = location.pathname === ONBOARDING_ROUTES.CONNECT_POS;
+  const isPostScoreOnboardingPath = isOnboardingPlansPath || isOnboardingConnectPosPath;
   const isOnboardingPath = location.pathname.includes('/onboarding');
   const isCompleteStepsPath = location.pathname.includes('/complete');
   const isProfitabilityPath = location.pathname === '/profitability' || location.pathname.includes('/onboarding/profitability');
@@ -1075,7 +1080,7 @@ const ProtectedRoutes = () => {
   // CRITICAL: Allow ALL dashboard routes when sales data is complete
   // This prevents redirects when reloading any dashboard page
   if (salesDataComplete && !locationNeedsOneMonthSales) {
-    if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
+    if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath && !isPostScoreOnboardingPath) {
       return <Navigate to={roleLandingRoute} replace />;
     }
     return <Outlet />;
@@ -1094,7 +1099,7 @@ const ProtectedRoutes = () => {
     
     // Block access to onboarding, score, and profitability pages
      // But allow simulation routes
-     if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath) {
+     if (isOnboardingPath && !isCompleteStepsPath && !isSimulationPath && !isPostScoreOnboardingPath) {
       return <Navigate to={roleLandingRoute} replace />;
     }
     if ((isScorePath || isProfitabilityPath) && !isSimulationPath) {
@@ -1153,7 +1158,7 @@ const ProtectedRoutes = () => {
     // If restaurant exists, block access to /onboarding page
     // User must go to /onboarding/score instead
     if (isOnboardingMainPath) {
-      return <Navigate to={ONBOARDING_ROUTES.PLANS} replace />;
+      return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
     }
     
     // CRITICAL: If onboarding is complete, block congratulations page and redirect to dashboard
@@ -1166,8 +1171,12 @@ const ProtectedRoutes = () => {
     }
     
     // Allow score, profitability, and congratulations pages (only if onboarding not complete)
-    if (isOnboardingPlansPath || isScorePath || isProfitabilityPath || isCongratulationsPath) {
+    if (isScorePath || isProfitabilityPath || isCongratulationsPath) {
       return <Outlet />;
+    }
+
+    if (isPostScoreOnboardingPath && !oneMonthSalesInfoComplete) {
+      return <Navigate to={ONBOARDING_ROUTES.SCORE} replace />;
     }
     
     // If One Month Sales Info is FALSE, block dashboard routes
@@ -1198,7 +1207,7 @@ const ProtectedRoutes = () => {
   // (This case is already handled above at line 319, but adding explicit check for clarity)
   if (restaurantExists && oneMonthSalesInfoComplete) {
     // Block onboarding/score/profitability - redirect to report card
-    if (isOnboardingPath && !isCompleteStepsPath) {
+    if (isOnboardingPath && !isCompleteStepsPath && !isPostScoreOnboardingPath) {
       return <Navigate to={roleLandingRoute} replace />;
     }
     if (isScorePath || isProfitabilityPath) {
@@ -1223,7 +1232,7 @@ const ProtectedRoutes = () => {
     }
     
     // Allow the main onboarding page and plan selection before the profitability score.
-    if (isOnboardingMainPath || isOnboardingPlansPath) {
+    if (isOnboardingMainPath) {
       return <Outlet />;
     }
     

@@ -6,8 +6,8 @@ import useStepValidation from "../useStepValidation";
 import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import ThirdPartyDelivery from "./ThirdPartyDelivery";
-import { useTabHook } from "../../useTabHook";
 import { useNavigate } from "react-router-dom";
+import { navigateToBudgetOrConnectPos } from "../../../../../utils/onboardingUtils";
 
 const ThirdPartyDeliveryWrapperContent = () => {
   const location = useLocation();
@@ -23,7 +23,15 @@ const ThirdPartyDeliveryWrapperContent = () => {
   } = useStore();
 
   const { validationErrors, clearFieldError, validateStep } = useStepValidation();
-  const { navigateToNextStep } = useTabHook();
+  const goToBudget = () => {
+    if (isOnBoardingCompleted) {
+      navigate("/dashboard/budget");
+      return;
+    }
+    navigateToBudgetOrConnectPos(navigate, {
+      onboardingComplete: isOnBoardingCompleted,
+    });
+  };
 
   // Update mode when accessed from sidebar
   const isUpdateMode = !location.pathname.includes("/onboarding");
@@ -209,7 +217,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
       }
       // Navigate to Budget screen after saving
       setTimeout(() => {
-        navigate('/dashboard/budget');
+        goToBudget();
       }, 300); // Small delay to show success message
     });
 
@@ -250,9 +258,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
         <div className="flex justify-end gap-3 mt-8">
           <button
             className="px-10 py-2.5 rounded-lg bg-white border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
-            onClick={() => {
-              navigate('/dashboard/budget');
-            }}
+            onClick={goToBudget}
           >
             Skip
           </button>
@@ -267,10 +273,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
       ) : (
         <div className="flex justify-end gap-3 mt-8 pt-6">
           <button
-            onClick={() => {
-           
-              navigate('/dashboard/budget');
-            }}
+            onClick={goToBudget}
             className="bg-gray-200 text-gray-700 px-8 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
             disabled={loading}
           >

@@ -9,6 +9,7 @@ import { SalesChannelsWrapperContent } from './steps/salesChannels/SalesChannels
 import ExpenseWrapper from './steps/Expense/ExpenseWrapper';
 import useStore from '../../../store/store';
 import useStepNavigation from './hooks/useStepNavigation';
+import { navigateToBudgetOrConnectPos } from '../../../utils/onboardingUtils';
 
 export const TabProvider = ({ children }) => {
     const navigate = useNavigate();
@@ -385,7 +386,10 @@ export const TabProvider = ({ children }) => {
         } else {
             // For existing users in update mode, navigate to dashboard
             message.success('Settings updated successfully!');
-            navigate('/dashboard/budget', { replace: true });
+            navigateToBudgetOrConnectPos(navigate, {
+                replace: true,
+                onboardingComplete: isOnBoardingCompleted,
+            });
             // Scroll to top after navigation
             setTimeout(() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });

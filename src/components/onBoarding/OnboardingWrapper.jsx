@@ -96,7 +96,7 @@ const OnboardingWrapper = () => {
                         sessionStorage.removeItem('hasCheckedRestaurantOnboardingGlobal');
                         sessionStorage.removeItem('restaurantOnboardingLastCheckTime');
                         
-                        navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
+                        navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
                         setIsChecking(false);
                         return;
                     } else {
@@ -110,8 +110,8 @@ const OnboardingWrapper = () => {
             
             // STEP 3: If no restaurant exists, proceed with normal flow based on selected option
             if (selectedOption === 'profitability') {
-                // Navigate to plan selection before the profitability score page
-                navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
+                // Free profitability score first — plan and POS come after
+                navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
                 setIsChecking(false);
                 return;
             } else if (selectedOption === 'simulation') {
@@ -252,7 +252,7 @@ const OnboardingWrapper = () => {
                 if (restaurantData) {
                     const restaurantExists = hasRestaurant(restaurantData);
                     if (restaurantExists) {
-                        navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
+                        navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
                         return;
                     }
                 } else {
@@ -272,10 +272,10 @@ const OnboardingWrapper = () => {
                     if (restaurantResult.success && restaurantResult.data) {
                         setRestaurantData(restaurantResult.data);
                         
-                        // Simple check: If restaurant exists (restaurants array has items), redirect to plans before score
+                        // If restaurant exists, send them to the free profitability score
                         const restaurantExists = hasRestaurant(restaurantResult.data);
                         if (restaurantExists) {
-                            navigate(ONBOARDING_ROUTES.PLANS, { replace: true });
+                            navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
                             return;
                         } else {
                         }

@@ -7,7 +7,6 @@ import { message } from "antd";
 import useStore from "../../store/store";
 import { isImpersonating } from "../../utils/tokenManager";
 import LoadingSpinner from "../layout/LoadingSpinner";
-import OnboardingPosImport from "./OnboardingPosImport";
 import {
     ONBOARDING_ROUTES,
     shouldAutoZeroProfitabilityFromSimulation,
@@ -15,13 +14,6 @@ import {
     ZERO_PROFITABILITY_PAYLOAD,
 } from "../../utils/onboardingUtils";
 import { getRoleLandingRoute } from "../../utils/rolePermissions";
-
-const getPlanName = (plan) =>
-    String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
-        .trim()
-        .toLowerCase();
-
-const isPaidPosPlan = (planName) => planName.includes('grow') || planName.includes('pro');
 
 const ProfitabilityScore = () => {
     const navigate = useNavigate();
@@ -32,18 +24,8 @@ const ProfitabilityScore = () => {
     const createSalesInformation = useStore((state) => state.createSalesInformation);
     const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
     const user = useStore((state) => state.user);
-    const subscriptionDetails = useStore((state) => state.subscriptionDetails);
-    const currentPackage = useStore((state) => state.currentPackage);
-    const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
     const impersonating = isImpersonating();
     const autoZeroStartedRef = useRef(false);
-    const restaurantId = localStorage.getItem('restaurant_id');
-    const currentPlanName = getPlanName(subscriptionDetails?.package || currentPackage);
-    const canImportFromPos = isPaidPosPlan(currentPlanName);
-
-    useEffect(() => {
-        fetchCurrentSubscriptionDetails?.(true);
-    }, [fetchCurrentSubscriptionDetails]);
 
     // Simulation → restaurant: zeros already submitted on Plans — never paint Score UI
     useEffect(() => {
@@ -123,11 +105,11 @@ const ProfitabilityScore = () => {
                 <div className="mx-auto w-full max-w-4xl">
                     <button
                         type="button"
-                        onClick={() => navigate(ONBOARDING_ROUTES.PLANS)}
+                        onClick={() => navigate(ONBOARDING_ROUTES.ONBOARDING)}
                         className="flex items-center gap-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 transition-colors font-medium"
                     >
                         <FaArrowLeftLong className="text-sm" />
-                        <span>Back to Plans</span>
+                        <span>Go Back</span>
                     </button>
                 </div>
             </div>
@@ -190,12 +172,6 @@ const ProfitabilityScore = () => {
                             Get My Score!
                         </button>
                     </div>
-
-                    <OnboardingPosImport
-                        restaurantId={restaurantId}
-                        planLocked={!canImportFromPos}
-                        compact
-                    />
                 </div>
             </div>
         </div>

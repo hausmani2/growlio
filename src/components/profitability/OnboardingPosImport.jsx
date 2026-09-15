@@ -31,11 +31,30 @@ import useMissingLaborRatesCheck from '../../hooks/useMissingLaborRatesCheck';
 const POLL_MS = 4000;
 const MAX_POLL_MS = 5 * 60 * 1000;
 
-const defaultImportRange = () =>
-  getPosImportRangeForPreset('last_month', dayjs) || (() => {
+const fallbackImportRange = (preset = 'last_month') =>
+  getPosImportRangeForPreset(preset, dayjs) || (() => {
     const { startDate, endDate } = getLastCalendarMonthRange();
     return [dayjs(startDate), dayjs(endDate)];
   })();
+
+const PlugIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="18"
+    height="18"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M9 2v5" />
+    <path d="M15 2v5" />
+    <path d="M7 7h10v3a5 5 0 0 1-10 0V7z" />
+    <path d="M12 15v7" />
+  </svg>
+);
 
 const normalizeSquareLocations = (payload) => {
   const list =
@@ -53,7 +72,20 @@ const normalizeSquareLocations = (payload) => {
   }));
 };
 
-const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false }) => {
+const OnboardingPosImport = ({
+  restaurantId,
+  planLocked = false,
+  compact = false,
+  defaultPreset = 'last_month',
+  showOrHeading = true,
+  hideUpgradeCta = false,
+  connectButtonLabel,
+  importButtonLabel,
+  helperText: helperTextOverride,
+  successMessage,
+  onFinished,
+  hero = false,
+}) => {
   const navigate = useNavigate();
   const squareStatus = useStore((state) => state.squareStatus);
   const checkSquareStatus = useStore((state) => state.checkSquareStatus);
@@ -69,7 +101,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
-  const [importRange, setImportRange] = useState(defaultImportRange);
+  const [importRange, setImportRange] = useState(() => fallbackImportRange(defaultPreset));
   const [emptyImportMessage, setEmptyImportMessage] = useState(null);
 
   const pollRef = useRef(null);
@@ -175,19 +207,37 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
       const locationId = useStore.getState().selectedLocationId;
       await getRestaurantOnboarding?.(true, locationId || undefined);
       setEmptyImportMessage(null);
-      message.success('Last month imported from Square.');
+      const importedMessage = successMessage || 'Last month imported from Square.';
+      message.success(importedMessage);
+      if (onFinished) {
+        onFinished();
+        return;
+      }
       navigate(
         getRoleLandingRoute(user?.restaurant_role) || ONBOARDING_ROUTES.REPORT_CARD,
         { replace: true }
       );
     } catch (error) {
       console.error('Failed to refresh onboarding after POS import:', error);
-      message.success('Last month imported from Square.');
+      const importedMessage = successMessage || 'Last month imported from Square.';
+      message.success(importedMessage);
+      if (onFinished) {
+        onFinished();
+        return;
+      }
       navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
     } finally {
       setIsImporting(false);
     }
-  }, [cleanup, getRestaurantOnboarding, navigate, restaurantId, user?.restaurant_role]);
+  }, [
+    cleanup,
+    getRestaurantOnboarding,
+    navigate,
+    onFinished,
+    restaurantId,
+    successMessage,
+    user?.restaurant_role,
+  ]);
 
   const saveSelectedLocation = useCallback(async () => {
     if (!restaurantId || !selectedLocation?.id) {
@@ -393,7 +443,9 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
     },
   ];
 
-  const helperText = planLocked
+  const helperText = helperTextOverride !== undefined
+    ? helperTextOverride
+    : (planLocked
     ? 'Available on Grow & Pro — upgrade to connect Square and import automatically.'
     : !isConnected
       ? 'Connect Square, select a location, then choose dates to import history.'
@@ -401,11 +453,11 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
         ? 'Square connected. Select a location to enable import.'
         : hasValidImportRange
           ? `Import Square data from ${startDate} to ${endDate}.`
-          : 'Choose a date range to import from Square.';
+          : 'Choose a date range to import from Square.');
 
   return (
     <div
-      className={`border-t border-gray-200 ${compact ? 'pt-4 sm:pt-5' : 'mt-8 pt-6'} ${planLocked ? 'opacity-90' : ''}`}
+      className={`${showOrHeading ? `border-t border-gray-200 ${compact ? 'pt-4 sm:pt-5' : 'mt-8 pt-6'}` : ''} ${planLocked ? 'opacity-90' : ''}`}
     >
       <SyncModal open={isImporting || isSavingLocation || checkingLaborRates} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
@@ -496,6 +548,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
         </div>
       </Modal>
 
+      {showOrHeading ? (
       <p
         className={`font-semibold text-gray-900 text-center ${
           compact ? 'text-sm sm:text-base md:text-lg mb-1' : 'text-sm mb-1'
@@ -503,6 +556,8 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
       >
         Or import history from Square
       </p>
+      ) : null}
+      {helperText ? (
       <p
         className={`text-gray-500 text-center ${
           compact ? 'text-xs sm:text-sm mb-3 sm:mb-4 max-w-lg mx-auto' : 'text-xs mb-4'
@@ -510,10 +565,15 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
       >
         {helperText}
       </p>
+      ) : null}
 
       <div
         className={`flex flex-col mx-auto w-full ${
-          compact ? 'max-w-md sm:max-w-lg md:max-w-xl gap-3 sm:gap-4' : 'max-w-sm gap-3'
+          hero
+            ? 'max-w-full gap-3'
+            : compact
+              ? 'max-w-md sm:max-w-lg md:max-w-xl gap-3 sm:gap-4'
+              : 'max-w-sm gap-3'
         }`}
       >
         <SquareConnectButton
@@ -521,6 +581,14 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           onConnect={markSquareConnectFromOnboardingScore}
           disabled={planLocked}
           size="large"
+          connectLabel={connectButtonLabel}
+          hideWhenConnected={hero}
+          connectIcon={hero ? <PlugIcon /> : null}
+          ctaClassName={
+            hero
+              ? '!h-14 !rounded-2xl !bg-[#2563eb] hover:!bg-[#1d4ed8] !border-[#2563eb] !text-base !font-semibold !shadow-none'
+              : ''
+          }
         />
 
         {isConnected && !planLocked && !hasSyncEnabledLocation && (
@@ -538,7 +606,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           </button>
         )}
 
-        {isConnected && !planLocked && (
+        {isConnected && !planLocked && !hero && (
           <div className="w-full">
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 text-center">
               Import date range
@@ -548,11 +616,12 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
               onChange={setImportRange}
               disabled={planLocked || isImporting || checkingLaborRates}
               size={compact ? 'middle' : 'large'}
-              defaultPreset="last_month"
+              defaultPreset={defaultPreset}
             />
           </div>
         )}
 
+        {(!hero || isConnected) && (
         <button
           type="button"
           onClick={handleImport}
@@ -562,18 +631,25 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           } ${
             !canImport
               ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-white text-orange-600 border border-orange-500 hover:bg-orange-50'
+              : hero
+                ? 'bg-[#16a34a] text-white hover:bg-[#15803d] shadow-none h-14 rounded-2xl text-base'
+                : importButtonLabel
+                ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'
+                : 'bg-white text-orange-600 border border-orange-500 hover:bg-orange-50'
           }`}
         >
           {isImporting ? (
             <LoadingOutlined />
+          ) : hero ? (
+            <CheckCircleOutlined />
           ) : hasSyncEnabledLocation ? (
             <CheckCircleOutlined />
           ) : (
             <LinkOutlined />
           )}
-          {isImporting ? 'Importing...' : 'Import from Square'}
+          {isImporting ? 'Importing...' : (importButtonLabel || 'Import from Square')}
         </button>
+        )}
 
         {emptyImportMessage ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
@@ -581,7 +657,7 @@ const OnboardingPosImport = ({ restaurantId, planLocked = false, compact = false
           </div>
         ) : null}
 
-        {planLocked && (
+        {planLocked && !hideUpgradeCta && (
           <button
             type="button"
             onClick={() => navigate(ONBOARDING_ROUTES.PLANS)}

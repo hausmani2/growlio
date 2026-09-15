@@ -19,6 +19,11 @@ import {
     mapApiLocationToAddress,
     mapApiLocationToTypeData,
 } from "../../../../../utils/locationFormUtils";
+import {
+    isOnboardingComplete,
+    shouldPromptConnectPosForSetup,
+    getConnectPosRoute,
+} from "../../../../../utils/onboardingUtils";
 
 const RestaurantWrapperContent = () => {
     const location = useLocation();
@@ -36,6 +41,7 @@ const RestaurantWrapperContent = () => {
         fetchLocations,
         selectedLocationId,
         locations: headerLocations,
+        restaurantOnboardingData,
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
@@ -44,6 +50,27 @@ const RestaurantWrapperContent = () => {
     const isUpdateMode = !location.pathname.includes('/onboarding');
     const activeLocationName =
         headerLocations?.find((loc) => loc.id === selectedLocationId)?.name || 'Selected location';
+
+    useEffect(() => {
+        if (!restaurantOnboardingData) return;
+        if (isOnBoardingCompleted || isOnboardingComplete(restaurantOnboardingData)) return;
+        if (!shouldPromptConnectPosForSetup()) return;
+        if (sessionStorage.getItem('growlio_onboarding_setup_pos_auto_prompted') === 'true') return;
+        sessionStorage.setItem('growlio_onboarding_setup_pos_auto_prompted', 'true');
+        navigate(
+            getConnectPosRoute({
+                from: 'setup',
+                next: `${location.pathname}${location.search || ''}`,
+            }),
+            { replace: true }
+        );
+    }, [
+        isOnBoardingCompleted,
+        location.pathname,
+        location.search,
+        navigate,
+        restaurantOnboardingData,
+    ]);
     
     // Prefill owner name fields from profile
     useEffect(() => {

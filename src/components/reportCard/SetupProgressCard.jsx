@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Mask from "../../assets/pngs/new-onboard.png";
 import useStore from "../../store/store";
-import { ONBOARDING_ROUTES, setAutoZeroProfitabilityFromSimulation } from "../../utils/onboardingUtils";
+import { ONBOARDING_ROUTES, setAutoZeroProfitabilityFromSimulation, getConnectPosRoute, shouldPromptConnectPosForSetup, navigateToBudgetOrConnectPos } from "../../utils/onboardingUtils";
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -16,6 +16,7 @@ const ITEM_ROUTES = {
   "COGS": "/dashboard/food-cost-details",
   "Add third-party delivery info": "/dashboard/third-party-delivery",
   "Go to your budget": "/dashboard/budget",
+  "Connect your POS": "/onboarding/connect-pos",
   "Enter one month of sales and expenses": "/onboarding/score",
 };
 
@@ -64,6 +65,40 @@ const SetupProgressCard = ({
       return;
     }
 
+    const isConnectPosStep =
+      item.label === "Connect your POS" ||
+      route === ONBOARDING_ROUTES.CONNECT_POS;
+    if (isConnectPosStep) {
+      navigate(
+        getConnectPosRoute({
+          from: "budget",
+          next: "/dashboard/budget",
+        })
+      );
+      return;
+    }
+
+    const isBudgetStep =
+      item.label === "Go to your budget" || route === "/dashboard/budget";
+    if (isBudgetStep) {
+      navigateToBudgetOrConnectPos(navigate);
+      return;
+    }
+
+    const isRestaurantDetailsStep =
+      item.label === "Restaurant details" ||
+      item.label === "Enter additional sales data" ||
+      route === "/dashboard/basic-information";
+    if (isRestaurantDetailsStep && shouldPromptConnectPosForSetup()) {
+      navigate(
+        getConnectPosRoute({
+          from: "setup",
+          next: route,
+        })
+      );
+      return;
+    }
+
     navigate(route);
   };
 
@@ -92,8 +127,11 @@ const SetupProgressCard = ({
                   ? item.isCompleted 
                   : stepNum < currentIdx;
                 const isCurrent = !isDone && stepNum === currentIdx;
+                const isConnectPosStep =
+                  item.label === "Connect your POS" ||
+                  item.route === ONBOARDING_ROUTES.CONNECT_POS;
                 const hasRoute = item.route || ITEM_ROUTES[normalizeSetupLabel(item.label)];
-                const isClickable = hasRoute && !isDone;
+                const isClickable = hasRoute && (!isDone || isConnectPosStep);
 
                 return (
                   <li key={item.order || stepNum} className="flex items-start gap-3">

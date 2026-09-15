@@ -10,9 +10,12 @@ import {
   ONBOARDING_ROUTES,
   shouldAutoZeroProfitabilityFromSimulation,
   ZERO_PROFITABILITY_PAYLOAD,
+  isPaidPosPlan,
+  getConnectPosRoute,
+  readConnectPosReturn,
+  clearPosUpgradeReturn,
 } from '../../utils/onboardingUtils';
 import { isImpersonating } from '../../utils/tokenManager';
-import { getRoleLandingRoute } from '../../utils/rolePermissions';
 
 const OnboardingPlansPage = () => {
   const navigate = useNavigate();
@@ -20,12 +23,22 @@ const OnboardingPlansPage = () => {
   const stopImpersonation = useStore((state) => state.stopImpersonation);
   const createSalesInformation = useStore((state) => state.createSalesInformation);
   const getRestaurantOnboarding = useStore((state) => state.getRestaurantOnboarding);
-  const user = useStore((state) => state.user);
   const impersonating = isImpersonating();
   const [isSubmittingZeros, setIsSubmittingZeros] = useState(false);
 
   const handleContinue = async () => {
-    // Simulation → restaurant: silently Finish profitability with all zeros, then Report Card
+    clearPosUpgradeReturn();
+    const goToConnectPos = (upgraded = false) => {
+      const stored = readConnectPosReturn();
+      const route = getConnectPosRoute({
+        from: stored.from || 'budget',
+        next: stored.next || ONBOARDING_ROUTES.DASHBOARD_BUDGET,
+      });
+      const separator = route.includes('?') ? '&' : '?';
+      navigate(upgraded ? `${route}${separator}upgraded=1` : route, { replace: true });
+    };
+
+    // Simulation → restaurant: silently Finish profitability with all zeros, then POS/plan choice
     if (shouldAutoZeroProfitabilityFromSimulation()) {
       setIsSubmittingZeros(true);
       try {
@@ -38,11 +51,9 @@ const OnboardingPlansPage = () => {
 
         const locationId = useStore.getState().selectedLocationId;
         await getRestaurantOnboarding(true, locationId || undefined);
-        // Keep auto-zero flag until Report Card mounts so ProtectedRoutes
-        // does not bounce to /onboarding/score (which flashes the Score UI).
-        navigate(getRoleLandingRoute(user?.restaurant_role) || ONBOARDING_ROUTES.REPORT_CARD, {
-          replace: true,
-        });
+        goToConnectPos(isPaidPosPlan(
+          useStore.getState().subscriptionDetails?.package || useStore.getState().currentPackage
+        ));
       } catch (error) {
         console.error('Error auto-submitting zero profitability score:', error);
         message.error(error?.message || 'Failed to complete setup. Please try again.');
@@ -51,7 +62,9 @@ const OnboardingPlansPage = () => {
       return;
     }
 
-    navigate(ONBOARDING_ROUTES.SCORE, { replace: true });
+    const currentPlan =
+      useStore.getState().subscriptionDetails?.package || useStore.getState().currentPackage;
+    goToConnectPos(isPaidPosPlan(currentPlan));
   };
 
   const handleStopImpersonation = async () => {
@@ -76,7 +89,7 @@ const OnboardingPlansPage = () => {
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center justify-between">
           <button
-            onClick={() => navigate(ONBOARDING_ROUTES.ONBOARDING)}
+            onClick={() => navigate(ONBOARDING_ROUTES.CONNECT_POS)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 font-medium"
           >
             <FaArrowLeftLong className="text-sm" />
@@ -108,7 +121,8 @@ const OnboardingPlansPage = () => {
 
         <PlansWrapper
           onboardingMode
-          title="Choose Your Plan"
+          title="Choose a plan to connect your POS"
+          subtitle="Grow and Pro can import sales and labor from Square. Free lets you enter your budget by hand."
           onContinue={handleContinue}
         />
       </div>

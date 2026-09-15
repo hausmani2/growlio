@@ -73,6 +73,7 @@ export const formatPosDate = (value) => {
 export const POS_IMPORT_MAX_DAYS = 90;
 
 export const POS_IMPORT_PRESET_OPTIONS = [
+  { value: 'last_4_weeks', label: 'Last 4 weeks' },
   { value: 'last_week', label: 'Last week' },
   { value: 'last_30_days', label: 'Last 30 days' },
   { value: 'last_month', label: 'Last month' },
@@ -86,6 +87,8 @@ export const getPosImportRangeForPreset = (preset, dayjsLib) => {
   switch (preset) {
     case 'last_week':
       return [today.subtract(6, 'day'), today];
+    case 'last_4_weeks':
+      return [today.subtract(27, 'day'), today];
     case 'last_30_days':
       return [today.subtract(29, 'day'), today];
     case 'last_month':
@@ -102,6 +105,10 @@ export const getPosImportRangeForPreset = (preset, dayjsLib) => {
 export const getPosImportPresets = (dayjsLib) => {
   if (!dayjsLib) return [];
   return [
+    {
+      label: 'Last 4 weeks',
+      value: getPosImportRangeForPreset('last_4_weeks', dayjsLib),
+    },
     {
       label: 'Last week',
       value: getPosImportRangeForPreset('last_week', dayjsLib),

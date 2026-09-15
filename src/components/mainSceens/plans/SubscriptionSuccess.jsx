@@ -3,6 +3,14 @@ import { Result, Spin, message } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../../store/store';
+import { consumePosUpgradeReturn, ONBOARDING_ROUTES } from '../../../utils/onboardingUtils';
+
+const getPostPaymentRoute = () => {
+  if (consumePosUpgradeReturn()) {
+    return `${ONBOARDING_ROUTES.CONNECT_POS}?upgraded=1`;
+  }
+  return '/dashboard/pricing';
+};
 
 const SubscriptionSuccess = () => {
   const navigate = useNavigate();
@@ -14,29 +22,21 @@ const SubscriptionSuccess = () => {
 
   useEffect(() => {
     const handleSuccess = async () => {
+      const nextRoute = getPostPaymentRoute();
       try {
-        // Set flag to force refresh when redirecting to plans page
         sessionStorage.setItem('returningFromPayment', 'true');
-        
-        // Force refresh packages and current package data to get latest subscription status
-        await fetchPackages(true); // Force refresh
-        await getCurrentPackage(true); // Force refresh to call subscription/current API
-        
-        // Show success message
+        await fetchPackages(true);
+        await getCurrentPackage(true);
         message.success('Subscription updated successfully!');
-        
-        // Redirect to plans page after a short delay
         setTimeout(() => {
-          navigate('/dashboard/plans', { replace: true });
+          navigate(nextRoute, { replace: true });
         }, 2000);
       } catch (error) {
         console.error('Error refreshing subscription data:', error);
-        // Set flag anyway so plans page will refresh
         sessionStorage.setItem('returningFromPayment', 'true');
         message.error('Subscription updated, but failed to refresh data. Please refresh the page.');
-        // Still redirect even if refresh fails
         setTimeout(() => {
-          navigate('/dashboard/plans', { replace: true });
+          navigate(nextRoute, { replace: true });
         }, 2000);
       } finally {
         setLoading(false);
@@ -46,11 +46,11 @@ const SubscriptionSuccess = () => {
     if (sessionId) {
       handleSuccess();
     } else {
-      // No session ID, just redirect
       sessionStorage.setItem('returningFromPayment', 'true');
-      message.warning('No session ID found. Redirecting to plans page...');
+      const nextRoute = getPostPaymentRoute();
+      message.warning('No session ID found. Redirecting...');
       setTimeout(() => {
-        navigate('/dashboard/plans', { replace: true });
+        navigate(nextRoute, { replace: true });
       }, 1500);
     }
   }, [sessionId, navigate, fetchPackages, getCurrentPackage]);
@@ -68,7 +68,7 @@ const SubscriptionSuccess = () => {
       <Result
         icon={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
         title="Payment Successful!"
-        subTitle="Your subscription has been updated successfully. Redirecting to plans page..."
+        subTitle="Your subscription has been updated successfully. Taking you back to setup..."
         extra={
           <div className="text-center">
             <p className="text-gray-600 mb-4">
@@ -85,4 +85,3 @@ const SubscriptionSuccess = () => {
 };
 
 export default SubscriptionSuccess;
-

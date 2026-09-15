@@ -12,11 +12,132 @@ export const ONBOARDING_ROUTES = {
   ONBOARDING: '/onboarding',
   PLANS: '/onboarding/plans',
   SCORE: '/onboarding/score',
+  CONNECT_POS: '/onboarding/connect-pos',
   SIMULATION: '/onboarding/simulation',
   PROFITABILITY: '/onboarding/profitability',
   REPORT_CARD: '/dashboard/report-card',
   DASHBOARD_BUDGET: '/dashboard/budget',
   CONGRATULATIONS: '/congratulations',
+};
+
+export const SETUP_PLAN_CHOICE_KEY = 'growlio_onboarding_setup_plan_choice';
+export const BUDGET_POS_PROMPT_KEY = 'growlio_onboarding_budget_pos_prompt';
+export const CONNECT_POS_NEXT_KEY = 'growlio_onboarding_connect_pos_next';
+export const CONNECT_POS_FROM_KEY = 'growlio_onboarding_connect_pos_from';
+export const POS_UPGRADE_RETURN_KEY = 'growlio_onboarding_pos_upgrade_return';
+
+const readStorage = (storage, key) => {
+  try {
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeStorage = (storage, key, value) => {
+  try {
+    if (value == null) storage.removeItem(key);
+    else storage.setItem(key, value);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+export const getSetupPlanChoice = () =>
+  readStorage(localStorage, SETUP_PLAN_CHOICE_KEY) ||
+  readStorage(sessionStorage, SETUP_PLAN_CHOICE_KEY);
+
+export const markSetupPlanChoice = (choice) => {
+  writeStorage(localStorage, SETUP_PLAN_CHOICE_KEY, choice);
+  writeStorage(sessionStorage, SETUP_PLAN_CHOICE_KEY, choice);
+};
+
+export const getBudgetPosPrompt = () =>
+  readStorage(localStorage, BUDGET_POS_PROMPT_KEY) ||
+  readStorage(sessionStorage, BUDGET_POS_PROMPT_KEY);
+
+export const markBudgetPosPrompt = (choice) => {
+  writeStorage(localStorage, BUDGET_POS_PROMPT_KEY, choice);
+  writeStorage(sessionStorage, BUDGET_POS_PROMPT_KEY, choice);
+};
+
+export const shouldPromptConnectPosForSetup = () => !getSetupPlanChoice();
+
+export const shouldPromptConnectPosForBudget = () => !getBudgetPosPrompt();
+
+export const hasCompletedConnectPosSetup = () => {
+  const choice = getBudgetPosPrompt() || getSetupPlanChoice();
+  return choice === 'imported' || choice === 'upgraded' || choice === 'connected';
+};
+
+export const getConnectPosRoute = ({ next, from } = {}) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (next) params.set('next', next);
+  const qs = params.toString();
+  return qs ? `${ONBOARDING_ROUTES.CONNECT_POS}?${qs}` : ONBOARDING_ROUTES.CONNECT_POS;
+};
+
+export const persistConnectPosReturn = ({ next, from } = {}) => {
+  if (next) {
+    writeStorage(sessionStorage, CONNECT_POS_NEXT_KEY, next);
+    writeStorage(localStorage, CONNECT_POS_NEXT_KEY, next);
+  }
+  if (from) {
+    writeStorage(sessionStorage, CONNECT_POS_FROM_KEY, from);
+    writeStorage(localStorage, CONNECT_POS_FROM_KEY, from);
+  }
+};
+
+export const readConnectPosReturn = () => ({
+  next:
+    readStorage(sessionStorage, CONNECT_POS_NEXT_KEY) ||
+    readStorage(localStorage, CONNECT_POS_NEXT_KEY),
+  from:
+    readStorage(sessionStorage, CONNECT_POS_FROM_KEY) ||
+    readStorage(localStorage, CONNECT_POS_FROM_KEY),
+});
+
+export const markPosUpgradeReturn = () => {
+  writeStorage(sessionStorage, POS_UPGRADE_RETURN_KEY, 'true');
+};
+
+export const clearPosUpgradeReturn = () => {
+  writeStorage(sessionStorage, POS_UPGRADE_RETURN_KEY, null);
+  writeStorage(localStorage, POS_UPGRADE_RETURN_KEY, null);
+};
+
+export const consumePosUpgradeReturn = () => {
+  const flagged =
+    readStorage(sessionStorage, POS_UPGRADE_RETURN_KEY) === 'true' ||
+    readStorage(localStorage, POS_UPGRADE_RETURN_KEY) === 'true';
+  writeStorage(sessionStorage, POS_UPGRADE_RETURN_KEY, null);
+  writeStorage(localStorage, POS_UPGRADE_RETURN_KEY, null);
+  return flagged;
+};
+
+export const getPlanDisplayName = (plan) =>
+  String(plan?.key || plan?.name || plan?.display_name || plan?.package_name || '')
+    .trim()
+    .toLowerCase();
+
+export const isPaidPosPlan = (plan) => {
+  const name = typeof plan === 'string' ? plan : getPlanDisplayName(plan);
+  return name.includes('grow') || name.includes('pro');
+};
+
+export const navigateToBudgetOrConnectPos = (navigate, { replace = false, onboardingComplete = false } = {}) => {
+  if (!onboardingComplete && shouldPromptConnectPosForBudget()) {
+    navigate(
+      getConnectPosRoute({
+        from: 'budget',
+        next: ONBOARDING_ROUTES.DASHBOARD_BUDGET,
+      }),
+      { replace }
+    );
+    return;
+  }
+  navigate(ONBOARDING_ROUTES.DASHBOARD_BUDGET, { replace });
 };
 
 /**
@@ -76,6 +197,7 @@ export const RESTAURANT_STATUS_KEYS = {
   LABOUR_INFORMATION: 'Labour Information',
   FOOD_COST_DETAILS: 'Food Cost Details',
   THIRD_PARTY_INFO: 'Third-Party Info',
+  CONNECT_POS: 'Connect POS Setup',
 };
 
 /**
@@ -138,10 +260,16 @@ export const SETUP_ITEMS = [
     order: 9,
   },
   {
+    label: 'Connect your POS',
+    key: RESTAURANT_STATUS_KEYS.CONNECT_POS,
+    route: '/onboarding/connect-pos',
+    order: 10,
+  },
+  {
     label: 'Go to your budget',
     key: null, // This is always available
     route: '/dashboard/budget',
-    order: 10,
+    order: 11,
   },
 ];
 
@@ -180,6 +308,8 @@ export const getOnboardingProgress = (restaurantData) => {
     if (item.key === null) {
       // "Go to your budget" is always available (not based on API field)
       isCompleted = false; // This is the final step, not completed until all others are done
+    } else if (item.key === RESTAURANT_STATUS_KEYS.CONNECT_POS) {
+      isCompleted = hasCompletedConnectPosSetup();
     } else {
       // Check if the corresponding field is true in the restaurant object
       isCompleted = restaurant[item.key] === true;
@@ -232,7 +362,9 @@ export const isOnLocationOnboardingPage = (pathname = '') => {
   const path = String(pathname).toLowerCase();
   if (
     path.includes('/onboarding/score') ||
-    path.includes('/onboarding/profitability')
+    path.includes('/onboarding/profitability') ||
+    path.includes('/onboarding/connect-pos') ||
+    path.includes('/onboarding/plans')
   ) {
     return true;
   }
@@ -262,6 +394,12 @@ export const getNextIncompleteSetupRoute = (restaurantData) => {
   const items = progress?.items || [];
 
   const nextItem = items.find((item) => item?.isCompleted === false && !!item?.route);
+  if (nextItem?.route === ONBOARDING_ROUTES.CONNECT_POS) {
+    return getConnectPosRoute({
+      from: 'budget',
+      next: ONBOARDING_ROUTES.DASHBOARD_BUDGET,
+    });
+  }
   if (nextItem?.route) return nextItem.route;
 
   // If we have a restaurant, the score page is the correct entry point.
@@ -668,7 +806,6 @@ export const getOnboardingRedirectRoute = ({
   if (hasRestaurant && !hasOneMonthSalesInfo) {
     // User can access score page or profitability (NOT /onboarding)
     const allowedPaths = [
-      ONBOARDING_ROUTES.PLANS,
       ONBOARDING_ROUTES.SCORE,
       ONBOARDING_ROUTES.PROFITABILITY,
       ONBOARDING_ROUTES.CONGRATULATIONS,

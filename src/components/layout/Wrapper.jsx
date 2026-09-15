@@ -14,7 +14,7 @@ import GuidanceOverlay from '../guidance/GuidanceOverlay';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
-import { getIncompleteSetupItems, getNextIncompleteSetupRoute } from '../../utils/onboardingUtils';
+import { getIncompleteSetupItems, getNextIncompleteSetupRoute, navigateToBudgetOrConnectPos, isOnboardingComplete, getConnectPosRoute } from '../../utils/onboardingUtils';
 import useRestaurantRole from '../../hooks/useRestaurantRole';
 
 /**
@@ -470,9 +470,24 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () => navigate('/dashboard/third-party-delivery'),
         },
         {
+          key: 'connect-pos',
+          label: 'Connect your POS',
+          onClick: () => {
+            navigate(
+              getConnectPosRoute({
+                from: 'budget',
+                next: '/dashboard/budget',
+              })
+            );
+          },
+        },
+        {
           key: 'go to your budget',
           label: 'Go to your budget',
-          onClick: () => navigate('/dashboard/budget'),
+          onClick: () =>
+            navigateToBudgetOrConnectPos(navigate, {
+              onboardingComplete: isOnboardingComplete(restaurantOnboardingData),
+            }),
         },
         {
           key: 'pos',
