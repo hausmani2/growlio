@@ -42,9 +42,17 @@ export const normalizePaginated = (data) => {
   };
 };
 
-export const fetchFoodCostingDashboard = async () => {
+export const fetchFoodCostingDashboard = async ({ dateFrom, dateTo } = {}) => {
   const { query } = withIds();
-  const res = await apiGet(`/food_costing/dashboard/?${query}`);
+  const params = new URLSearchParams(query);
+  if (dateFrom) params.set('date_from', dateFrom);
+  if (dateTo) params.set('date_to', dateTo);
+  const res = await apiGet(`/food_costing/dashboard/?${params.toString()}`);
+  return res.data;
+};
+
+export const fetchMenuItem = async (id) => {
+  const res = await apiGet(`/food_costing/menu-items/${id}/`);
   return res.data;
 };
 

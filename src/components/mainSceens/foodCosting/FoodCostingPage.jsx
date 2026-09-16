@@ -19,6 +19,7 @@ import {
   Tag,
   Upload,
   message,
+  notification,
 } from 'antd';
 import {
   CameraOutlined,
@@ -49,6 +50,7 @@ import {
   fetchAllMenuItems,
   fetchIngredients,
   fetchInvoices,
+  fetchMenuItem,
   fetchMenuItems,
   fetchRecipeDrafts,
   fetchVendors,
@@ -61,6 +63,7 @@ import {
   updateVendor,
 } from '../../../services/foodCostingApi';
 import MenuProfitabilitySimulator from './MenuProfitabilitySimulator';
+import MenuIntelligenceDashboard from './MenuIntelligenceDashboard';
 import IngredientEntryModal from './IngredientEntryModal';
 import { isApiTimeoutError } from '../../../utils/axiosInterceptors';
 import {
@@ -82,6 +85,35 @@ const isFoodCostingPlan = (planName) =>
 
 const CONFIDENCE_SCORE_TIP =
   'Shows how reliable your food cost is. Confirmed prices, portions and yields increase confidence; missing information or unconfirmed LIO estimates lower it.';
+
+const showConfidenceSaveFeedback = (feedback, { onConfirmPortions, fallback } = {}) => {
+  const text = feedback?.message;
+  if (!text) {
+    if (fallback) message.success(fallback);
+    return;
+  }
+  notification.open({
+    type: Number(feedback.score) >= 71 ? 'success' : 'info',
+    message: feedback.headline || 'Saved',
+    description: feedback.detail || text,
+    duration: 8,
+    placement: 'topRight',
+    btn:
+      feedback.cta === 'confirm_portions' && onConfirmPortions ? (
+        <Button
+          type="primary"
+          size="small"
+          className="!bg-[#FF8132] border-none"
+          onClick={() => {
+            notification.destroy();
+            onConfirmPortions(feedback);
+          }}
+        >
+          Confirm portions
+        </Button>
+      ) : null,
+  });
+};
 
 const ConfidenceLabel = ({ children }) => (
   <span className="inline-flex items-center">
@@ -174,6 +206,9 @@ const FoodCostingPage = () => {
   const [dashboardMenuPage, setDashboardMenuPage] = useState(1);
   const [dashboardMenuOrdering, setDashboardMenuOrdering] = useState('name');
   const dashboardMenuPageSize = 10;
+  const [intelDateFrom, setIntelDateFrom] = useState(null);
+  const [intelDateTo, setIntelDateTo] = useState(null);
+  const intelDatesRef = React.useRef({ from: null, to: null });
   const [ingredients, setIngredients] = useState([]);
   const [ingredientTotal, setIngredientTotal] = useState(0);
   const [ingredientPage, setIngredientPage] = useState(1);
@@ -337,7 +372,10 @@ const FoodCostingPage = () => {
             const pageSize = opts.pageSize ?? dashboardMenuPageSize;
             const ordering = opts.ordering ?? pg.dashboardMenuOrdering ?? 'name';
             const [dash, menuData] = await Promise.all([
-              fetchFoodCostingDashboard(),
+              fetchFoodCostingDashboard({
+                dateFrom: opts.dateFrom ?? intelDatesRef.current.from,
+                dateTo: opts.dateTo ?? intelDatesRef.current.to,
+              }),
               fetchMenuItems({ page, pageSize, ordering }),
             ]);
             if (controller.signal.aborted) return;
@@ -451,7 +489,12 @@ const FoodCostingPage = () => {
       try {
         const tasks = [];
         if (unique.includes('dashboard')) {
-          tasks.push(fetchFoodCostingDashboard().then(setDashboard));
+          tasks.push(
+            fetchFoodCostingDashboard({
+              dateFrom: intelDatesRef.current.from,
+              dateTo: intelDatesRef.current.to,
+            }).then(setDashboard)
+          );
         }
         if (unique.includes('menu')) {
           const pg = paginationRef.current;
@@ -1464,11 +1507,23 @@ const FoodCostingPage = () => {
   const persistIngredient = async (payload, editing) => {
     if (editing) {
       const updated = await updateIngredient(editing.id, payload);
-      message.success('Ingredient updated');
+      showConfidenceSaveFeedback(updated?.save_feedback, {
+        fallback: 'Ingredient updated',
+        onConfirmPortions: () => {
+          const id = updated?.save_feedback?.menu_item_id;
+          if (id) fetchMenuItem(id).then(goToMenuItem);
+        },
+      });
       return updated;
     }
     const created = await createIngredient(payload);
-    message.success(created?.id ? 'Ingredient saved' : 'Ingredient created');
+    showConfidenceSaveFeedback(created?.save_feedback, {
+      fallback: created?.id ? 'Ingredient saved' : 'Ingredient created',
+      onConfirmPortions: () => {
+        const id = created?.save_feedback?.menu_item_id;
+        if (id) fetchMenuItem(id).then(goToMenuItem);
+      },
+    });
     return created;
   };
 
@@ -1531,6 +1586,80 @@ const FoodCostingPage = () => {
     openEditMenuItem(record);
   };
 
+  const handleIntelligenceAction = async (action, payload = {}) => {
+    const menuItemId = payload.menu_item_id || payload.id;
+    const openItemById = async (id) => {
+      if (!id) return;
+      try {
+        const record = await fetchMenuItem(id);
+        goToMenuItem(record);
+      } catch {
+        setActiveTab('menu');
+        loadTabData('menu');
+      }
+    };
+
+    switch (action) {
+      case 'build_from_photo':
+        setPhotoModalOpen(true);
+        setDraftResult(null);
+        setDraftLines([]);
+        setPhotoFile(null);
+        break;
+      case 'upload_invoice':
+        setActiveTab('invoices');
+        loadTabData('invoices');
+        await ensureModalData();
+        invoiceForm.resetFields();
+        setInvoiceFile(null);
+        setExtractWithAi(true);
+        setInvoiceModalOpen(true);
+        break;
+      case 'import_pos':
+        setActiveTab('menu');
+        loadTabData('menu');
+        handleImportMenuFromSquare();
+        break;
+      case 'add_menu_item':
+        openCreateMenuItem();
+        break;
+      case 'view_menu':
+      case 'start_top_sellers':
+      case 'complete_high_impact':
+        setActiveTab('menu');
+        loadTabData('menu');
+        break;
+      case 'view_ingredients':
+        setActiveTab('ingredients');
+        loadTabData('ingredients');
+        break;
+      case 'view_simulator':
+        setActiveTab('simulator');
+        loadTabData('simulator');
+        break;
+      case 'edit_ingredient':
+        await openIngredientFromSuggestion(payload);
+        break;
+      case 'edit_menu_item':
+      case 'review_recipe':
+      default:
+        if (menuItemId) {
+          await openItemById(menuItemId);
+        } else {
+          setActiveTab('menu');
+          loadTabData('menu');
+        }
+        break;
+    }
+  };
+
+  const handleIntelligenceDates = (from, to) => {
+    intelDatesRef.current = { from, to };
+    setIntelDateFrom(from);
+    setIntelDateTo(to);
+    loadTabData('dashboard', { dateFrom: from, dateTo: to });
+  };
+
   const saveMenuItem = async () => {
     try {
       const values = await menuForm.validateFields();
@@ -1540,15 +1669,17 @@ const FoodCostingPage = () => {
           (line) => line?.name || line?.ingredient_id
         ),
       };
-      if (editingMenuItem) {
-        await updateMenuItem(editingMenuItem.id, payload);
-        message.success('Menu item updated');
-      } else {
-        await createMenuItem(payload);
-        message.success('Menu item created');
-      }
+      const saved = editingMenuItem
+        ? await updateMenuItem(editingMenuItem.id, payload)
+        : await createMenuItem(payload);
       setMenuModalOpen(false);
       refresh(['dashboard', 'menu']);
+      showConfidenceSaveFeedback(saved?.save_feedback, {
+        fallback: editingMenuItem ? 'Menu item updated' : 'Menu item created',
+        onConfirmPortions: () => {
+          if (saved) openEditMenuItem(saved);
+        },
+      });
     } catch (error) {
       if (error?.errorFields) return;
       message.error(error?.response?.data?.error || 'Failed to save menu item');
@@ -1678,7 +1809,6 @@ const FoodCostingPage = () => {
           exclude: line.exclude,
         })),
       });
-      message.success('Draft confirmed. Continue editing the recipe below.');
       const menuItem = result?.menu_item;
       setPhotoModalOpen(false);
       setPhotoFile(null);
@@ -1687,6 +1817,12 @@ const FoodCostingPage = () => {
       setPhotoMenuName('');
       setDraftSellingPrice('0.00');
       await refresh(['dashboard', 'menu', 'drafts']);
+      showConfidenceSaveFeedback(result?.save_feedback || menuItem?.save_feedback, {
+        fallback: 'Draft confirmed. Continue editing the recipe below.',
+        onConfirmPortions: () => {
+          if (menuItem) openEditMenuItem(menuItem);
+        },
+      });
       if (menuItem) {
         openEditMenuItem(menuItem);
       }
@@ -2108,13 +2244,7 @@ const FoodCostingPage = () => {
     <div className="p-2 md:p-4">
       <PageHeaderSection
         title="Menu Intelligence"
-        description={
-          <>
-            Growlio tells you how your restaurant is performing.
-            <br />
-            Menu Intelligence tells you how your menu is performing.
-          </>
-        }
+        description="Understand your menu. Improve your margins. Grow your profits."
         right={
           <Space wrap>
             <Button
@@ -2165,45 +2295,18 @@ const FoodCostingPage = () => {
             key: 'dashboard',
             label: 'Dashboard',
             children: (
-              <Spin spinning={loading}>
-                <Row gutter={[16, 16]} className="mb-6">
-                  {kpiCards.map((card) => (
-                    <Col xs={24} sm={12} lg={8} xl={4} key={card.title}>
-                      <Card className="shadow-sm border border-gray-100">
-                        <p className="text-gray-500 text-sm mb-1">
-                          {card.showConfidenceTip ? (
-                            <ConfidenceLabel>{card.title}</ConfidenceLabel>
-                          ) : (
-                            card.title
-                          )}
-                        </p>
-                        <p className="text-2xl font-semibold text-[#FF8132]">
-                          {card.value}
-                        </p>
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-                <Card title="Menu items by confidence" className="shadow-sm">
-                  <Table
-                    rowKey="id"
-                    loading={loading}
-                    dataSource={dashboardMenuItems}
-                    columns={dashboardMenuColumns}
-                    pagination={{
-                      current: dashboardMenuPage,
-                      pageSize: dashboardMenuPageSize,
-                      total: dashboardMenuTotal,
-                      showSizeChanger: false,
-                    }}
-                    onChange={handleDashboardMenuTableChange}
-                    onRow={(record) => ({
-                      onClick: () => goToMenuItem(record),
-                      className: 'cursor-pointer',
-                    })}
-                  />
-                </Card>
-              </Spin>
+              <MenuIntelligenceDashboard
+                loading={loading}
+                dashboard={dashboard}
+                dateFrom={intelDateFrom}
+                dateTo={intelDateTo}
+                onDateChange={handleIntelligenceDates}
+                onRefresh={() => {
+                  refresh(['dashboard']);
+                  loadTabData('dashboard');
+                }}
+                onAction={handleIntelligenceAction}
+              />
             ),
           },
           {
