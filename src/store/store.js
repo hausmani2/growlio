@@ -428,7 +428,14 @@ const useStore = create(
         name: 'growlio-store',
         // Subscription packages must always come from the API (avoid stale pricing after refresh).
         partialize: (state) => {
-          const { packages, currentPackage, ...rest } = state;
+          const {
+            packages,
+            currentPackage,
+            cashFlowData,
+            cashFlowLoading,
+            cashFlowError,
+            ...rest
+          } = state;
           return rest;
         },
       }

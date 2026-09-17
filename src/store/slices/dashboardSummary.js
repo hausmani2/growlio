@@ -666,7 +666,50 @@ const createDashboardSummarySlice = (set, get) => {
                 weeklyAverageLoading: false,
                 weeklyAverageError: null
             }));
-        }
+        },
+
+        cashFlowData: null,
+        cashFlowLoading: false,
+        cashFlowError: null,
+
+        fetchCashFlow: async (targetDate, restaurantId = null) => {
+            try {
+                set({ cashFlowLoading: true, cashFlowError: null });
+                let targetRestaurantId = restaurantId;
+                if (!targetRestaurantId && typeof get().fetchRestaurantId === 'function') {
+                    try {
+                        targetRestaurantId = await get().fetchRestaurantId();
+                    } catch {
+                        targetRestaurantId = null;
+                    }
+                }
+                if (!targetRestaurantId) {
+                    set({ cashFlowLoading: false });
+                    return null;
+                }
+                const locationId = typeof get().getSelectedLocationId === 'function'
+                    ? await get().getSelectedLocationId()
+                    : get().selectedLocationId;
+                const params = {
+                    restaurant_id: targetRestaurantId,
+                    date: targetDate,
+                };
+                if (locationId) params.location_id = locationId;
+                const query = new URLSearchParams(params).toString();
+                const response = await apiGet(`/restaurant_v2/cash-flow/?${query}`);
+                const payload = response?.data || response;
+                set({ cashFlowData: payload, cashFlowLoading: false });
+                return payload;
+            } catch (error) {
+                const messageText =
+                    error?.response?.data?.error ||
+                    error?.response?.data?.detail ||
+                    error?.message ||
+                    'Failed to load cash flow';
+                set({ cashFlowLoading: false, cashFlowError: messageText, cashFlowData: null });
+                return null;
+            }
+        },
     };
 };
 
