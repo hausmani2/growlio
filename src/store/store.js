@@ -434,6 +434,9 @@ const useStore = create(
             cashFlowData,
             cashFlowLoading,
             cashFlowError,
+            simulationReportData,
+            simulationReportLoading,
+            simulationReportError,
             ...rest
           } = state;
           return rest;

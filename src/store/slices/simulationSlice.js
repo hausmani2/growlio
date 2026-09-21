@@ -25,6 +25,10 @@ const createSimulationSlice = (set, get) => ({
   daysData: null,
   daysLoading: false,
   daysError: null,
+
+  simulationReportData: null,
+  simulationReportLoading: false,
+  simulationReportError: null,
   
   // Get simulation onboarding data (full data for update mode)
   // Similar to GET /restaurant_v2/onboarding/ for regular onboarding
@@ -605,12 +609,117 @@ const createSimulationSlice = (set, get) => ({
       simulationDashboardError: null,
       daysData: null,
       daysLoading: false,
-      daysError: null
+      daysError: null,
+      simulationReportData: null,
+      simulationReportLoading: false,
+      simulationReportError: null
     });
     
     // Clear sessionStorage cache
     sessionStorage.removeItem('hasCheckedSimulationOnboardingGlobal');
     sessionStorage.removeItem('simulationOnboardingLastCheckTime');
+  },
+
+  getSimulationReport: async ({
+    restaurantId,
+    reportType = 'yearly_by_month',
+    year,
+    startYear,
+    endYear
+  } = {}) => {
+    if (!restaurantId) {
+      const errorMsg = 'Restaurant ID is required to run a report';
+      set({ simulationReportLoading: false, simulationReportError: errorMsg });
+      return { success: false, error: errorMsg };
+    }
+
+    set({ simulationReportLoading: true, simulationReportError: null });
+    try {
+      const params = new URLSearchParams();
+      params.append('restaurant_id', restaurantId);
+      params.append('report_type', reportType);
+      if (reportType === 'yearly_by_month') {
+        params.append('year', String(year || new Date().getFullYear()));
+      } else {
+        params.append('start_year', String(startYear || new Date().getFullYear()));
+        params.append('end_year', String(endYear || startYear || new Date().getFullYear()));
+      }
+      const response = await apiGet(`/simulation/dashboard/report/?${params.toString()}`);
+      set({
+        simulationReportData: response.data,
+        simulationReportLoading: false,
+        simulationReportError: null
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error.message ||
+        'Failed to run simulator report';
+      set({
+        simulationReportLoading: false,
+        simulationReportError: errorMessage
+      });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  downloadSimulationReportExcel: async ({
+    restaurantId,
+    reportType = 'yearly_by_month',
+    year,
+    startYear,
+    endYear
+  } = {}) => {
+    if (!restaurantId) {
+      return { success: false, error: 'Restaurant ID is required to export a report' };
+    }
+    try {
+      const params = new URLSearchParams();
+      params.append('restaurant_id', restaurantId);
+      params.append('report_type', reportType);
+      params.append('export', 'xlsx');
+      if (reportType === 'yearly_by_month') {
+        params.append('year', String(year || new Date().getFullYear()));
+      } else {
+        params.append('start_year', String(startYear || new Date().getFullYear()));
+        params.append('end_year', String(endYear || startYear || new Date().getFullYear()));
+      }
+      const response = await apiGet(`/simulation/dashboard/report/?${params.toString()}`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const rangeLabel =
+        reportType === 'yearly_by_month'
+          ? String(year || new Date().getFullYear())
+          : `${startYear || new Date().getFullYear()}-${endYear || startYear || new Date().getFullYear()}`;
+      link.href = url;
+      link.download = `simulator-${reportType}-${rangeLabel}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      return { success: true };
+    } catch (error) {
+      let errorMessage = error.message || 'Failed to export Excel report';
+      const data = error?.response?.data;
+      if (data instanceof Blob) {
+        try {
+          const parsed = JSON.parse(await data.text());
+          errorMessage = parsed.error || parsed.message || errorMessage;
+        } catch {
+          // keep default
+        }
+      } else if (data?.error || data?.message) {
+        errorMessage = data.error || data.message;
+      }
+      return { success: false, error: errorMessage };
+    }
   }
 });
 

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Select, InputNumber, Button, Card, Table, Tag, message, Modal, Input, Popconfirm } from 'antd';
-import { CalendarOutlined, DollarOutlined, ShoppingOutlined, UserOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined, DownOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
-import { formatCurrency, formatNumber } from '../../utils/formatUtils';
+import { formatCurrency } from '../../utils/formatUtils';
 import ChatWidget from '../chatbot/ChatWidget';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
+import SimulatorCashFlow from './SimulatorCashFlow';
+import SimulatorAnnualReport from './SimulatorAnnualReport';
 
 const { Option } = Select;
 
@@ -364,6 +366,7 @@ const SimulationDashboard = () => {
     amount: 0
   });
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
+  const [expensesExpanded, setExpensesExpanded] = useState(false);
 
   // Whenever dashboard data updates, sync expenses list into local table data
   useEffect(() => {
@@ -776,99 +779,66 @@ const SimulationDashboard = () => {
 
         {dashboardData ? (
           <>
-            {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Total Income</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {formatCurrency(dashboardData.total_income)}
-                    </p>
-                  </div>
-                  <DollarOutlined className="text-3xl text-green-500" />
-                </div>
-              </Card>
+            <SimulatorCashFlow
+              cashflow={dashboardData.cashflow}
+              period={period}
+              customerCount={dashboardData.no_of_customer}
+              profitOrLoss={dashboardData.profit_or_loss}
+            />
 
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Total Expenses</p>
-                    <p className="text-2xl font-bold text-red-600">
-                      {formatCurrency(dashboardData.total_expenses)}
-                    </p>
-                  </div>
-                  <ShoppingOutlined className="text-3xl text-red-500" />
-                </div>
-              </Card>
-
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Profit/Loss</p>
-                    <p className={`text-2xl font-bold ${
-                      dashboardData.profit_or_loss >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(dashboardData.profit_or_loss)}
-                    </p>
-                  </div>
-                  <DollarOutlined className={`text-3xl ${
-                    dashboardData.profit_or_loss >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`} />
-                </div>
-              </Card>
-
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Total Customer Count</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {formatNumber(dashboardData.no_of_customer)}
-                    </p>
-                  </div>
-                  <UserOutlined className="text-3xl text-blue-500" />
-                </div>
-              </Card>
-
-              <Card className="shadow-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Cash on Hand</p>
-                    <p className="text-2xl font-bold text-indigo-600">
-                      {formatCurrency(dashboardData.cash_on_hand ?? 0)}
-                    </p>
-                  </div>
-                  <DollarOutlined className="text-3xl text-indigo-500" />
-                </div>
-              </Card>
-
-            
-            </div>
+            {restaurantId ? (
+              <SimulatorAnnualReport restaurantId={restaurantId} defaultYear={dashboardParams.year} />
+            ) : null}
 
             {/* Expenses Breakdown */}
             <Card className="shadow-md mb-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-bold text-gray-900">Expenses Breakdown</h2>
-              </div>
-              <Table
-                dataSource={expensesTableData}
-                rowKey="id"
-                pagination={false}
-                scroll={{ x: 'max-content' }}
-                columns={expensesColumns}
-              />
+              <button
+                type="button"
+                onClick={() => setExpensesExpanded((open) => !open)}
+                className="w-full flex items-center justify-between gap-3 text-left"
+                aria-expanded={expensesExpanded}
+              >
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Expenses Breakdown</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {expensesTableData.length} expense{expensesTableData.length === 1 ? '' : 's'}
+                    {expensesExpanded ? '' : ' — click to expand'}
+                  </p>
+                </div>
+                <DownOutlined
+                  className={`text-gray-500 transition-transform duration-200 ${
+                    expensesExpanded ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {expensesExpanded ? (
+                <div className="mt-4">
+                  <Table
+                    dataSource={expensesTableData}
+                    rowKey="id"
+                    pagination={false}
+                    scroll={{ x: 'max-content' }}
+                    columns={expensesColumns}
+                  />
+                </div>
+              ) : null}
             </Card>
           </>
         ) : (
-          <Card className="shadow-md text-center py-12">
-            <CalendarOutlined className="text-5xl text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              No Dashboard Data
-            </h3>
-            <p className="text-gray-500">
-              Use the form above to generate a forecast. Select year and month, enter your customer data, then click Generate Forecast.
-            </p>
-          </Card>
+          <>
+            <Card className="shadow-md text-center py-12 mb-6">
+              <CalendarOutlined className="text-5xl text-gray-400 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                No Dashboard Data
+              </h3>
+              <p className="text-gray-500">
+                Use the form above to generate a forecast. Select year and month, enter your customer data, then click Generate Forecast.
+              </p>
+            </Card>
+            {restaurantId ? (
+              <SimulatorAnnualReport restaurantId={restaurantId} defaultYear={dashboardParams.year} />
+            ) : null}
+          </>
         )}
       </div>
       

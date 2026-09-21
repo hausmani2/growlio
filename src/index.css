@@ -578,4 +578,24 @@ body {
 
 .weekly-average-modal-top .ant-modal-mask {
   z-index: 9999 !important;
+}
+
+.simulator-annual-report-table .ant-table {
+  font-size: 12px;
+}
+
+.simulator-annual-report-table .ant-table-thead > tr > th {
+  padding: 8px 10px !important;
+  background: #fafafa !important;
+  white-space: nowrap;
+}
+
+.simulator-annual-report-table .ant-table-tbody > tr > td {
+  padding: 7px 10px !important;
+  white-space: nowrap;
+}
+
+.simulator-annual-report-table .ant-table-cell-fix-left,
+.simulator-annual-report-table .ant-table-cell-fix-right {
+  background: #fff !important;
 } 
