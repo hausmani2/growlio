@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../../utils/axiosInterceptors';
+import { apiGet, apiPost, apiDelete } from '../../utils/axiosInterceptors';
 import { message } from 'antd';
 
 const createSimulationSlice = (set, get) => ({
@@ -719,6 +719,101 @@ const createSimulationSlice = (set, get) => ({
         errorMessage = data.error || data.message;
       }
       return { success: false, error: errorMessage };
+    }
+  },
+
+  previewSimulationActuals: async (restaurantId, locationId = null) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('restaurant_id', restaurantId);
+      if (locationId) params.append('location_id', locationId);
+      const response = await apiGet(`/simulation/dashboard/actuals/?${params.toString()}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error.message ||
+          'Failed to load actuals',
+      };
+    }
+  },
+
+  importSimulationActuals: async (restaurantId, locationId = null) => {
+    try {
+      const response = await apiPost('/simulation/dashboard/actuals/', {
+        restaurant_id: restaurantId,
+        ...(locationId ? { location_id: locationId } : {}),
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error.message ||
+          'Failed to import actuals',
+      };
+    }
+  },
+
+  listSimulationSaves: async (restaurantId) => {
+    try {
+      const response = await apiGet(
+        `/simulation/dashboard/saves/?restaurant_id=${restaurantId}`
+      );
+      return { success: true, data: response.data?.saves || [] };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error?.response?.data?.error ||
+          error.message ||
+          'Failed to load saved simulations',
+      };
+    }
+  },
+
+  saveSimulationScenario: async ({
+    restaurantId,
+    name,
+    snapshot,
+    applyAsBudgetGoals = false,
+  }) => {
+    try {
+      const response = await apiPost('/simulation/dashboard/saves/', {
+        restaurant_id: restaurantId,
+        name,
+        snapshot,
+        apply_as_budget_goals: applyAsBudgetGoals,
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error?.response?.data?.error ||
+          error.message ||
+          'Failed to save simulation',
+      };
+    }
+  },
+
+  deleteSimulationSave: async (id) => {
+    try {
+      await apiDelete(`/simulation/dashboard/saves/${id}/`);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error?.response?.data?.error ||
+          error.message ||
+          'Failed to delete saved simulation',
+      };
     }
   }
 });

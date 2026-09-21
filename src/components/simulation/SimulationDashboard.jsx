@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Select, InputNumber, Button, Card, Table, Tag, message, Modal, Input, Popconfirm } from 'antd';
-import { CalendarOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined, DownOutlined } from '@ant-design/icons';
+import { CalendarOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined, DownOutlined, DatabaseOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
@@ -15,11 +15,18 @@ const { Option } = Select;
 const AUTO_SAVE_DEBOUNCE_MS = 700;
 const SAVED_MESSAGE_DURATION_MS = 2500;
 
+const clampGoalPct = (value) => {
+  const n = Math.round(Number(value) || 0);
+  if (n < 1) return 1;
+  if (n > 80) return 80;
+  return n;
+};
+
 const PERIOD_OPTIONS = ['daily', 'weekly', 'monthly'];
 
 const generateLaborPercentOptions = () => {
   const options = [];
-  for (let i = 1; i <= 35; i += 1) {
+  for (let i = 1; i <= 80; i += 1) {
     let zoneColor = '#52c41a';
     let zoneLabel = ' (Goal)';
     if (i >= 31 && i <= 32) {
@@ -43,7 +50,7 @@ const generateLaborPercentOptions = () => {
 
 const generateCogsPercentOptions = () => {
   const options = [];
-  for (let i = 1; i <= 36; i += 1) {
+  for (let i = 1; i <= 80; i += 1) {
     let zoneColor = '#52c41a';
     let zoneLabel = ' (Goal)';
     if (i >= 32 && i <= 33) {
@@ -100,7 +107,13 @@ const SimulationDashboard = () => {
     submitSimulationOnboarding,
     getDays,
     daysLoading,
-    daysError
+    daysError,
+    selectedLocationId,
+    previewSimulationActuals,
+    importSimulationActuals,
+    listSimulationSaves,
+    saveSimulationScenario,
+    deleteSimulationSave,
   } = useStore();
 
   const [restaurantId, setRestaurantId] = useState(null);
@@ -114,6 +127,8 @@ const SimulationDashboard = () => {
   const isSavingRef = useRef(false);
   const savedMessageTimerRef = useRef(null);
   const isInitialMountRef = useRef(true);
+  const skipAutoSaveRef = useRef(false);
+  const applyingScenarioRef = useRef(false);
   const latestParamsRef = useRef({ dashboardParams, period, restaurantId });
   latestParamsRef.current = { dashboardParams, period, restaurantId };
 
@@ -220,6 +235,7 @@ const SimulationDashboard = () => {
       next.set('period', period);
       return next;
     }, { replace: true });
+    if (applyingScenarioRef.current) return;
     getSimulationDashboard(restaurantId, year, month, period);
   }, [restaurantId, dashboardParams.year, dashboardParams.month, period]);
 
@@ -227,6 +243,7 @@ const SimulationDashboard = () => {
   useEffect(() => {
     const fetchDaysData = async () => {
       if (!restaurantId) return;
+      if (applyingScenarioRef.current) return;
 
       const result = await getDays(dashboardParams.year, dashboardParams.month, restaurantId);
       if (result.success && result.data && result.data.working_days_count !== undefined) {
@@ -241,8 +258,10 @@ const SimulationDashboard = () => {
 
   // Shared save: create then fetch. Reads latest params from ref so debounced auto-save always uses current values (e.g. after getDays updates days).
   const saveForecast = useCallback(async (options = {}) => {
-    const { showSuccessToast = false } = options;
-    const { dashboardParams: params, period: p, restaurantId: rid } = latestParamsRef.current;
+    const { showSuccessToast = false, paramsOverride, periodOverride } = options;
+    const { dashboardParams: stored, period: storedPeriod, restaurantId: rid } = latestParamsRef.current;
+    const params = { ...stored, ...(paramsOverride || {}) };
+    const p = periodOverride || storedPeriod;
     if (!rid) {
       if (showSuccessToast) message.error('Restaurant ID not found. Please complete onboarding first.');
       return false;
@@ -299,6 +318,10 @@ const SimulationDashboard = () => {
       isInitialMountRef.current = false;
       return;
     }
+    if (skipAutoSaveRef.current) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      return;
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -322,6 +345,21 @@ const SimulationDashboard = () => {
   const handleGenerate = () => {
     saveForecast({ showSuccessToast: true });
   };
+
+  const refreshSavedSimulations = useCallback(async () => {
+    if (!restaurantId) {
+      setSavedSimulations([]);
+      return;
+    }
+    const result = await listSimulationSaves(restaurantId);
+    if (result.success) {
+      setSavedSimulations(result.data);
+    }
+  }, [restaurantId, listSimulationSaves]);
+
+  useEffect(() => {
+    refreshSavedSimulations();
+  }, [refreshSavedSimulations]);
 
   // Clear timers on unmount
   useEffect(() => {
@@ -367,6 +405,15 @@ const SimulationDashboard = () => {
   });
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
   const [expensesExpanded, setExpensesExpanded] = useState(false);
+  const [actualsPreview, setActualsPreview] = useState(null);
+  const [actualsModalOpen, setActualsModalOpen] = useState(false);
+  const [actualsLoading, setActualsLoading] = useState(false);
+  const [savedSimulations, setSavedSimulations] = useState([]);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [savingNamed, setSavingNamed] = useState(false);
+  const [selectedSaveId, setSelectedSaveId] = useState(null);
+  const [loadingSave, setLoadingSave] = useState(false);
 
   // Whenever dashboard data updates, sync expenses list into local table data
   useEffect(() => {
@@ -407,7 +454,8 @@ const SimulationDashboard = () => {
         orignal_amount: Number(originalAmount) || 0,
         is_value_type: valueType !== 'percentage',
         amount: Number(originalAmount) || 0,
-        expense_type: exp?.expense_type || 'monthly',
+        expense_type: exp?.expense_type || exp?.frequency || 'monthly',
+        fixed_expense_type: exp?.expense_type || exp?.frequency || 'monthly',
         is_active: true
       };
     });
@@ -437,6 +485,175 @@ const SimulationDashboard = () => {
     } finally {
       setExpenseModalSaving(false);
     }
+  };
+
+  const handlePreviewActuals = async () => {
+    if (!restaurantId) {
+      message.error('Restaurant ID not found. Please complete onboarding first.');
+      return;
+    }
+    setActualsLoading(true);
+    try {
+      const result = await previewSimulationActuals(restaurantId, selectedLocationId);
+      if (!result.success) {
+        message.error(result.error);
+        return;
+      }
+      setActualsPreview(result.data);
+      setActualsModalOpen(true);
+    } finally {
+      setActualsLoading(false);
+    }
+  };
+
+  const handleImportActuals = async () => {
+    if (!restaurantId) return;
+    setActualsLoading(true);
+    skipAutoSaveRef.current = true;
+    applyingScenarioRef.current = true;
+    try {
+      const result = await importSimulationActuals(restaurantId, selectedLocationId);
+      if (!result.success) {
+        message.error(result.error);
+        return;
+      }
+      const forecast = result.data?.forecast || {};
+      const nextParams = {
+        ...dashboardParams,
+        added_customer_per_day: Number(forecast.added_customer_per_day) || 0,
+        labour_goal: clampGoalPct(forecast.labour_goal),
+        cogs_goal: clampGoalPct(forecast.cogs_goal),
+        average_ticket_per_customer: Number(forecast.average_ticket_per_customer) || 0,
+      };
+      setDashboardParams(nextParams);
+      latestParamsRef.current = { dashboardParams: nextParams, period, restaurantId };
+      setExpensesExpanded(true);
+      await saveForecast({ paramsOverride: nextParams, showSuccessToast: false });
+      setActualsModalOpen(false);
+      setActualsPreview(null);
+      message.success('Actuals imported into the simulator. Live restaurant budgets were not changed.');
+    } finally {
+      skipAutoSaveRef.current = false;
+      applyingScenarioRef.current = false;
+      setActualsLoading(false);
+    }
+  };
+
+  const openSaveModal = () => {
+    const monthLabel = months.find((m) => m.value === dashboardParams.month)?.label || '';
+    setSaveName(`Simulation ${monthLabel} ${dashboardParams.year}`.trim());
+    setSaveModalOpen(true);
+  };
+
+  const handleSaveNamed = async () => {
+    const name = String(saveName || '').trim();
+    if (!name) {
+      message.error('Please enter a name for this simulation.');
+      return;
+    }
+    if (!restaurantId) {
+      message.error('Restaurant ID not found. Please complete onboarding first.');
+      return;
+    }
+    setSavingNamed(true);
+    try {
+      const snapshot = {
+        year: dashboardParams.year,
+        month: dashboardParams.month,
+        period,
+        added_customer_per_day: dashboardParams.added_customer_per_day,
+        labour_goal: dashboardParams.labour_goal,
+        cogs_goal: dashboardParams.cogs_goal,
+        days: dashboardParams.days,
+        profit_loss: dashboardParams.profit_loss,
+        average_ticket_per_customer: dashboardParams.average_ticket_per_customer,
+        expenses: buildExpensesStepPayload(expensesTableData),
+      };
+      const result = await saveSimulationScenario({
+        restaurantId,
+        name,
+        snapshot,
+        applyAsBudgetGoals: false,
+      });
+      if (!result.success) {
+        message.error(result.error);
+        return;
+      }
+      await saveForecast({ showSuccessToast: false });
+      await refreshSavedSimulations();
+      if (result.data?.id) setSelectedSaveId(result.data.id);
+      setSaveModalOpen(false);
+      message.success(
+        result.data?.created === false ? 'Simulation updated.' : 'Simulation saved.'
+      );
+    } finally {
+      setSavingNamed(false);
+    }
+  };
+
+  const handleLoadSave = async (id = selectedSaveId) => {
+    const row = savedSimulations.find((item) => item.id === id);
+    if (!row) {
+      message.error('Select a saved simulation first.');
+      return;
+    }
+    const snapshot = row.snapshot || {};
+    const nextPeriod = PERIOD_OPTIONS.includes(snapshot.period) ? snapshot.period : period;
+    const nextParams = {
+      ...dashboardParams,
+      year: snapshot.year || dashboardParams.year,
+      month: snapshot.month || dashboardParams.month,
+      added_customer_per_day: Number(snapshot.added_customer_per_day) || 0,
+      labour_goal: clampGoalPct(snapshot.labour_goal ?? dashboardParams.labour_goal),
+      cogs_goal: clampGoalPct(snapshot.cogs_goal ?? dashboardParams.cogs_goal),
+      days: snapshot.days ?? dashboardParams.days,
+      profit_loss: snapshot.profit_loss ?? dashboardParams.profit_loss,
+      average_ticket_per_customer:
+        Number(snapshot.average_ticket_per_customer) || dashboardParams.average_ticket_per_customer,
+    };
+
+    skipAutoSaveRef.current = true;
+    applyingScenarioRef.current = true;
+    setLoadingSave(true);
+    try {
+      setDashboardParams(nextParams);
+      if (nextPeriod !== period) setPeriod(nextPeriod);
+      latestParamsRef.current = { dashboardParams: nextParams, period: nextPeriod, restaurantId };
+
+      if (Array.isArray(snapshot.expenses)) {
+        const expenseResult = await submitSimulationOnboarding({
+          restaurant_id: restaurantId,
+          Expenses: { status: true, data: snapshot.expenses },
+        });
+        if (!expenseResult?.success) {
+          message.error(expenseResult?.error || 'Failed to load saved expenses.');
+          return;
+        }
+      }
+
+      await saveForecast({
+        paramsOverride: nextParams,
+        periodOverride: nextPeriod,
+        showSuccessToast: false,
+      });
+      setSelectedSaveId(row.id);
+      message.success(`Loaded "${row.name}".`);
+    } finally {
+      skipAutoSaveRef.current = false;
+      applyingScenarioRef.current = false;
+      setLoadingSave(false);
+    }
+  };
+
+  const handleDeleteSave = async (id) => {
+    const result = await deleteSimulationSave(id);
+    if (!result.success) {
+      message.error(result.error);
+      return;
+    }
+    if (selectedSaveId === id) setSelectedSaveId(null);
+    await refreshSavedSimulations();
+    message.success('Saved simulation deleted.');
   };
 
   const handleExpenseModalSave = async () => {
@@ -750,6 +967,54 @@ const SimulationDashboard = () => {
                 >
                   Generate Forecast
                 </Button>
+                <Button
+                  icon={<DatabaseOutlined />}
+                  onClick={handlePreviewActuals}
+                  loading={actualsLoading}
+                  size="large"
+                >
+                  Use actual data
+                </Button>
+                <Button
+                  icon={<SaveOutlined />}
+                  onClick={openSaveModal}
+                  size="large"
+                >
+                  Save simulation
+                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={selectedSaveId ?? undefined}
+                    onChange={(value) => setSelectedSaveId(value ?? null)}
+                    placeholder="Saved simulations"
+                    size="large"
+                    style={{ width: 220, minWidth: 180 }}
+                    allowClear
+                    options={savedSimulations.map((row) => ({
+                      value: row.id,
+                      label: row.name,
+                    }))}
+                  />
+                  <Button
+                    onClick={() => handleLoadSave()}
+                    loading={loadingSave}
+                    disabled={!selectedSaveId}
+                    size="large"
+                  >
+                    Load
+                  </Button>
+                  <Popconfirm
+                    title="Delete this saved simulation?"
+                    okText="Delete"
+                    cancelText="Cancel"
+                    onConfirm={() => handleDeleteSave(selectedSaveId)}
+                    disabled={!selectedSaveId}
+                  >
+                    <Button danger disabled={!selectedSaveId} size="large">
+                      Delete
+                    </Button>
+                  </Popconfirm>
+                </div>
                 <div className="flex items-center gap-2 text-sm min-h-[24px]">
                   {saveStatus === 'saving' && (
                     <span className="text-amber-600 flex items-center gap-1.5">
@@ -970,6 +1235,103 @@ const SimulationDashboard = () => {
               min={0}
               className="w-full"
             />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        title="Use actual data"
+        open={actualsModalOpen}
+        onCancel={() => {
+          if (actualsLoading) return;
+          setActualsModalOpen(false);
+        }}
+        okText="Import into simulator"
+        cancelText="Cancel"
+        confirmLoading={actualsLoading}
+        onOk={handleImportActuals}
+        maskClosable={!actualsLoading}
+        width={640}
+      >
+        <p className="text-gray-700 mb-4">
+          {actualsPreview?.message ||
+            'Growlio will import these actuals into the simulator. Live restaurant budgets will not be changed.'}
+        </p>
+        {actualsPreview?.live_restaurant_name ? (
+          <p className="text-sm text-gray-500 mb-4">
+            Source: {actualsPreview.live_restaurant_name} (last {actualsPreview.lookback_days} days,{' '}
+            {actualsPreview.open_days} open days)
+          </p>
+        ) : null}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Avg customers / day</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {Number(actualsPreview?.avg_customers_per_day || 0).toFixed(1)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Current COGS %</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {Number(actualsPreview?.cogs_pct || 0).toFixed(2)}%
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Current labor %</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {Number(actualsPreview?.labor_pct || 0).toFixed(2)}%
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Avg ticket</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {formatCurrency(actualsPreview?.avg_ticket || 0)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3 sm:col-span-2">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Operating expenses / month</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {formatCurrency(actualsPreview?.operating_expenses_monthly || 0)}
+            </div>
+          </div>
+        </div>
+        {(actualsPreview?.operating_expenses || []).length > 0 ? (
+          <div className="max-h-40 overflow-y-auto text-sm text-gray-600 space-y-1">
+            {(actualsPreview.operating_expenses || []).map((item, index) => (
+              <div key={`${item.name}-${index}`} className="flex justify-between gap-4">
+                <span>{item.name}</span>
+                <span>{formatCurrency(item.monthly_amount || item.amount || 0)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title="Save simulation"
+        open={saveModalOpen}
+        onCancel={() => {
+          if (savingNamed) return;
+          setSaveModalOpen(false);
+        }}
+        okText="Save"
+        cancelText="Cancel"
+        confirmLoading={savingNamed}
+        onOk={handleSaveNamed}
+        maskClosable={!savingNamed}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <Input
+              value={saveName}
+              onChange={(e) => setSaveName(e.target.value)}
+              placeholder="e.g. Actuals with extra weekday covers"
+              maxLength={120}
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Saving with an existing name updates that simulation instead of creating another.
+            </p>
           </div>
         </div>
       </Modal>
