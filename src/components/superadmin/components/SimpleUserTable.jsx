@@ -11,7 +11,8 @@ import {
   Typography,
   Card,
   Modal,
-  Input
+  Input,
+  Switch
 } from 'antd';
 import { 
   UserSwitchOutlined, 
@@ -45,6 +46,9 @@ const SimpleUserTable = () => {
     total: 0
   });
   const [search, setSearch] = useState('');
+  const [showQa, setShowQa] = useState(false);
+  const showQaRef = useRef(false);
+  showQaRef.current = showQa;
   const [errorModal, setErrorModal] = useState({
     visible: false,
     title: '',
@@ -60,7 +64,8 @@ const SimpleUserTable = () => {
       const params = new URLSearchParams({
         page: String(page),
         page_size: String(pageSize),
-        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
+        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {}),
+        ...(showQaRef.current ? { include_qa: 'true' } : {}),
       }).toString();
       
       const res = await apiGet(`/authentication/users/?${params}`);
@@ -267,6 +272,12 @@ const SimpleUserTable = () => {
     return () => clearTimeout(handle);
   }, [search]);
 
+  useEffect(() => {
+    if (!hasFetchedRef.current) return;
+    setPagination(prev => ({ ...prev, current: 1 }));
+    fetchUsers(1, pagination.pageSize, search);
+  }, [showQa]);
+
   return (
     <Card  
       className="mt-6 shadow-lg border-0 rounded-xl">
@@ -281,6 +292,10 @@ const SimpleUserTable = () => {
             prefix={<SearchOutlined />}
             style={{ height: 40 }}
           />
+          <div className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
+            <Switch checked={showQa} onChange={setShowQa} size="small" />
+            <span title="QA test accounts use @grw.com emails">Show QA (@grw.com)</span>
+          </div>
         </div>
       </div>
       <Table

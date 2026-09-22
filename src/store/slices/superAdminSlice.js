@@ -79,19 +79,24 @@ const createSuperAdminSlice = (set, get) => {
     fetchDashboardStats: (() => {
       let fetchPromise = null;
       let lastFetchTime = 0;
+      let lastIncludeQa = null;
       const CACHE_DURATION = 5000; // 5 seconds cache to prevent rapid duplicate calls
       
-      return async () => {
+      return async (includeQa = false) => {
         const now = Date.now();
         
-        // If there's an ongoing request, return the same promise
-        if (fetchPromise) {
+        // If there's an ongoing request for the same QA filter, return the same promise
+        if (fetchPromise && lastIncludeQa === includeQa) {
           return fetchPromise;
         }
         
-        // If we recently fetched (within cache duration), return cached data
+        // If we recently fetched (within cache duration) with same filter, return cached data
         const state = get();
-        if (state.dashboardData && (now - lastFetchTime) < CACHE_DURATION) {
+        if (
+          state.dashboardData &&
+          lastIncludeQa === includeQa &&
+          (now - lastFetchTime) < CACHE_DURATION
+        ) {
           return { success: true, data: state.dashboardData };
         }
         
@@ -100,7 +105,8 @@ const createSuperAdminSlice = (set, get) => {
           try {
             set(() => ({ loading: true, error: null }));
             
-            const response = await apiGet('/admin_access/dashboard/');
+            const params = includeQa ? '?include_qa=true' : '';
+            const response = await apiGet(`/admin_access/dashboard/${params}`);
             
             set(() => ({ 
               dashboardStats: {
@@ -119,6 +125,7 @@ const createSuperAdminSlice = (set, get) => {
             }));
             
             lastFetchTime = Date.now();
+            lastIncludeQa = includeQa;
             return { success: true, data: response.data };
           } catch (error) {
             console.error('Error fetching dashboard stats:', error);
@@ -612,11 +619,12 @@ const createSuperAdminSlice = (set, get) => {
     getImpersonationMessage,
 
     // Fetch onboarding status for all users
-    fetchOnboardingStatus: async () => {
+    fetchOnboardingStatus: async (includeQa = false) => {
       set(() => ({ onboardingStatusLoading: true, onboardingStatusError: null }));
       
       try {
-        const response = await apiGet('/restaurant_v2/admin/onboarding-status');
+        const params = includeQa ? '?include_qa=true' : '';
+        const response = await apiGet(`/restaurant_v2/admin/onboarding-status${params}`);
         
         set(() => ({ 
           onboardingStatusData: response.data,

@@ -12,7 +12,8 @@ import {
   Button,
   message,
   Spin,
-  Tooltip
+  Tooltip,
+  Switch
 } from 'antd';
 import { 
   CheckCircleOutlined, 
@@ -27,7 +28,7 @@ import LoadingSpinner from '../../layout/LoadingSpinner';
 
 const { Title, Text } = Typography;
 
-const SuperAdminUserInfo = () => {
+const SuperAdminUserInfo = ({ showQa: showQaProp }) => {
   const { 
     onboardingStatusData,
     onboardingStatusLoading,
@@ -35,6 +36,10 @@ const SuperAdminUserInfo = () => {
     fetchOnboardingStatus
   } = useStore();
 
+  const [localShowQa, setLocalShowQa] = useState(false);
+  const showQa = typeof showQaProp === 'boolean' ? showQaProp : localShowQa;
+  const showQaRef = useRef(showQa);
+  showQaRef.current = showQa;
   const isFetchingRef = useRef(false);
   const hasFetchedRef = useRef(false);
 
@@ -52,7 +57,7 @@ const SuperAdminUserInfo = () => {
     const loadData = async () => {
       isFetchingRef.current = true;
       try {
-        await fetchOnboardingStatus();
+        await fetchOnboardingStatus(showQaRef.current);
         hasFetchedRef.current = true;
       } catch (error) {
         console.error('Error loading onboarding status:', error);
@@ -64,10 +69,25 @@ const SuperAdminUserInfo = () => {
     loadData();
   }, [fetchOnboardingStatus, onboardingStatusData]);
 
+  useEffect(() => {
+    if (!hasFetchedRef.current) return;
+    hasFetchedRef.current = false;
+    isFetchingRef.current = false;
+    (async () => {
+      isFetchingRef.current = true;
+      try {
+        await fetchOnboardingStatus(showQa);
+        hasFetchedRef.current = true;
+      } finally {
+        isFetchingRef.current = false;
+      }
+    })();
+  }, [showQa, fetchOnboardingStatus]);
+
   const handleRefresh = async () => {
     hasFetchedRef.current = false;
     isFetchingRef.current = false;
-    await fetchOnboardingStatus();
+    await fetchOnboardingStatus(showQa);
   };
 
   const getStatusTag = (status) => {
@@ -247,15 +267,23 @@ const SuperAdminUserInfo = () => {
             </p>
           </div>
           
-          <Button 
-            type="primary"
-            icon={<ReloadOutlined />}
-            onClick={handleRefresh}
-            loading={onboardingStatusLoading}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl"
-          >
-            Refresh Data
-          </Button>
+          <div className="flex items-center gap-4">
+            {typeof showQaProp !== 'boolean' ? (
+              <div className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
+                <Switch checked={localShowQa} onChange={setLocalShowQa} size="small" />
+                <span title="QA test accounts use @grw.com emails">Show QA (@grw.com)</span>
+              </div>
+            ) : null}
+            <Button 
+              type="primary"
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+              loading={onboardingStatusLoading}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 border-0 shadow-lg hover:shadow-xl"
+            >
+              Refresh Data
+            </Button>
+          </div>
         </div>
       </div>
 

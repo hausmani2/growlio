@@ -12,7 +12,8 @@ import {
   Badge,
   Avatar,
   Typography,
-  Divider
+  Divider,
+  Switch
 } from 'antd';
 import { 
   DashboardOutlined, 
@@ -61,6 +62,9 @@ const SuperAdminDashboard = () => {
   } = useStore();
 
   // Use refs to track state and prevent duplicate calls
+  const [showQa, setShowQa] = useState(false);
+  const showQaRef = useRef(false);
+  showQaRef.current = showQa;
   const isFetchingRef = useRef(false);
   const hasFetchedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -113,7 +117,7 @@ const SuperAdminDashboard = () => {
         }
         
         // Fetch dashboard data using ref to avoid dependency issues
-        await fetchDashboardStatsRef.current();
+        await fetchDashboardStatsRef.current(showQaRef.current);
         
         // Mark as fetched only if component is still mounted
         if (mountedRef.current) {
@@ -151,6 +155,14 @@ const SuperAdminDashboard = () => {
     // Load dashboard data
     loadDashboardData();
   }, [isAuthenticated, user?.email, user?.id, loadDashboardData]);
+
+  // Refetch analytics when QA visibility changes
+  useEffect(() => {
+    if (!hasFetchedRef.current) return;
+    hasFetchedRef.current = false;
+    isFetchingRef.current = false;
+    loadDashboardData();
+  }, [showQa]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -227,7 +239,7 @@ const SuperAdminDashboard = () => {
       ),
       children: (
         <div className="p-6">
-          <SuperAdminUserInfo />
+          <SuperAdminUserInfo showQa={showQa} />
         </div>
       ),
     },
@@ -248,8 +260,12 @@ const SuperAdminDashboard = () => {
             </p>
           </div>
           
-          {/* Right Side - Admin Badge */}
-          <div className="flex items-center gap-3">
+          {/* Right Side - Admin Badge + QA filter */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
+              <Switch checked={showQa} onChange={setShowQa} size="small" />
+              <span title="QA test accounts use @grw.com emails">Show QA (@grw.com)</span>
+            </div>
             <div className="bg-gradient-to-r from-orange-100 to-orange-200 px-4 py-2 rounded-lg border border-orange-300">
               <div className="flex items-center gap-2">
                 <CrownOutlined className="text-orange-600 text-lg" />

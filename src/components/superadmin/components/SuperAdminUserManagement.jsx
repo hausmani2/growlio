@@ -101,6 +101,9 @@ const SuperAdminUserManagement = () => {
     total: 0
   });
   const [search, setSearch] = useState('');
+  const [showQa, setShowQa] = useState(false);
+  const showQaRef = useRef(false);
+  showQaRef.current = showQa;
   const isFetchingRef = useRef(false);
   const hasFetchedRef = useRef(false);
 
@@ -136,7 +139,8 @@ const SuperAdminUserManagement = () => {
       const params = new URLSearchParams({
         page: String(page),
         page_size: String(pageSize),
-        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {})
+        ...(searchQuery?.trim() ? { search: searchQuery.trim() } : {}),
+        ...(showQaRef.current ? { include_qa: 'true' } : {}),
       }).toString();
       // Admin list can be slow on remote DB; keep above default 30s axios timeout
       const res = await apiGetWithTimeout(`/authentication/users/?${params}`, 90000);
@@ -221,7 +225,8 @@ const SuperAdminUserManagement = () => {
       message.loading({ content: 'Exporting emails...', key: 'export', duration: 0 });
       
       const response = await api.get('/authentication/admin/export-emails/', {
-        responseType: 'blob'
+        responseType: 'blob',
+        params: showQaRef.current ? { include_qa: 'true' } : {},
       });
       
       // Create a blob from the response
@@ -632,6 +637,13 @@ const SuperAdminUserManagement = () => {
     return () => clearTimeout(handle);
   }, [search]);
 
+  // Refetch when QA visibility changes
+  useEffect(() => {
+    if (!hasFetchedRef.current) return;
+    setPagination(prev => ({ ...prev, current: 1 }));
+    fetchUsers(1, pagination.pageSize, search);
+  }, [showQa]);
+
 
   return (
     <div className="space-y-6">
@@ -711,6 +723,14 @@ const SuperAdminUserManagement = () => {
               prefix={<SearchOutlined />}
               style={{height:40}}
             />
+            <div className="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600">
+              <Switch
+                checked={showQa}
+                onChange={setShowQa}
+                size="small"
+              />
+              <span title="QA test accounts use @grw.com emails">Show QA (@grw.com)</span>
+            </div>
             <Button 
               type="primary" 
               icon={<PlusOutlined />}
