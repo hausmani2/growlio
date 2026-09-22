@@ -6,6 +6,7 @@ import updateLocale from 'dayjs/plugin/updateLocale';
 import useStore from '../store/store';
 import { CalendarHelpers } from './CalendarHelpers';
 import { apiGet } from './axiosInterceptors';
+import { setDayjsWeekStart } from './weekStart';
 import {
   getDailyEntries,
   getFindingsScopeKey,
@@ -20,7 +21,7 @@ import {
 
 dayjs.extend(weekOfYear);
 dayjs.extend(updateLocale);
-dayjs.updateLocale('en', { weekStart: 0 });
+setDayjsWeekStart(0);
 
 let closeOutModalOpen = false;
 /** Prevents stacked "Previous week incomplete" modals while the async check is in flight */

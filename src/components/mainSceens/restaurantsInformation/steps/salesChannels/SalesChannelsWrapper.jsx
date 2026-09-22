@@ -11,6 +11,7 @@ import LoadingSpinner from "../../../../layout/LoadingSpinner";
 import OnboardingBreadcrumb from "../../../../common/OnboardingBreadcrumb";
 import SalesDays from "./SalesDays";
 import useSetupPageLocationReload from "../../../../../hooks/useSetupPageLocationReload";
+import { DEFAULT_WEEK_START_DAY, normalizeWeekStartDay, setDayjsWeekStart } from "../../../../../utils/weekStart";
 
 const DEFAULT_SALES_CHANNELS_STATE = {
     in_store: true,
@@ -23,6 +24,7 @@ const DEFAULT_SALES_CHANNELS_STATE = {
     separateOnlineOrdering: false,
     posForEmployeeHours: false,
     thirdPartyOrdersToPos: false,
+    week_start_day: DEFAULT_WEEK_START_DAY,
     selectedDays: {
         Sunday: true,
         Monday: true,
@@ -123,6 +125,9 @@ const mapSalesChannelsFromStore = (salesChannelsInfoData) => {
         thirdPartyOrdersToPos: data.third_party_orders_to_pos !== undefined
             ? data.third_party_orders_to_pos
             : (data.thirdPartyOrdersToPos !== undefined ? data.thirdPartyOrdersToPos : false),
+        week_start_day: normalizeWeekStartDay(
+            data.week_start_day !== undefined ? data.week_start_day : data.weekStartDay
+        ),
         selectedDays
     };
 };
@@ -256,6 +261,8 @@ const SalesChannelsWrapperContent = () => {
                 stepData.restaurant_days = openDays;
             }
 
+            stepData.week_start_day = normalizeWeekStartDay(salesChannelsData.week_start_day);
+
             // Add providers data if third-party sales is enabled
             if (salesChannelsData.third_party && salesChannelsData.providers) {
                 const providersForAPI = salesChannelsData.providers
@@ -273,6 +280,7 @@ const SalesChannelsWrapperContent = () => {
             // Step 3: Call API through Zustand store with success callback
             const result = await submitStepData("Sales Channels", stepData, (responseData) => {
                 // Success callback - handle navigation based on mode
+                setDayjsWeekStart(stepData.week_start_day);
                 // Step 4: Always navigate to next step after saving
                 if (isUpdateMode && isOnBoardingCompleted) {
                     // In update mode AND onboarding is complete: show success and navigate

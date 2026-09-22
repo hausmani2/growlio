@@ -1159,6 +1159,9 @@ const createOnBoardingSlice = (set, get) => ({
                         online: data.online !== undefined ? data.online : false,
                         from_app: data.from_app !== undefined ? data.from_app : false,
                         restaurant_days: data.restaurant_days || [],
+                        week_start_day: data.week_start_day !== undefined && data.week_start_day !== null
+                            ? data.week_start_day
+                            : 0,
                         pos_system: data.pos_system || '',
                         pos_system_other: data.pos_system_other || '',
                         separate_online_ordering: data.separate_online_ordering !== undefined ? data.separate_online_ordering : false,
@@ -2057,6 +2060,15 @@ const createOnBoardingSlice = (set, get) => ({
                 restaurantGoalsError: null,
                 restaurantGoals: response.data
             }));
+
+            try {
+                const { setDayjsWeekStart } = await import('../../utils/weekStart');
+                if (response?.data?.week_start_day !== undefined) {
+                    setDayjsWeekStart(response.data.week_start_day);
+                }
+            } catch (_) {
+                // weekStart util optional during early boot
+            }
             
             return response.data;
         } catch (error) {

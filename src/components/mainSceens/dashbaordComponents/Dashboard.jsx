@@ -22,6 +22,7 @@ import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import useMissingLaborRatesCheck from '../../../hooks/useMissingLaborRatesCheck';
 import { CLOSE_OUT_NO_BUDGET_MESSAGE } from '../../../utils/closeOutEmptyMessages';
 import { maybeWarnPreviousWeekIncomplete, NAVIGATE_TO_CLOSE_OUT_WEEK_EVENT } from '../../../utils/reportCardReminders';
+import { setDayjsWeekStart } from '../../../utils/weekStart';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -812,6 +813,13 @@ const Dashboard = () => {
   }, [selectedWeek, availableWeeks, processWeekSelection]);
 
 
+
+  // Apply location week_start_day so Close Out / calendars match setup
+  useEffect(() => {
+    if (restaurantGoals?.week_start_day !== undefined && restaurantGoals?.week_start_day !== null) {
+      setDayjsWeekStart(restaurantGoals.week_start_day);
+    }
+  }, [restaurantGoals?.week_start_day]);
 
   // Log restaurant goals data for debugging (can be removed later)
   useEffect(() => {
