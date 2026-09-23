@@ -186,10 +186,28 @@ export const getMerchantSyncStatus = async (restaurantId) => {
     payload?.data?.merchant?.last_sync_had_data ??
     null;
 
+  const needsReconnect = Boolean(
+    payload?.needs_reconnect ||
+      payload?.data?.needs_reconnect ||
+      payload?.merchant?.needs_reconnect ||
+      payload?.data?.merchant?.needs_reconnect ||
+      status === 'auth_required' ||
+      payload?.code === 'square_auth_required' ||
+      payload?.data?.code === 'square_auth_required'
+  );
+
+  const reconnectMessage =
+    payload?.message ||
+    payload?.error ||
+    payload?.data?.message ||
+    'Your Square connection has expired. Please reconnect Square to import sales again.';
+
   return {
     payload,
     squareSyncStatus: status,
     isCompleted: status === 'completed',
+    needsReconnect: needsReconnect || status === 'auth_required',
+    reconnectMessage,
     lastSyncHadData,
   };
 };

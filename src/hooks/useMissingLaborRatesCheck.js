@@ -1,9 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { previewPosLaborRates } from '../services/posApi';
+import {
+  getSquareAuthErrorMessage,
+  promptSquareReconnect,
+} from '../utils/squareReconnect';
+import useStore from '../store/store';
 
 /**
  * Preview Square labor before any POS sync/import.
  * If employees have no hourly wage, show a warning; user can cancel or proceed anyway.
+ * On Square auth failure, prompt reconnect and do not start sync.
  */
 const useMissingLaborRatesCheck = () => {
   const [checkingLaborRates, setCheckingLaborRates] = useState(false);
@@ -47,8 +53,14 @@ const useMissingLaborRatesCheck = () => {
         return;
       }
       await onProceed();
-    } catch {
-      // If preview fails, still allow sync.
+    } catch (error) {
+      const authMessage = getSquareAuthErrorMessage(error);
+      if (authMessage) {
+        useStore.getState().checkSquareStatus?.(restaurantId)?.catch?.(() => {});
+        promptSquareReconnect({ restaurantId, message: authMessage });
+        return;
+      }
+      // Non-auth preview failures: still allow sync.
       await onProceed();
     } finally {
       setCheckingLaborRates(false);
