@@ -231,20 +231,17 @@ const PosImportPeriodModal = ({
 
     const weekDays = annotateWeekDays(buildWeekDays(weekStartValue), weekData)
       .filter((day) => day.canImport && day.isOpen);
-    const emptyDates = weekDays.filter((day) => !day.hasExisting).map((day) => day.date);
+    const allDates = weekDays.map((day) => day.date);
     const existingDates = weekDays.filter((day) => day.hasExisting).map((day) => day.date);
 
-    if (emptyDates.length) {
-      requestImport(emptyDates, weekStartValue, []);
-      return;
-    }
-
-    if (!existingDates.length) {
+    if (!allDates.length) {
       message.info('All open days this week already have data or are not available to import.');
       return;
     }
 
-    requestImport(existingDates, weekStartValue, existingDates);
+    // Import every open day this week. If any already have actuals, prompt overwrite
+    // so partial POS rows (e.g. online-only) get fully rewritten.
+    requestImport(allDates, weekStartValue, existingDates);
   };
 
   const handleImportSelected = () => {
@@ -419,14 +416,22 @@ const PosImportPeriodModal = ({
         title="Overwrite existing data?"
         open={overwriteOpen}
         onCancel={() => {
+          const pending = pendingImportRef.current;
           setOverwriteOpen(false);
           pendingImportRef.current = null;
+          // Still import days that have no actuals yet
+          const emptyOnly = (pending?.dates || []).filter(
+            (date) => !(pending?.existingDates || []).includes(date)
+          );
+          if (emptyOnly.length) {
+            submitImport(emptyOnly, pending.weekStart, true);
+          }
         }}
         centered
         zIndex={1200}
         okText="Overwrite and import"
         okButtonProps={{ danger: true }}
-        cancelText="Cancel"
+        cancelText="Empty days only"
         onOk={confirmOverwrite}
       >
         <p className="mb-0 text-gray-700">
