@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Card, DatePicker, Spin, Tag } from 'antd';
+import { Card, DatePicker, Popover, Spin, Tag } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import useStore from '../../../../store/store';
 import lioMascot from '../../../../assets/pngs/lio-mascot.png';
@@ -54,6 +55,64 @@ const ENVELOPES = [
     tint: 'bg-teal-50 border-teal-100',
   },
 ];
+
+const ACTUAL_VS_BUDGET_HELP = (
+  <div className="max-w-sm space-y-2 text-sm text-gray-700">
+    <p className="font-semibold text-gray-900">Why does this say Actual or Budget?</p>
+    <p>
+      Growlio uses the best information available to calculate how much you should set aside.
+    </p>
+    <p>
+      <span className="font-semibold text-emerald-700">ACTUAL</span>
+      {' — '}
+      You entered the actual expense in Close Day, so Growlio uses what you really spent.
+    </p>
+    <p>
+      <span className="font-semibold text-blue-600">BUDGET</span>
+      {' — '}
+      No actual expense has been entered yet, so Growlio estimates the amount using your budget.
+    </p>
+    <p>
+      Once actual numbers are entered, Growlio automatically replaces the budget estimate with the
+      actual amount.
+    </p>
+    <p className="text-xs text-gray-500">
+      For example, if yesterday’s sales were $4,250 and your Food/COGS budget is 30%, Growlio will
+      show $1,275 — From Budget until the actual food cost is entered. If you enter $1,190 in Close
+      Day, it changes to $1,190 — From Actual.
+    </p>
+  </div>
+);
+
+const ActualBudgetInfoIcon = () => (
+  <Popover
+    content={ACTUAL_VS_BUDGET_HELP}
+    trigger={['hover', 'click']}
+    placement="bottomLeft"
+  >
+    <button
+      type="button"
+      className="inline-flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+      aria-label="Why does this say Actual or Budget?"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <InfoCircleOutlined className="text-sm" />
+    </button>
+  </Popover>
+);
+
+const SourceBadge = ({ source, label }) => {
+  const text = label || SOURCE_LABELS[source];
+  if (!text) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Tag color={sourceColor(source)} className="m-0">
+        {text}
+      </Tag>
+      <ActualBudgetInfoIcon />
+    </span>
+  );
+};
 
 const Kpi = ({ label, value, hint, valueClass, bar, badge }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -181,11 +240,7 @@ const CashFlowModule = () => {
                 value={cashLeftMoney(yesterday.cash_left)}
                 hint={cashStatus === 'short' ? 'Short' : cashStatus === 'over' ? 'Over' : ''}
                 valueClass={statusClass(cashStatus)}
-                badge={
-                  <Tag color={sourceColor(cashLeftSource)}>
-                    {SOURCE_LABELS[cashLeftSource]}
-                  </Tag>
-                }
+                badge={<SourceBadge source={cashLeftSource} />}
               />
             </div>
 
@@ -196,7 +251,9 @@ const CashFlowModule = () => {
                   <div key={item.key} className={`rounded-2xl border p-4 ${item.tint}`}>
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-medium text-gray-800">{item.title}</p>
-                      {row.label ? <Tag color={sourceColor(row.source)}>{row.label}</Tag> : null}
+                      {row.label || row.source ? (
+                        <SourceBadge source={row.source} label={row.label} />
+                      ) : null}
                     </div>
                     <p className="mt-2 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
                   </div>

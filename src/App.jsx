@@ -39,6 +39,7 @@ import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps
 import SalesDataWrapper from './components/mainSceens/restaurantsInformation/steps/salesData/SalesDataWrapper';
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
+import CashFlowDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/CashFlowDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
@@ -369,6 +370,7 @@ function App() {
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard/budget" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/dashboard/profit-loss" element={<Wrapper showSidebar={true} children={<ProfitLossDashboard />} />} />
+          <Route path="/dashboard/cashflow" element={<Wrapper showSidebar={true} children={<CashFlowDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
           <Route path="/dashboard/labor-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />

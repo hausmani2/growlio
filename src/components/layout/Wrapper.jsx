@@ -418,6 +418,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'Profit & Loss',
           onClick: () => navigate('/dashboard/profit-loss'),
         },
+        {
+          key: 'cashflow',
+          icon: <FaDollarSign />,
+          label: 'Cashflow',
+          onClick: () => navigate('/dashboard/cashflow'),
+        },
       ],
     },
     ...(canManageLocations ? [{
