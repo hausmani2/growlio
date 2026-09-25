@@ -45,6 +45,8 @@ const SimulatorCashFlow = ({ cashflow, period = 'daily', customerCount, profitOr
   const periodLabel = PERIOD_LABELS[period] || 'This period';
   const profitLossValue =
     profitOrLoss ?? cashflow?.cash_left;
+  const profitLossLabel =
+    Number(profitLossValue) < 0 ? 'Out of pocket' : 'In your pocket';
 
   const stacked = useMemo(() => {
     return ENVELOPES.map((item) => {
@@ -119,7 +121,7 @@ const SimulatorCashFlow = ({ cashflow, period = 'daily', customerCount, profitOr
           </p>
         </div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-sm text-gray-500">Profit / Loss</p>
+          <p className="text-sm text-gray-500">{profitLossLabel}</p>
           <p
             className={`mt-1 text-3xl font-semibold tracking-tight ${
               Number(profitLossValue) < 0 ? 'text-red-600' : 'text-emerald-600'
@@ -127,7 +129,11 @@ const SimulatorCashFlow = ({ cashflow, period = 'daily', customerCount, profitOr
           >
             {money(profitLossValue)}
           </p>
-          <p className="mt-1 text-xs text-gray-500">Can be positive or negative</p>
+          <p className="mt-1 text-xs text-gray-500">
+            {Number(profitLossValue) < 0
+              ? 'Simulated profit / loss is negative'
+              : 'Simulated profit / loss is positive'}
+          </p>
         </div>
       </div>
 

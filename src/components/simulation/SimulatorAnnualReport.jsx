@@ -210,7 +210,12 @@ const SimulatorAnnualReport = ({ restaurantId, defaultYear }) => {
       row('set_aside', 'Total set aside', (p) => cash(p, ['set_aside']), { emphasize: true }),
       { key: 'result-section', label: 'Result', kind: 'section' },
       row('cash_left', 'Cash left', (p) => cash(p, ['cash_left']), { floorZero: true, emphasize: true }),
-      row('profit', 'Profit / Loss', (p) => p.profit_or_loss, { emphasize: true }),
+      row(
+        'profit',
+        Number(totals?.profit_or_loss) < 0 ? 'Out of pocket' : 'In your pocket',
+        (p) => p.profit_or_loss,
+        { emphasize: true }
+      ),
     ];
   }, [periods, totals]);
 
@@ -340,7 +345,9 @@ const SimulatorAnnualReport = ({ restaurantId, defaultYear }) => {
                 </p>
               </div>
               <div className="rounded-2xl border border-white/80 bg-white p-3 shadow-sm col-span-2 xl:col-span-1">
-                <p className="text-xs text-gray-500">Profit / Loss</p>
+                <p className="text-xs text-gray-500">
+                  {Number(summary.profit) < 0 ? 'Out of pocket' : 'In your pocket'}
+                </p>
                 <p className={`mt-1 text-xl font-semibold ${moneyClass(summary.profit)}`}>
                   {compactMoney(summary.profit)}
                 </p>
@@ -380,7 +387,7 @@ const SimulatorAnnualReport = ({ restaurantId, defaultYear }) => {
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Projected from latest forecast
               </span>
             ) : null}
-            <span>Cash left never goes below $0. Profit / Loss can be negative.</span>
+            <span>Cash left never goes below $0. In your pocket / Out of pocket can be negative.</span>
           </div>
         </>
       ) : (

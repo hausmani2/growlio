@@ -12,10 +12,13 @@ const money = (value) => {
   return num < 0 ? `-$${abs}` : `$${abs}`;
 };
 
-const cashLeftMoney = (value) => {
+/** Positive / zero → In your pocket; negative → Out of pocket. */
+const pocketLabel = (value, { estimated = false, prefix = '' } = {}) => {
   const num = Number(value);
-  if (!Number.isFinite(num)) return '—';
-  return money(Math.max(0, num));
+  const base =
+    Number.isFinite(num) && num < 0 ? 'Out of pocket' : 'In your pocket';
+  const withEstimate = estimated ? `Estimated ${base}` : base;
+  return prefix ? `${prefix}${withEstimate}` : withEstimate;
 };
 
 const SOURCE_LABELS = {
@@ -178,6 +181,10 @@ const CashFlowModule = () => {
   );
   const isYesterday = selectedDate.isSame(dayjs().subtract(1, 'day'), 'day');
   const dayLabel = isYesterday ? 'Yesterday' : selectedDate.format('ddd, MMM D');
+  const dayPocketLabel = pocketLabel(yesterday.cash_left, {
+    estimated: cashLeftSource === 'estimate',
+  });
+  const wtdPocketLabel = pocketLabel(wtd.cash_left, { prefix: 'WTD ' });
 
   return (
     <div className="space-y-4">
@@ -188,7 +195,8 @@ const CashFlowModule = () => {
               Cash Flow
             </p>
             <h2 className="text-2xl font-bold text-gray-900">
-              {dayLabel}: sales, set aside, cash left
+              {dayLabel}: sales, set aside,{' '}
+              {Number(yesterday.cash_left) < 0 ? 'out of pocket' : 'in your pocket'}
             </h2>
             <p className="text-sm text-gray-600">
               Growlio is not moving money. This is what should be set aside from sales, and what is
@@ -236,8 +244,8 @@ const CashFlowModule = () => {
                 }
               />
               <Kpi
-                label={cashLeftSource === 'estimate' ? 'Estimated Cash Left' : 'Cash Left'}
-                value={cashLeftMoney(yesterday.cash_left)}
+                label={dayPocketLabel}
+                value={money(yesterday.cash_left)}
                 hint={cashStatus === 'short' ? 'Short' : cashStatus === 'over' ? 'Over' : ''}
                 valueClass={statusClass(cashStatus)}
                 badge={<SourceBadge source={cashLeftSource} />}
@@ -276,7 +284,7 @@ const CashFlowModule = () => {
               <p className="text-xl font-semibold text-[#c2410c]">{money(wtd.set_aside)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">WTD Cash Left</p>
+              <p className="text-xs text-gray-500">{wtdPocketLabel}</p>
               <p className={`text-xl font-semibold ${statusClass(wtd.status)}`}>
                 {money(wtd.cash_left)}
               </p>
