@@ -131,8 +131,8 @@ const SimulatorCashFlow = ({ cashflow, period = 'daily', customerCount, profitOr
           </p>
           <p className="mt-1 text-xs text-gray-500">
             {Number(profitLossValue) < 0
-              ? 'Simulated profit / loss is negative'
-              : 'Simulated profit / loss is positive'}
+              ? 'Out of pocket after simulated costs'
+              : 'In your pocket after simulated costs'}
           </p>
         </div>
       </div>
