@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Card, DatePicker, Popover, Spin, Tag } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
+import {
+  FaBriefcase,
+  FaShoppingBasket,
+  FaHome,
+  FaTools,
+  FaWallet,
+} from 'react-icons/fa';
 import dayjs from 'dayjs';
 import useStore from '../../../../store/store';
 import lioMascot from '../../../../assets/pngs/lio-mascot.png';
@@ -48,14 +55,41 @@ const statusClass = (status) => {
 };
 
 const ENVELOPES = [
-  { key: 'labor', title: 'Labor', accent: 'bg-sky-500', tint: 'bg-sky-50 border-sky-100' },
-  { key: 'cogs', title: 'COGS / Food', accent: 'bg-orange-500', tint: 'bg-orange-50 border-orange-100' },
-  { key: 'rent', title: 'Rent', accent: 'bg-violet-500', tint: 'bg-violet-50 border-violet-100' },
+  {
+    key: 'labor',
+    title: 'Labor',
+    accent: 'bg-sky-500',
+    tint: 'bg-sky-50 border-sky-100',
+    icon: FaBriefcase,
+    iconWrap: 'bg-sky-100 text-sky-600',
+    bar: 'bg-sky-500',
+  },
+  {
+    key: 'cogs',
+    title: 'COGS / Food',
+    accent: 'bg-orange-500',
+    tint: 'bg-orange-50 border-orange-100',
+    icon: FaShoppingBasket,
+    iconWrap: 'bg-orange-100 text-orange-600',
+    bar: 'bg-orange-500',
+  },
+  {
+    key: 'rent',
+    title: 'Rent',
+    accent: 'bg-violet-500',
+    tint: 'bg-violet-50 border-violet-100',
+    icon: FaHome,
+    iconWrap: 'bg-violet-100 text-violet-600',
+    bar: 'bg-violet-500',
+  },
   {
     key: 'operating_expenses',
     title: 'Operating Expenses',
     accent: 'bg-teal-500',
     tint: 'bg-teal-50 border-teal-100',
+    icon: FaTools,
+    iconWrap: 'bg-teal-100 text-teal-600',
+    bar: 'bg-teal-500',
   },
 ];
 
@@ -87,6 +121,65 @@ const ACTUAL_VS_BUDGET_HELP = (
   </div>
 );
 
+const WHY_ENVELOPES_HELP = (
+  <div className="max-w-md max-h-[70vh] overflow-y-auto space-y-3 text-sm text-gray-700 pr-1">
+    <p className="font-semibold text-gray-900 text-base">Why Envelopes?</p>
+    <p className="font-medium text-gray-800">
+      Sales in the bank don’t mean the money is yours to spend.
+    </p>
+    <p>
+      Every dollar that comes into your restaurant has a job. Some of it needs to pay for labor,
+      some for food, some for rent, and some for operating expenses.
+    </p>
+    <p>
+      The problem is that you don’t always pay those expenses on the same day you make the sales.
+      Payroll may be next week. A food invoice may be due later. Rent may not be due until the end
+      of the month.
+    </p>
+    <p className="font-medium text-gray-800">That’s where the envelopes come in.</p>
+    <p>
+      Each day, Growlio calculates how much of your sales should be allocated to each expense based
+      on your actual numbers when available and your budget when they’re not. Those amounts are
+      added to your envelopes throughout the week.
+    </p>
+    <p>
+      Think of it as setting aside the money as you earn it instead of waiting until the bill
+      arrives and hoping the money is still there.
+    </p>
+    <p>
+      The goal is simple: when the bill comes due, you’ve already planned for the money to be there.
+    </p>
+    <p>
+      After funding your Labor, Food/COGS, Rent, and Operating Expense envelopes, Growlio shows
+      what’s In Your Pocket. If your sales aren’t enough to fund those expenses, Growlio shows
+      what’s Out of Pocket.
+    </p>
+    <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-900 space-y-2">
+      <p className="font-semibold">Important</p>
+      <p>
+        Growlio is a financial planning and management tool—not a bank, accounting system, or
+        financial advisor. Growlio does not access, hold, transfer, reserve, or move your money.
+      </p>
+      <p>
+        Envelope amounts and other cash-flow calculations are estimates based on the sales,
+        expenses, budgets, targets, and other information you enter or connect to Growlio. The
+        accuracy of these estimates depends on the accuracy and completeness of that information.
+      </p>
+      <p>
+        Growlio may not include every expense, payment, tax, debt obligation, fee, timing
+        difference, or other financial commitment of your business.
+      </p>
+      <p>
+        The amounts shown should not be considered a complete representation of the cash required
+        to operate your restaurant or the actual cash available in your bank account. You are
+        responsible for reviewing your numbers, accounting for expenses not included in Growlio,
+        and determining how much money to set aside and maintain in your own accounts to meet your
+        financial obligations.
+      </p>
+    </div>
+  </div>
+);
+
 const ActualBudgetInfoIcon = () => (
   <Popover
     content={ACTUAL_VS_BUDGET_HELP}
@@ -100,6 +193,18 @@ const ActualBudgetInfoIcon = () => (
       onClick={(e) => e.stopPropagation()}
     >
       <InfoCircleOutlined className="text-sm" />
+    </button>
+  </Popover>
+);
+
+const WhyEnvelopesButton = () => (
+  <Popover content={WHY_ENVELOPES_HELP} trigger={['click']} placement="bottomLeft">
+    <button
+      type="button"
+      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+    >
+      <InfoCircleOutlined />
+      Why Envelopes?
     </button>
   </Popover>
 );
@@ -131,6 +236,20 @@ const Kpi = ({ label, value, hint, valueClass, bar, badge }) => (
   </div>
 );
 
+const EnvelopeProgress = ({ percent, barClass }) => {
+  const width = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+        <span>{Math.round(width)}% of weekly target</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+};
+
 const CashFlowModule = () => {
   const {
     cashFlowData,
@@ -161,6 +280,7 @@ const CashFlowModule = () => {
   const wtd = cashFlowData?.week_to_date || {};
   const lio = cashFlowData?.lio || {};
   const envelopes = yesterday.envelopes || {};
+  const wtdEnvelopes = wtd.envelopes || {};
   const setAside = Number(yesterday.set_aside) || 0;
 
   const stacked = useMemo(() => {
@@ -184,7 +304,10 @@ const CashFlowModule = () => {
   const dayPocketLabel = pocketLabel(yesterday.cash_left, {
     estimated: cashLeftSource === 'estimate',
   });
-  const wtdPocketLabel = pocketLabel(wtd.cash_left, { prefix: 'WTD ' });
+  const pocketWtd = wtdEnvelopes.pocket || {};
+  const pocketAmount = Number(pocketWtd.amount ?? wtd.cash_left) || 0;
+  const pocketTitle =
+    pocketWtd.label || (pocketAmount < 0 ? 'Out of pocket' : 'In your pocket');
 
   return (
     <div className="space-y-4">
@@ -255,15 +378,24 @@ const CashFlowModule = () => {
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {ENVELOPES.map((item) => {
                 const row = envelopes[item.key] || {};
+                const Icon = item.icon;
                 return (
                   <div key={item.key} className={`rounded-2xl border p-4 ${item.tint}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-gray-800">{item.title}</p>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${item.iconWrap}`}
+                        >
+                          <Icon className="text-sm" />
+                        </span>
+                        <p className="font-medium text-gray-800">{item.title}</p>
+                      </div>
                       {row.label || row.source ? (
                         <SourceBadge source={row.source} label={row.label} />
                       ) : null}
                     </div>
                     <p className="mt-2 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
+                    <p className="mt-1 text-xs text-gray-500">Add to envelope</p>
                   </div>
                 );
               })}
@@ -272,76 +404,169 @@ const CashFlowModule = () => {
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <Card className="shadow-sm border border-gray-100 xl:col-span-3" title="Week to Date">
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-gray-500">WTD Sales</p>
-              <p className="text-xl font-semibold">{money(wtd.sales)}</p>
+      <Card
+        className="shadow-sm border border-emerald-100"
+        title={
+          <div className="flex flex-col gap-2 py-1 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <FaWallet />
+              </span>
+              <div>
+                <p className="text-base font-semibold text-gray-900">
+                  Your Envelopes – Week to Date
+                </p>
+                <p className="text-sm font-normal text-gray-600 max-w-3xl">
+                  Set it aside as you earn it. Each day, Growlio calculates how much of your sales
+                  should be reserved for labor, food, rent, and operating expenses — so when bills
+                  are due, the money is already accounted for.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-500">WTD Set Aside</p>
-              <p className="text-xl font-semibold text-[#c2410c]">{money(wtd.set_aside)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">{wtdPocketLabel}</p>
-              <p className={`text-xl font-semibold ${statusClass(wtd.status)}`}>
-                {money(wtd.cash_left)}
-              </p>
-            </div>
+            <WhyEnvelopesButton />
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            {(wtd.days || []).map((day) => {
-              const isFuture = day.status === 'upcoming';
-              const isClosed = day.status === 'closed';
-              const muted = isFuture || isClosed;
-              const label =
-                day.status === 'short'
-                  ? 'Short'
-                  : day.status === 'over'
-                    ? 'Over'
-                    : isClosed
-                      ? 'Closed'
-                      : '—';
+        }
+      >
+        <Spin spinning={cashFlowLoading}>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {ENVELOPES.map((item) => {
+              const row = wtdEnvelopes[item.key] || {};
+              const Icon = item.icon;
               return (
-                <button
-                  key={day.date}
-                  type="button"
-                  className={`rounded-xl border p-2 text-left ${
-                    day.date === yesterday.date
-                      ? 'border-[#FF8132] bg-orange-50'
-                      : 'border-gray-100 bg-gray-50'
-                  }`}
-                  onClick={() => setSelectedDate(dayjs(day.date))}
-                  disabled={isFuture}
+                <div
+                  key={item.key}
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
                 >
-                  <p className="text-xs text-gray-500">{dayjs(day.date).format('ddd D')}</p>
-                  <p className={`text-sm font-semibold ${muted ? 'text-gray-400' : statusClass(day.status)}`}>
-                    {muted ? label : `${label} ${money(day.cash_left)}`}
-                  </p>
-                </button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${item.iconWrap}`}
+                    >
+                      <Icon className="text-sm" />
+                    </span>
+                    <p className="font-medium text-gray-800">{item.title} Envelope</p>
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
+                  <EnvelopeProgress percent={row.percent_of_target} barClass={item.bar} />
+                  <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
+                    <span>Target: {money(row.target)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">{row.source_note || '—'}</p>
+                </div>
               );
             })}
-          </div>
-        </Card>
 
-        <Card
-          className={`shadow-sm border xl:col-span-2 ${
-            lio.tone === 'warning' ? 'border-red-100 bg-red-50' : 'border-emerald-100 bg-emerald-50'
-          }`}
-          title="LIO · Your Cash Flow Banker"
-        >
-          <div className="flex items-start gap-3">
-            <img src={lioMascot} alt="LIO" className="h-16 w-auto shrink-0 object-contain" />
-            <div>
-              <p className="font-medium text-gray-900">{lio.headline || 'Checking yesterday’s cash…'}</p>
-              <p className="mt-1 text-sm text-gray-700">
-                {lio.message || 'Add Close Out or budget numbers so LIO can explain the day.'}
+            <div
+              className={`rounded-2xl border p-4 shadow-sm ${
+                pocketAmount < 0
+                  ? 'border-red-100 bg-red-50'
+                  : 'border-emerald-100 bg-emerald-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${
+                    pocketAmount < 0
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  <FaWallet />
+                </span>
+                <p className="font-medium text-gray-800">{pocketTitle}</p>
+              </div>
+              <p
+                className={`mt-3 text-2xl font-semibold ${
+                  pocketAmount < 0 ? 'text-red-600' : 'text-emerald-700'
+                }`}
+              >
+                {money(pocketAmount)}
+              </p>
+              <EnvelopeProgress
+                percent={pocketWtd.percent_of_target}
+                barClass={pocketAmount < 0 ? 'bg-red-500' : 'bg-emerald-500'}
+              />
+              <div className="mt-3 text-xs text-gray-500">
+                Target: {money(pocketWtd.target)}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {pocketWtd.source_note ||
+                  'Target based on your profit goal (after all set asides).'}
               </p>
             </div>
           </div>
-        </Card>
-      </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-5">
+            <div className="xl:col-span-3">
+              <p className="mb-2 text-sm font-medium text-gray-700">This week by day</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {(wtd.days || []).map((day) => {
+                  const isFuture = day.status === 'upcoming';
+                  const isClosed = day.status === 'closed';
+                  const muted = isFuture || isClosed;
+                  const label =
+                    day.status === 'short'
+                      ? 'Short'
+                      : day.status === 'over'
+                        ? 'Over'
+                        : isClosed
+                          ? 'Closed'
+                          : '—';
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={`rounded-xl border p-2 text-left ${
+                        day.date === yesterday.date
+                          ? 'border-[#FF8132] bg-orange-50'
+                          : 'border-gray-100 bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedDate(dayjs(day.date))}
+                      disabled={isFuture}
+                    >
+                      <p className="text-xs text-gray-500">{dayjs(day.date).format('ddd D')}</p>
+                      <p
+                        className={`text-sm font-semibold ${
+                          muted ? 'text-gray-400' : statusClass(day.status)
+                        }`}
+                      >
+                        {muted ? label : `${label} ${money(day.cash_left)}`}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div
+              className={`rounded-2xl border p-4 xl:col-span-2 ${
+                lio.tone === 'warning'
+                  ? 'border-red-100 bg-red-50'
+                  : 'border-emerald-100 bg-emerald-50'
+              }`}
+            >
+              <p className="mb-2 text-sm font-semibold text-gray-800">
+                LIO · Your Cash Flow Banker
+              </p>
+              <div className="flex items-start gap-3">
+                <img
+                  src={lioMascot}
+                  alt="LIO"
+                  className="h-16 w-auto shrink-0 object-contain"
+                />
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {lio.headline || 'Checking yesterday’s cash…'}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700">
+                    {lio.message ||
+                      'Add Close Out or budget numbers so LIO can explain the day.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Spin>
+      </Card>
     </div>
   );
 };
