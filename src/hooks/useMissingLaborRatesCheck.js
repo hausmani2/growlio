@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { previewPosLaborRates } from '../services/posApi';
+import { previewPosLaborRates, previewPosSyncSetup } from '../services/posApi';
 import {
   getSquareAuthErrorMessage,
   promptSquareReconnect,
@@ -7,8 +7,10 @@ import {
 import useStore from '../store/store';
 
 /**
- * Preview Square labor before any POS sync/import.
- * If employees have no hourly wage, show a warning; user can cancel or proceed anyway.
+ * Pre-sync guards:
+ * 1) Your Setup vs Square (channels / 3P / hourly rate)
+ * 2) Missing Square labor wages
+ *
  * On Square auth failure, prompt reconnect and do not start sync.
  */
 const useMissingLaborRatesCheck = () => {
@@ -16,13 +18,40 @@ const useMissingLaborRatesCheck = () => {
   const [proceedingAnyway, setProceedingAnyway] = useState(false);
   const [missingRatesOpen, setMissingRatesOpen] = useState(false);
   const [missingEmployees, setMissingEmployees] = useState([]);
+  const [setupIssuesOpen, setSetupIssuesOpen] = useState(false);
+  const [setupIssues, setSetupIssues] = useState([]);
   const pendingProceedRef = useRef(null);
+  const pendingLaborCheckRef = useRef(null);
 
-  const closeModal = useCallback(() => {
+  const closeModals = useCallback(() => {
     pendingProceedRef.current = null;
+    pendingLaborCheckRef.current = null;
     setMissingRatesOpen(false);
     setMissingEmployees([]);
+    setSetupIssuesOpen(false);
+    setSetupIssues([]);
     setProceedingAnyway(false);
+  }, []);
+
+  const runLaborRatePreview = useCallback(async ({
+    restaurantId,
+    startDate,
+    endDate,
+    squareLocationId,
+    onProceed,
+  }) => {
+    const preview = await previewPosLaborRates(restaurantId, {
+      startDate,
+      endDate,
+      squareLocationId,
+    });
+    if (preview?.has_missing_rates && (preview.employees || []).length > 0) {
+      pendingProceedRef.current = onProceed;
+      setMissingEmployees(preview.employees);
+      setMissingRatesOpen(true);
+      return;
+    }
+    await onProceed();
   }, []);
 
   const runWithLaborRateCheck = useCallback(async ({
@@ -41,18 +70,43 @@ const useMissingLaborRatesCheck = () => {
 
     setCheckingLaborRates(true);
     try {
-      const preview = await previewPosLaborRates(restaurantId, {
+      let setupPreview = null;
+      try {
+        setupPreview = await previewPosSyncSetup(restaurantId, {
+          startDate,
+          endDate,
+          squareLocationId,
+        });
+      } catch (setupError) {
+        const authMessage = getSquareAuthErrorMessage(setupError);
+        if (authMessage) {
+          useStore.getState().checkSquareStatus?.(restaurantId)?.catch?.(() => {});
+          promptSquareReconnect({ restaurantId, message: authMessage });
+          return;
+        }
+        // Setup preview failed for another reason — continue to labor check / sync.
+      }
+
+      if (setupPreview?.has_issues && (setupPreview.issues || []).length > 0) {
+        pendingLaborCheckRef.current = {
+          restaurantId,
+          startDate,
+          endDate,
+          squareLocationId,
+          onProceed,
+        };
+        setSetupIssues(setupPreview.issues);
+        setSetupIssuesOpen(true);
+        return;
+      }
+
+      await runLaborRatePreview({
+        restaurantId,
         startDate,
         endDate,
         squareLocationId,
+        onProceed,
       });
-      if (preview?.has_missing_rates && (preview.employees || []).length > 0) {
-        pendingProceedRef.current = onProceed;
-        setMissingEmployees(preview.employees);
-        setMissingRatesOpen(true);
-        return;
-      }
-      await onProceed();
     } catch (error) {
       const authMessage = getSquareAuthErrorMessage(error);
       if (authMessage) {
@@ -65,7 +119,35 @@ const useMissingLaborRatesCheck = () => {
     } finally {
       setCheckingLaborRates(false);
     }
-  }, []);
+  }, [runLaborRatePreview]);
+
+  const handleSetupProceedAnyway = useCallback(async () => {
+    const pending = pendingLaborCheckRef.current;
+    pendingLaborCheckRef.current = null;
+    setSetupIssuesOpen(false);
+    setSetupIssues([]);
+    if (!pending) return;
+
+    setProceedingAnyway(true);
+    setCheckingLaborRates(true);
+    try {
+      await runLaborRatePreview(pending);
+    } catch (error) {
+      const authMessage = getSquareAuthErrorMessage(error);
+      if (authMessage) {
+        useStore.getState().checkSquareStatus?.(pending.restaurantId)?.catch?.(() => {});
+        promptSquareReconnect({
+          restaurantId: pending.restaurantId,
+          message: authMessage,
+        });
+        return;
+      }
+      await pending.onProceed?.();
+    } finally {
+      setProceedingAnyway(false);
+      setCheckingLaborRates(false);
+    }
+  }, [runLaborRatePreview]);
 
   const handleProceedAnyway = useCallback(async () => {
     const onProceed = pendingProceedRef.current;
@@ -87,8 +169,15 @@ const useMissingLaborRatesCheck = () => {
       open: missingRatesOpen,
       loading: proceedingAnyway,
       employees: missingEmployees,
-      onCancel: closeModal,
+      onCancel: closeModals,
       onProceed: handleProceedAnyway,
+    },
+    syncSetupIssuesModalProps: {
+      open: setupIssuesOpen,
+      loading: proceedingAnyway,
+      issues: setupIssues,
+      onCancel: closeModals,
+      onProceed: handleSetupProceedAnyway,
     },
   };
 };

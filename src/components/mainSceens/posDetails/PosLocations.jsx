@@ -16,6 +16,7 @@ import {
 import { createPosSyncWebSocket } from '../../../services/websocket';
 import SyncModal from '../../SyncModal';
 import MissingLaborRatesModal from '../../common/MissingLaborRatesModal';
+import SyncSetupIssuesModal from '../../common/SyncSetupIssuesModal';
 import useMissingLaborRatesCheck from '../../../hooks/useMissingLaborRatesCheck';
 import { useNavigate } from 'react-router-dom';
 
@@ -39,6 +40,7 @@ const PosLocations = () => {
     checkingLaborRates,
     runWithLaborRateCheck,
     missingLaborRatesModalProps,
+    syncSetupIssuesModalProps,
   } = useMissingLaborRatesCheck();
 
   const restaurantId = useMemo(() => {
@@ -225,6 +227,7 @@ const PosLocations = () => {
     <div className="w-full">
       <SyncModal open={isStartingSync || checkingLaborRates} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
+      <SyncSetupIssuesModal {...syncSetupIssuesModalProps} />
       <Modal
         title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
         open={isLocationModalOpen}

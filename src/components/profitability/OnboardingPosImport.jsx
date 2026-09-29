@@ -11,6 +11,7 @@ import useStore from '../../store/store';
 import SquareConnectButton from '../square/SquareConnectButton';
 import SyncModal from '../SyncModal';
 import MissingLaborRatesModal from '../common/MissingLaborRatesModal';
+import SyncSetupIssuesModal from '../common/SyncSetupIssuesModal';
 import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import {
   formatPosDate,
@@ -113,6 +114,7 @@ const OnboardingPosImport = ({
     checkingLaborRates,
     runWithLaborRateCheck,
     missingLaborRatesModalProps,
+    syncSetupIssuesModalProps,
   } = useMissingLaborRatesCheck();
 
   const isConnected = squareStatus === 'connected';
@@ -461,6 +463,7 @@ const OnboardingPosImport = ({
     >
       <SyncModal open={isImporting || isSavingLocation || checkingLaborRates} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
+      <SyncSetupIssuesModal {...syncSetupIssuesModalProps} />
 
       <Modal
         title="Select Square Location"
