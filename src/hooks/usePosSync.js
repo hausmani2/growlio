@@ -17,9 +17,6 @@ import {
   SQUARE_RECONNECT_MESSAGE,
 } from '../utils/squareReconnect';
 
-const DEFAULT_SOCKET_ERROR_MESSAGE =
-  'Realtime updates are temporarily unavailable. Polling will keep checking sync status.';
-
 const NO_POS_DATA_MESSAGE = 'No data found from Square for the selected dates.';
 
 export const usePosSync = ({
@@ -201,9 +198,7 @@ export const usePosSync = ({
           });
         },
         onError: () => {
-          if (!completionHandledRef.current) {
-            message.warning(DEFAULT_SOCKET_ERROR_MESSAGE);
-          }
+          // WebSocket optional — HTTP polling continues without warning the user.
         },
       });
 
