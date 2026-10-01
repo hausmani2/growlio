@@ -49,6 +49,7 @@ const createLocationSlice = (set, get) => ({
       lastFetchedSummaryLocationId: null,
       salesInformationData: null,
       salesInformationSummary: null,
+      salesInformationSummaryLastGood: null,
       salesInformationSummaryLastFetch: null,
       salesInformationSummaryLoading: false,
       salesInformationSummaryError: null,

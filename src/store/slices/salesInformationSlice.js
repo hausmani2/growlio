@@ -2,9 +2,22 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/axiosInterceptor
 
 const SALES_INFO_CACHE_MS = 30000;
 const salesInfoFetchCacheByKey = new Map();
+let salesInformationSummaryRequestId = 0;
 
 const buildSalesInfoFetchKey = (restaurantId, locationId) =>
     `${restaurantId || 'none'}-${locationId || 'none'}`;
+
+const formatSummaryDateParam = (date) => {
+    if (!date) return null;
+    if (typeof date === 'string') return date.split('T')[0];
+    if (typeof date.format === 'function') return date.format('YYYY-MM-DD');
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const getSalesInfoCacheEntry = (key) => {
     if (!salesInfoFetchCacheByKey.has(key)) {
@@ -111,10 +124,11 @@ const createSalesInformationSlice = (set, get) => ({
     salesInformationLoading: false,
     salesInformationError: null,
     salesInformationData: null,
-    salesInformationSummary: null,
-    salesInformationSummaryLoading: false,
-    salesInformationSummaryError: null,
-    salesInformationSummaryLastFetch: null, // Track when summary was last fetched
+        salesInformationSummary: null,
+        salesInformationSummaryLastGood: null,
+        salesInformationSummaryLoading: false,
+        salesInformationSummaryError: null,
+        salesInformationSummaryLastFetch: null, // Track when summary was last fetched
     activeReportCardRange: null,
     // Daily performance data
     dailyPerformanceData: null,
@@ -381,6 +395,9 @@ const createSalesInformationSlice = (set, get) => ({
     // GET: Fetch sales information summary (for report card)
     // Accepts optional date parameters for dynamic date selection
     getSalesInformationSummary: async (startDate = null, endDate = null) => {
+        const requestId = ++salesInformationSummaryRequestId;
+        // Keep the previous summary on screen while loading so the page does not
+        // blank out / full-refresh on every date change.
         set(() => ({ 
             salesInformationSummaryLoading: true, 
             salesInformationSummaryError: null 
@@ -411,10 +428,12 @@ const createSalesInformationSlice = (set, get) => ({
             // If no restaurant exists, block the API call
             if (!hasRestaurant || !restaurantId) {
                 const errorMsg = 'No restaurant found. Please complete onboarding first.';
-                set(() => ({ 
-                    salesInformationSummaryLoading: false, 
-                    salesInformationSummaryError: errorMsg 
-                }));
+                if (requestId === salesInformationSummaryRequestId) {
+                    set(() => ({ 
+                        salesInformationSummaryLoading: false, 
+                        salesInformationSummaryError: errorMsg 
+                    }));
+                }
                 return { 
                     success: false, 
                     error: errorMsg 
@@ -425,36 +444,26 @@ const createSalesInformationSlice = (set, get) => ({
             let startDateStr, endDateStr;
             
             if (startDate && endDate) {
-                // Format provided dates (dayjs objects or strings)
-                const formatDate = (date) => {
-                    if (typeof date === 'string') {
-                        return date.split('T')[0]; // Extract YYYY-MM-DD from ISO string
-                    }
-                    // Handle dayjs objects
-                    const d = date.format ? date : new Date(date);
-                    const year = d.format ? d.year() : d.getFullYear();
-                    const month = d.format ? d.month() + 1 : d.getMonth() + 1;
-                    const day = d.format ? d.date() : d.getDate();
-                    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                };
-                
-                startDateStr = formatDate(startDate);
-                endDateStr = formatDate(endDate);
+                startDateStr = formatSummaryDateParam(startDate);
+                endDateStr = formatSummaryDateParam(endDate);
             } else {
                 // Default to previous month if no dates provided
-            const today = new Date();
-            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-            const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-            
-            const formatDate = (date) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            };
-            
-                startDateStr = formatDate(lastMonth);
-                endDateStr = formatDate(lastMonthEnd);
+                const today = new Date();
+                const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+                startDateStr = formatSummaryDateParam(lastMonth);
+                endDateStr = formatSummaryDateParam(lastMonthEnd);
+            }
+
+            if (!startDateStr || !endDateStr) {
+                const errorMsg = 'Invalid date range for report card summary.';
+                if (requestId === salesInformationSummaryRequestId) {
+                    set(() => ({
+                        salesInformationSummaryLoading: false,
+                        salesInformationSummaryError: errorMsg,
+                    }));
+                }
+                return { success: false, error: errorMsg };
             }
             
             // Build query parameters
@@ -470,12 +479,28 @@ const createSalesInformationSlice = (set, get) => ({
             
             
             const response = await apiGet(apiUrl);
-            
+
+            // A newer date-range click already started — do not overwrite its result.
+            if (requestId !== salesInformationSummaryRequestId) {
+                return {
+                    success: true,
+                    data: response.data,
+                    stale: true,
+                };
+            }
+
+            const payload = response.data;
+            const isInsufficient =
+                payload?.message === 'Insufficient Data' ||
+                payload?.error === 'Insufficient Data';
             
             set(() => ({ 
                 salesInformationSummaryLoading: false, 
-                salesInformationSummaryError: null,
-                salesInformationSummary: response.data,
+                salesInformationSummaryError: isInsufficient ? 'Insufficient Data' : null,
+                salesInformationSummary: payload,
+                ...(isInsufficient
+                    ? {}
+                    : { salesInformationSummaryLastGood: payload }),
                 salesInformationSummaryLastFetch: Date.now(),
                 activeReportCardRange: {
                     start: startDateStr,
@@ -485,7 +510,7 @@ const createSalesInformationSlice = (set, get) => ({
             
             return { 
                 success: true, 
-                data: response.data 
+                data: payload 
             };
         } catch (error) {
             console.error('❌ [getSalesInformationSummary] Error fetching sales information summary:', error);
@@ -511,6 +536,14 @@ const createSalesInformationSlice = (set, get) => ({
                 }
             } else if (error.message) {
                 errorMessage = error.message;
+            }
+
+            if (requestId !== salesInformationSummaryRequestId) {
+                return {
+                    success: false,
+                    error: errorMessage,
+                    stale: true,
+                };
             }
             
             set(() => ({ 
