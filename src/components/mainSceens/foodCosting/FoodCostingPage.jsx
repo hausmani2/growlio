@@ -189,6 +189,14 @@ const handleFileSelect = (file, setFile) => {
   return false;
 };
 
+const orderMenuItems = (results, ids) => {
+  if (!ids?.length) return results;
+  const order = new Map(ids.map((id, index) => [Number(id), index]));
+  return [...results].sort(
+    (a, b) => (order.get(Number(a.id)) ?? 999) - (order.get(Number(b.id)) ?? 999)
+  );
+};
+
 const FoodCostingPage = () => {
   const navigate = useNavigate();
   const fetchCurrentSubscriptionDetails = useStore(
@@ -254,6 +262,8 @@ const FoodCostingPage = () => {
   const [editingMenuItem, setEditingMenuItem] = useState(null);
   const [menuItemSearch, setMenuItemSearch] = useState('');
   const [menuSortBy, setMenuSortBy] = useState('item');
+  const [highImpactFilter, setHighImpactFilter] = useState(null);
+  const highImpactRef = React.useRef(null);
   const [importingMenuFromSquare, setImportingMenuFromSquare] = useState(false);
   const [scanningPrintedMenu, setScanningPrintedMenu] = useState(false);
   const [menuScanModalOpen, setMenuScanModalOpen] = useState(false);
@@ -402,11 +412,20 @@ const FoodCostingPage = () => {
             const page = opts.page ?? pg.menuPage;
             const pageSize = opts.pageSize ?? pg.menuPageSize;
             const search = opts.search ?? pg.menuItemSearch;
-            const menuData = await fetchMenuItems({ page, pageSize, search });
+            const impact = Object.prototype.hasOwnProperty.call(opts, 'highImpact')
+              ? opts.highImpact
+              : highImpactRef.current;
+            const ids = impact?.ids || [];
+            const menuData = await fetchMenuItems({
+              page: ids.length ? 1 : page,
+              pageSize: ids.length ? Math.max(ids.length, pageSize) : pageSize,
+              search,
+              ids,
+            });
             if (controller.signal.aborted) return;
-            setMenuItems(menuData.results);
+            setMenuItems(orderMenuItems(menuData.results, ids));
             setMenuTotal(menuData.count);
-            setMenuPage(page);
+            setMenuPage(ids.length ? 1 : page);
             setMenuPageSize(pageSize);
             break;
           }
@@ -507,21 +526,25 @@ const FoodCostingPage = () => {
               setDashboardMenuTotal(data.count);
             })
           );
+          const impactIds = highImpactRef.current?.ids || [];
           if (pg.menuSortBy === 'category') {
             tasks.push(
-              fetchAllMenuItems({ search: pg.menuItemSearch }).then((data) => {
-                setMenuItemsForCategory(data.results);
+              fetchAllMenuItems({ search: pg.menuItemSearch, ids: impactIds }).then((data) => {
+                setMenuItemsForCategory(orderMenuItems(data.results, impactIds));
                 setMenuTotal(data.count);
               })
             );
           } else {
             tasks.push(
               fetchMenuItems({
-                page: pg.menuPage,
-                pageSize: pg.menuPageSize,
+                page: impactIds.length ? 1 : pg.menuPage,
+                pageSize: impactIds.length
+                  ? Math.max(impactIds.length, pg.menuPageSize)
+                  : pg.menuPageSize,
                 search: pg.menuItemSearch,
+                ids: impactIds,
               }).then((data) => {
-                setMenuItems(data.results);
+                setMenuItems(orderMenuItems(data.results, impactIds));
                 setMenuTotal(data.count);
               })
             );
@@ -663,10 +686,14 @@ const FoodCostingPage = () => {
     }
     let cancelled = false;
     setLoadingCategoryMenu(true);
-    fetchAllMenuItems({ search: menuItemSearch })
+    const impactIds = highImpactRef.current?.ids || [];
+    fetchAllMenuItems({
+      search: menuItemSearch,
+      ids: impactIds,
+    })
       .then((data) => {
         if (!cancelled) {
-          setMenuItemsForCategory(data.results);
+          setMenuItemsForCategory(orderMenuItems(data.results, impactIds));
           setCategoryPage(1);
         }
       })
@@ -1586,6 +1613,13 @@ const FoodCostingPage = () => {
     openEditMenuItem(record);
   };
 
+  const clearHighImpactFilter = () => {
+    highImpactRef.current = null;
+    setHighImpactFilter(null);
+    setMenuPage(1);
+    loadTabData('menu', { page: 1, search: menuItemSearch, highImpact: null });
+  };
+
   const handleIntelligenceAction = async (action, payload = {}) => {
     const menuItemId = payload.menu_item_id || payload.id;
     const openItemById = async (id) => {
@@ -1625,10 +1659,37 @@ const FoodCostingPage = () => {
         break;
       case 'view_menu':
       case 'start_top_sellers':
-      case 'complete_high_impact':
+        highImpactRef.current = null;
+        setHighImpactFilter(null);
         setActiveTab('menu');
-        loadTabData('menu');
+        loadTabData('menu', { highImpact: null });
         break;
+      case 'complete_high_impact': {
+        const drivers = dashboard?.intelligence?.sales_drivers?.items || [];
+        const ids = drivers.map((row) => row.menu_item_id).filter(Boolean);
+        if (!ids.length) {
+          message.info('No high-impact items found for this period yet.');
+        }
+        const share = Number(dashboard?.intelligence?.sales_drivers?.sales_share_pct);
+        const filter = {
+          ids,
+          sharePct: Number.isFinite(share) && share > 0 ? share : null,
+        };
+        highImpactRef.current = filter;
+        setHighImpactFilter(filter);
+        setMenuSortBy('item');
+        setMenuItemSearch('');
+        setMenuPage(1);
+        paginationRef.current = {
+          ...paginationRef.current,
+          menuSortBy: 'item',
+          menuItemSearch: '',
+          menuPage: 1,
+        };
+        setActiveTab('menu');
+        loadTabData('menu', { page: 1, search: '', highImpact: filter });
+        break;
+      }
       case 'view_ingredients':
         setActiveTab('ingredients');
         loadTabData('ingredients');
@@ -1695,11 +1756,33 @@ const FoodCostingPage = () => {
 
   const handleImportMenuFromSquare = async () => {
     if (importingMenuFromSquare) return;
+
+    const promptConnectSquare = () => {
+      Modal.confirm({
+        title: 'Square POS not connected',
+        content:
+          'Connect Square POS first, then fetch menu items from your POS.',
+        okText: 'Connect Square',
+        cancelText: 'Close',
+        onOk: () => navigate('/dashboard/pos-integrations'),
+      });
+    };
+
+    if (dashboard?.intelligence && dashboard.intelligence.pos_connected === false) {
+      promptConnectSquare();
+      return;
+    }
+
     try {
       setImportingMenuFromSquare(true);
       const result = await importSquareMenuItems();
       if (!result?.success) {
-        message.error(result?.error || 'Failed to start Square import');
+        const failText = result?.error || result?.message || '';
+        if (/not connected|connect square/i.test(String(failText))) {
+          promptConnectSquare();
+        } else {
+          message.error(failText || 'Failed to start Square import');
+        }
         setImportingMenuFromSquare(false);
         return;
       }
@@ -1735,7 +1818,16 @@ const FoodCostingPage = () => {
     } catch (error) {
       setImportingMenuFromSquare(false);
       setSquareImportJobId(null);
-      message.error(error?.response?.data?.error || 'Failed to fetch menu from POS');
+      const data = error?.response?.data;
+      const failText = data?.error || data?.message || '';
+      if (
+        data?.code === 'square_not_connected' ||
+        /not connected|connect square/i.test(String(failText))
+      ) {
+        promptConnectSquare();
+      } else {
+        message.error(failText || 'Failed to fetch menu from POS');
+      }
     }
   };
 
@@ -2515,6 +2607,24 @@ const FoodCostingPage = () => {
                   </div>
                 }
               >
+                {highImpactFilter?.ids?.length ? (
+                  <Alert
+                    className="mb-4"
+                    type="info"
+                    showIcon
+                    message="High-impact items"
+                    description={
+                      highImpactFilter.sharePct
+                        ? `These ${highImpactFilter.ids.length} items make up about ${Math.round(highImpactFilter.sharePct)}% of sales. Finish these before the rest of the menu.`
+                        : `These ${highImpactFilter.ids.length} items drive most of your sales. Finish these before the rest of the menu.`
+                    }
+                    action={
+                      <Button size="small" onClick={clearHighImpactFilter}>
+                        Show all menu items
+                      </Button>
+                    }
+                  />
+                ) : null}
                 {menuSortBy === 'category' ? (
                   <Table
                     rowKey="key"

@@ -134,11 +134,13 @@ export const fetchMenuItems = async ({
   page = 1,
   pageSize = 25,
   ordering = '',
+  ids = null,
 } = {}) => {
   const { query } = withIds();
   const params = new URLSearchParams(query);
   if (search) params.set('search', search);
   if (ordering) params.set('ordering', ordering);
+  if (ids?.length) params.set('ids', ids.join(','));
   params.set('page', String(page));
   params.set('page_size', String(pageSize));
   const res = await apiGet(`/food_costing/menu-items/?${params.toString()}`);
@@ -146,13 +148,13 @@ export const fetchMenuItems = async ({
 };
 
 /** Fetch every menu item (for category grouping view). Pages at 100 (API max). */
-export const fetchAllMenuItems = async ({ search = '' } = {}) => {
+export const fetchAllMenuItems = async ({ search = '', ids = null } = {}) => {
   const pageSize = 100;
-  const first = await fetchMenuItems({ search, page: 1, pageSize });
+  const first = await fetchMenuItems({ search, page: 1, pageSize, ids });
   let results = [...first.results];
   const totalPages = Math.ceil(first.count / pageSize);
   for (let page = 2; page <= totalPages; page += 1) {
-    const next = await fetchMenuItems({ search, page, pageSize });
+    const next = await fetchMenuItems({ search, page, pageSize, ids });
     results = results.concat(next.results);
   }
   return { count: first.count, results };
