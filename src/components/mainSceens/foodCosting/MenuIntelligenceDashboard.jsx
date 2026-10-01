@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Progress, Segmented, Spin, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, DatePicker, Dropdown, Progress, Segmented, Spin, Table, Tag, Tooltip } from 'antd';
 import {
   CameraOutlined,
   CheckCircleOutlined,
+  DownOutlined,
   PlusOutlined,
   ReloadOutlined,
   UploadOutlined,
@@ -34,6 +35,65 @@ const pts = (value) => {
   if (!Number.isFinite(num)) return '—';
   const prefix = num > 0 ? '+' : '';
   return `${prefix}${num.toFixed(1)} pts`;
+};
+
+const quarterBounds = (ref = dayjs()) => {
+  const quarterIndex = Math.floor(ref.month() / 3);
+  const start = ref.month(quarterIndex * 3).startOf('month');
+  const end = ref.month(quarterIndex * 3 + 2).endOf('month');
+  return [start, end];
+};
+
+const resolveQuickSelectRange = (option) => {
+  const today = dayjs();
+  switch (option) {
+    case 'current_week':
+      return [today.startOf('week'), today.endOf('week')];
+    case 'last_week': {
+      const lastWeek = today.subtract(1, 'week');
+      return [lastWeek.startOf('week'), lastWeek.endOf('week')];
+    }
+    case 'current_month':
+      return [today.startOf('month'), today.endOf('month')];
+    case 'last_month': {
+      const lastMonth = today.subtract(1, 'month');
+      return [lastMonth.startOf('month'), lastMonth.endOf('month')];
+    }
+    case 'current_quarter':
+      return quarterBounds(today);
+    case 'last_quarter':
+      return quarterBounds(today.subtract(3, 'month'));
+    case 'current_year':
+      return [today.startOf('year'), today.endOf('year')];
+    default:
+      return null;
+  }
+};
+
+const QUICK_SELECT_OPTIONS = [
+  { key: 'current_week', label: 'Current Week' },
+  { key: 'last_week', label: 'Last Week' },
+  { key: 'current_month', label: 'Current Month' },
+  { key: 'last_month', label: 'Last Month' },
+  { key: 'current_quarter', label: 'Current Quarter' },
+  { key: 'last_quarter', label: 'Last Quarter' },
+  { key: 'current_year', label: 'Current Year' },
+  { key: 'custom', label: 'Custom' },
+];
+
+const matchQuickSelectLabel = (from, to) => {
+  if (!from || !to) return 'Quick Select';
+  const start = dayjs(from).startOf('day');
+  const end = dayjs(to).startOf('day');
+  for (const option of QUICK_SELECT_OPTIONS) {
+    if (option.key === 'custom') continue;
+    const range = resolveQuickSelectRange(option.key);
+    if (!range) continue;
+    if (start.isSame(range[0], 'day') && end.isSame(range[1], 'day')) {
+      return option.label;
+    }
+  }
+  return 'Custom';
 };
 
 const profitabilityTag = (status) => {
@@ -222,6 +282,9 @@ const MenuIntelligenceDashboard = ({
 }) => {
   const navigate = useNavigate();
   const [performanceFilter, setPerformanceFilter] = useState('all');
+  const [quickSelectLabel, setQuickSelectLabel] = useState(() =>
+    matchQuickSelectLabel(dateFrom, dateTo)
+  );
   const intel = dashboard?.intelligence;
   const empty = intel?.empty_state;
   const showEmptyOnly = Boolean(empty && empty.type !== 'partial');
@@ -384,6 +447,28 @@ const MenuIntelligenceDashboard = ({
   const varianceClass =
     Number(kpi.food_cost_variance_pts) > 0 ? 'text-red-600' : 'text-emerald-600';
 
+  const applyDateRange = (start, end, label) => {
+    if (!start || !end) return;
+    if (label) setQuickSelectLabel(label);
+    onDateChange?.(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
+  };
+
+  const handleQuickSelect = (key) => {
+    if (key === 'custom') {
+      setQuickSelectLabel('Custom');
+      return;
+    }
+    const option = QUICK_SELECT_OPTIONS.find((item) => item.key === key);
+    const range = resolveQuickSelectRange(key);
+    if (!range || !option) return;
+    applyDateRange(range[0], range[1], option.label);
+  };
+
+  const quickSelectMenu = {
+    items: QUICK_SELECT_OPTIONS,
+    onClick: ({ key }) => handleQuickSelect(key),
+  };
+
   return (
     <Spin spinning={loading}>
       <div className="space-y-6">
@@ -395,6 +480,11 @@ const MenuIntelligenceDashboard = ({
             {intel?.sales_source === 'square' ? ' · POS sales mix' : ' · Estimated sales mix'}
           </p>
           <div className="flex flex-wrap items-center gap-2">
+            <Dropdown menu={quickSelectMenu} trigger={['click']} disabled={loading}>
+              <Button disabled={loading} className="min-w-[140px]">
+                {quickSelectLabel} <DownOutlined />
+              </Button>
+            </Dropdown>
             <DatePicker.RangePicker
               allowClear={false}
               value={
@@ -404,7 +494,7 @@ const MenuIntelligenceDashboard = ({
               }
               onChange={(range) => {
                 if (!range?.[0] || !range?.[1]) return;
-                onDateChange?.(range[0].format('YYYY-MM-DD'), range[1].format('YYYY-MM-DD'));
+                applyDateRange(range[0], range[1], matchQuickSelectLabel(range[0], range[1]));
               }}
             />
             <Button icon={<ReloadOutlined />} onClick={onRefresh}>
