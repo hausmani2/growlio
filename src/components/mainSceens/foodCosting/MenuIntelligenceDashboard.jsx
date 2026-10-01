@@ -117,11 +117,12 @@ const DriverListCard = ({ title, subtitle, sharePct, shareLabel, items, extra })
             <span className={Number(v) >= 35 ? 'text-red-600' : ''}>{pct(v)}</span>
           ),
         },
-        { title: 'Margin $', dataIndex: 'contribution', key: 'm', render: (v) => moneyExact(v) },
+        { title: 'Sell Price', dataIndex: 'selling_price', key: 'm', render: (v) => moneyExact(v) },
         {
-          title: 'Total Contribution',
+          title: <span className="whitespace-nowrap">Total Contribution</span>,
           dataIndex: 'period_profit',
           key: 'p',
+          width: 140,
           render: (v) => moneyExact(v),
         },
       ]}
@@ -315,15 +316,17 @@ const MenuIntelligenceDashboard = ({
         render: (v) => pct(v),
       },
       {
-        title: 'Margin $',
-        dataIndex: 'contribution',
-        key: 'margin',
+        title: 'Sell Price',
+        dataIndex: 'selling_price',
+        key: 'price',
         render: (v) => moneyExact(v),
+        sorter: (a, b) => Number(a.selling_price || 0) - Number(b.selling_price || 0),
       },
       {
-        title: 'Total Contribution',
+        title: <span className="whitespace-nowrap">Total Contribution</span>,
         dataIndex: 'period_profit',
         key: 'contrib',
+        width: 150,
         render: (v) => moneyExact(v),
       },
       {
