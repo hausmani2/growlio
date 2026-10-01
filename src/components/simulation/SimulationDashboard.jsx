@@ -5,7 +5,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import { formatCurrency } from '../../utils/formatUtils';
-import ChatWidget from '../chatbot/ChatWidget';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 import SimulatorCashFlow from './SimulatorCashFlow';
 import SimulatorAnnualReport from './SimulatorAnnualReport';
@@ -1126,9 +1125,6 @@ const SimulationDashboard = () => {
           </>
         )}
       </div>
-      
-      {/* Chat Widget for Simulation */}
-      <ChatWidget botName="LIO Advisor" />
 
       <Modal
         title="How To Use The Simulator Tutorial"
