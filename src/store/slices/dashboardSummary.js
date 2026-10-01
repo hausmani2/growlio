@@ -2,6 +2,7 @@ import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import dayjs from 'dayjs';
 
 const createDashboardSummarySlice = (set, get) => {
+    let cashFlowRequest = 0;
     const normalizeSummaryResponse = (payload) => {
         const rawData = payload || {};
         const entries = Array.isArray(rawData?.data)
@@ -672,9 +673,12 @@ const createDashboardSummarySlice = (set, get) => {
         cashFlowLoading: false,
         cashFlowError: null,
 
-        fetchCashFlow: async (targetDate, restaurantId = null) => {
+        fetchCashFlow: async (targetDate, restaurantId = null, options = {}) => {
+            const commit = options.commit !== false;
+            const requestId = commit ? ++cashFlowRequest : 0;
+            if (commit) set({ cashFlowLoading: true, cashFlowError: null });
+            const stillCurrent = () => commit && requestId === cashFlowRequest;
             try {
-                set({ cashFlowLoading: true, cashFlowError: null });
                 let targetRestaurantId = restaurantId;
                 if (!targetRestaurantId && typeof get().fetchRestaurantId === 'function') {
                     try {
@@ -684,7 +688,7 @@ const createDashboardSummarySlice = (set, get) => {
                     }
                 }
                 if (!targetRestaurantId) {
-                    set({ cashFlowLoading: false });
+                    if (stillCurrent()) set({ cashFlowLoading: false });
                     return null;
                 }
                 const locationId = typeof get().getSelectedLocationId === 'function'
@@ -698,7 +702,7 @@ const createDashboardSummarySlice = (set, get) => {
                 const query = new URLSearchParams(params).toString();
                 const response = await apiGet(`/restaurant_v2/cash-flow/?${query}`);
                 const payload = response?.data || response;
-                set({ cashFlowData: payload, cashFlowLoading: false });
+                if (stillCurrent()) set({ cashFlowData: payload, cashFlowLoading: false });
                 return payload;
             } catch (error) {
                 const messageText =
@@ -706,7 +710,9 @@ const createDashboardSummarySlice = (set, get) => {
                     error?.response?.data?.detail ||
                     error?.message ||
                     'Failed to load cash flow';
-                set({ cashFlowLoading: false, cashFlowError: messageText, cashFlowData: null });
+                if (stillCurrent()) {
+                    set({ cashFlowLoading: false, cashFlowError: messageText, cashFlowData: null });
+                }
                 return null;
             }
         },

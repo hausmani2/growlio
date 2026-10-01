@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, DatePicker, Popover, Spin, Tag } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import {
@@ -138,9 +138,9 @@ const WHY_ENVELOPES_HELP = (
     </p>
     <p className="font-medium text-gray-800">That’s where the envelopes come in.</p>
     <p>
-      Each day, Growlio calculates how much of your sales should be allocated to each expense based
-      on your actual numbers when available and your budget when they’re not. Those amounts are
-      added to your envelopes throughout the week.
+      Each day, Growlio adds to your envelopes. Actual uses only the numbers entered when you
+      closed the day. Forecast adds your budget for any day that has not been closed yet. Those
+      amounts accumulate throughout the week.
     </p>
     <p>
       Think of it as setting aside the money as you earn it instead of waiting until the bill
@@ -197,6 +197,65 @@ const ActualBudgetInfoIcon = () => (
   </Popover>
 );
 
+const ENVELOPE_MODES = [
+  {
+    id: 'actual',
+    label: 'Actual',
+    description: 'Uses actual data only through today.',
+  },
+  {
+    id: 'forecast',
+    label: 'Forecast',
+    description: 'Uses actual data to date plus budgeted amounts for remaining days.',
+  },
+];
+
+const EnvelopeModeSwitch = ({ mode, onChange }) => (
+  <div
+    className="inline-flex rounded-full bg-gray-100 p-1"
+    role="group"
+    aria-label="Envelope view"
+  >
+    {ENVELOPE_MODES.map((item) => {
+      const selected = mode === item.id;
+      return (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={selected}
+          onClick={() => onChange(item.id)}
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+            selected
+              ? 'bg-[#1677ff] text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          {item.label}
+        </button>
+      );
+    })}
+  </div>
+);
+
+const EnvelopeModeNote = ({ mode, descriptions }) => (
+  <div className="mb-4 grid gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 sm:grid-cols-2">
+    {ENVELOPE_MODES.map((item) => {
+      const selected = mode === item.id;
+      return (
+        <div
+          key={item.id}
+          className={`rounded-xl px-3 py-2 ${selected ? 'bg-white shadow-sm' : ''}`}
+        >
+          <p className="font-semibold text-gray-900">{item.label}</p>
+          <p className="mt-1 text-sm text-gray-600">
+            {descriptions?.[item.id] || item.description}
+          </p>
+        </div>
+      );
+    })}
+  </div>
+);
+
 const WhyEnvelopesButton = () => (
   <Popover content={WHY_ENVELOPES_HELP} trigger={['click']} placement="bottomLeft">
     <button
@@ -250,6 +309,13 @@ const EnvelopeProgress = ({ percent, barClass }) => {
   );
 };
 
+/** Last day of the Sun–Sat week that is not in the future. */
+const weekStripAnchor = (dateValue) => {
+  const weekEnd = dateValue.add(6 - dateValue.day(), 'day');
+  const today = dayjs();
+  return (weekEnd.isAfter(today, 'day') ? today : weekEnd).format('YYYY-MM-DD');
+};
+
 const CashFlowModule = () => {
   const {
     cashFlowData,
@@ -258,29 +324,63 @@ const CashFlowModule = () => {
     fetchCashFlow,
     selectedLocationId,
   } = useStore();
-  const [selectedDate, setSelectedDate] = React.useState(() => dayjs().subtract(1, 'day'));
+  const [selectedDate, setSelectedDate] = useState(() => dayjs().subtract(1, 'day'));
+  const [envelopeMode, setEnvelopeMode] = useState('actual');
+  const [weekDays, setWeekDays] = useState([]);
   const loadedKey = useRef('');
-
-  const load = useCallback(
-    (dateValue) => {
-      const dateStr = (dateValue || selectedDate).format('YYYY-MM-DD');
-      fetchCashFlow(dateStr);
-    },
-    [fetchCashFlow, selectedDate]
-  );
+  const weekDaysCache = useRef({});
+  const requestSeq = useRef(0);
 
   useEffect(() => {
-    const key = `${selectedDate.format('YYYY-MM-DD')}|${selectedLocationId || ''}`;
+    const selected = selectedDate.format('YYYY-MM-DD');
+    const anchor = weekStripAnchor(selectedDate);
+    const key = `${selected}|${selectedLocationId || ''}`;
     if (loadedKey.current === key) return;
     loadedKey.current = key;
-    load(selectedDate);
-  }, [selectedDate, selectedLocationId, load]);
+    setEnvelopeMode('actual');
+
+    const seq = ++requestSeq.current;
+    const cacheKey = `${anchor}|${selectedLocationId || ''}`;
+
+    (async () => {
+      const rememberDays = (days) => {
+        if (!days?.length || requestSeq.current !== seq) return;
+        weekDaysCache.current[cacheKey] = days;
+        setWeekDays(days);
+      };
+
+      // The strip must be loaded through the end of the week. Asking for an
+      // earlier day makes the API return $0 for every day after that date.
+      const cachedDays = weekDaysCache.current[cacheKey];
+      if (cachedDays && requestSeq.current === seq) setWeekDays(cachedDays);
+      else if (requestSeq.current === seq) setWeekDays([]);
+
+      if (anchor === selected) {
+        const payload = await fetchCashFlow(selected);
+        rememberDays(payload?.week_to_date?.days);
+        return;
+      }
+
+      const [, weekPayload] = await Promise.all([
+        fetchCashFlow(selected),
+        cachedDays
+          ? Promise.resolve(null)
+          : fetchCashFlow(anchor, null, { commit: false }),
+      ]);
+      rememberDays(weekPayload?.week_to_date?.days);
+    })();
+  }, [selectedDate, selectedLocationId, fetchCashFlow]);
 
   const yesterday = cashFlowData?.yesterday || {};
   const wtd = cashFlowData?.week_to_date || {};
-  const lio = cashFlowData?.lio || {};
+  const modeBlock = cashFlowData?.modes?.[envelopeMode];
+  const lio = modeBlock?.lio || cashFlowData?.lio || {};
   const envelopes = yesterday.envelopes || {};
-  const wtdEnvelopes = wtd.envelopes || {};
+  const wtdEnvelopes = modeBlock?.envelopes || wtd.envelopes || {};
+  const modeDescriptions = {
+    actual: cashFlowData?.modes?.actual?.description,
+    forecast: cashFlowData?.modes?.forecast?.description,
+  };
   const setAside = Number(yesterday.set_aside) || 0;
 
   const stacked = useMemo(() => {
@@ -404,30 +504,30 @@ const CashFlowModule = () => {
         )}
       </div>
 
-      <Card
-        className="shadow-sm border border-emerald-100"
-        title={
-          <div className="flex flex-col gap-2 py-1 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-2">
-              <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <FaWallet />
-              </span>
-              <div>
+      <Card className="shadow-sm border border-emerald-100">
+        <Spin spinning={cashFlowLoading}>
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <FaWallet />
+                </span>
                 <p className="text-base font-semibold text-gray-900">
                   Your Envelopes – Week to Date
                 </p>
-                <p className="text-sm font-normal text-gray-600 max-w-3xl">
-                  Set it aside as you earn it. Each day, Growlio calculates how much of your sales
-                  should be reserved for labor, food, rent, and operating expenses — so when bills
-                  are due, the money is already accounted for.
-                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <EnvelopeModeSwitch mode={envelopeMode} onChange={setEnvelopeMode} />
+                <WhyEnvelopesButton />
               </div>
             </div>
-            <WhyEnvelopesButton />
+            <p className="text-sm font-normal text-gray-600">
+              Set it aside as you earn it. Each day, Growlio calculates how much of your sales
+              should be reserved for labor, food, rent, and operating expenses — so when bills
+              are due, the money is already accounted for.
+            </p>
           </div>
-        }
-      >
-        <Spin spinning={cashFlowLoading}>
+          <EnvelopeModeNote mode={envelopeMode} descriptions={modeDescriptions} />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {ENVELOPES.map((item) => {
               const row = wtdEnvelopes[item.key] || {};
@@ -499,7 +599,7 @@ const CashFlowModule = () => {
             <div className="xl:col-span-3">
               <p className="mb-2 text-sm font-medium text-gray-700">This week by day</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-                {(wtd.days || []).map((day) => {
+                {weekDays.map((day) => {
                   const isFuture = day.status === 'upcoming';
                   const isClosed = day.status === 'closed';
                   const muted = isFuture || isClosed;
@@ -511,12 +611,13 @@ const CashFlowModule = () => {
                         : isClosed
                           ? 'Closed'
                           : '—';
+                  const selectedKey = selectedDate.format('YYYY-MM-DD');
                   return (
                     <button
                       key={day.date}
                       type="button"
                       className={`rounded-xl border p-2 text-left ${
-                        day.date === yesterday.date
+                        day.date === selectedKey
                           ? 'border-[#FF8132] bg-orange-50'
                           : 'border-gray-100 bg-gray-50'
                       }`}
