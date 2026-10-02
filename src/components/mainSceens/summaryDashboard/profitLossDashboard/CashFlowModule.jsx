@@ -54,6 +54,50 @@ const statusClass = (status) => {
   return 'text-gray-500';
 };
 
+/** (actual − budget) / basis × 100.
+ * Costs: over = red, under = green.
+ * Sales: invertColors → over = green, under = red. */
+const budgetVariance = (actual, budget, basis) => {
+  const a = Number(actual);
+  const b = Number(budget);
+  const d = Number(basis);
+  if (![a, b, d].every(Number.isFinite) || d <= 0 || b <= 0) return null;
+  const raw = ((a - b) / d) * 100;
+  if (!Number.isFinite(raw) || Math.abs(raw) < 0.05) return null;
+  return {
+    percent: Math.abs(raw),
+    over: raw > 0,
+  };
+};
+
+const formatVariancePct = (percent) => {
+  const n = Number(percent);
+  if (!Number.isFinite(n)) return null;
+  return n.toFixed(1);
+};
+
+const BudgetVarianceBadge = ({ actual, budget, basis, invertColors = false }) => {
+  const variance = budgetVariance(actual, budget, basis);
+  if (!variance) return null;
+  const pct = formatVariancePct(variance.percent);
+  if (pct == null) return null;
+  const over = variance.over;
+  // Sales: beating budget is good (green). Costs: over budget is bad (red).
+  const positive = invertColors ? over : !over;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${
+        positive
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'bg-red-50 text-red-600'
+      }`}
+    >
+      <span aria-hidden="true">{over ? '↑' : '↓'}</span>
+      {pct}% {over ? 'over budget' : 'under budget'}
+    </span>
+  );
+};
+
 const ENVELOPES = [
   {
     key: 'labor',
@@ -281,15 +325,18 @@ const SourceBadge = ({ source, label }) => {
   );
 };
 
-const Kpi = ({ label, value, hint, valueClass, bar, badge }) => (
+const Kpi = ({ label, value, hint, valueClass, bar, badge, topBadge }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
     <div className="flex items-start justify-between gap-2">
       <p className="text-sm text-gray-500">{label}</p>
+      {topBadge}
+    </div>
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <p className={`text-3xl font-semibold tracking-tight ${valueClass || 'text-gray-900'}`}>
+        {value}
+      </p>
       {badge}
     </div>
-    <p className={`mt-1 text-3xl font-semibold tracking-tight ${valueClass || 'text-gray-900'}`}>
-      {value}
-    </p>
     {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
     {bar}
   </div>
@@ -377,11 +424,21 @@ const CashFlowModule = () => {
   const lio = modeBlock?.lio || cashFlowData?.lio || {};
   const envelopes = yesterday.envelopes || {};
   const wtdEnvelopes = modeBlock?.envelopes || wtd.envelopes || {};
+  const plans = yesterday.plans || {};
   const modeDescriptions = {
     actual: cashFlowData?.modes?.actual?.description,
     forecast: cashFlowData?.modes?.forecast?.description,
   };
   const setAside = Number(yesterday.set_aside) || 0;
+  const salesAmount = Number(yesterday.sales?.amount) || 0;
+  const salesBudget = Number(plans.sales) || 0;
+  const plannedSetAside = ENVELOPES.reduce(
+    (sum, item) => sum + (Number(plans[item.key]) || 0),
+    0
+  );
+  // Only compare to budget when the day has close-out actuals (not blank/budget fill).
+  const showBudgetVariance =
+    yesterday.counts_toward_actual === true || yesterday.funding === 'actual';
 
   const stacked = useMemo(() => {
     return ENVELOPES.map((item) => {
@@ -445,14 +502,39 @@ const CashFlowModule = () => {
               <Kpi
                 label={`${dayLabel}'s Sales`}
                 value={money(yesterday.sales?.amount)}
-                hint={yesterday.sales?.label ? `${yesterday.sales.label} sales` : 'Sales'}
+                hint={
+                  salesBudget > 0
+                    ? `Budgeted sales: ${money(salesBudget)}`
+                    : yesterday.sales?.label
+                      ? `${yesterday.sales.label} sales`
+                      : 'Sales'
+                }
                 valueClass="text-gray-900"
+                badge={
+                  showBudgetVariance ? (
+                    <BudgetVarianceBadge
+                      actual={salesAmount}
+                      budget={salesBudget}
+                      basis={salesBudget}
+                      invertColors
+                    />
+                  ) : null
+                }
               />
               <Kpi
                 label="Total to Set Aside"
                 value={money(yesterday.set_aside)}
                 hint="Labor + food + rent + operating expenses"
                 valueClass="text-[#c2410c]"
+                badge={
+                  showBudgetVariance ? (
+                    <BudgetVarianceBadge
+                      actual={setAside}
+                      budget={plannedSetAside}
+                      basis={salesAmount > 0 ? salesAmount : plannedSetAside}
+                    />
+                  ) : null
+                }
                 bar={
                   <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-gray-100">
                     {stacked.map((item) => (
@@ -471,7 +553,7 @@ const CashFlowModule = () => {
                 value={money(yesterday.cash_left)}
                 hint={cashStatus === 'short' ? 'Short' : cashStatus === 'over' ? 'Over' : ''}
                 valueClass={statusClass(cashStatus)}
-                badge={<SourceBadge source={cashLeftSource} />}
+                topBadge={<SourceBadge source={cashLeftSource} />}
               />
             </div>
 
@@ -479,6 +561,8 @@ const CashFlowModule = () => {
               {ENVELOPES.map((item) => {
                 const row = envelopes[item.key] || {};
                 const Icon = item.icon;
+                const planAmount = Number(plans[item.key]) || 0;
+                const actualAmount = Number(row.amount) || 0;
                 return (
                   <div key={item.key} className={`rounded-2xl border p-4 ${item.tint}`}>
                     <div className="flex items-start justify-between gap-2">
@@ -494,7 +578,16 @@ const CashFlowModule = () => {
                         <SourceBadge source={row.source} label={row.label} />
                       ) : null}
                     </div>
-                    <p className="mt-2 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {money(row.amount)}
+                      </p>
+                      <BudgetVarianceBadge
+                        actual={showBudgetVariance ? actualAmount : null}
+                        budget={planAmount}
+                        basis={salesAmount > 0 ? salesAmount : planAmount}
+                      />
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">Add to envelope</p>
                   </div>
                 );
