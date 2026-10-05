@@ -426,6 +426,78 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
         },
       ],
     },
+    {
+      key: 'food-costing',
+      icon: <MdOutlineFoodBank />,
+      label: 'Menu Intelligence',
+      onClick: () => navigate('/dashboard/food-costing'),
+    },
+    ...(isRegularUser && canAccessSimulator
+      ? [
+          {
+            key: 'your-simulator',
+            icon: <FaChartLine />,
+            label: 'Your Simulator',
+            children: [
+              {
+                key: 'simulation-dashboard',
+                label: 'Simulation Dashboard',
+                onClick: handleSimulationDashboardClick,
+              },
+              {
+                key: 'simulation-setup',
+                label: 'Simulation Setup Process',
+                children: [
+                  {
+                    key: 'simulation-basic-information',
+                    label: 'Basic Information',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/basic-information'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-sales-channels-operating-days',
+                    label: 'Sales Channels & Operating Days',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/sales-channels-operating-days'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-labor-information',
+                    label: 'Labor Information',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/labor-information'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                  {
+                    key: 'simulation-expenses',
+                    label: 'Expenses',
+                    onClick: () =>
+                      navigate(
+                        hasSimulationRestaurants ||
+                          restaurantSimulationData?.restaurant_simulation === true
+                          ? '/simulation/expenses'
+                          : '/onboarding/simulation'
+                      ),
+                  },
+                ],
+              },
+            ],
+          },
+        ]
+      : []),
     ...(canManageLocations ? [{
       key: 'onboarding',
       icon: <UserOutlined />,
@@ -501,80 +573,39 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           label: 'POS',
           onClick: () => navigate('/dashboard/pos-integrations'),
         },
-      ],
-    }] : []),
-    ...(isRegularUser && canAccessSimulator
-      ? [
-          {
-            key: 'your-simulator',
-            icon: <FaChartLine />,
-            label: 'Your Simulator',
-            children: [
+        ...(posEnabled && isPosConnected
+          ? [
               {
-                key: 'simulation-dashboard',
-                label: 'Simulation Dashboard',
-                onClick: handleSimulationDashboardClick,
-              },
-              {
-                key: 'simulation-setup',
-                label: 'Simulation Setup Process',
+                key: 'square',
+                icon: <ShoppingOutlined />,
+                label: 'Square',
                 children: [
                   {
-                    key: 'simulation-basic-information',
-                    label: 'Basic Information',
-                    onClick: () =>
-                      navigate(
-                        hasSimulationRestaurants ||
-                          restaurantSimulationData?.restaurant_simulation === true
-                          ? '/simulation/basic-information'
-                          : '/onboarding/simulation'
-                      ),
+                    key: 'pos-payments',
+                    label: 'Payments',
+                    onClick: () => navigate('/dashboard/pos/payments'),
                   },
                   {
-                    key: 'simulation-sales-channels-operating-days',
-                    label: 'Sales Channels & Operating Days',
-                    onClick: () =>
-                      navigate(
-                        hasSimulationRestaurants ||
-                          restaurantSimulationData?.restaurant_simulation === true
-                          ? '/simulation/sales-channels-operating-days'
-                          : '/onboarding/simulation'
-                      ),
+                    key: 'pos-timecards',
+                    label: 'Timecards',
+                    onClick: () => navigate('/dashboard/pos/timecards'),
                   },
                   {
-                    key: 'simulation-labor-information',
-                    label: 'Labor Information',
-                    onClick: () =>
-                      navigate(
-                        hasSimulationRestaurants ||
-                          restaurantSimulationData?.restaurant_simulation === true
-                          ? '/simulation/labor-information'
-                          : '/onboarding/simulation'
-                      ),
+                    key: 'pos-locations',
+                    label: 'Locations',
+                    onClick: () => navigate('/dashboard/pos/locations'),
                   },
                   {
-                    key: 'simulation-expenses',
-                    label: 'Expenses',
-                    onClick: () =>
-                      navigate(
-                        hasSimulationRestaurants ||
-                          restaurantSimulationData?.restaurant_simulation === true
-                          ? '/simulation/expenses'
-                          : '/onboarding/simulation'
-                      ),
+                    key: 'pos-orders',
+                    label: 'Orders',
+                    onClick: () => navigate('/dashboard/pos/orders'),
                   },
                 ],
               },
-            ],
-          },
-        ]
-      : []),
-    {
-      key: 'food-costing',
-      icon: <MdOutlineFoodBank />,
-      label: 'Menu Intelligence',
-      onClick: () => navigate('/dashboard/food-costing'),
-    },
+            ]
+          : []),
+      ],
+    }] : []),
     {
       key: 'support',
       icon: <QuestionCircleOutlined />,
@@ -587,37 +618,6 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Tutorials',
       onClick: () => navigate('/dashboard/training'),
     },
-    ...(posEnabled && isPosConnected
-      ? [
-          {
-            key: 'square',
-            icon: <ShoppingOutlined />,
-            label: 'Square',
-            children: [
-              {
-                key: 'pos-payments',
-                label: 'Payments',
-                onClick: () => navigate('/dashboard/pos/payments'),
-              },
-              {
-                key: 'pos-timecards',
-                label: 'Timecards',
-                onClick: () => navigate('/dashboard/pos/timecards'),
-              },
-              {
-                key: 'pos-locations',
-                label: 'Locations',
-                onClick: () => navigate('/dashboard/pos/locations'),
-              },
-              {
-                key: 'pos-orders',
-                label: 'Orders',
-                onClick: () => navigate('/dashboard/pos/orders'),
-              },
-            ],
-          },
-        ]
-      : []),
     {
       key: 'leo-ai',
       icon: <img src={lioIcon} alt="LIO AI" className="w-6 h-6" />,
