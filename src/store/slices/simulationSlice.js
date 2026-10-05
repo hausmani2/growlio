@@ -625,7 +625,8 @@ const createSimulationSlice = (set, get) => ({
     reportType = 'yearly_by_month',
     year,
     startYear,
-    endYear
+    endYear,
+    silent = false,
   } = {}) => {
     if (!restaurantId) {
       const errorMsg = 'Restaurant ID is required to run a report';
@@ -633,7 +634,11 @@ const createSimulationSlice = (set, get) => ({
       return { success: false, error: errorMsg };
     }
 
-    set({ simulationReportLoading: true, simulationReportError: null });
+    if (!silent) {
+      set({ simulationReportLoading: true, simulationReportError: null });
+    } else {
+      set({ simulationReportError: null });
+    }
     try {
       const params = new URLSearchParams();
       params.append('restaurant_id', restaurantId);

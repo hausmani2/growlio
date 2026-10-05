@@ -103,6 +103,7 @@ const SimulationDashboard = () => {
     createSimulationDashboard,
     getSimulationOnboardingStatus,
     getSimulationDashboard,
+    getSimulationReport,
     submitSimulationOnboarding,
     getDays,
     daysLoading,
@@ -288,6 +289,19 @@ const SimulationDashboard = () => {
       const result = await createSimulationDashboard(payload);
       if (result.success && rid) {
         await getSimulationDashboard(rid, params.year, params.month, p);
+        // Keep the yearly forecast in sync with top inputs (same as cashflow).
+        // Only refresh if the user already ran a report on screen.
+        const existingReport = useStore.getState().simulationReportData;
+        if (existingReport) {
+          await getSimulationReport({
+            restaurantId: rid,
+            reportType: existingReport.report_type || 'yearly_by_month',
+            year: existingReport.year,
+            startYear: existingReport.start_year,
+            endYear: existingReport.end_year,
+            silent: true,
+          });
+        }
       }
       setSaveStatus('saved');
       setSaveErrorMessage('');
@@ -308,7 +322,7 @@ const SimulationDashboard = () => {
     } finally {
       isSavingRef.current = false;
     }
-  }, [createSimulationDashboard, getSimulationDashboard]);
+  }, [createSimulationDashboard, getSimulationDashboard, getSimulationReport]);
 
   // Debounced auto-save when customer/day, profit_loss, or avg ticket change (skip on initial mount to avoid extra API call)
   useEffect(() => {
