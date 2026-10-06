@@ -13,7 +13,8 @@ import {
   isPaidPosPlan,
   getConnectPosRoute,
   readConnectPosReturn,
-  clearPosUpgradeReturn,
+  consumePosUpgradeReturn,
+  getNextIncompleteSetupRoute,
 } from '../../utils/onboardingUtils';
 import { isImpersonating } from '../../utils/tokenManager';
 
@@ -27,7 +28,7 @@ const OnboardingPlansPage = () => {
   const [isSubmittingZeros, setIsSubmittingZeros] = useState(false);
 
   const handleContinue = async () => {
-    clearPosUpgradeReturn();
+    const wasPosUpgrade = consumePosUpgradeReturn();
     const goToConnectPos = (upgraded = false) => {
       const stored = readConnectPosReturn();
       const route = getConnectPosRoute({
@@ -38,7 +39,29 @@ const OnboardingPlansPage = () => {
       navigate(upgraded ? `${route}${separator}upgraded=1` : route, { replace: true });
     };
 
-    // Simulation → restaurant: silently Finish profitability with all zeros, then POS/plan choice
+    const goToNextSetupStep = () => {
+      const restaurantData = useStore.getState().restaurantOnboardingData;
+      const next = getNextIncompleteSetupRoute(restaurantData);
+      // Prefer restaurant details over Connect POS when setup is incomplete.
+      if (!next || String(next).includes('/onboarding/connect-pos')) {
+        navigate('/dashboard/basic-information', { replace: true });
+        return;
+      }
+      navigate(next, { replace: true });
+    };
+
+    // Returning from Connect POS → Plans upgrade: go back to Connect POS.
+    if (wasPosUpgrade) {
+      goToConnectPos(
+        isPaidPosPlan(
+          useStore.getState().subscriptionDetails?.package ||
+            useStore.getState().currentPackage
+        )
+      );
+      return;
+    }
+
+    // Simulation → restaurant: silently Finish profitability with all zeros, then setup
     if (shouldAutoZeroProfitabilityFromSimulation()) {
       setIsSubmittingZeros(true);
       try {
@@ -51,9 +74,7 @@ const OnboardingPlansPage = () => {
 
         const locationId = useStore.getState().selectedLocationId;
         await getRestaurantOnboarding(true, locationId || undefined);
-        goToConnectPos(isPaidPosPlan(
-          useStore.getState().subscriptionDetails?.package || useStore.getState().currentPackage
-        ));
+        goToNextSetupStep();
       } catch (error) {
         console.error('Error auto-submitting zero profitability score:', error);
         message.error(error?.message || 'Failed to complete setup. Please try again.');
@@ -62,9 +83,7 @@ const OnboardingPlansPage = () => {
       return;
     }
 
-    const currentPlan =
-      useStore.getState().subscriptionDetails?.package || useStore.getState().currentPackage;
-    goToConnectPos(isPaidPosPlan(currentPlan));
+    goToNextSetupStep();
   };
 
   const handleStopImpersonation = async () => {

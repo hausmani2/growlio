@@ -389,6 +389,7 @@ export const TabProvider = ({ children }) => {
             navigateToBudgetOrConnectPos(navigate, {
                 replace: true,
                 onboardingComplete: isOnBoardingCompleted,
+                restaurantData: useStore.getState().restaurantOnboardingData,
             });
             // Scroll to top after navigation
             setTimeout(() => {

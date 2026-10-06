@@ -2,9 +2,6 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CheckCircleFilled, WarningFilled, CloseCircleFilled } from '@ant-design/icons';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
-import {
-  getConnectPosRoute,
-} from "../../utils/onboardingUtils";
 
 const ProfitabilityResults = () => {
     const navigate = useNavigate();
@@ -144,10 +141,7 @@ const ProfitabilityResults = () => {
                         <div className="space-y-3 mt-4">
                             <button
                                 onClick={() => {
-                                    navigate(getConnectPosRoute({
-                                        from: 'setup',
-                                        next: '/dashboard/basic-information',
-                                    }));
+                                    navigate('/dashboard/basic-information');
                                 }}
                                 className="w-full rounded-lg p-3 bg-orange-500 text-white font-semibold text-base hover:bg-orange-600 transition-colors duration-200 shadow-md hover:shadow-lg"
                             >

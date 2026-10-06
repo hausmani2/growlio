@@ -565,6 +565,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           onClick: () =>
             navigateToBudgetOrConnectPos(navigate, {
               onboardingComplete: isOnboardingComplete(restaurantOnboardingData),
+              restaurantData: restaurantOnboardingData,
             }),
         },
         {

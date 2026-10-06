@@ -204,6 +204,17 @@ export const getMerchantSyncStatus = async (restaurantId) => {
     payload?.data?.merchant?.last_sync_had_data ??
     null;
 
+  const rawAutoBudgetDays =
+    payload?.last_auto_budget_days ??
+    payload?.data?.last_auto_budget_days ??
+    payload?.merchant?.last_auto_budget_days ??
+    payload?.data?.merchant?.last_auto_budget_days ??
+    null;
+  const autoBudgetDays =
+    rawAutoBudgetDays == null || rawAutoBudgetDays === ''
+      ? null
+      : Number(rawAutoBudgetDays);
+
   const needsReconnect = Boolean(
     payload?.needs_reconnect ||
       payload?.data?.needs_reconnect ||
@@ -227,6 +238,7 @@ export const getMerchantSyncStatus = async (restaurantId) => {
     needsReconnect: needsReconnect || status === 'auth_required',
     reconnectMessage,
     lastSyncHadData,
+    autoBudgetDays: Number.isFinite(autoBudgetDays) ? autoBudgetDays : null,
   };
 };
 

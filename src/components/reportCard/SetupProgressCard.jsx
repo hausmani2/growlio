@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import Mask from "../../assets/pngs/new-onboard.png";
 import useStore from "../../store/store";
-import { ONBOARDING_ROUTES, setAutoZeroProfitabilityFromSimulation, getConnectPosRoute, shouldPromptConnectPosForSetup, navigateToBudgetOrConnectPos } from "../../utils/onboardingUtils";
+import { ONBOARDING_ROUTES, setAutoZeroProfitabilityFromSimulation, getConnectPosRoute, navigateToBudgetOrConnectPos } from "../../utils/onboardingUtils";
 
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 
@@ -81,21 +81,9 @@ const SetupProgressCard = ({
     const isBudgetStep =
       item.label === "Go to your budget" || route === "/dashboard/budget";
     if (isBudgetStep) {
-      navigateToBudgetOrConnectPos(navigate);
-      return;
-    }
-
-    const isRestaurantDetailsStep =
-      item.label === "Restaurant details" ||
-      item.label === "Enter additional sales data" ||
-      route === "/dashboard/basic-information";
-    if (isRestaurantDetailsStep && shouldPromptConnectPosForSetup()) {
-      navigate(
-        getConnectPosRoute({
-          from: "setup",
-          next: route,
-        })
-      );
+      navigateToBudgetOrConnectPos(navigate, {
+        restaurantData: useStore.getState().restaurantOnboardingData,
+      });
       return;
     }
 
