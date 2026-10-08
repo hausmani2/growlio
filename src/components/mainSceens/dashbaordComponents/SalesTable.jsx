@@ -100,8 +100,18 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     getRestaurentGoal,
     checkWeeklyAverageData,
     submitWeeklyAverageData,
-    weeklyAverageLoading
+    weeklyAverageLoading,
+    selectedLocationId,
+    lastLoadedOnboardingLocationId,
   } = useStore();
+
+  // True only when Zustand onboarding matches the currently selected location.
+  // While false, do not treat reset defaults (online=false, providers=[]) as real config.
+  const onboardingReadyForLocation = Boolean(
+    selectedLocationId &&
+      lastLoadedOnboardingLocationId != null &&
+      String(lastLoadedOnboardingLocationId) === String(selectedLocationId)
+  );
 
   const isOnBoardingCompleted = useStore((s) => s.isOnBoardingCompleted);
   const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
@@ -135,58 +145,21 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
     });
   };
 
-  // Helper function to extract provider name from field name
-  // e.g., "actual_sales_grubhub" -> "Grubhub", "actual_sales_door_dash" -> "Door Dash"
-  const extractProviderNameFromField = (fieldName) => {
-    if (!fieldName || !fieldName.startsWith('actual_sales_')) {
-      return null;
-    }
-    // Remove "actual_sales_" prefix
-    const namePart = fieldName.replace('actual_sales_', '');
-    // Convert snake_case to Title Case
-    // e.g., "grubhub" -> "Grubhub", "door_dash" -> "Door Dash"
-    return namePart
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  };
-
-  // Extract providers from API response third_party_sales object
-  const extractProvidersFromAPI = (thirdPartySales) => {
-    if (!thirdPartySales || typeof thirdPartySales !== 'object') {
-      return [];
-    }
-    
-    const apiProviders = [];
-    Object.keys(thirdPartySales).forEach(fieldName => {
-      // Only process actual_sales_ fields
-      if (fieldName.startsWith('actual_sales_')) {
-        // Never treat core channels as "providers" (prevents duplicate columns in edit mode)
-        // These fields can exist directly on Sales Performance (fallback shape).
-        if (
-          fieldName === 'actual_sales_in_store' ||
-          fieldName === 'actual_sales_app_online' ||
-          fieldName === 'actual_sales_online'
-        ) {
-          return;
-        }
-        const providerName = extractProviderNameFromField(fieldName);
-        if (providerName) {
-          // Check if provider already exists
-          const exists = apiProviders.some(p => 
-            p.provider_name.toLowerCase() === providerName.toLowerCase()
-          );
-          if (!exists) {
-            apiProviders.push({
-              provider_name: providerName,
-              originalField: fieldName
-            });
-          }
-        }
-      }
-    });
-    
-    return apiProviders;
+  // Read provider amount from Sales Performance — supports name keys ("Door Dash")
+  // and actual_sales_* keys used by some payloads.
+  const readThirdPartyAmount = (salesPerformance, provider) => {
+    if (!salesPerformance || !provider) return 0;
+    const name = (provider.provider_name || '').toString().trim();
+    const providerFieldName =
+      provider.originalField ||
+      `actual_sales_${name.toLowerCase().replace(/\s+/g, '_')}`;
+    const tps = salesPerformance.third_party_sales;
+    const fromTps =
+      (tps && typeof tps === 'object'
+        ? tps[providerFieldName] ?? tps[name] ?? tps[name.toLowerCase()]
+        : undefined);
+    const direct = salesPerformance?.[providerFieldName];
+    return parseFloat(fromTps ?? direct) || 0;
   };
 
   // Get providers from onboarding data
@@ -256,26 +229,46 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
   };
 
   const [providers, setProviders] = useState([]);
-  // Stable, computed list used for UI + calculations to avoid flicker/race conditions
+  // Stable list used for UI + calculations. Visibility SSOT = onboarding providers only.
   const [displayProviders, setDisplayProviders] = useState([]);
   const [salesChannelsConfig, setSalesChannelsConfig] = useState({
     in_store: true,
     online: false,
     from_app: false
   });
+  // Last location whose onboarding was applied to local visibility state.
+  const lastAppliedOnboardingLocationRef = useRef(null);
 
-  // Use displayProviders everywhere once available; fallback to configured providers
+  // Prefer displayProviders once set from onboarding; never invent from API-only sales.
   const providerList = displayProviders.length > 0 ? displayProviders : providers;
 
-  // Update providers and sales channels config when onboarding data changes
+  // Update providers and sales channels when onboarding is ready for this location.
+  // - Same location still loading: keep current columns (do not apply reset defaults).
+  // - Location switched and not ready yet: clear optional channels so we never show
+  //   another location's Online / Third Party config.
   useEffect(() => {
+    if (!onboardingReadyForLocation) {
+      const applied = lastAppliedOnboardingLocationRef.current;
+      const locationChanged =
+        applied != null &&
+        selectedLocationId != null &&
+        String(applied) !== String(selectedLocationId);
+      if (locationChanged || applied == null) {
+        setProviders([]);
+        setDisplayProviders([]);
+        setSalesChannelsConfig({ in_store: true, online: false, from_app: false });
+      }
+      return;
+    }
     const currentProviders = getProviders();
     const currentConfig = getSalesChannelsConfig();
     setProviders(currentProviders);
+    setDisplayProviders(currentProviders);
     setSalesChannelsConfig(currentConfig);
-  }, [completeOnboardingData]);
+    lastAppliedOnboardingLocationRef.current = selectedLocationId;
+  }, [completeOnboardingData, onboardingReadyForLocation, selectedLocationId]);
 
-  // Ensure provider config is always fresh (so newly-added 3P providers show immediately)
+  // Keep onboarding fresh for Close Day (mount, focus, location change).
   useEffect(() => {
     let isMounted = true;
 
@@ -287,19 +280,27 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       }
     };
 
-    refreshOnboarding(false);
+    // Force when this location is not loaded yet (e.g. after location-change reset).
+    refreshOnboarding(!onboardingReadyForLocation);
 
     const onFocus = () => {
       if (!isMounted) return;
       refreshOnboarding(true);
     };
 
+    const onLocationChanged = () => {
+      if (!isMounted) return;
+      refreshOnboarding(true);
+    };
+
     window.addEventListener('focus', onFocus);
+    window.addEventListener('growlio:location-changed', onLocationChanged);
     return () => {
       isMounted = false;
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('growlio:location-changed', onLocationChanged);
     };
-  }, [loadExistingOnboardingData]);
+  }, [loadExistingOnboardingData, selectedLocationId]);
 
   // Function to check if a day should be closed based on restaurant goals.
   // API rule: days listed in restaurant_days are OPEN; missing days are CLOSED.
@@ -945,54 +946,14 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
     setDataNotFound(false);
 
-    // Provider rules (per your requirements):
-    // - If Third Party Delivery Info has providers AND API has third party, show BOTH (union).
-    // - If Third Party Delivery Info has NO providers, only show providers detected from API for this week.
-    // - If API has no third party providers for this week, don't show any API-only providers.
-    const configuredProviders = Array.isArray(providers) ? providers : [];
-    const apiProviderMap = new Map();
-    const hasConfiguredProviders = configuredProviders.length > 0;
-    
-    const getThirdPartyProviderSource = (salesPerformance) => {
-      if (!salesPerformance) return null;
-      const tps = salesPerformance.third_party_sales;
-      if (tps && typeof tps === 'object') {
-        const hasAnyProviderKeys = Object.keys(tps).some((k) => k.startsWith('actual_sales_'));
-        if (hasAnyProviderKeys) return tps;
-      }
-      // Fallback: providers may be present directly on Sales Performance
-      return salesPerformance;
-    };
+    // Visibility SSOT = onboarding Third Party providers only.
+    // API sales amounts fill values for those providers but must not invent/show columns when OFF.
+    const configuredProviders = onboardingReadyForLocation
+      ? (Array.isArray(providers) ? providers : [])
+      : (Array.isArray(displayProviders) && displayProviders.length > 0
+          ? displayProviders
+          : (Array.isArray(providers) ? providers : []));
 
-    const addApiProvidersFromSalesPerformance = (salesPerformance) => {
-      if (!salesPerformance) return;
-      const apiProviders = extractProvidersFromAPI(getThirdPartyProviderSource(salesPerformance));
-      apiProviders.forEach((apiProvider) => {
-        const key = apiProvider.provider_name.toLowerCase();
-        if (!apiProviderMap.has(key)) {
-          apiProviderMap.set(key, apiProvider);
-        }
-      });
-    };
-
-    // Extract providers from API response (from weekly and daily entries)
-    // Support both shapes:
-    // - Sales Performance.third_party_sales.{actual_sales_*}
-    // - Sales Performance.{actual_sales_*} (direct fields)
-    if (dashboardData['Sales Performance']) {
-      addApiProvidersFromSalesPerformance(dashboardData['Sales Performance']);
-    }
-
-    // Also check daily entries for additional providers
-    if (dashboardData.daily_entries) {
-      dashboardData.daily_entries.forEach(entry => {
-        if (entry['Sales Performance']) {
-          addApiProvidersFromSalesPerformance(entry['Sales Performance']);
-        }
-      });
-    }
-
-    // Final provider list (stable order): configured first, then API-only when allowed by rules
     const configuredMap = new Map();
     configuredProviders.forEach((p) => {
       const name = (p?.provider_name || '').toString().trim();
@@ -1000,21 +961,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       configuredMap.set(name.toLowerCase(), { ...p, provider_name: name });
     });
 
-    const apiProvidersForWeek = Array.from(apiProviderMap.values());
-
-    let mergedProviders;
-    if (hasConfiguredProviders) {
-      // Setup providers always show; if API has providers, union them (deduped)
-      mergedProviders = [
-        ...Array.from(configuredMap.values()),
-        ...apiProvidersForWeek.filter((p) => !configuredMap.has(p.provider_name.toLowerCase())),
-      ];
-    } else {
-      // No setup providers: only show API providers when present for this week
-      mergedProviders = apiProvidersForWeek;
+    const mergedProviders = Array.from(configuredMap.values());
+    if (onboardingReadyForLocation) {
+      setDisplayProviders(mergedProviders);
     }
-
-    setDisplayProviders(mergedProviders);
 
     // Load weekly goals from the Sales Performance section
     if (dashboardData['Sales Performance']) {
@@ -1033,13 +983,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       // Add dynamic provider fields to goals from third_party_sales object
       mergedProviders.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        const providerFieldName =
-          provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
-
-        // Prefer nested third_party_sales when present, fallback to direct field on Sales Performance
-        const nestedVal = salesPerformance.third_party_sales?.[providerFieldName];
-        const directVal = salesPerformance?.[providerFieldName];
-        goals[providerKey] = parseFloat(nestedVal ?? directVal) || 0;
+        goals[providerKey] = readThirdPartyAmount(salesPerformance, provider);
       });
 
       setWeeklyGoals(goals);
@@ -1080,13 +1024,10 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
       // Add dynamic provider fields to daily data from third_party_sales object
       mergedProviders.forEach(provider => {
         const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-        const providerFieldName =
-          provider.originalField || `actual_sales_${provider.provider_name.toLowerCase().replace(/\s+/g, '_')}`;
-
-        const sp = entry['Sales Performance'] || {};
-        const nestedVal = sp.third_party_sales?.[providerFieldName];
-        const directVal = sp?.[providerFieldName];
-        dailyData[providerKey] = parseFloat(nestedVal ?? directVal) || 0;
+        dailyData[providerKey] = readThirdPartyAmount(
+          entry['Sales Performance'] || {},
+          provider
+        );
       });
 
       return dailyData;
@@ -3276,40 +3217,46 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                   />
                 </div>
 
-                <div>
-                  <Text strong>Actual Sales - In Store:</Text>
-                  <Input
-                    value={`${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
-                    prefix="$"
-                  />
-                </div>
+                {salesChannelsConfig.in_store && (
+                  <div>
+                    <Text strong>Actual Sales - In Store:</Text>
+                    <Input
+                      value={`${(weeklyTotals.actualSalesInStore || 0).toFixed(2)}`}
+                      className="mt-1"
+                      disabled
+                      style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                      prefix="$"
+                    />
+                  </div>
+                )}
 
-                <div>
-                  <Text strong>Actual Sales - App:</Text>
-                  <Input
-                    value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
-                    prefix="$"
-                  />
-                </div>
+                {salesChannelsConfig.from_app && (
+                  <div>
+                    <Text strong>Actual Sales - App:</Text>
+                    <Input
+                      value={`${(weeklyTotals.actualSalesAppOnline || 0).toFixed(2)}`}
+                      className="mt-1"
+                      disabled
+                      style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                      prefix="$"
+                    />
+                  </div>
+                )}
 
-                <div>
-                  <Text strong>Actual Sales - Online:</Text>
-                  <Input
-                    value={`${(weeklyTotals.actualSalesOnline || 0).toFixed(2)}`}
-                    className="mt-1"
-                    disabled
-                    style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
-                    prefix="$"
-                  />
-                </div>
+                {salesChannelsConfig.online && (
+                  <div>
+                    <Text strong>Actual Sales - Online:</Text>
+                    <Input
+                      value={`${(weeklyTotals.actualSalesOnline || 0).toFixed(2)}`}
+                      className="mt-1"
+                      disabled
+                      style={{ backgroundColor: '#fff7ed', color: '#1890ff' }}
+                      prefix="$"
+                    />
+                  </div>
+                )}
 
-                {/* Dynamic Provider Fields */}
+                {/* Dynamic Provider Fields — onboarding Third Party providers only */}
                 {providerList.map((provider) => (
                   <div key={provider.provider_name}>
                     <Text strong>Actual Sales - {provider.provider_name}:</Text>

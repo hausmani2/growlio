@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import usePosStore from '../store/posStore';
 import useStore from '../store/store';
 import {
+  checkPostSyncThirdParty,
   getDashboardData,
   getMerchantSyncStatus,
   POS_SYNC_POLL_INTERVAL_MS,
@@ -32,6 +33,7 @@ export const usePosSync = ({
   const completionHandledRef = useRef(false);
   const dashboardCallbackRef = useRef(onDashboardData);
   const syncCompletedCallbackRef = useRef(onSyncCompleted);
+  const lastSyncRangeRef = useRef(null);
 
   const {
     isSyncing,
@@ -118,6 +120,14 @@ export const usePosSync = ({
           staleTime: 0,
         });
 
+        // Refresh onboarding after sync so Close Day column visibility matches
+        // the selected location's Sales Channels / Third Party settings.
+        try {
+          await useStore.getState().loadExistingOnboardingData?.(true);
+        } catch (_) {
+          // Non-blocking: dashboard refresh already succeeded
+        }
+
         dashboardCallbackRef.current?.(freshDashboardData);
         syncCompletedCallbackRef.current?.({ hadData });
         queryClient.invalidateQueries({
@@ -125,6 +135,28 @@ export const usePosSync = ({
         });
         if (hadData) {
           message.success('POS data synced successfully');
+          const syncRange = lastSyncRangeRef.current;
+          const locationId =
+            localStorage.getItem('selected_location_id') ||
+            localStorage.getItem('location_id');
+          if (syncRange?.startDate && locationId) {
+            try {
+              const tpCheck = await checkPostSyncThirdParty({
+                restaurantId,
+                locationId,
+                startDate: syncRange.startDate,
+                endDate: syncRange.endDate || syncRange.startDate,
+              });
+              if (tpCheck?.show_warning && tpCheck?.message) {
+                message.warning({
+                  content: tpCheck.message,
+                  duration: 2,
+                });
+              }
+            } catch (_) {
+              // Non-blocking: sync already succeeded
+            }
+          }
         } else {
           message.warning(NO_POS_DATA_MESSAGE);
         }
@@ -246,6 +278,10 @@ export const usePosSync = ({
     setSyncError(null);
     setStatus('pending');
     setSyncing(true);
+    lastSyncRangeRef.current = {
+      startDate,
+      endDate: endDate || startDate,
+    };
     startRealtimeListeners(restaurantId, normalizedWeekStart);
 
     try {

@@ -69,6 +69,27 @@ export const previewPosSyncSetup = async (restaurantId, options = {}) => {
   return response.data;
 };
 
+/**
+ * After sync: check synced Third Party sales vs onboarding config.
+ */
+export const checkPostSyncThirdParty = async ({
+  restaurantId,
+  locationId,
+  startDate,
+  endDate,
+} = {}) => {
+  const query = new URLSearchParams({
+    restaurant_id: String(restaurantId),
+    location_id: String(locationId),
+    start_date: String(startDate),
+    end_date: String(endDate),
+  });
+  const response = await apiGet(
+    `/square_pos/post-sync-third-party-check/?${query.toString()}`
+  );
+  return response.data;
+};
+
 export const getLastCalendarMonthRange = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
