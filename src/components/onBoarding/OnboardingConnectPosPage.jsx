@@ -282,9 +282,15 @@ const OnboardingConnectPosPage = () => {
     navigate('/dashboard/pos-integrations', { replace: true });
   };
 
-  const handleImportFinished = () => {
+  const handleImportFinished = async () => {
     markSetupPlanChoice('upgraded');
     markBudgetPosPrompt('imported');
+    try {
+      await useStore.getState().fetchDashboardData?.(null);
+    } catch (err) {
+      console.warn('Budget refetch after POS import failed:', err);
+    }
+    // Toast already reflects auto-budget result; open Budget with fresh data.
     navigate(ONBOARDING_ROUTES.DASHBOARD_BUDGET, { replace: true });
   };
 

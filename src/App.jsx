@@ -4,7 +4,6 @@ import { message } from 'antd';
 import useStore from './store/store';
 import { GuidanceProvider } from './contexts/GuidanceContext';
 import LoadingSpinner from './components/layout/LoadingSpinner';
-import useOnboardingStatus from './hooks/useOnboardingStatus';
 import ScrollToTop from './components/common/ScrollToTop';
 
 
@@ -39,6 +38,7 @@ import ExpenseWrapper from './components/mainSceens/restaurantsInformation/steps
 import SalesDataWrapper from './components/mainSceens/restaurantsInformation/steps/salesData/SalesDataWrapper';
 import SummaryDashboard from './components/mainSceens/summaryDashboard/SummaryDashboard';
 import ProfitLossDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/ProfitLossDashboard';
+import CashFlowDashboard from './components/mainSceens/summaryDashboard/profitLossDashboard/CashFlowDashboard';
 import ProfileWrapper from './components/mainSceens/Profile/ProfileWrapper';
 import UsersAdmin from './components/admin/UsersAdmin';
 import TooltipsAdmin from './components/admin/TooltipsAdmin';
@@ -203,54 +203,6 @@ function App() {
   const fetchCurrentSubscriptionDetails = useStore((state) => state.fetchCurrentSubscriptionDetails);
   const hasBootRefreshedSubscriptionRef = useRef(false);
 
-  // Use the same onboarding status hook as Wrapper.jsx for consistency
-  const { 
-    isRegularUser, 
-    isSimulationUser,
-    hasRegularRestaurants,
-    hasSimulationRestaurants
-  } = useOnboardingStatus();
-  
-  const [isSimulationMode, setIsSimulationMode] = useState(false);
-  
-  // Check if user is in simulation mode - use same logic as Wrapper.jsx
-  // CRITICAL: According to requirements:
-  // - If only regular restaurant exists → normal flow (show chat widget)
-  // - If only simulation restaurant exists → simulation-only UI (hide chat widget)
-  // - If both exist → treat user as regular (show chat widget)
-  // - If neither exists → keep existing behavior (new user)
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setIsSimulationMode(false);
-      return;
-    }
-    
-    let shouldShowSimulationMode = false;
-    
-    // CRITICAL: Decision logic per requirements
-    // "If both exist → treat user as regular" - This means ALWAYS show regular mode (show chat widget)
-    // If user has BOTH regular and simulation restaurants → ALWAYS show regular mode
-    if (hasRegularRestaurants && hasSimulationRestaurants) {
-      shouldShowSimulationMode = false;
-    }
-    // If user is simulation-only (no regular restaurants)
-    // Hide chat widget (simulation mode)
-    else if (isSimulationUser && !hasRegularRestaurants) {
-      shouldShowSimulationMode = true;
-    }
-    // If user has only regular restaurants
-    // Show chat widget (regular mode)
-    else if (isRegularUser && !hasSimulationRestaurants) {
-      shouldShowSimulationMode = false;
-    }
-    // Default: don't show simulation mode (treat as regular, show chat widget)
-    else {
-      shouldShowSimulationMode = false;
-    }
-    
-    setIsSimulationMode(shouldShowSimulationMode);
-  }, [isAuthenticated, isRegularUser, isSimulationUser, hasRegularRestaurants, hasSimulationRestaurants]);
-  
   // Configure Ant Design message
   useEffect(() => {
     message.config({
@@ -369,6 +321,7 @@ function App() {
           <Route path="/complete-steps" element={<CompleteSteps />} />
           <Route path="/dashboard/budget" element={<Wrapper showSidebar={true} children={<SummaryDashboard />} />} />
           <Route path="/dashboard/profit-loss" element={<Wrapper showSidebar={true} children={<ProfitLossDashboard />} />} />
+          <Route path="/dashboard/cashflow" element={<Wrapper showSidebar={true} children={<CashFlowDashboard />} />} />
           <Route path="/dashboard" element={<Wrapper showSidebar={true} children={<Dashboard />} />} />
           <Route path="/dashboard/basic-information" element={<Wrapper showSidebar={true} children={<RestaurantWrapper />} />} />
           <Route path="/dashboard/labor-information" element={<Wrapper showSidebar={true} children={<LaborInformationWrapper />} />} />
@@ -420,8 +373,8 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       
-        {/* Chatbot Widget - Only show when authenticated and NOT in simulation mode */}
-        {isAuthenticated && !isSimulationMode && <ChatWidget botName="LIO Advisor" />}
+        {/* Single global LIO widget for all authenticated screens */}
+        {isAuthenticated && <ChatWidget botName="LIO Advisor" />}
         <FloatingYouTubePlayer />
       </GuidanceProvider>
     </Router>

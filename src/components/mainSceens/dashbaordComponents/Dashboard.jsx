@@ -16,6 +16,7 @@ import RestaurantInfoCard from './RestaurantInfoCard';
 import SummaryTableDashboard from '../summaryDashboard/SummaryTableDashboard';
 import SyncModal from '../../SyncModal';
 import MissingLaborRatesModal from '../../common/MissingLaborRatesModal';
+import SyncSetupIssuesModal from '../../common/SyncSetupIssuesModal';
 import PosImportPeriodModal from './PosImportPeriodModal';
 import usePosSync from '../../../hooks/usePosSync';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
@@ -66,6 +67,7 @@ const Dashboard = () => {
     checkingLaborRates,
     runWithLaborRateCheck,
     missingLaborRatesModalProps,
+    syncSetupIssuesModalProps,
   } = useMissingLaborRatesCheck();
   const tutorialLinkClassName = 'text-purple-600 cursor-pointer hover:text-purple-700 hover:underline';
   const openOperatingExpensesTutorial = () => {
@@ -1168,6 +1170,7 @@ const Dashboard = () => {
       />
       <SyncModal open={isPosSyncing || checkingLaborRates || posSyncStatus === 'pending'} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
+      <SyncSetupIssuesModal {...syncSetupIssuesModalProps} />
       <Modal
         title={posSyncHadData ? 'POS Data Sync Complete' : 'No POS Data Found'}
         open={isPosSyncCompletedModalVisible}

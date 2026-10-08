@@ -49,6 +49,7 @@ const createLocationSlice = (set, get) => ({
       lastFetchedSummaryLocationId: null,
       salesInformationData: null,
       salesInformationSummary: null,
+      salesInformationSummaryLastGood: null,
       salesInformationSummaryLastFetch: null,
       salesInformationSummaryLoading: false,
       salesInformationSummaryError: null,
@@ -92,7 +93,14 @@ const createLocationSlice = (set, get) => ({
         const weekStart = weekStartDate
           ? weekStartDate.format('YYYY-MM-DD')
           : dayjs().startOf('week').format('YYYY-MM-DD');
-        await get().fetchDashboardDataIfNeeded(weekStart);
+        // Reload onboarding with dashboard so Close Day columns use real
+        // Sales Channels / Third Party flags (not temporary reset defaults).
+        await Promise.all([
+          get().fetchDashboardDataIfNeeded(weekStart),
+          typeof get().loadExistingOnboardingData === 'function'
+            ? get().loadExistingOnboardingData(true)
+            : Promise.resolve(),
+        ]);
         return;
       }
 

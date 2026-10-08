@@ -61,9 +61,23 @@ export const markBudgetPosPrompt = (choice) => {
   writeStorage(sessionStorage, BUDGET_POS_PROMPT_KEY, choice);
 };
 
-export const shouldPromptConnectPosForSetup = () => !getSetupPlanChoice();
+/** Never force Connect POS before Restaurant Details / other setup steps. */
+export const shouldPromptConnectPosForSetup = () => false;
 
 export const shouldPromptConnectPosForBudget = () => !getBudgetPosPrompt();
+
+/**
+ * True when every setup step before Connect POS (order < 10) is complete.
+ * Used so Budget can soft-prompt POS only after Restaurant Details → Third Party.
+ */
+export const arePrePosSetupStepsComplete = (restaurantData) => {
+  const progress = getOnboardingProgress(restaurantData);
+  const prePos = (progress?.items || []).filter(
+    (item) => item?.order < 10 && item?.key != null
+  );
+  if (!prePos.length) return false;
+  return prePos.every((item) => item.isCompleted === true);
+};
 
 export const hasCompletedConnectPosSetup = () => {
   const choice = getBudgetPosPrompt() || getSetupPlanChoice();
@@ -126,8 +140,16 @@ export const isPaidPosPlan = (plan) => {
   return name.includes('grow') || name.includes('pro');
 };
 
-export const navigateToBudgetOrConnectPos = (navigate, { replace = false, onboardingComplete = false } = {}) => {
-  if (!onboardingComplete && shouldPromptConnectPosForBudget()) {
+export const navigateToBudgetOrConnectPos = (
+  navigate,
+  { replace = false, onboardingComplete = false, restaurantData = null } = {}
+) => {
+  // Only offer Connect POS before Budget once earlier setup steps are done.
+  if (
+    !onboardingComplete &&
+    shouldPromptConnectPosForBudget() &&
+    arePrePosSetupStepsComplete(restaurantData)
+  ) {
     navigate(
       getConnectPosRoute({
         from: 'budget',

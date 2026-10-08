@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Select, InputNumber, Button, Card, Table, Tag, message, Modal, Input, Popconfirm } from 'antd';
+import { Select, InputNumber, Button, Card, Table, Tag, message, Modal, Input, Popconfirm, Alert } from 'antd';
 import { CalendarOutlined, CheckCircleOutlined, LoadingOutlined, EditOutlined, DeleteOutlined, DownOutlined, DatabaseOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useStore from '../../store/store';
 import LoadingSpinner from '../layout/LoadingSpinner';
 import { formatCurrency } from '../../utils/formatUtils';
-import ChatWidget from '../chatbot/ChatWidget';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 import SimulatorCashFlow from './SimulatorCashFlow';
 import SimulatorAnnualReport from './SimulatorAnnualReport';
@@ -104,6 +103,7 @@ const SimulationDashboard = () => {
     createSimulationDashboard,
     getSimulationOnboardingStatus,
     getSimulationDashboard,
+    getSimulationReport,
     submitSimulationOnboarding,
     getDays,
     daysLoading,
@@ -289,6 +289,19 @@ const SimulationDashboard = () => {
       const result = await createSimulationDashboard(payload);
       if (result.success && rid) {
         await getSimulationDashboard(rid, params.year, params.month, p);
+        // Keep the yearly forecast in sync with top inputs (same as cashflow).
+        // Only refresh if the user already ran a report on screen.
+        const existingReport = useStore.getState().simulationReportData;
+        if (existingReport) {
+          await getSimulationReport({
+            restaurantId: rid,
+            reportType: existingReport.report_type || 'yearly_by_month',
+            year: existingReport.year,
+            startYear: existingReport.start_year,
+            endYear: existingReport.end_year,
+            silent: true,
+          });
+        }
       }
       setSaveStatus('saved');
       setSaveErrorMessage('');
@@ -309,7 +322,7 @@ const SimulationDashboard = () => {
     } finally {
       isSavingRef.current = false;
     }
-  }, [createSimulationDashboard, getSimulationDashboard]);
+  }, [createSimulationDashboard, getSimulationDashboard, getSimulationReport]);
 
   // Debounced auto-save when customer/day, profit_loss, or avg ticket change (skip on initial mount to avoid extra API call)
   useEffect(() => {
@@ -408,6 +421,7 @@ const SimulationDashboard = () => {
   const [actualsPreview, setActualsPreview] = useState(null);
   const [actualsModalOpen, setActualsModalOpen] = useState(false);
   const [actualsLoading, setActualsLoading] = useState(false);
+  const [actualsImportedNote, setActualsImportedNote] = useState('');
   const [savedSimulations, setSavedSimulations] = useState([]);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
@@ -520,13 +534,18 @@ const SimulationDashboard = () => {
       const forecast = result.data?.forecast || {};
       const nextParams = {
         ...dashboardParams,
-        added_customer_per_day: Number(forecast.added_customer_per_day) || 0,
+        added_customer_per_day: Math.round(Number(forecast.added_customer_per_day) || 0),
         labour_goal: clampGoalPct(forecast.labour_goal),
         cogs_goal: clampGoalPct(forecast.cogs_goal),
         average_ticket_per_customer: Number(forecast.average_ticket_per_customer) || 0,
       };
       setDashboardParams(nextParams);
       latestParamsRef.current = { dashboardParams: nextParams, period, restaurantId };
+      setActualsImportedNote(
+        result.data?.disclosure ||
+          result.data?.message ||
+          'Customers per day, average ticket, labor, and COGS are based on the previous 30 days of Close Out actuals.'
+      );
       setExpensesExpanded(true);
       await saveForecast({ paramsOverride: nextParams, showSuccessToast: false });
       setActualsModalOpen(false);
@@ -876,9 +895,11 @@ const SimulationDashboard = () => {
                     value={dashboardParams.added_customer_per_day}
                     onChange={(value) => setDashboardParams(prev => ({ ...prev, added_customer_per_day: value || 0 }))}
                     min={0}
+                    step={1}
+                    precision={0}
                     className="w-full"
                     size="large"
-                    placeholder="New customers/day"
+                    placeholder="Customers/day"
                   />
                 </div>
 
@@ -943,6 +964,18 @@ const SimulationDashboard = () => {
                   />
                 </div>
               </div>
+
+              {actualsImportedNote ? (
+                <Alert
+                  className="mt-3"
+                  type="info"
+                  showIcon
+                  closable
+                  onClose={() => setActualsImportedNote('')}
+                  message="Using actual data"
+                  description={actualsImportedNote}
+                />
+              ) : null}
 
               <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-gray-100 pt-4 mt-2">
                 <div>
@@ -1106,9 +1139,6 @@ const SimulationDashboard = () => {
           </>
         )}
       </div>
-      
-      {/* Chat Widget for Simulation */}
-      <ChatWidget botName="LIO Advisor" />
 
       <Modal
         title="How To Use The Simulator Tutorial"
@@ -1254,12 +1284,21 @@ const SimulationDashboard = () => {
         width={640}
       >
         <p className="text-gray-700 mb-4">
-          {actualsPreview?.message ||
+          {actualsPreview?.disclosure ||
+            actualsPreview?.message ||
             'Growlio will import these actuals into the simulator. Live restaurant budgets will not be changed.'}
         </p>
+        <Alert
+          className="mb-4"
+          type="info"
+          showIcon
+          message="Based on the previous 30 days"
+          description="Customers per day and average ticket come from your Close Out actuals for that period. Labor and COGS % are calculated from the same days."
+        />
         {actualsPreview?.live_restaurant_name ? (
           <p className="text-sm text-gray-500 mb-4">
-            Source: {actualsPreview.live_restaurant_name} (last {actualsPreview.lookback_days} days,{' '}
+            Source: {actualsPreview.live_restaurant_name} (
+            {actualsPreview.date_from} to {actualsPreview.date_to},{' '}
             {actualsPreview.open_days} open days)
           </p>
         ) : null}
@@ -1267,25 +1306,33 @@ const SimulationDashboard = () => {
           <div className="rounded-lg border border-gray-200 p-3">
             <div className="text-xs uppercase tracking-wide text-gray-500">Avg customers / day</div>
             <div className="text-lg font-semibold text-gray-900">
-              {Number(actualsPreview?.avg_customers_per_day || 0).toFixed(1)}
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 p-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Current COGS %</div>
-            <div className="text-lg font-semibold text-gray-900">
-              {Number(actualsPreview?.cogs_pct || 0).toFixed(2)}%
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 p-3">
-            <div className="text-xs uppercase tracking-wide text-gray-500">Current labor %</div>
-            <div className="text-lg font-semibold text-gray-900">
-              {Number(actualsPreview?.labor_pct || 0).toFixed(2)}%
+              {Math.round(Number(actualsPreview?.avg_customers_per_day || 0))}
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 p-3">
             <div className="text-xs uppercase tracking-wide text-gray-500">Avg ticket</div>
             <div className="text-lg font-semibold text-gray-900">
               {formatCurrency(actualsPreview?.avg_ticket || 0)}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">Labor (actual)</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {Number(actualsPreview?.labor_pct || 0).toFixed(1)}%
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {formatCurrency(actualsPreview?.totals?.labor || 0)} total ·{' '}
+              {formatCurrency(actualsPreview?.avg_labor_per_day || 0)} / day
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <div className="text-xs uppercase tracking-wide text-gray-500">COGS (actual)</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {Number(actualsPreview?.cogs_pct || 0).toFixed(1)}%
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {formatCurrency(actualsPreview?.totals?.cogs || 0)} total ·{' '}
+              {formatCurrency(actualsPreview?.avg_cogs_per_day || 0)} / day
             </div>
           </div>
           <div className="rounded-lg border border-gray-200 p-3 sm:col-span-2">

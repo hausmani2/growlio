@@ -11,6 +11,7 @@ import useStore from '../../store/store';
 import SquareConnectButton from '../square/SquareConnectButton';
 import SyncModal from '../SyncModal';
 import MissingLaborRatesModal from '../common/MissingLaborRatesModal';
+import SyncSetupIssuesModal from '../common/SyncSetupIssuesModal';
 import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import {
   formatPosDate,
@@ -113,6 +114,7 @@ const OnboardingPosImport = ({
     checkingLaborRates,
     runWithLaborRateCheck,
     missingLaborRatesModalProps,
+    syncSetupIssuesModalProps,
   } = useMissingLaborRatesCheck();
 
   const isConnected = squareStatus === 'connected';
@@ -206,11 +208,37 @@ const OnboardingPosImport = ({
 
       const locationId = useStore.getState().selectedLocationId;
       await getRestaurantOnboarding?.(true, locationId || undefined);
+
+      // Refetch budget dashboard so the Budget page shows seeded values.
+      try {
+        await useStore.getState().fetchDashboardData?.(null);
+      } catch (dashErr) {
+        console.warn('Dashboard refetch after POS import failed:', dashErr);
+      }
+
       setEmptyImportMessage(null);
-      const importedMessage = successMessage || 'Last month imported from Square.';
-      message.success(importedMessage);
+      const autoBudgetDays = merchantStatus?.autoBudgetDays;
+      const budgetFilled = Number(autoBudgetDays) > 0;
+      if (budgetFilled) {
+        message.success(
+          successMessage ||
+            'Imported from Square and created your starting budget.'
+        );
+      } else if (merchantStatus?.lastSyncHadData) {
+        message.warning(
+          'Import finished, but we could not auto-fill your budget from Square data. You can set it on the Budget page.'
+        );
+      } else {
+        message.success(successMessage || 'Last month imported from Square.');
+      }
+
+      const finishPayload = {
+        autoBudgetDays: autoBudgetDays ?? 0,
+        budgetFilled,
+        lastSyncHadData: merchantStatus?.lastSyncHadData,
+      };
       if (onFinished) {
-        onFinished();
+        onFinished(finishPayload);
         return;
       }
       navigate(
@@ -219,10 +247,11 @@ const OnboardingPosImport = ({
       );
     } catch (error) {
       console.error('Failed to refresh onboarding after POS import:', error);
-      const importedMessage = successMessage || 'Last month imported from Square.';
-      message.success(importedMessage);
+      message.warning(
+        'Import may have finished, but we could not confirm your budget was created. Check the Budget page.'
+      );
       if (onFinished) {
-        onFinished();
+        onFinished({ autoBudgetDays: 0, budgetFilled: false });
         return;
       }
       navigate(ONBOARDING_ROUTES.REPORT_CARD, { replace: true });
@@ -461,6 +490,7 @@ const OnboardingPosImport = ({
     >
       <SyncModal open={isImporting || isSavingLocation || checkingLaborRates} />
       <MissingLaborRatesModal {...missingLaborRatesModalProps} />
+      <SyncSetupIssuesModal {...syncSetupIssuesModalProps} />
 
       <Modal
         title="Select Square Location"

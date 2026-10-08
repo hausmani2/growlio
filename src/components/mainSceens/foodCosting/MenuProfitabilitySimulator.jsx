@@ -177,22 +177,32 @@ const MenuProfitabilitySimulator = () => {
 
   const validateChanges = () => {
     const payload = [];
+    const volumeOnly = Number(globalVolume) !== 0;
+
     for (const row of changes) {
-      if (row.value === null || row.value === undefined || row.value === '') {
-        message.error('Each change needs a value');
-        return null;
-      }
-      if (needsMenuItem(row.type) && !row.menu_item_id) {
-        message.error('Select a menu item for price/portion changes');
-        return null;
-      }
-      if (needsIngredient(row.type) && !row.ingredient_id) {
+      const missingValue =
+        row.value === null || row.value === undefined || row.value === '';
+      const missingMenu = needsMenuItem(row.type) && !row.menu_item_id;
+      const missingIngredient = needsIngredient(row.type) && !row.ingredient_id;
+
+      if (missingValue || missingMenu || missingIngredient) {
+        // Placeholder rows (default empty change) are OK when global volume alone drives the sim.
+        if (volumeOnly) continue;
+        if (missingValue) {
+          message.error('Each change needs a value');
+          return null;
+        }
+        if (missingMenu) {
+          message.error('Select a menu item for price/portion changes');
+          return null;
+        }
         message.error('Select an ingredient for cost/portion changes');
         return null;
       }
       payload.push(buildChangePayload(row));
     }
     if (!payload.length) {
+      if (volumeOnly) return [];
       message.error('Add at least one change');
       return null;
     }
@@ -429,7 +439,10 @@ const MenuProfitabilitySimulator = () => {
           >
             <div className="mb-3">
               <div className="text-sm text-gray-600 mb-1">
-                Global volume change % (all changes)
+                Global volume change %
+              </div>
+              <div className="text-xs text-gray-500 mb-1">
+                Applies to all menu items. No item selection needed.
               </div>
               <InputNumber
                 className="w-full"

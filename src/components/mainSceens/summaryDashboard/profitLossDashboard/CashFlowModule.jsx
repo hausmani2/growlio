@@ -1,5 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Card, DatePicker, Spin, Tag } from 'antd';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Card, DatePicker, Popover, Spin, Tag } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import {
+  FaBriefcase,
+  FaShoppingBasket,
+  FaHome,
+  FaTools,
+  FaWallet,
+} from 'react-icons/fa';
 import dayjs from 'dayjs';
 import useStore from '../../../../store/store';
 import lioMascot from '../../../../assets/pngs/lio-mascot.png';
@@ -11,10 +19,13 @@ const money = (value) => {
   return num < 0 ? `-$${abs}` : `$${abs}`;
 };
 
-const cashLeftMoney = (value) => {
+/** Positive / zero → In your pocket; negative → Out of pocket. */
+const pocketLabel = (value, { estimated = false, prefix = '' } = {}) => {
   const num = Number(value);
-  if (!Number.isFinite(num)) return '—';
-  return money(Math.max(0, num));
+  const base =
+    Number.isFinite(num) && num < 0 ? 'Out of pocket' : 'In your pocket';
+  const withEstimate = estimated ? `Estimated ${base}` : base;
+  return prefix ? `${prefix}${withEstimate}` : withEstimate;
 };
 
 const SOURCE_LABELS = {
@@ -43,31 +54,314 @@ const statusClass = (status) => {
   return 'text-gray-500';
 };
 
+/** (actual − budget) / basis × 100.
+ * Costs: over = red, under = green.
+ * Sales: invertColors → over = green, under = red. */
+const budgetVariance = (actual, budget, basis) => {
+  const a = Number(actual);
+  const b = Number(budget);
+  const d = Number(basis);
+  if (![a, b, d].every(Number.isFinite) || d <= 0 || b <= 0) return null;
+  const raw = ((a - b) / d) * 100;
+  if (!Number.isFinite(raw) || Math.abs(raw) < 0.05) return null;
+  return {
+    percent: Math.abs(raw),
+    over: raw > 0,
+  };
+};
+
+const formatVariancePct = (percent) => {
+  const n = Number(percent);
+  if (!Number.isFinite(n)) return null;
+  return n.toFixed(1);
+};
+
+const BudgetVarianceBadge = ({ actual, budget, basis, invertColors = false }) => {
+  const variance = budgetVariance(actual, budget, basis);
+  if (!variance) return null;
+  const pct = formatVariancePct(variance.percent);
+  if (pct == null) return null;
+  const over = variance.over;
+  // Sales: beating budget is good (green). Costs: over budget is bad (red).
+  const positive = invertColors ? over : !over;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${
+        positive
+          ? 'bg-emerald-50 text-emerald-700'
+          : 'bg-red-50 text-red-600'
+      }`}
+    >
+      <span aria-hidden="true">{over ? '↑' : '↓'}</span>
+      {pct}% {over ? 'over budget' : 'under budget'}
+    </span>
+  );
+};
+
 const ENVELOPES = [
-  { key: 'labor', title: 'Labor', accent: 'bg-sky-500', tint: 'bg-sky-50 border-sky-100' },
-  { key: 'cogs', title: 'COGS / Food', accent: 'bg-orange-500', tint: 'bg-orange-50 border-orange-100' },
-  { key: 'rent', title: 'Rent', accent: 'bg-violet-500', tint: 'bg-violet-50 border-violet-100' },
+  {
+    key: 'labor',
+    title: 'Labor',
+    accent: 'bg-sky-500',
+    tint: 'bg-sky-50 border-sky-100',
+    icon: FaBriefcase,
+    iconWrap: 'bg-sky-100 text-sky-600',
+    bar: 'bg-sky-500',
+  },
+  {
+    key: 'cogs',
+    title: 'COGS / Food',
+    accent: 'bg-orange-500',
+    tint: 'bg-orange-50 border-orange-100',
+    icon: FaShoppingBasket,
+    iconWrap: 'bg-orange-100 text-orange-600',
+    bar: 'bg-orange-500',
+  },
+  {
+    key: 'rent',
+    title: 'Rent',
+    accent: 'bg-violet-500',
+    tint: 'bg-violet-50 border-violet-100',
+    icon: FaHome,
+    iconWrap: 'bg-violet-100 text-violet-600',
+    bar: 'bg-violet-500',
+  },
   {
     key: 'operating_expenses',
     title: 'Operating Expenses',
     accent: 'bg-teal-500',
     tint: 'bg-teal-50 border-teal-100',
+    icon: FaTools,
+    iconWrap: 'bg-teal-100 text-teal-600',
+    bar: 'bg-teal-500',
   },
 ];
 
-const Kpi = ({ label, value, hint, valueClass, bar, badge }) => (
+const ACTUAL_VS_BUDGET_HELP = (
+  <div className="max-w-sm space-y-2 text-sm text-gray-700">
+    <p className="font-semibold text-gray-900">Why does this say Actual or Budget?</p>
+    <p>
+      Growlio uses the best information available to calculate how much you should set aside.
+    </p>
+    <p>
+      <span className="font-semibold text-emerald-700">ACTUAL</span>
+      {' — '}
+      You entered the actual expense in Close Day, so Growlio uses what you really spent.
+    </p>
+    <p>
+      <span className="font-semibold text-blue-600">BUDGET</span>
+      {' — '}
+      No actual expense has been entered yet, so Growlio estimates the amount using your budget.
+    </p>
+    <p>
+      Once actual numbers are entered, Growlio automatically replaces the budget estimate with the
+      actual amount.
+    </p>
+    <p className="text-xs text-gray-500">
+      For example, if yesterday’s sales were $4,250 and your Food/COGS budget is 30%, Growlio will
+      show $1,275 — From Budget until the actual food cost is entered. If you enter $1,190 in Close
+      Day, it changes to $1,190 — From Actual.
+    </p>
+  </div>
+);
+
+const WHY_ENVELOPES_HELP = (
+  <div className="max-w-md max-h-[70vh] overflow-y-auto space-y-3 text-sm text-gray-700 pr-1">
+    <p className="font-semibold text-gray-900 text-base">Why Envelopes?</p>
+    <p className="font-medium text-gray-800">
+      Sales in the bank don’t mean the money is yours to spend.
+    </p>
+    <p>
+      Every dollar that comes into your restaurant has a job. Some of it needs to pay for labor,
+      some for food, some for rent, and some for operating expenses.
+    </p>
+    <p>
+      The problem is that you don’t always pay those expenses on the same day you make the sales.
+      Payroll may be next week. A food invoice may be due later. Rent may not be due until the end
+      of the month.
+    </p>
+    <p className="font-medium text-gray-800">That’s where the envelopes come in.</p>
+    <p>
+      Each day, Growlio adds to your envelopes. Actual uses only the numbers entered when you
+      closed the day. Forecast adds your budget for any day that has not been closed yet. Those
+      amounts accumulate throughout the week.
+    </p>
+    <p>
+      Think of it as setting aside the money as you earn it instead of waiting until the bill
+      arrives and hoping the money is still there.
+    </p>
+    <p>
+      The goal is simple: when the bill comes due, you’ve already planned for the money to be there.
+    </p>
+    <p>
+      After funding your Labor, Food/COGS, Rent, and Operating Expense envelopes, Growlio shows
+      what’s In Your Pocket. If your sales aren’t enough to fund those expenses, Growlio shows
+      what’s Out of Pocket.
+    </p>
+    <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-900 space-y-2">
+      <p className="font-semibold">Important</p>
+      <p>
+        Growlio is a financial planning and management tool—not a bank, accounting system, or
+        financial advisor. Growlio does not access, hold, transfer, reserve, or move your money.
+      </p>
+      <p>
+        Envelope amounts and other cash-flow calculations are estimates based on the sales,
+        expenses, budgets, targets, and other information you enter or connect to Growlio. The
+        accuracy of these estimates depends on the accuracy and completeness of that information.
+      </p>
+      <p>
+        Growlio may not include every expense, payment, tax, debt obligation, fee, timing
+        difference, or other financial commitment of your business.
+      </p>
+      <p>
+        The amounts shown should not be considered a complete representation of the cash required
+        to operate your restaurant or the actual cash available in your bank account. You are
+        responsible for reviewing your numbers, accounting for expenses not included in Growlio,
+        and determining how much money to set aside and maintain in your own accounts to meet your
+        financial obligations.
+      </p>
+    </div>
+  </div>
+);
+
+const ActualBudgetInfoIcon = () => (
+  <Popover
+    content={ACTUAL_VS_BUDGET_HELP}
+    trigger={['hover', 'click']}
+    placement="bottomLeft"
+  >
+    <button
+      type="button"
+      className="inline-flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+      aria-label="Why does this say Actual or Budget?"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <InfoCircleOutlined className="text-sm" />
+    </button>
+  </Popover>
+);
+
+const ENVELOPE_MODES = [
+  {
+    id: 'actual',
+    label: 'Actual',
+    description: 'Uses actual data only through today.',
+  },
+  {
+    id: 'forecast',
+    label: 'Forecast',
+    description: 'Uses actual data to date plus budgeted amounts for remaining days.',
+  },
+];
+
+const EnvelopeModeSwitch = ({ mode, onChange }) => (
+  <div
+    className="inline-flex rounded-full bg-gray-100 p-1"
+    role="group"
+    aria-label="Envelope view"
+  >
+    {ENVELOPE_MODES.map((item) => {
+      const selected = mode === item.id;
+      return (
+        <button
+          key={item.id}
+          type="button"
+          aria-pressed={selected}
+          onClick={() => onChange(item.id)}
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+            selected
+              ? 'bg-[#1677ff] text-white shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          {item.label}
+        </button>
+      );
+    })}
+  </div>
+);
+
+const EnvelopeModeNote = ({ mode, descriptions }) => (
+  <div className="mb-4 grid gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 sm:grid-cols-2">
+    {ENVELOPE_MODES.map((item) => {
+      const selected = mode === item.id;
+      return (
+        <div
+          key={item.id}
+          className={`rounded-xl px-3 py-2 ${selected ? 'bg-white shadow-sm' : ''}`}
+        >
+          <p className="font-semibold text-gray-900">{item.label}</p>
+          <p className="mt-1 text-sm text-gray-600">
+            {descriptions?.[item.id] || item.description}
+          </p>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const WhyEnvelopesButton = () => (
+  <Popover content={WHY_ENVELOPES_HELP} trigger={['click']} placement="bottomLeft">
+    <button
+      type="button"
+      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+    >
+      <InfoCircleOutlined />
+      Why Envelopes?
+    </button>
+  </Popover>
+);
+
+const SourceBadge = ({ source, label }) => {
+  const text = label || SOURCE_LABELS[source];
+  if (!text) return null;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Tag color={sourceColor(source)} className="m-0">
+        {text}
+      </Tag>
+      <ActualBudgetInfoIcon />
+    </span>
+  );
+};
+
+const Kpi = ({ label, value, hint, valueClass, bar, badge, topBadge }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
     <div className="flex items-start justify-between gap-2">
       <p className="text-sm text-gray-500">{label}</p>
+      {topBadge}
+    </div>
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <p className={`text-3xl font-semibold tracking-tight ${valueClass || 'text-gray-900'}`}>
+        {value}
+      </p>
       {badge}
     </div>
-    <p className={`mt-1 text-3xl font-semibold tracking-tight ${valueClass || 'text-gray-900'}`}>
-      {value}
-    </p>
     {hint ? <p className="mt-1 text-xs text-gray-500">{hint}</p> : null}
     {bar}
   </div>
 );
+
+const EnvelopeProgress = ({ percent, barClass }) => {
+  const width = Math.max(0, Math.min(100, Number(percent) || 0));
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+        <span>{Math.round(width)}% of weekly target</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+        <div className={`h-full rounded-full ${barClass}`} style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+};
+
+/** Last day of the Sun–Sat week that is not in the future. */
+const weekStripAnchor = (dateValue) => {
+  const weekEnd = dateValue.add(6 - dateValue.day(), 'day');
+  const today = dayjs();
+  return (weekEnd.isAfter(today, 'day') ? today : weekEnd).format('YYYY-MM-DD');
+};
 
 const CashFlowModule = () => {
   const {
@@ -77,29 +371,74 @@ const CashFlowModule = () => {
     fetchCashFlow,
     selectedLocationId,
   } = useStore();
-  const [selectedDate, setSelectedDate] = React.useState(() => dayjs().subtract(1, 'day'));
+  const [selectedDate, setSelectedDate] = useState(() => dayjs().subtract(1, 'day'));
+  const [envelopeMode, setEnvelopeMode] = useState('actual');
+  const [weekDays, setWeekDays] = useState([]);
   const loadedKey = useRef('');
-
-  const load = useCallback(
-    (dateValue) => {
-      const dateStr = (dateValue || selectedDate).format('YYYY-MM-DD');
-      fetchCashFlow(dateStr);
-    },
-    [fetchCashFlow, selectedDate]
-  );
+  const weekDaysCache = useRef({});
+  const requestSeq = useRef(0);
 
   useEffect(() => {
-    const key = `${selectedDate.format('YYYY-MM-DD')}|${selectedLocationId || ''}`;
+    const selected = selectedDate.format('YYYY-MM-DD');
+    const anchor = weekStripAnchor(selectedDate);
+    const key = `${selected}|${selectedLocationId || ''}`;
     if (loadedKey.current === key) return;
     loadedKey.current = key;
-    load(selectedDate);
-  }, [selectedDate, selectedLocationId, load]);
+    setEnvelopeMode('actual');
+
+    const seq = ++requestSeq.current;
+    const cacheKey = `${anchor}|${selectedLocationId || ''}`;
+
+    (async () => {
+      const rememberDays = (days) => {
+        if (!days?.length || requestSeq.current !== seq) return;
+        weekDaysCache.current[cacheKey] = days;
+        setWeekDays(days);
+      };
+
+      // The strip must be loaded through the end of the week. Asking for an
+      // earlier day makes the API return $0 for every day after that date.
+      const cachedDays = weekDaysCache.current[cacheKey];
+      if (cachedDays && requestSeq.current === seq) setWeekDays(cachedDays);
+      else if (requestSeq.current === seq) setWeekDays([]);
+
+      if (anchor === selected) {
+        const payload = await fetchCashFlow(selected);
+        rememberDays(payload?.week_to_date?.days);
+        return;
+      }
+
+      const [, weekPayload] = await Promise.all([
+        fetchCashFlow(selected),
+        cachedDays
+          ? Promise.resolve(null)
+          : fetchCashFlow(anchor, null, { commit: false }),
+      ]);
+      rememberDays(weekPayload?.week_to_date?.days);
+    })();
+  }, [selectedDate, selectedLocationId, fetchCashFlow]);
 
   const yesterday = cashFlowData?.yesterday || {};
   const wtd = cashFlowData?.week_to_date || {};
-  const lio = cashFlowData?.lio || {};
+  const modeBlock = cashFlowData?.modes?.[envelopeMode];
+  const lio = modeBlock?.lio || cashFlowData?.lio || {};
   const envelopes = yesterday.envelopes || {};
+  const wtdEnvelopes = modeBlock?.envelopes || wtd.envelopes || {};
+  const plans = yesterday.plans || {};
+  const modeDescriptions = {
+    actual: cashFlowData?.modes?.actual?.description,
+    forecast: cashFlowData?.modes?.forecast?.description,
+  };
   const setAside = Number(yesterday.set_aside) || 0;
+  const salesAmount = Number(yesterday.sales?.amount) || 0;
+  const salesBudget = Number(plans.sales) || 0;
+  const plannedSetAside = ENVELOPES.reduce(
+    (sum, item) => sum + (Number(plans[item.key]) || 0),
+    0
+  );
+  // Only compare to budget when the day has close-out actuals (not blank/budget fill).
+  const showBudgetVariance =
+    yesterday.counts_toward_actual === true || yesterday.funding === 'actual';
 
   const stacked = useMemo(() => {
     return ENVELOPES.map((item) => {
@@ -119,6 +458,13 @@ const CashFlowModule = () => {
   );
   const isYesterday = selectedDate.isSame(dayjs().subtract(1, 'day'), 'day');
   const dayLabel = isYesterday ? 'Yesterday' : selectedDate.format('ddd, MMM D');
+  const dayPocketLabel = pocketLabel(yesterday.cash_left, {
+    estimated: cashLeftSource === 'estimate',
+  });
+  const pocketWtd = wtdEnvelopes.pocket || {};
+  const pocketAmount = Number(pocketWtd.amount ?? wtd.cash_left) || 0;
+  const pocketTitle =
+    pocketWtd.label || (pocketAmount < 0 ? 'Out of pocket' : 'In your pocket');
 
   return (
     <div className="space-y-4">
@@ -129,7 +475,8 @@ const CashFlowModule = () => {
               Cash Flow
             </p>
             <h2 className="text-2xl font-bold text-gray-900">
-              {dayLabel}: sales, set aside, cash left
+              {dayLabel}: sales, set aside,{' '}
+              {Number(yesterday.cash_left) < 0 ? 'out of pocket' : 'in your pocket'}
             </h2>
             <p className="text-sm text-gray-600">
               Growlio is not moving money. This is what should be set aside from sales, and what is
@@ -155,14 +502,39 @@ const CashFlowModule = () => {
               <Kpi
                 label={`${dayLabel}'s Sales`}
                 value={money(yesterday.sales?.amount)}
-                hint={yesterday.sales?.label ? `${yesterday.sales.label} sales` : 'Sales'}
+                hint={
+                  salesBudget > 0
+                    ? `Budgeted sales: ${money(salesBudget)}`
+                    : yesterday.sales?.label
+                      ? `${yesterday.sales.label} sales`
+                      : 'Sales'
+                }
                 valueClass="text-gray-900"
+                badge={
+                  showBudgetVariance ? (
+                    <BudgetVarianceBadge
+                      actual={salesAmount}
+                      budget={salesBudget}
+                      basis={salesBudget}
+                      invertColors
+                    />
+                  ) : null
+                }
               />
               <Kpi
                 label="Total to Set Aside"
                 value={money(yesterday.set_aside)}
                 hint="Labor + food + rent + operating expenses"
                 valueClass="text-[#c2410c]"
+                badge={
+                  showBudgetVariance ? (
+                    <BudgetVarianceBadge
+                      actual={setAside}
+                      budget={plannedSetAside}
+                      basis={salesAmount > 0 ? salesAmount : plannedSetAside}
+                    />
+                  ) : null
+                }
                 bar={
                   <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-gray-100">
                     {stacked.map((item) => (
@@ -177,28 +549,46 @@ const CashFlowModule = () => {
                 }
               />
               <Kpi
-                label={cashLeftSource === 'estimate' ? 'Estimated Cash Left' : 'Cash Left'}
-                value={cashLeftMoney(yesterday.cash_left)}
+                label={dayPocketLabel}
+                value={money(yesterday.cash_left)}
                 hint={cashStatus === 'short' ? 'Short' : cashStatus === 'over' ? 'Over' : ''}
                 valueClass={statusClass(cashStatus)}
-                badge={
-                  <Tag color={sourceColor(cashLeftSource)}>
-                    {SOURCE_LABELS[cashLeftSource]}
-                  </Tag>
-                }
+                topBadge={<SourceBadge source={cashLeftSource} />}
               />
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {ENVELOPES.map((item) => {
                 const row = envelopes[item.key] || {};
+                const Icon = item.icon;
+                const planAmount = Number(plans[item.key]) || 0;
+                const actualAmount = Number(row.amount) || 0;
                 return (
                   <div key={item.key} className={`rounded-2xl border p-4 ${item.tint}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-gray-800">{item.title}</p>
-                      {row.label ? <Tag color={sourceColor(row.source)}>{row.label}</Tag> : null}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${item.iconWrap}`}
+                        >
+                          <Icon className="text-sm" />
+                        </span>
+                        <p className="font-medium text-gray-800">{item.title}</p>
+                      </div>
+                      {row.label || row.source ? (
+                        <SourceBadge source={row.source} label={row.label} />
+                      ) : null}
                     </div>
-                    <p className="mt-2 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {money(row.amount)}
+                      </p>
+                      <BudgetVarianceBadge
+                        actual={showBudgetVariance ? actualAmount : null}
+                        budget={planAmount}
+                        basis={salesAmount > 0 ? salesAmount : planAmount}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Add to envelope</p>
                   </div>
                 );
               })}
@@ -207,76 +597,170 @@ const CashFlowModule = () => {
         )}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-5">
-        <Card className="shadow-sm border border-gray-100 xl:col-span-3" title="Week to Date">
-          <div className="mb-4 grid gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-gray-500">WTD Sales</p>
-              <p className="text-xl font-semibold">{money(wtd.sales)}</p>
+      <Card className="shadow-sm border border-emerald-100">
+        <Spin spinning={cashFlowLoading}>
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <FaWallet />
+                </span>
+                <p className="text-base font-semibold text-gray-900">
+                  Your Envelopes – Week to Date
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <EnvelopeModeSwitch mode={envelopeMode} onChange={setEnvelopeMode} />
+                <WhyEnvelopesButton />
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-500">WTD Set Aside</p>
-              <p className="text-xl font-semibold text-[#c2410c]">{money(wtd.set_aside)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">WTD Cash Left</p>
-              <p className={`text-xl font-semibold ${statusClass(wtd.status)}`}>
-                {money(wtd.cash_left)}
-              </p>
-            </div>
+            <p className="text-sm font-normal text-gray-600">
+              Set it aside as you earn it. Each day, Growlio calculates how much of your sales
+              should be reserved for labor, food, rent, and operating expenses — so when bills
+              are due, the money is already accounted for.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            {(wtd.days || []).map((day) => {
-              const isFuture = day.status === 'upcoming';
-              const isClosed = day.status === 'closed';
-              const muted = isFuture || isClosed;
-              const label =
-                day.status === 'short'
-                  ? 'Short'
-                  : day.status === 'over'
-                    ? 'Over'
-                    : isClosed
-                      ? 'Closed'
-                      : '—';
+          <EnvelopeModeNote mode={envelopeMode} descriptions={modeDescriptions} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {ENVELOPES.map((item) => {
+              const row = wtdEnvelopes[item.key] || {};
+              const Icon = item.icon;
               return (
-                <button
-                  key={day.date}
-                  type="button"
-                  className={`rounded-xl border p-2 text-left ${
-                    day.date === yesterday.date
-                      ? 'border-[#FF8132] bg-orange-50'
-                      : 'border-gray-100 bg-gray-50'
-                  }`}
-                  onClick={() => setSelectedDate(dayjs(day.date))}
-                  disabled={isFuture}
+                <div
+                  key={item.key}
+                  className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
                 >
-                  <p className="text-xs text-gray-500">{dayjs(day.date).format('ddd D')}</p>
-                  <p className={`text-sm font-semibold ${muted ? 'text-gray-400' : statusClass(day.status)}`}>
-                    {muted ? label : `${label} ${money(day.cash_left)}`}
-                  </p>
-                </button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${item.iconWrap}`}
+                    >
+                      <Icon className="text-sm" />
+                    </span>
+                    <p className="font-medium text-gray-800">{item.title} Envelope</p>
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold text-gray-900">{money(row.amount)}</p>
+                  <EnvelopeProgress percent={row.percent_of_target} barClass={item.bar} />
+                  <div className="mt-3 flex items-center justify-between gap-2 text-xs text-gray-500">
+                    <span>Target: {money(row.target)}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">{row.source_note || '—'}</p>
+                </div>
               );
             })}
-          </div>
-        </Card>
 
-        <Card
-          className={`shadow-sm border xl:col-span-2 ${
-            lio.tone === 'warning' ? 'border-red-100 bg-red-50' : 'border-emerald-100 bg-emerald-50'
-          }`}
-          title="LIO · Your Cash Flow Banker"
-        >
-          <div className="flex items-start gap-3">
-            <img src={lioMascot} alt="LIO" className="h-16 w-auto shrink-0 object-contain" />
-            <div>
-              <p className="font-medium text-gray-900">{lio.headline || 'Checking yesterday’s cash…'}</p>
-              <p className="mt-1 text-sm text-gray-700">
-                {lio.message || 'Add Close Out or budget numbers so LIO can explain the day.'}
+            <div
+              className={`rounded-2xl border p-4 shadow-sm ${
+                pocketAmount < 0
+                  ? 'border-red-100 bg-red-50'
+                  : 'border-emerald-100 bg-emerald-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full ${
+                    pocketAmount < 0
+                      ? 'bg-red-100 text-red-600'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  <FaWallet />
+                </span>
+                <p className="font-medium text-gray-800">{pocketTitle}</p>
+              </div>
+              <p
+                className={`mt-3 text-2xl font-semibold ${
+                  pocketAmount < 0 ? 'text-red-600' : 'text-emerald-700'
+                }`}
+              >
+                {money(pocketAmount)}
+              </p>
+              <EnvelopeProgress
+                percent={pocketWtd.percent_of_target}
+                barClass={pocketAmount < 0 ? 'bg-red-500' : 'bg-emerald-500'}
+              />
+              <div className="mt-3 text-xs text-gray-500">
+                Target: {money(pocketWtd.target)}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {pocketWtd.source_note ||
+                  'Target based on your profit goal (after all set asides).'}
               </p>
             </div>
           </div>
-        </Card>
-      </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-5">
+            <div className="xl:col-span-3">
+              <p className="mb-2 text-sm font-medium text-gray-700">This week by day</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {weekDays.map((day) => {
+                  const isFuture = day.status === 'upcoming';
+                  const isClosed = day.status === 'closed';
+                  const muted = isFuture || isClosed;
+                  const label =
+                    day.status === 'short'
+                      ? 'Short'
+                      : day.status === 'over'
+                        ? 'Over'
+                        : isClosed
+                          ? 'Closed'
+                          : '—';
+                  const selectedKey = selectedDate.format('YYYY-MM-DD');
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={`rounded-xl border p-2 text-left ${
+                        day.date === selectedKey
+                          ? 'border-[#FF8132] bg-orange-50'
+                          : 'border-gray-100 bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedDate(dayjs(day.date))}
+                      disabled={isFuture}
+                    >
+                      <p className="text-xs text-gray-500">{dayjs(day.date).format('ddd D')}</p>
+                      <p
+                        className={`text-sm font-semibold ${
+                          muted ? 'text-gray-400' : statusClass(day.status)
+                        }`}
+                      >
+                        {muted ? label : `${label} ${money(day.cash_left)}`}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div
+              className={`rounded-2xl border p-4 xl:col-span-2 ${
+                lio.tone === 'warning'
+                  ? 'border-red-100 bg-red-50'
+                  : 'border-emerald-100 bg-emerald-50'
+              }`}
+            >
+              <p className="mb-2 text-sm font-semibold text-gray-800">
+                LIO · Your Cash Flow Banker
+              </p>
+              <div className="flex items-start gap-3">
+                <img
+                  src={lioMascot}
+                  alt="LIO"
+                  className="h-16 w-auto shrink-0 object-contain"
+                />
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {lio.headline || 'Checking yesterday’s cash…'}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-700">
+                    {lio.message ||
+                      'Add Close Out or budget numbers so LIO can explain the day.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Spin>
+      </Card>
     </div>
   );
 };

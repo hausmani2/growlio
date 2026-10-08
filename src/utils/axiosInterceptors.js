@@ -184,6 +184,18 @@ api.interceptors.response.use(
       // Handle specific status codes
       switch (error.response.status) {
         case 401:
+          // Square OAuth expired — not a Growlio session failure; let callers prompt reconnect
+          {
+            const squareAuthPayload = error.response?.data;
+            const isSquareReconnect =
+              squareAuthPayload?.needs_reconnect === true ||
+              squareAuthPayload?.code === 'square_auth_required' ||
+              squareAuthPayload?.data?.needs_reconnect === true ||
+              squareAuthPayload?.data?.code === 'square_auth_required';
+            if (isSquareReconnect) {
+              return Promise.reject(error);
+            }
+          }
           // Unauthorized: if impersonating, auto-restore original session
           try {
             const hasImpersonation = !!sessionStorage.getItem('impersonation_access_token');

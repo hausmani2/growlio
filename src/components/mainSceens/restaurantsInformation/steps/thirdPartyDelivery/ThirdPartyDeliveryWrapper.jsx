@@ -30,6 +30,7 @@ const ThirdPartyDeliveryWrapperContent = () => {
     }
     navigateToBudgetOrConnectPos(navigate, {
       onboardingComplete: isOnBoardingCompleted,
+      restaurantData: useStore.getState().restaurantOnboardingData,
     });
   };
 

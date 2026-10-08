@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef } from 'react';
 import { message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import usePosStore from '../store/posStore';
+import useStore from '../store/store';
 import {
+  checkPostSyncThirdParty,
   getDashboardData,
   getMerchantSyncStatus,
   POS_SYNC_POLL_INTERVAL_MS,
@@ -10,9 +12,11 @@ import {
   triggerPosSync,
 } from '../services/posApi';
 import { createPosSyncWebSocket } from '../services/websocket';
-
-const DEFAULT_SOCKET_ERROR_MESSAGE =
-  'Realtime updates are temporarily unavailable. Polling will keep checking sync status.';
+import {
+  getSquareAuthErrorMessage,
+  promptSquareReconnect,
+  SQUARE_RECONNECT_MESSAGE,
+} from '../utils/squareReconnect';
 
 const NO_POS_DATA_MESSAGE = 'No data found from Square for the selected dates.';
 
@@ -29,6 +33,7 @@ export const usePosSync = ({
   const completionHandledRef = useRef(false);
   const dashboardCallbackRef = useRef(onDashboardData);
   const syncCompletedCallbackRef = useRef(onSyncCompleted);
+  const lastSyncRangeRef = useRef(null);
 
   const {
     isSyncing,
@@ -57,9 +62,29 @@ export const usePosSync = ({
 
     if (websocketRef.current) {
       websocketRef.current.disconnect?.();
-      websocketRef.current = null;
     }
+    websocketRef.current = null;
   }, []);
+
+  const handleAuthRequired = useCallback(
+    (restaurantId, reconnectMessage) => {
+      if (completionHandledRef.current) {
+        return;
+      }
+      completionHandledRef.current = true;
+      cleanupRealtimeResources();
+      markCompleted();
+      useStore.getState().checkSquareStatus?.(restaurantId)?.catch?.(() => {});
+      promptSquareReconnect({
+        restaurantId,
+        message: reconnectMessage || SQUARE_RECONNECT_MESSAGE,
+      });
+      window.setTimeout(() => {
+        resetSyncState();
+      }, 0);
+    },
+    [cleanupRealtimeResources, markCompleted, resetSyncState]
+  );
 
   const finalizeSync = useCallback(
     async (restaurantId, weekStart) => {
@@ -77,6 +102,16 @@ export const usePosSync = ({
           queryFn: () => getMerchantSyncStatus(restaurantId),
           staleTime: 0,
         });
+
+        if (merchantStatus?.needsReconnect) {
+          useStore.getState().checkSquareStatus?.(restaurantId)?.catch?.(() => {});
+          promptSquareReconnect({
+            restaurantId,
+            message: merchantStatus.reconnectMessage,
+          });
+          return;
+        }
+
         const hadData = merchantStatus?.lastSyncHadData !== false;
 
         const freshDashboardData = await queryClient.fetchQuery({
@@ -85,6 +120,14 @@ export const usePosSync = ({
           staleTime: 0,
         });
 
+        // Refresh onboarding after sync so Close Day column visibility matches
+        // the selected location's Sales Channels / Third Party settings.
+        try {
+          await useStore.getState().loadExistingOnboardingData?.(true);
+        } catch (_) {
+          // Non-blocking: dashboard refresh already succeeded
+        }
+
         dashboardCallbackRef.current?.(freshDashboardData);
         syncCompletedCallbackRef.current?.({ hadData });
         queryClient.invalidateQueries({
@@ -92,10 +135,37 @@ export const usePosSync = ({
         });
         if (hadData) {
           message.success('POS data synced successfully');
+          const syncRange = lastSyncRangeRef.current;
+          const locationId =
+            localStorage.getItem('selected_location_id') ||
+            localStorage.getItem('location_id');
+          if (syncRange?.startDate && locationId) {
+            try {
+              const tpCheck = await checkPostSyncThirdParty({
+                restaurantId,
+                locationId,
+                startDate: syncRange.startDate,
+                endDate: syncRange.endDate || syncRange.startDate,
+              });
+              if (tpCheck?.show_warning && tpCheck?.message) {
+                message.warning({
+                  content: tpCheck.message,
+                  duration: 2,
+                });
+              }
+            } catch (_) {
+              // Non-blocking: sync already succeeded
+            }
+          }
         } else {
           message.warning(NO_POS_DATA_MESSAGE);
         }
       } catch (error) {
+        const authMessage = getSquareAuthErrorMessage(error);
+        if (authMessage) {
+          promptSquareReconnect({ restaurantId, message: authMessage });
+          return;
+        }
         const errorMessage =
           error?.response?.data?.message ||
           error?.message ||
@@ -119,13 +189,18 @@ export const usePosSync = ({
         staleTime: 0,
       });
 
+      if (merchantStatus?.needsReconnect) {
+        handleAuthRequired(restaurantId, merchantStatus.reconnectMessage);
+        return merchantStatus;
+      }
+
       if (merchantStatus?.isCompleted) {
         await finalizeSync(restaurantId, weekStart);
       }
 
       return merchantStatus;
     },
-    [finalizeSync, queryClient]
+    [finalizeSync, handleAuthRequired, queryClient]
   );
 
   const startPolling = useCallback(
@@ -155,9 +230,7 @@ export const usePosSync = ({
           });
         },
         onError: () => {
-          if (!completionHandledRef.current) {
-            message.warning(DEFAULT_SOCKET_ERROR_MESSAGE);
-          }
+          // WebSocket optional — HTTP polling continues without warning the user.
         },
       });
 
@@ -205,6 +278,10 @@ export const usePosSync = ({
     setSyncError(null);
     setStatus('pending');
     setSyncing(true);
+    lastSyncRangeRef.current = {
+      startDate,
+      endDate: endDate || startDate,
+    };
     startRealtimeListeners(restaurantId, normalizedWeekStart);
 
     try {
@@ -222,6 +299,15 @@ export const usePosSync = ({
       return { success: true };
     } catch (error) {
       cleanupRealtimeResources();
+      const authMessage = getSquareAuthErrorMessage(error);
+      if (authMessage) {
+        setSyncError(authMessage);
+        resetSyncState();
+        useStore.getState().checkSquareStatus?.(restaurantId)?.catch?.(() => {});
+        promptSquareReconnect({ restaurantId, message: authMessage });
+        return { success: false, error: authMessage, needsReconnect: true };
+      }
+
       const errorMessage =
         error?.response?.data?.message ||
         error?.response?.data?.error ||

@@ -11,7 +11,6 @@ import ProfitLossTableDashboard from './ProfitLossTableDashboard';
 import BudgetDashboard from '../BudgetDashboard';
 import ProfitLossCategoryPie from './ProfitLossCategoryPie';
 import ProfitLossTrendLine from './ProfitLossTrendLine';
-import CashFlowModule from './CashFlowModule';
 import { printUtils } from '../../../../utils/printUtils';
 
 /**
@@ -228,8 +227,6 @@ const ProfitLossDashboard = () => {
       <div className="w-full mx-auto space-y-4">
         {/* Error Alert - show at top if there's an error */}
         {errorAlert}
-
-        <CashFlowModule />
 
         {/* Header Section with Calendar (match Budget page) */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">

@@ -16,6 +16,7 @@ import {
 import { createPosSyncWebSocket } from '../../services/websocket';
 import SyncModal from '../SyncModal';
 import MissingLaborRatesModal from '../common/MissingLaborRatesModal';
+import SyncSetupIssuesModal from '../common/SyncSetupIssuesModal';
 import PosImportDateRangeSelect from '../common/PosImportDateRangeSelect';
 import { parseOAuthState, isSquareConnectFromOnboardingScore, clearSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
 import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
@@ -54,6 +55,7 @@ const SquareCallbackHandler = () => {
     checkingLaborRates,
     runWithLaborRateCheck,
     missingLaborRatesModalProps,
+    syncSetupIssuesModalProps,
   } = useMissingLaborRatesCheck();
 
   const restaurantIdFromState = useMemo(() => {
@@ -408,6 +410,7 @@ const SquareCallbackHandler = () => {
         <div className="w-full max-w-4xl px-4">
           <SyncModal open={isStartingSync || checkingLaborRates} />
           <MissingLaborRatesModal {...missingLaborRatesModalProps} />
+          <SyncSetupIssuesModal {...syncSetupIssuesModalProps} />
           <Modal
             title={selectedLocation?.name ? `Location: ${selectedLocation.name}` : 'Location'}
             open={isLocationModalOpen}

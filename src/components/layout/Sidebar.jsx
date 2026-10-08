@@ -44,6 +44,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/report-card': 'report-card',
     '/dashboard/budget': 'budget',
     '/dashboard/profit-loss': 'profit-loss',
+    '/dashboard/cashflow': 'cashflow',
     '/dashboard': 'dashboard',
     '/dashboard/onboarding': 'onboarding',
     '/dashboard/basic-information': 'basic-information',
@@ -93,6 +94,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
   if (
     location.pathname === '/dashboard/budget' ||
     location.pathname === '/dashboard/profit-loss' ||
+    location.pathname === '/dashboard/cashflow' ||
     location.pathname === '/dashboard/pos-integrations'
   ) {
     selectedKey = pathKeyMap[location.pathname];

@@ -55,6 +55,7 @@ const ReportCardPage = () => {
   const { 
     getSalesInformationSummary, 
     salesInformationSummary, 
+    salesInformationSummaryLastGood,
     salesInformationSummaryLoading,
     salesInformationSummaryError,
     getRestaurantOnboarding,
@@ -67,8 +68,16 @@ const ReportCardPage = () => {
   const hasFetchedOnboardingRef = useRef(false); // Prevent multiple onboarding API calls
   const onboardingGateModalOpenRef = useRef(false);
   
-  // Use summary data from store if available
-  const summaryData = salesInformationSummary;
+  // While a new range is loading, keep showing the last good card instead of
+  // flashing zeros from a prior "Insufficient Data" response.
+  const summaryData =
+    salesInformationSummaryLoading &&
+    salesInformationSummaryLastGood &&
+    (salesInformationSummary?.message === 'Insufficient Data' ||
+      salesInformationSummary?.error === 'Insufficient Data' ||
+      salesInformationSummaryError === 'Insufficient Data')
+      ? salesInformationSummaryLastGood
+      : salesInformationSummary;
 
   useEffect(() => {
     clearUnseenFindings();
