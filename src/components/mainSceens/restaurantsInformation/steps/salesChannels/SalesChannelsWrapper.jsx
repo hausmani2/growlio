@@ -279,8 +279,20 @@ const SalesChannelsWrapperContent = () => {
 
             // Step 3: Call API through Zustand store with success callback
             const result = await submitStepData("Sales Channels", stepData, (responseData) => {
-                // Success callback - handle navigation based on mode
+                // Keep dayjs + cached goals in sync so Close Out does not request a stale week_start.
                 setDayjsWeekStart(stepData.week_start_day);
+                const store = useStore.getState();
+                if (store.restaurantGoals) {
+                    useStore.setState({
+                        restaurantGoals: {
+                            ...store.restaurantGoals,
+                            week_start_day: stepData.week_start_day,
+                        },
+                    });
+                }
+                if (typeof store.getRestaurentGoal === 'function') {
+                    store.getRestaurentGoal(null, true).catch(() => {});
+                }
                 // Step 4: Always navigate to next step after saving
                 if (isUpdateMode && isOnBoardingCompleted) {
                     // In update mode AND onboarding is complete: show success and navigate

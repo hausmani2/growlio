@@ -96,7 +96,18 @@ const createDashboardSlice = (set, get) => {
                 }
                 
                 if (weekStart) {
-                    params.week_start = weekStart;
+                    // Always send a date that matches the active week_start_day (dayjs weekStart).
+                    // After setup changes, callers may still pass a stale mid-week / old-boundary date.
+                    try {
+                        const { setDayjsWeekStart, formatConfiguredWeekStart } = await import('../../utils/weekStart');
+                        const goals = get().restaurantGoals;
+                        if (goals?.week_start_day !== undefined && goals?.week_start_day !== null) {
+                            setDayjsWeekStart(goals.week_start_day);
+                        }
+                        params.week_start = formatConfiguredWeekStart(weekStart);
+                    } catch (_) {
+                        params.week_start = weekStart;
+                    }
                 }
                 
                 // Convert params to query string

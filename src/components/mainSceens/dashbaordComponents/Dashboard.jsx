@@ -816,11 +816,31 @@ const Dashboard = () => {
 
 
 
-  // Apply location week_start_day so Close Out / calendars match setup
+  // Apply location week_start_day so Close Out / calendars match setup.
+  // When week start changes in Operating Information, rebuild the selected week
+  // so we do not keep requesting a date from the previous week boundary.
   useEffect(() => {
-    if (restaurantGoals?.week_start_day !== undefined && restaurantGoals?.week_start_day !== null) {
-      setDayjsWeekStart(restaurantGoals.week_start_day);
+    if (restaurantGoals?.week_start_day === undefined || restaurantGoals?.week_start_day === null) {
+      return;
     }
+    setDayjsWeekStart(restaurantGoals.week_start_day);
+
+    const now = dayjs();
+    const weekStart = now.startOf('week');
+    const weekEnd = now.endOf('week');
+    const weekKey = `${weekStart.format('YYYY-MM-DD')}_${weekEnd.format('YYYY-MM-DD')}`;
+    setWeekPickerValue(now);
+    setAvailableWeeks([
+      {
+        key: weekKey,
+        weekNumber: now.week(),
+        startDate: weekStart.format('YYYY-MM-DD'),
+        endDate: weekEnd.format('YYYY-MM-DD'),
+        data: null,
+      },
+    ]);
+    setSelectedWeek(weekKey);
+    setSelectedDate(weekStart);
   }, [restaurantGoals?.week_start_day]);
 
   // Log restaurant goals data for debugging (can be removed later)

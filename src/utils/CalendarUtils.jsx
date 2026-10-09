@@ -4,14 +4,11 @@ import { CalendarOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 import updateLocale from 'dayjs/plugin/updateLocale';
-import { setDayjsWeekStart } from './weekStart';
+import './weekStart'; // use shared weekStart config; do not reset to Sunday on import
 
 // Extend dayjs with plugins
 dayjs.extend(weekOfYear);
 dayjs.extend(updateLocale);
-
-// Default Sunday; overridden at runtime from restaurant goals week_start_day
-setDayjsWeekStart(0);
 
 const { Text } = Typography;
 const { Option } = Select;

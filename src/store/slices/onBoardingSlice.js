@@ -1979,7 +1979,7 @@ const createOnBoardingSlice = (set, get) => ({
     restaurantGoalsError: null,
     restaurantGoals: null,
 
-    getRestaurentGoal: async (restaurantId = null) => {
+    getRestaurentGoal: async (restaurantId = null, forceRefresh = false) => {
         const state = get();
         
         // Prevent multiple concurrent calls - if already loading, wait for existing request
@@ -2006,7 +2006,8 @@ const createOnBoardingSlice = (set, get) => ({
         // Check if we already have goals data loaded for this restaurant
         // IMPORTANT: Always check if restaurant_days exists and is valid
         // If restaurant_days is missing or invalid, always fetch fresh data
-        if (state.restaurantGoals) {
+        // forceRefresh after Operating Information week_start_day changes.
+        if (!forceRefresh && state.restaurantGoals) {
             // Verify it's for the correct restaurant
             let finalRestaurantId = restaurantId;
             if (!finalRestaurantId) {

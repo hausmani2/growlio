@@ -49,5 +49,11 @@ export const setDayjsWeekStart = (weekStartDay) => {
 
 export const getDayjsWeekStart = () => currentWeekStartDay;
 
+/**
+ * Format the week-start date for API calls using the active dayjs weekStart.
+ */
+export const formatConfiguredWeekStart = (dateInput = dayjs()) =>
+  dayjs(dateInput).startOf('week').format('YYYY-MM-DD');
+
 // Default Sunday to match historical Growlio behavior
 setDayjsWeekStart(DEFAULT_WEEK_START_DAY);
