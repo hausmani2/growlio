@@ -4,6 +4,12 @@ import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, SaveOutlined } from "
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
 import { SETUP_LATER_TOOLTIP } from "../../../../../utils/onboardingUtils";
+import {
+  shouldSeedDefaultExpenses,
+  shouldApplyFranchiseExpenses,
+  shouldResetInitializedOnEmptyList,
+  mergeFranchiseExpenseFields,
+} from "../../../../../utils/expenseInitUtils";
 
 // Removed COST_TYPES - no longer using fixed/variable distinction
 
@@ -127,21 +133,43 @@ const OperatingExpenses = ({
     return Math.min(100, Math.max(0, safe));
   }, []);
 
+  // Parent location reset can clear rows after this child marked initialized.
+  // Re-sync so defaults can seed again instead of leaving an empty/franchise-only list.
+  useEffect(() => {
+    const currentLength = Array.isArray(data.dynamicFixedFields)
+      ? data.dynamicFixedFields.length
+      : 0;
+    if (
+      shouldResetInitializedOnEmptyList({
+        hasInitialized,
+        currentLength,
+        showDefaultExpenses,
+      })
+    ) {
+      setHasInitialized(false);
+    }
+  }, [data.dynamicFixedFields, hasInitialized, showDefaultExpenses]);
+
   // Initialize with default expenses if no data exists - do this immediately on mount
   useEffect(() => {
-    if (suppressDefaultInit) return;
-
     const current = Array.isArray(data.dynamicFixedFields) ? data.dynamicFixedFields : [];
 
     // Expense: false on restaurants-onboarding → user has not saved; show all defaults
-    if (current.length === 0 && (showDefaultExpenses || !hasInitialized)) {
+    if (
+      shouldSeedDefaultExpenses({
+        suppressDefaultInit,
+        currentLength: current.length,
+        showDefaultExpenses,
+        hasInitialized,
+      })
+    ) {
       const defaultFields = convertDefaultExpensesToFields(DEFAULT_EXPENSES);
       updateData("dynamicFixedFields", defaultFields);
       setHasInitialized(true);
       return;
     }
 
-    if (hasInitialized) return;
+    if (suppressDefaultInit || hasInitialized) return;
     
     // If we have existing data, ensure all fields have required properties
     let fieldsWithDefaults = current.map(field => {
@@ -183,43 +211,33 @@ const OperatingExpenses = ({
     setHasInitialized(true);
   }, [data.dynamicFixedFields, updateData, hasInitialized, suppressDefaultInit, showDefaultExpenses]);
 
-  // Franchise: ensure royalty & brand fields exist in expense list
+  // Franchise: append royalty & brand to the existing list — never replace an empty list.
   useEffect(() => {
-    if (!isFranchise || !hasInitialized) return;
     const current = Array.isArray(data.dynamicFixedFields) ? data.dynamicFixedFields : [];
-    const lower = (s) => String(s || "").toLowerCase();
-    const hasRoyalty = current.some((f) => lower(f.label).includes("royalty"));
-    const hasBrand = current.some(
-      (f) => lower(f.label).includes("brand") || lower(f.label).includes("ad fund") || lower(f.label).includes("fund")
-    );
-    if (hasRoyalty && hasBrand) return;
+    if (
+      !shouldApplyFranchiseExpenses({
+        isFranchise,
+        hasInitialized,
+        currentLength: current.length,
+      })
+    ) {
+      return;
+    }
 
-    const next = [...current];
-    if (!hasRoyalty) {
-      next.push({
-        id: Date.now() + Math.random(),
-        label: "Royalty",
-        value: "",
-        key: `dynamic_expense_royalty_${Date.now()}_${Math.random()}`,
-        expense_type: "monthly",
-        is_active: false,
-        is_value_type: false, // Royalty is typically a percentage
-        category: "Royalty + Ad Fund",
-      });
+    const next = mergeFranchiseExpenseFields(current, ({ label, category, is_value_type }) => ({
+      id: Date.now() + Math.random(),
+      label,
+      value: "",
+      key: `dynamic_expense_${label.replace(/\W+/g, "_").toLowerCase()}_${Date.now()}_${Math.random()}`,
+      expense_type: "monthly",
+      is_active: false,
+      is_value_type,
+      category,
+    }));
+
+    if (next !== current) {
+      updateData("dynamicFixedFields", next);
     }
-    if (!hasBrand) {
-      next.push({
-        id: Date.now() + Math.random() + 1,
-        label: "Brand/Ad Fund",
-        value: "",
-        key: `dynamic_expense_brand_ad_fund_${Date.now()}_${Math.random()}`,
-        expense_type: "monthly",
-        is_active: false,
-        is_value_type: false, // Brand/Ad Fund is typically a percentage
-        category: "Royalty + Ad Fund",
-      });
-    }
-    updateData("dynamicFixedFields", next);
   }, [isFranchise, data.dynamicFixedFields, updateData, hasInitialized]);
 
   // Convert fields to expense format and group by category

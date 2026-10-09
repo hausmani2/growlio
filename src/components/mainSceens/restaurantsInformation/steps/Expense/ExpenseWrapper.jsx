@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { message, Modal, Select, Tooltip } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import OperatingExpenses from "./OperatingExpenses";
@@ -120,8 +120,10 @@ const ExpenseWrapperContent = () => {
     const [lastSavedExpenseRows, setLastSavedExpenseRows] = useState({});
     const [hasInitializedRowBaseline, setHasInitializedRowBaseline] = useState(false);
 
+    // Clear in useLayoutEffect (before child useEffects) so OperatingExpenses init
+    // does not seed defaults that this parent then wipes — that race left franchise-only rows.
     const skipLocalResetRef = useRef(true);
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (skipLocalResetRef.current) {
             skipLocalResetRef.current = false;
             return;
