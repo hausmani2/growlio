@@ -5,6 +5,7 @@ import useStore from './store/store';
 import { GuidanceProvider } from './contexts/GuidanceContext';
 import LoadingSpinner from './components/layout/LoadingSpinner';
 import ScrollToTop from './components/common/ScrollToTop';
+import GoogleAnalytics from './components/common/GoogleAnalytics';
 
 
 import ProtectedRoutes from './routes/ProtectedRoutes';
@@ -275,6 +276,7 @@ function App() {
 
   return (
     <Router>
+      <GoogleAnalytics />
       <ScrollToTop />
       <GuidanceProvider>
         <Routes>
