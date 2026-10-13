@@ -32,7 +32,8 @@ const SalesDataModal = ({
   onDataSaved,
   autoOpenFromSummary = false,
   isManuallyTriggered = false,
-  onWeekConfirmationProceed
+  onWeekConfirmationProceed,
+  onLetLioCreateBudget
 }) => {
   // Navigation hook
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ const SalesDataModal = ({
     fetchDashboardSummary,
     hasAverageHourlyRateForWeek,
     dashboardData,
+    weeklyAverageLoading,
   } = useStore();
 
   // Get providers from onboarding data
@@ -372,10 +374,24 @@ const SalesDataModal = ({
         return; // Don't proceed with initialization until confirmed
       }
 
-      // If it's current week, mark as confirmed
+      // Current week skips the confirmation dialog, which used to be the only
+      // place the Auto / LIO window was opened. Offer it here as well.
       if (status.isCurrentWeek && !weekInitiallyConfirmedRef.current) {
         weekInitiallyConfirmedRef.current = true;
         setWeekConfirmed(true);
+        if (
+          typeof onWeekConfirmationProceed === 'function' &&
+          selectedWeekData?.startDate &&
+          selectedWeekData?.endDate
+        ) {
+          onWeekConfirmationProceed({
+            startDate: selectedWeekData.startDate,
+            endDate: selectedWeekData.endDate,
+            isPastWeek: false,
+          }).catch((error) => {
+            console.warn('[SalesDataModal] onWeekConfirmationProceed failed:', error);
+          });
+        }
       }
 
       // Proceed with initialization if week is confirmed or it's current week
@@ -1282,6 +1298,19 @@ const SalesDataModal = ({
       open={visible}
       onCancel={onCancel}
       footer={[
+        ...(typeof onLetLioCreateBudget === 'function'
+          ? [
+              <Button
+                key="let-lio"
+                icon={<DollarOutlined />}
+                onClick={onLetLioCreateBudget}
+                loading={weeklyAverageLoading}
+                className="border-orange-500 text-orange-600 hover:border-orange-600 hover:text-orange-700"
+              >
+                Let LIO Create Your Budget
+              </Button>,
+            ]
+          : []),
         <Button key="cancel" onClick={onCancel}>
           Cancel
         </Button>,

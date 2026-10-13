@@ -184,6 +184,15 @@ const SummaryDashboard = () => {
   const isProcessingWeek = useRef(false);
   const pendingWeeklyAverageRef = useRef(null); // { dateRangeKey, weeklyData }
   const onboardingGateModalOpenRef = useRef(false);
+
+  const hasThreeWeeksOfData = (weeklyData) =>
+    !!(
+      weeklyData &&
+      weeklyData.status === true &&
+      (weeklyData.message === 'Found 3 previous week(s) of data.' ||
+        weeklyData.has_three_weeks_data === true ||
+        weeklyData.message?.toLowerCase().includes('found 3 previous week'))
+    );
   const readableBudgetFallbackRef = useRef(false);
 
   const showOnboardingRequiredModal = useCallback(() => {
@@ -371,11 +380,7 @@ const SummaryDashboard = () => {
           const weeklyData = await checkWeeklyAverageData(null, startDate, endDate);
           
           // Check if API response indicates 3 weeks data is available
-          const hasThreeWeeks = weeklyData && 
-                               weeklyData.status === true && 
-                               (weeklyData.message === "Found 3 previous week(s) of data." ||
-                                weeklyData.has_three_weeks_data === true ||
-                                weeklyData.message?.toLowerCase().includes('found 3 previous week'));
+          const hasThreeWeeks = hasThreeWeeksOfData(weeklyData);
           
           // Do NOT open the Weekly Average modal here.
           // We only show it AFTER user clicks "Yes, Proceed" in the existing Week Selection Confirmation modal.
@@ -505,6 +510,39 @@ const SummaryDashboard = () => {
       message.error('Failed to apply previous data. Please try again.');
       // Re-open modal on error so user can try again
       setIsWeeklyAverageDataPopupVisible(true);
+    }
+  };
+
+  const handleLetLioCreateBudget = async () => {
+    if (!canCreateBudget) {
+      message.warning('Your role can view budgets and close days, but cannot create or edit budgets.');
+      return;
+    }
+    if (!isSetupComplete) {
+      showOnboardingRequiredModal();
+      return;
+    }
+    if (!calendarDateRange || calendarDateRange.length !== 2) {
+      message.warning('Select a week first.');
+      return;
+    }
+
+    const startDate = calendarDateRange[0].format('YYYY-MM-DD');
+    const endDate = calendarDateRange[1].format('YYYY-MM-DD');
+
+    try {
+      const weeklyData = await checkWeeklyAverageData(null, startDate, endDate);
+      if (!hasThreeWeeksOfData(weeklyData)) {
+        message.info(
+          'LIO needs 3 weeks of sales and labor data before it can build this budget. Enter those weeks first, or create this budget manually.'
+        );
+        return;
+      }
+      setWeeklyAveragePopupData(weeklyData);
+      setIsWeeklyAverageDataPopupVisible(true);
+    } catch (error) {
+      console.error('Error opening LIO budget window:', error);
+      message.error('Could not open the LIO budget window. Please try again.');
     }
   };
 
@@ -916,17 +954,30 @@ const SummaryDashboard = () => {
                           {dashboardSummaryData?.message || `No ${groupBy} dashboard data found for the selected date range.`}
                         </p>
                         {groupBy === 'daily' && (
-                          <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={handleShowSalesModal}
-                            size="large"
-                            disabled={!canCreateBudget}
-                          >
-                            {canCreateBudget
-                              ? `Enter Your Budgets Sales for The week of ${calendarDateRange[0]?.format('MMM D')} - ${calendarDateRange[1]?.format('MMM D')}`
-                              : 'Budget creation is owner/manager only'}
-                          </Button>
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                            <Button
+                              type="primary"
+                              icon={<PlusOutlined />}
+                              onClick={handleShowSalesModal}
+                              size="large"
+                              disabled={!canCreateBudget}
+                            >
+                              {canCreateBudget
+                                ? `Enter Your Budgets Sales for The week of ${calendarDateRange[0]?.format('MMM D')} - ${calendarDateRange[1]?.format('MMM D')}`
+                                : 'Budget creation is owner/manager only'}
+                            </Button>
+                            {canCreateBudget && (
+                              <Button
+                                icon={<DollarOutlined />}
+                                onClick={handleLetLioCreateBudget}
+                                size="large"
+                                loading={weeklyAverageLoading}
+                                className="border-orange-500 text-orange-600 hover:border-orange-600 hover:text-orange-700"
+                              >
+                                Let LIO Create Your Budget
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
                     }
@@ -1007,11 +1058,7 @@ const SummaryDashboard = () => {
             const weeklyData = pending?.dateRangeKey === dateRangeKey
               ? pending.weeklyData
               : await checkWeeklyAverageData(null, startDate, endDate);
-            const hasThreeWeeks = weeklyData &&
-              weeklyData.status === true &&
-              (weeklyData.message === "Found 3 previous week(s) of data." ||
-                weeklyData.has_three_weeks_data === true ||
-                weeklyData.message?.toLowerCase().includes('found 3 previous week'));
+            const hasThreeWeeks = hasThreeWeeksOfData(weeklyData);
 
             if (hasThreeWeeks) {
               weeklyAverageModalShown.current = dateRangeKey;
@@ -1049,6 +1096,7 @@ const SummaryDashboard = () => {
         })()}
         autoOpenFromSummary={true}
         isManuallyTriggered={isManuallyTriggered}
+        onLetLioCreateBudget={canCreateBudget ? handleLetLioCreateBudget : undefined}
       />
 
       {/* YouTube Video Tutorial Modal */}
