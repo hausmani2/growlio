@@ -55,13 +55,15 @@ const getEntryFixedCostBudget = (entry) => {
 const EXPENSE_PIE_PALETTE = {
   labor_budget: { bg: '#6366f1', border: '#4f46e5' },
   food_cost: { bg: '#ef4444', border: '#dc2626' },
-  expenses: { bg: '#22c55e', border: '#16a34a' },
+  expenses: { bg: '#f59e0b', border: '#d97706' },
+  profit: { bg: '#22c55e', border: '#16a34a' },
 };
 
 const SLICE_INSIDE_LINE_SETS = [
   ['Labor Budget'],
   ['Food Cost', '(COGS)'],
   ['Operating', 'Expense'],
+  ['Profit'],
 ];
 
 const getEntryVariableCostBudget = (entry) => {
@@ -484,17 +486,21 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
     };
   }, [summaryData]);
 
-  // Pie slices: same dollar totals as the budget table TOTAL row (Labor + COGS + Operating Expenses only)
+  // Pie slices: Labor + COGS + Operating Expenses + Profit = 100% of sales income
   const computedCategories = useMemo(() => {
+    const sales = Math.max(0, Number(summaryData.totalSalesBudget) || 0);
     const labor = Math.max(0, Number(summaryData.totalLaborBudget) || 0);
     const food = Math.max(0, Number(summaryData.totalFoodCostBudget) || 0);
     const ops = Math.max(0, Number(summaryData.totalOperationalExpenseBudget) || 0);
+    const profit = Math.max(0, sales - labor - food - ops);
     return [
       { key: 'labor_budget', label: 'Labor Budget', value: labor },
       { key: 'food_cost', label: 'Food Cost (COGS)', value: food },
       { key: 'expenses', label: 'Operating Expense', value: ops },
+      { key: 'profit', label: 'Profit', value: profit },
     ];
   }, [
+    summaryData.totalSalesBudget,
     summaryData.totalLaborBudget,
     summaryData.totalFoodCostBudget,
     summaryData.totalOperationalExpenseBudget,
@@ -569,8 +575,7 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
               const idx = context.dataIndex;
               const value = Number(computedCategories[idx]?.value) || 0;
               const percentage = ((Math.abs(value) / rawTotal) * 100).toFixed(1);
-              const sign = value >= 0 ? '+' : '-';
-              return `${context.label}: ${sign}${formatCurrency(Math.abs(value))} (${percentage}%)`;
+              return `${context.label}: ${formatCurrency(Math.abs(value))} (${percentage}%)`;
             },
           },
         },
@@ -760,18 +765,18 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
           <Card className="h-full">
             <div className="mb-2">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 pb-3 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-orange-600">Total Expense Allocation</h2>
+                <h2 className="text-xl font-bold text-orange-600">Income vs. Expenses</h2>
               </div>
             </div>
             <div style={{ height: '300px' }}>
               <Pie
-                key={`expense-pie-${summaryData.totalLaborBudget}-${summaryData.totalFoodCostBudget}-${summaryData.totalOperationalExpenseBudget}`}
+                key={`expense-pie-${summaryData.totalSalesBudget}-${summaryData.totalLaborBudget}-${summaryData.totalFoodCostBudget}-${summaryData.totalOperationalExpenseBudget}`}
                 data={categoryPieData}
                 options={categoryPieOptions}
               />
             </div>
             <div className="mt-3 text-sm text-gray-600">
-              <p>This chart shows how your weekly expenses are allocated across Labor Budget, Food Cost (COGS), and Operating Expense.</p>
+              <p>This chart shows how weekly income is split across Labor Budget, Food Cost (COGS), Operating Expense, and Profit (totals 100%).</p>
             </div>
           </Card>
         </Col>
