@@ -14,8 +14,19 @@ export const mapApiLocationToTypeData = (loc = {}) => ({
   isFranchise: loc.is_franchise ? '2' : '1',
 });
 
-export const getLocationDisplayName = (loc = {}) =>
-  loc.location_name || loc.name || 'Unnamed location';
+export const getLocationDisplayName = (loc = {}, fallback = 'Unnamed location') => {
+  const name = String(loc.location_name || loc.name || '').trim();
+  return name || fallback;
+};
+
+/** Real company names only — blank and legacy "New Restaurant" stay empty in the form. */
+export const getEditableRestaurantName = (name) => {
+  const trimmed = String(name || '').trim();
+  if (!trimmed || trimmed.toLowerCase() === 'new restaurant') {
+    return '';
+  }
+  return trimmed;
+};
 
 export const buildLocationPayload = (locationName, addressData, sqft, isFranchise, locationId = null) => {
   const locationObj = {

@@ -15,6 +15,7 @@ import PrimaryButton from "../../../../../components/buttons/Buttons";
 import { Input } from "antd";
 import {
     buildLocationPayload,
+    getEditableRestaurantName,
     getLocationDisplayName,
     mapApiLocationToAddress,
     mapApiLocationToTypeData,
@@ -146,9 +147,9 @@ const RestaurantWrapperContent = () => {
 
         setRestaurantData((prev) => ({
             ...prev,
-            restaurantName: basicData.restaurant_name || prev.restaurantName,
+            restaurantName: getEditableRestaurantName(basicData.restaurant_name) || prev.restaurantName,
             numberOfLocations: basicData.number_of_locations || prev.numberOfLocations,
-            locationName: getLocationDisplayName(locationRecord),
+            locationName: getLocationDisplayName(locationRecord, ''),
         }));
 
         setAddressData(mapApiLocationToAddress(locationRecord));
@@ -170,10 +171,16 @@ const RestaurantWrapperContent = () => {
         if (basicInfoData && basicInfoData.data) {
             const data = basicInfoData.data;
             
-            if (data.restaurant_name) {
+            const editableRestaurantName = getEditableRestaurantName(data.restaurant_name);
+            if (editableRestaurantName) {
                 setRestaurantData(prev => ({
                     ...prev,
-                    restaurantName: data.restaurant_name
+                    restaurantName: editableRestaurantName
+                }));
+            } else if (data.restaurant_name !== undefined) {
+                setRestaurantData(prev => ({
+                    ...prev,
+                    restaurantName: ''
                 }));
             }
             
@@ -214,7 +221,7 @@ const RestaurantWrapperContent = () => {
             applySelectedLocationToForms(data, location);
 
             const extraLocations = data.locations.slice(1).map((loc) => ({
-                locationName: getLocationDisplayName(loc),
+                locationName: getLocationDisplayName(loc, ''),
                 ...mapApiLocationToAddress(loc),
             }));
 
@@ -448,7 +455,7 @@ const RestaurantWrapperContent = () => {
                     }
                     const typeData = mapApiLocationToTypeData(loc);
                     return buildLocationPayload(
-                        getLocationDisplayName(loc),
+                        getLocationDisplayName(loc, ''),
                         mapApiLocationToAddress(loc),
                         typeData.sqft,
                         typeData.isFranchise,

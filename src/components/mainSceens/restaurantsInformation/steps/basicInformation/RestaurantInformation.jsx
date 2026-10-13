@@ -31,18 +31,22 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     const savedRestaurantName =
         completeOnboardingData?.['Basic Information']?.data?.restaurant_name ?? '';
 
-    const isPlaceholderFromBackend = useMemo(() => {
+    // Blank or legacy "New Restaurant" means the user has not set a real company name yet.
+    const isUnsetFromBackend = useMemo(() => {
         const name = String(savedRestaurantName).trim();
-        return name.toLowerCase() === PLACEHOLDER_RESTAURANT_NAME;
+        return !name || name.toLowerCase() === PLACEHOLDER_RESTAURANT_NAME;
     }, [savedRestaurantName]);
 
-    // Your Setup: editable only when the backend still has the default "New Restaurant" name
+    // Editable until a real company name has been saved once; then locked.
     const isRestaurantNameEditable = useMemo(() => {
+        if (isUnsetFromBackend) {
+            return true;
+        }
         if (isUpdateMode) {
-            return isPlaceholderFromBackend;
+            return false;
         }
         return !isBasicInfoCompleted;
-    }, [isUpdateMode, isBasicInfoCompleted, isPlaceholderFromBackend]);
+    }, [isUpdateMode, isBasicInfoCompleted, isUnsetFromBackend]);
 
     const isRestaurantNameLocked = !isRestaurantNameEditable;
     
@@ -246,10 +250,10 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     {isBasicInfoCompleted && !isUpdateMode && (
                         <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked (cannot be changed after completion)</span>
                     )}
-                    {isUpdateMode && isPlaceholderFromBackend && (
+                    {isUpdateMode && isUnsetFromBackend && (
                         <span className="text-blue-500 text-xs mt-1">Set your company name.</span>
                     )}
-                    {isUpdateMode && !isPlaceholderFromBackend && (
+                    {isUpdateMode && !isUnsetFromBackend && (
                         <span className="text-blue-500 text-xs mt-1">🔒 Company name is locked after it has been set.</span>
                     )}
                     </div>
