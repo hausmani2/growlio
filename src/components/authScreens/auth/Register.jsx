@@ -331,12 +331,6 @@ const Register = () => {
         }}
         footer={[
           <Button
-            key="gmail"
-            onClick={() => window.open('https://mail.google.com/', '_blank', 'noopener,noreferrer')}
-          >
-            Open Gmail
-          </Button>,
-          <Button
             key="continue"
             type="primary"
             onClick={() => {

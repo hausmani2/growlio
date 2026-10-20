@@ -61,16 +61,14 @@ const VerifyEmailNotice = () => {
             )}
 
             <div className="mt-6 grid gap-3">
-              <Button
-                type="primary"
-                size="large"
-                className="h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700"
-                onClick={() => window.open('https://mail.google.com/', '_blank', 'noopener,noreferrer')}
-              >
-                Open Gmail
-              </Button>
               {email && (
-                <Button size="large" className="h-11" loading={resending} onClick={handleResend}>
+                <Button
+                  type="primary"
+                  size="large"
+                  className="h-11 bg-gradient-to-r from-orange-500 to-orange-600 border-0 hover:from-orange-600 hover:to-orange-700"
+                  loading={resending}
+                  onClick={handleResend}
+                >
                   Resend setup email
                 </Button>
               )}
