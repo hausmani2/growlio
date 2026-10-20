@@ -254,7 +254,7 @@ const ENVELOPE_MODES = [
   },
 ];
 
-const EnvelopeModeSwitch = ({ mode, onChange }) => (
+const EnvelopeModeSwitch = ({ mode, onChange, forecastDisabled = false }) => (
   <div
     className="inline-flex rounded-full bg-gray-100 p-1"
     role="group"
@@ -262,16 +262,28 @@ const EnvelopeModeSwitch = ({ mode, onChange }) => (
   >
     {ENVELOPE_MODES.map((item) => {
       const selected = mode === item.id;
+      const disabled = item.id === 'forecast' && forecastDisabled;
       return (
         <button
           key={item.id}
           type="button"
           aria-pressed={selected}
-          onClick={() => onChange(item.id)}
+          aria-disabled={disabled}
+          disabled={disabled}
+          title={
+            disabled
+              ? 'Forecast is only available while the week still has days ahead'
+              : undefined
+          }
+          onClick={() => {
+            if (!disabled) onChange(item.id);
+          }}
           className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-            selected
-              ? 'bg-[#1677ff] text-white shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
+            disabled
+              ? 'cursor-not-allowed text-gray-400'
+              : selected
+                ? 'bg-[#1677ff] text-white shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
           }`}
         >
           {item.label}
@@ -281,22 +293,30 @@ const EnvelopeModeSwitch = ({ mode, onChange }) => (
   </div>
 );
 
-const EnvelopeModeNote = ({ mode, descriptions }) => (
-  <div className="mb-4 grid gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 sm:grid-cols-2">
-    {ENVELOPE_MODES.map((item) => {
-      const selected = mode === item.id;
-      return (
-        <div
-          key={item.id}
-          className={`rounded-xl px-3 py-2 ${selected ? 'bg-white shadow-sm' : ''}`}
-        >
-          <p className="font-semibold text-gray-900">{item.label}</p>
-          <p className="mt-1 text-sm text-gray-600">
-            {descriptions?.[item.id] || item.description}
-          </p>
-        </div>
-      );
-    })}
+const EnvelopeModeNote = ({ mode, descriptions, forecastDisabled = false }) => (
+  <div
+    className={`mb-4 grid gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 ${
+      forecastDisabled ? '' : 'sm:grid-cols-2'
+    }`}
+  >
+    {ENVELOPE_MODES.filter((item) => !(forecastDisabled && item.id === 'forecast')).map(
+      (item) => {
+        const selected = mode === item.id;
+        return (
+          <div
+            key={item.id}
+            className={`rounded-xl px-3 py-2 ${selected ? 'bg-white shadow-sm' : ''}`}
+          >
+            <p className="font-semibold text-gray-900">{item.label}</p>
+            <p className="mt-1 text-sm text-gray-600">
+              {forecastDisabled && item.id === 'actual'
+                ? 'This week has no remaining days ahead, so envelopes show actuals only.'
+                : descriptions?.[item.id] || item.description}
+            </p>
+          </div>
+        );
+      }
+    )}
   </div>
 );
 
@@ -377,6 +397,23 @@ const CashFlowModule = () => {
   const loadedKey = useRef('');
   const weekDaysCache = useRef({});
   const requestSeq = useRef(0);
+
+  // Forecast only adds budget for days still ahead of today. Once the week has
+  // no remaining days (past week, or last day of the week), Actual === Forecast.
+  const forecastDisabled = useMemo(() => {
+    if (typeof cashFlowData?.forecast_available === 'boolean') {
+      return !cashFlowData.forecast_available;
+    }
+    const weekEnd = cashFlowData?.week_end;
+    if (!weekEnd) return false;
+    return !dayjs().isBefore(dayjs(weekEnd), 'day');
+  }, [cashFlowData?.forecast_available, cashFlowData?.week_end]);
+
+  useEffect(() => {
+    if (forecastDisabled && envelopeMode === 'forecast') {
+      setEnvelopeMode('actual');
+    }
+  }, [forecastDisabled, envelopeMode]);
 
   useEffect(() => {
     const selected = selectedDate.format('YYYY-MM-DD');
@@ -610,7 +647,11 @@ const CashFlowModule = () => {
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <EnvelopeModeSwitch mode={envelopeMode} onChange={setEnvelopeMode} />
+                <EnvelopeModeSwitch
+                  mode={envelopeMode}
+                  onChange={setEnvelopeMode}
+                  forecastDisabled={forecastDisabled}
+                />
                 <WhyEnvelopesButton />
               </div>
             </div>
@@ -620,7 +661,11 @@ const CashFlowModule = () => {
               are due, the money is already accounted for.
             </p>
           </div>
-          <EnvelopeModeNote mode={envelopeMode} descriptions={modeDescriptions} />
+          <EnvelopeModeNote
+            mode={envelopeMode}
+            descriptions={modeDescriptions}
+            forecastDisabled={forecastDisabled}
+          />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {ENVELOPES.map((item) => {
               const row = wtdEnvelopes[item.key] || {};
