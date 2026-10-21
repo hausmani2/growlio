@@ -17,6 +17,7 @@ import {
   promptSquareReconnect,
   SQUARE_RECONNECT_MESSAGE,
 } from '../utils/squareReconnect';
+import { shouldFinalizePosSync } from '../utils/posSyncCompletion';
 
 const NO_POS_DATA_MESSAGE = 'No data found from Square for the selected dates.';
 
@@ -31,6 +32,8 @@ export const usePosSync = ({
   const websocketRef = useRef(null);
   const pollingIntervalRef = useRef(null);
   const completionHandledRef = useRef(false);
+  const sawProcessingRef = useRef(false);
+  const syncStartedAtRef = useRef(null);
   const dashboardCallbackRef = useRef(onDashboardData);
   const syncCompletedCallbackRef = useRef(onSyncCompleted);
   const lastSyncRangeRef = useRef(null);
@@ -112,13 +115,30 @@ export const usePosSync = ({
           return;
         }
 
-        const hadData = merchantStatus?.lastSyncHadData !== false;
+        // Require an explicit true from THIS completed sync (null/false = no data).
+        const hadData = merchantStatus?.lastSyncHadData === true;
 
-        const freshDashboardData = await queryClient.fetchQuery({
-          queryKey: posQueryKeys.dashboard(restaurantId, weekStart),
-          queryFn: () => getDashboardData({ restaurantId, weekStart }),
-          staleTime: 0,
-        });
+        // Force-refresh Zustand (not IfNeeded) so past-week cache cannot overwrite
+        // the post-sync UI when the week picker reprocesses the synced week.
+        let freshDashboardData = null;
+        try {
+          freshDashboardData = await useStore.getState().fetchDashboardData?.(weekStart);
+        } catch (_) {
+          // Fall through to React Query fetch below
+        }
+
+        if (!freshDashboardData) {
+          freshDashboardData = await queryClient.fetchQuery({
+            queryKey: posQueryKeys.dashboard(restaurantId, weekStart),
+            queryFn: () => getDashboardData({ restaurantId, weekStart }),
+            staleTime: 0,
+          });
+        } else {
+          queryClient.setQueryData(
+            posQueryKeys.dashboard(restaurantId, weekStart),
+            freshDashboardData
+          );
+        }
 
         // Refresh onboarding after sync so Close Day column visibility matches
         // the selected location's Sales Channels / Third Party settings.
@@ -129,7 +149,7 @@ export const usePosSync = ({
         }
 
         dashboardCallbackRef.current?.(freshDashboardData);
-        syncCompletedCallbackRef.current?.({ hadData });
+        syncCompletedCallbackRef.current?.({ hadData, weekStart });
         queryClient.invalidateQueries({
           queryKey: ['dashboard', String(restaurantId)],
         });
@@ -182,7 +202,7 @@ export const usePosSync = ({
   );
 
   const checkMerchantStatus = useCallback(
-    async (restaurantId, weekStart) => {
+    async (restaurantId, weekStart, { force = false } = {}) => {
       const merchantStatus = await queryClient.fetchQuery({
         queryKey: posQueryKeys.merchantStatus(restaurantId),
         queryFn: () => getMerchantSyncStatus(restaurantId),
@@ -194,7 +214,15 @@ export const usePosSync = ({
         return merchantStatus;
       }
 
-      if (merchantStatus?.isCompleted) {
+      const decision = shouldFinalizePosSync({
+        status: merchantStatus?.squareSyncStatus,
+        sawProcessing: sawProcessingRef.current,
+        force,
+        startedAt: syncStartedAtRef.current,
+      });
+      sawProcessingRef.current = decision.sawProcessing;
+
+      if (decision.shouldFinalize) {
         await finalizeSync(restaurantId, weekStart);
       }
 
@@ -221,10 +249,14 @@ export const usePosSync = ({
   const startRealtimeListeners = useCallback(
     (restaurantId, weekStart) => {
       completionHandledRef.current = false;
+      sawProcessingRef.current = false;
+      syncStartedAtRef.current = Date.now();
 
       websocketRef.current = createPosSyncWebSocket({
         restaurantId,
         onCompleted: () => {
+          // WS fires for THIS run — finalize immediately (same as OnboardingPosImport).
+          sawProcessingRef.current = true;
           finalizeSync(restaurantId, weekStart).catch(() => {
             // Completion handler already reports dashboard refresh issues.
           });
@@ -285,13 +317,27 @@ export const usePosSync = ({
     startRealtimeListeners(restaurantId, normalizedWeekStart);
 
     try {
-      await syncMutation.mutateAsync({
+      const syncStartResponse = await syncMutation.mutateAsync({
         restaurantId,
         startDate,
         endDate,
         dates,
         skipExisting,
       });
+
+      const startedHint = String(
+        syncStartResponse?.status ||
+          syncStartResponse?.square_sync_status ||
+          ''
+      ).toLowerCase();
+      if (
+        startedHint === 'sync_started' ||
+        startedHint === 'processing' ||
+        startedHint === 'pending'
+      ) {
+        sawProcessingRef.current = true;
+      }
+
       checkMerchantStatus(restaurantId, normalizedWeekStart).catch(() => {
         // Polling continues even if the immediate check fails.
       });

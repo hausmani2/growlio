@@ -314,12 +314,15 @@ const Dashboard = () => {
   }, []);
 
   const handlePosSyncCompleted = useCallback((result) => {
-    const importedWeekStart = pendingPosImportRef.current?.weekStart;
+    const importedWeekStart =
+      pendingPosImportRef.current?.weekStart || result?.weekStart || null;
     const importedCount = pendingPosImportRef.current?.dates?.length || 0;
     setPosSyncHadData(result?.hadData !== false);
     setPosImportDayCount(importedCount);
     setPosImportOverwrote(pendingPosImportRef.current?.skipExisting === false);
     setIsPosSyncCompletedModalVisible(true);
+    // Stay on the synced week. Zustand was force-refreshed in finalizeSync, so
+    // reprocessing this week via the picker uses fresh store data (not stale cache).
     if (importedWeekStart) {
       handleWeekPickerChangeRef.current?.(dayjs(importedWeekStart));
     }
@@ -671,44 +674,31 @@ const Dashboard = () => {
 
     const initializeDashboard = async () => {
       try {
-        // Check if we already have a selected year in the store
-        const { selectedYear: storeSelectedYear, selectedMonth: storeSelectedMonth } = getDateSelection();
+        const {
+          selectedYear: storeSelectedYear,
+          selectedMonth: storeSelectedMonth,
+          selectedDate: storeSelectedDate,
+          weekStartDate: storeWeekStartDate,
+        } = getDateSelection();
 
-        let yearToUse = storeSelectedYear;
-        let monthToUse = storeSelectedMonth;
+        // Restore the last selected / synced week when present; otherwise current week.
+        const persistedAnchor = storeSelectedDate || storeWeekStartDate;
+        const restored = persistedAnchor ? dayjs(persistedAnchor) : null;
+        const anchor = restored?.isValid?.() ? restored : dayjs();
 
-        // If no year/month in store, use current date
-        if (!yearToUse) {
-          yearToUse = dayjs().year();
-          setSelectedYear(yearToUse);
-        }
+        const yearToUse = storeSelectedYear || anchor.year();
+        const monthToUse = storeSelectedMonth || anchor.month() + 1;
+        setSelectedYear(yearToUse);
+        setSelectedMonth(monthToUse);
 
-        if (!monthToUse) {
-          monthToUse = dayjs().month() + 1; // dayjs months are 0-indexed
-          setSelectedMonth(monthToUse);
-        }
-
-        // Only clear selected week if we're initializing with current month
-        // This prevents clearing a valid selection when navigating back
-        const currentDate = dayjs();
-        const currentYear = currentDate.year();
-        const currentMonth = currentDate.month() + 1;
-
-        if (yearToUse === currentYear && monthToUse === currentMonth) {
-          // Only clear if we're viewing the current month, to allow auto-selection of current week
-          setSelectedWeek(null);
-        }
-
-        // Default: select current week in picker and state
-        const now = dayjs();
-        setWeekPickerValue(now);
-        const weekStart = now.startOf('week');
-        const weekEnd = now.endOf('week');
+        const weekStart = anchor.startOf('week');
+        const weekEnd = anchor.endOf('week');
         const weekKey = `${weekStart.format('YYYY-MM-DD')}_${weekEnd.format('YYYY-MM-DD')}`;
+        setWeekPickerValue(weekStart);
         setAvailableWeeks([
           {
             key: weekKey,
-            weekNumber: now.week(),
+            weekNumber: weekStart.week(),
             startDate: weekStart.format('YYYY-MM-DD'),
             endDate: weekEnd.format('YYYY-MM-DD'),
             data: null
@@ -819,21 +809,25 @@ const Dashboard = () => {
   // Apply location week_start_day so Close Out / calendars match setup.
   // When week start changes in Operating Information, rebuild the selected week
   // so we do not keep requesting a date from the previous week boundary.
+  // Preserve the currently selected / synced week instead of jumping to "now".
   useEffect(() => {
     if (restaurantGoals?.week_start_day === undefined || restaurantGoals?.week_start_day === null) {
       return;
     }
     setDayjsWeekStart(restaurantGoals.week_start_day);
 
-    const now = dayjs();
-    const weekStart = now.startOf('week');
-    const weekEnd = now.endOf('week');
+    const { selectedDate: storeSelectedDate, weekStartDate } = getDateSelection();
+    const persisted = storeSelectedDate || weekStartDate;
+    const restored = persisted ? dayjs(persisted) : null;
+    const anchor = restored?.isValid?.() ? restored : dayjs();
+    const weekStart = anchor.startOf('week');
+    const weekEnd = anchor.endOf('week');
     const weekKey = `${weekStart.format('YYYY-MM-DD')}_${weekEnd.format('YYYY-MM-DD')}`;
-    setWeekPickerValue(now);
+    setWeekPickerValue(weekStart);
     setAvailableWeeks([
       {
         key: weekKey,
-        weekNumber: now.week(),
+        weekNumber: weekStart.week(),
         startDate: weekStart.format('YYYY-MM-DD'),
         endDate: weekEnd.format('YYYY-MM-DD'),
         data: null,
