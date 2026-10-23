@@ -34,16 +34,19 @@ const TotalExpense = ({ data,  onSave }) => {
                 return sum;
             }
 
-            // Skip percentage fields (royalty/brand and fund) from total calculation
-            const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                String(field?.label || '').toLowerCase().includes(keyword)
-            );
+            // Skip %-of-sales expenses from the $ total (and legacy royalty/brand names)
+            const labelLower = String(field?.label || '').toLowerCase();
+            const isPercentageField =
+                field.is_value_type === false ||
+                ['royalty', 'brand', 'fund'].some((keyword) => labelLower.includes(keyword));
             if (isPercentageField) {
                 return sum;
             }
             
             const value = parseFloat(field.value || 0);
-            const expenseType = field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly';
+            const expenseType = String(
+                field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly'
+            ).toLowerCase();
             
             if (expenseType === 'weekly') {
                 // Convert weekly to monthly: weekly * 4.33
@@ -61,16 +64,18 @@ const TotalExpense = ({ data,  onSave }) => {
                 return sum;
             }
 
-            // Skip percentage fields (royalty/brand and fund) from total calculation
-            const isPercentageField = ['royalty', 'brand', 'fund'].some(keyword => 
-                String(field?.label || '').toLowerCase().includes(keyword)
-            );
+            const labelLower = String(field?.label || '').toLowerCase();
+            const isPercentageField =
+                field.is_value_type === false ||
+                ['royalty', 'brand', 'fund'].some((keyword) => labelLower.includes(keyword));
             if (isPercentageField) {
                 return sum;
             }
             
             const value = parseFloat(field.value || 0);
-            const expenseType = field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly';
+            const expenseType = String(
+                field.expense_type || field.fixed_expense_type || field.variable_expense_type || 'monthly'
+            ).toLowerCase();
             
             if (expenseType === 'monthly') {
                 // Convert monthly to weekly: monthly ÷ 4.33

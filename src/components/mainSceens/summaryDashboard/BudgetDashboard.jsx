@@ -34,20 +34,21 @@ const parseNumericLikeTable = (value) => {
 };
 
 const getEntryFixedCostBudget = (entry) => {
-  if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
-    return parseNumericLikeTable(entry.fixed_cost_total);
-  }
+  // Prefer budgeted fields for the budget table (not actuals).
   if (entry.budgeted_fixed_cost_total !== undefined && entry.budgeted_fixed_cost_total !== null && entry.budgeted_fixed_cost_total !== 'None') {
     return parseNumericLikeTable(entry.budgeted_fixed_cost_total);
-  }
-  if (Array.isArray(entry.fixed_costs)) {
-    return entry.fixed_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   if (Array.isArray(entry.fixed_costs_budget)) {
     return entry.fixed_costs_budget.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   if (entry.fixed_cost_budget !== undefined && entry.fixed_cost_budget !== null && entry.fixed_cost_budget !== 'None') {
     return parseNumericLikeTable(entry.fixed_cost_budget);
+  }
+  if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.fixed_cost_total);
+  }
+  if (Array.isArray(entry.fixed_costs)) {
+    return entry.fixed_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   return parseNumericLikeTable(entry.fixed_cost);
 };
@@ -67,20 +68,25 @@ const SLICE_INSIDE_LINE_SETS = [
 ];
 
 const getEntryVariableCostBudget = (entry) => {
-  if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
-    return parseNumericLikeTable(entry.variable_cost_total);
-  }
+  // Prefer budgeted fields for the budget table (not actuals).
   if (entry.budgeted_variable_cost_total !== undefined && entry.budgeted_variable_cost_total !== null && entry.budgeted_variable_cost_total !== 'None') {
     return parseNumericLikeTable(entry.budgeted_variable_cost_total);
-  }
-  if (Array.isArray(entry.variable_costs)) {
-    return entry.variable_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   if (Array.isArray(entry.variable_costs_budget)) {
     return entry.variable_costs_budget.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   if (entry.variable_cost_budget !== undefined && entry.variable_cost_budget !== null && entry.variable_cost_budget !== 'None') {
     return parseNumericLikeTable(entry.variable_cost_budget);
+  }
+  if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.variable_cost_total);
+  }
+  // Legacy API typo
+  if (entry.varibale_cost_total !== undefined && entry.varibale_cost_total !== null && entry.varibale_cost_total !== 'None') {
+    return parseNumericLikeTable(entry.varibale_cost_total);
+  }
+  if (Array.isArray(entry.variable_costs)) {
+    return entry.variable_costs.reduce((sum, cost) => sum + parseNumericLikeTable(cost?.amount), 0);
   }
   return parseNumericLikeTable(entry.variable_cost);
 };
@@ -246,25 +252,22 @@ const BudgetDashboard = ({ dashboardData, loading, error, onAddData, onEditData,
       const laborBudget = parseFloat(entry.labour ?? entry.labor_budget ?? entry.laborBudget ?? 0) || 0;
       const laborActual = parseFloat(entry.labour_actual ?? entry.labor ?? entry.laborActual ?? 0) || 0;
       
-      // Operational expense (budget): same field fallbacks as SummaryTableDashboard TOTAL row
-      const fixedCostsBudget = getEntryFixedCostBudget(entry);
-      const variableCostsBudget = getEntryVariableCostBudget(entry);
-      const operationalExpenseBudget = fixedCostsBudget + variableCostsBudget;
+      // Match P&L dashboard: operating expenses = variable costs only
+      const operationalExpenseBudget = getEntryVariableCostBudget(entry);
 
-      // Actuals: support array or scalar shapes from API
-      let fixedCostsActual = 0;
       let variableCostsActual = 0;
-      if (Array.isArray(entry.fixed_costs_actual)) {
-        fixedCostsActual = entry.fixed_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
-      } else if (entry.fixed_cost_actual) {
-        fixedCostsActual = parseFloat(entry.fixed_cost_actual) || 0;
-      }
       if (Array.isArray(entry.variable_costs_actual)) {
         variableCostsActual = entry.variable_costs_actual.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
+      } else if (Array.isArray(entry.variable_costs)) {
+        variableCostsActual = entry.variable_costs.reduce((sum, cost) => sum + parseFloat(cost.amount || 0), 0);
       } else if (entry.variable_cost_actual) {
         variableCostsActual = parseFloat(entry.variable_cost_actual) || 0;
+      } else if (entry.varibale_cost_total != null) {
+        variableCostsActual = parseFloat(entry.varibale_cost_total) || 0;
+      } else if (entry.variable_cost_total != null) {
+        variableCostsActual = parseFloat(entry.variable_cost_total) || 0;
       }
-      const operationalExpenseActual = fixedCostsActual + variableCostsActual;
+      const operationalExpenseActual = variableCostsActual;
       
       // Use the pre-calculated profit/loss values from the data if available
       const budgetProfit = parseFloat(entry.budgeted_profit_loss ?? entry.budgetProfit ?? 0) || 

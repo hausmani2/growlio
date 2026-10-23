@@ -183,41 +183,35 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       processed.amount[dateKey] = parseNumericValue(entry.amount);
       processed.average_hourly_rate[dateKey] = parseNumericValue(entry.average_hourly_rate);
       
-       // Handle fixed_costs - use raw API values without calculation
+       // Budget table: prefer budgeted OpEx fields (not actuals).
        let fixedCostTotal = 0;
-       // First try to get from direct API fields
-       if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
-         fixedCostTotal = parseNumericValue(entry.fixed_cost_total);
-       } else if (entry.budgeted_fixed_cost_total !== undefined && entry.budgeted_fixed_cost_total !== null && entry.budgeted_fixed_cost_total !== 'None') {
+       if (entry.budgeted_fixed_cost_total !== undefined && entry.budgeted_fixed_cost_total !== null && entry.budgeted_fixed_cost_total !== 'None') {
          fixedCostTotal = parseNumericValue(entry.budgeted_fixed_cost_total);
+       } else if (entry.fixed_cost_total !== undefined && entry.fixed_cost_total !== null && entry.fixed_cost_total !== 'None') {
+         fixedCostTotal = parseNumericValue(entry.fixed_cost_total);
        } else if (entry.fixed_costs && Array.isArray(entry.fixed_costs)) {
-         // Fallback to array structure
          fixedCostTotal = entry.fixed_costs.reduce((sum, cost) => {
            const costAmount = parseNumericValue(cost.amount);
            return sum + costAmount;
          }, 0);
        } else {
-         // Final fallback to direct field
          fixedCostTotal = parseNumericValue(entry.fixed_cost);
        }
-       // Store the raw fixed cost value (no division by total days)
        processed.fixed_cost[dateKey] = fixedCostTotal;
        
-       // Handle variable_costs - use raw API values without calculation
        let variableCostTotal = 0;
-       // First try to get from direct API fields
-       if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
-         variableCostTotal = parseNumericValue(entry.variable_cost_total);
-       } else if (entry.budgeted_variable_cost_total !== undefined && entry.budgeted_variable_cost_total !== null && entry.budgeted_variable_cost_total !== 'None') {
+       if (entry.budgeted_variable_cost_total !== undefined && entry.budgeted_variable_cost_total !== null && entry.budgeted_variable_cost_total !== 'None') {
          variableCostTotal = parseNumericValue(entry.budgeted_variable_cost_total);
+       } else if (entry.variable_cost_total !== undefined && entry.variable_cost_total !== null && entry.variable_cost_total !== 'None') {
+         variableCostTotal = parseNumericValue(entry.variable_cost_total);
+       } else if (entry.varibale_cost_total !== undefined && entry.varibale_cost_total !== null && entry.varibale_cost_total !== 'None') {
+         // Legacy API typo
+         variableCostTotal = parseNumericValue(entry.varibale_cost_total);
        } else if (entry.variable_costs && Array.isArray(entry.variable_costs)) {
-         // Fallback to array structure
          variableCostTotal = entry.variable_costs.reduce((sum, cost) => sum + parseNumericValue(cost.amount), 0);
        } else {
-         // Final fallback to direct field
          variableCostTotal = parseNumericValue(entry.variable_cost);
        }
-       // Store the raw variable cost value (no division by total days)
        processed.variable_cost[dateKey] = variableCostTotal;
       
       processed.budgeted_profit_loss[dateKey] = parseNumericValue(entry.budgeted_profit_loss);
@@ -286,10 +280,9 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
           const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
           let value = 0;
           if (category.key === 'operating_expenses') {
-            // Combine fixed_cost and variable_cost for operating expenses
-            const fixedCost = processedData['fixed_cost']?.[dateKey] || 0;
-            const variableCost = processedData['variable_cost']?.[dateKey] || 0;
-            value = fixedCost + variableCost;
+            // Match P&L: operating expenses = variable costs only (unified Expense setup).
+            // Do not add legacy fixed_cost — that double-counts vs profit-loss.
+            value = processedData['variable_cost']?.[dateKey] || 0;
           } else {
             value = processedData[category.key]?.[dateKey] || 0;
           }
@@ -425,10 +418,8 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       // Add category values
       categories.forEach(category => {
         if (category.key === 'operating_expenses') {
-          // Combine fixed_cost and variable_cost
-          const fixedCost = processedData['fixed_cost']?.[dateKey] || 0;
-          const variableCost = processedData['variable_cost']?.[dateKey] || 0;
-          rowData[category.key] = fixedCost + variableCost;
+          // Match P&L: variable costs only (do not add legacy fixed_cost)
+          rowData[category.key] = processedData['variable_cost']?.[dateKey] || 0;
         } else {
           rowData[category.key] = processedData[category.key]?.[dateKey] || 0;
         }
