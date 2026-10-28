@@ -180,10 +180,14 @@ const PosImportPeriodModal = ({
       message.info('Select at least one day to import.');
       return;
     }
+    // No Growlio actuals yet → write sales + labor for all selected days.
+    // (skipExisting=true here used to skip labor after sales wrote in the same sync.)
     if (!existingDates.length) {
-      submitImport(dates, nextWeekStart, true);
+      submitImport(dates, nextWeekStart, false);
       return;
     }
+    // Some selected days already have data → ask before overwriting those,
+    // while still filling empty selected days in the same import.
     pendingImportRef.current = { dates, weekStart: nextWeekStart, existingDates };
     setOverwriteCount(existingDates.length);
     setOverwriteOpen(true);
@@ -436,8 +440,8 @@ const PosImportPeriodModal = ({
       >
         <p className="mb-0 text-gray-700">
           {overwriteCount === 1
-            ? '1 selected day already has Growlio data. Importing from POS will replace the current sales and labor values for that day.'
-            : `${overwriteCount} selected days already have Growlio data. Importing from POS will replace the current sales and labor values for those days.`}
+            ? '1 selected day already has Growlio data. Overwrite and import will replace sales and labor on that day, and fill any empty selected days.'
+            : `${overwriteCount} selected days already have Growlio data. Overwrite and import will replace sales and labor on those days, and fill any empty selected days.`}
         </p>
       </Modal>
     </Modal>
