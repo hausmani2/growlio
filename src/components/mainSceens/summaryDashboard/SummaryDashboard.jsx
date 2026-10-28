@@ -22,6 +22,7 @@ import {
   getNextIncompleteSetupRoute,
   markFirstBudgetCongratsPending,
 } from '../../../utils/onboardingUtils';
+import { setDayjsWeekStart } from '../../../utils/weekStart';
 import FirstBudgetCreatedModal from '../../onBoarding/FirstBudgetCreatedModal';
 
 
@@ -95,11 +96,23 @@ const SummaryDashboard = () => {
     window.open(watchUrl, '_blank', 'noopener,noreferrer');
   }, [activeBudgetVideoKey]);
 
-  // Initialize with current week
+  // Store integration for date selection persistence
+  const {
+    setSelectedYear,
+    setSelectedMonth,
+    setSelectedWeek
+  } = useStore();
+  const selectedLocationId = useStore((s) => s.selectedLocationId);
+  const restaurantGoals = useStore((s) => s.restaurantGoals);
+
+  // Initialize with current week (respect setup week_start_day when already loaded)
   useEffect(() => {
     try {
-      
       if (calendarDateRange.length === 0) {
+        const goals = useStore.getState().restaurantGoals;
+        if (goals?.week_start_day !== undefined && goals?.week_start_day !== null) {
+          setDayjsWeekStart(goals.week_start_day);
+        }
         const startOfWeek = dayjs().startOf('week');
         const endOfWeek = dayjs().endOf('week');
         setCalendarDateRange([startOfWeek, endOfWeek]);
@@ -110,7 +123,35 @@ const SummaryDashboard = () => {
     }
   }, [calendarDateRange.length]);
 
+  // When goals/location week_start_day loads (or changes), realign Budget week
+  // boundaries. Fixes first redirect after setup/POS still showing Sun–Sat.
+  useEffect(() => {
+    if (
+      restaurantGoals?.week_start_day === undefined ||
+      restaurantGoals?.week_start_day === null
+    ) {
+      return;
+    }
+    setDayjsWeekStart(restaurantGoals.week_start_day);
 
+    const anchor =
+      weekPickerValue?.isValid?.() ? weekPickerValue : dayjs();
+    const startOfWeek = dayjs(anchor).startOf('week');
+    const endOfWeek = dayjs(anchor).endOf('week');
+    const sameRange =
+      calendarDateRange?.[0]?.format?.('YYYY-MM-DD') ===
+        startOfWeek.format('YYYY-MM-DD') &&
+      calendarDateRange?.[1]?.format?.('YYYY-MM-DD') ===
+        endOfWeek.format('YYYY-MM-DD');
+    if (sameRange) return;
+
+    setCalendarDateRange([startOfWeek, endOfWeek]);
+    setWeekPickerValue(startOfWeek);
+    setCalendarError(null);
+    // Intentionally depend on week_start_day / location, not calendar range
+    // (rebuilding range is the purpose of this effect).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantGoals?.week_start_day, selectedLocationId]);
 
   // Calendar functions
   const handleCalendarDateChange = useCallback((dates) => {
@@ -119,21 +160,18 @@ const SummaryDashboard = () => {
   }, []);
 
   const selectThisWeek = useCallback(() => {
+    const goals = useStore.getState().restaurantGoals;
+    if (goals?.week_start_day !== undefined && goals?.week_start_day !== null) {
+      setDayjsWeekStart(goals.week_start_day);
+    }
     const startOfWeek = dayjs().startOf('week');
     const endOfWeek = dayjs().endOf('week');
     const newRange = [startOfWeek, endOfWeek];
     setCalendarDateRange(newRange);
+    setWeekPickerValue(startOfWeek);
     setCalendarError(null);
     return newRange;
   }, []);
-
-  // Store integration for date selection persistence
-  const {
-    setSelectedYear,
-    setSelectedMonth,
-    setSelectedWeek
-  } = useStore();
-  const selectedLocationId = useStore((s) => s.selectedLocationId);
   const isOnBoardingCompleted = useStore((s) => s.isOnBoardingCompleted);
   const restaurantOnboardingData = useStore((s) => s.restaurantOnboardingData);
   const isSetupComplete =
@@ -179,11 +217,20 @@ const SummaryDashboard = () => {
   } = useStore();
 
   // Restaurant goals functionality - using custom hook for professional handling
-  const { fetchGoals, refreshGoals } = useRestaurantGoals({
+  const { fetchGoals } = useRestaurantGoals({
     autoFetch: true,
-    refreshOnMount: false,
+    // Refresh when landing on Budget so week_start_day matches setup/location.
+    refreshOnMount: true,
     componentName: 'SummaryDashboard'
   });
+
+  // Re-fetch goals when location changes (week_start_day is per location).
+  useEffect(() => {
+    if (!selectedLocationId) return;
+    fetchGoals(true);
+    // Only re-run on location change — not when fetchGoals identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLocationId]);
 
   const getSummaryEntries = useCallback((summary) => {
     if (Array.isArray(summary?.data)) return summary.data;
@@ -446,11 +493,14 @@ const SummaryDashboard = () => {
   // New: Week Picker change handler (single week selection like Enter Weekly Data)
   const handleWeekPickerChange = useCallback(async (date) => {
     if (!date) return;
+    const goals = useStore.getState().restaurantGoals;
+    if (goals?.week_start_day !== undefined && goals?.week_start_day !== null) {
+      setDayjsWeekStart(goals.week_start_day);
+    }
     const start = dayjs(date).startOf('week');
     const end = dayjs(date).endOf('week');
 
-    
-    setWeekPickerValue(date);
+    setWeekPickerValue(start);
     setCalendarDateRange([start, end]);
     
     // Process week selection (checks for data first, then weekly average)
