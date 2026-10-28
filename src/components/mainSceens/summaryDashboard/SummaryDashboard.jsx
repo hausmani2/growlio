@@ -16,7 +16,12 @@ import { printUtils } from '../../../utils/printUtils';
 // CalendarUtils replaced with Week Picker
 import useSalesDataPopup from '../../../utils/useSalesDataPopup';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
-import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
+import {
+  clearFirstBudgetCongratsPending,
+  getFirstBudgetCongratsPending,
+  getNextIncompleteSetupRoute,
+} from '../../../utils/onboardingUtils';
+import FirstBudgetCreatedModal from '../../onBoarding/FirstBudgetCreatedModal';
 
 
 
@@ -47,6 +52,18 @@ const SummaryDashboard = () => {
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [activeBudgetVideoKey, setActiveBudgetVideoKey] = useState('createBudget');
+  const [showFirstBudgetCongrats, setShowFirstBudgetCongrats] = useState(false);
+  const restaurantName = useStore((state) => state.restaurantName());
+
+  useEffect(() => {
+    if (!getFirstBudgetCongratsPending()) return;
+    setShowFirstBudgetCongrats(true);
+  }, []);
+
+  const handleCloseFirstBudgetCongrats = useCallback(() => {
+    clearFirstBudgetCongratsPending();
+    setShowFirstBudgetCongrats(false);
+  }, []);
   const openVideoInNewTab = useCallback(() => {
     const embedUrl = BUDGET_TUTORIAL_VIDEOS[activeBudgetVideoKey]?.embedUrl || BUDGET_TUTORIAL_VIDEOS.createBudget.embedUrl;
     // Convert embed -> watch URL for a better "follow along" experience
@@ -1097,6 +1114,12 @@ const SummaryDashboard = () => {
         autoOpenFromSummary={true}
         isManuallyTriggered={isManuallyTriggered}
         onLetLioCreateBudget={canCreateBudget ? handleLetLioCreateBudget : undefined}
+      />
+
+      <FirstBudgetCreatedModal
+        open={showFirstBudgetCongrats}
+        restaurantName={restaurantName}
+        onClose={handleCloseFirstBudgetCongrats}
       />
 
       {/* YouTube Video Tutorial Modal */}

@@ -17,6 +17,7 @@ import {
   getSetupPlanChoice,
   isPaidPosPlan,
   markBudgetPosPrompt,
+  markFirstBudgetCongratsPending,
   markPosUpgradeReturn,
   markSetupPlanChoice,
   persistConnectPosReturn,
@@ -290,7 +291,8 @@ const OnboardingConnectPosPage = () => {
     } catch (err) {
       console.warn('Budget refetch after POS import failed:', err);
     }
-    // Toast already reflects auto-budget result; open Budget with fresh data.
+    // Land on Budget; SummaryDashboard opens the congratulations modal once.
+    markFirstBudgetCongratsPending();
     navigate(ONBOARDING_ROUTES.DASHBOARD_BUDGET, { replace: true });
   };
 

@@ -25,6 +25,7 @@ export const BUDGET_POS_PROMPT_KEY = 'growlio_onboarding_budget_pos_prompt';
 export const CONNECT_POS_NEXT_KEY = 'growlio_onboarding_connect_pos_next';
 export const CONNECT_POS_FROM_KEY = 'growlio_onboarding_connect_pos_from';
 export const POS_UPGRADE_RETURN_KEY = 'growlio_onboarding_pos_upgrade_return';
+export const FIRST_BUDGET_CONGRATS_KEY = 'growlio_first_budget_congrats_pending';
 
 const readStorage = (storage, key) => {
   try {
@@ -59,6 +60,18 @@ export const getBudgetPosPrompt = () =>
 export const markBudgetPosPrompt = (choice) => {
   writeStorage(localStorage, BUDGET_POS_PROMPT_KEY, choice);
   writeStorage(sessionStorage, BUDGET_POS_PROMPT_KEY, choice);
+};
+
+/** One-time gate for the post-import “first budget created” screen. */
+export const markFirstBudgetCongratsPending = () => {
+  writeStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY, '1');
+};
+
+export const getFirstBudgetCongratsPending = () =>
+  readStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY) === '1';
+
+export const clearFirstBudgetCongratsPending = () => {
+  writeStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY, null);
 };
 
 /** Never force Connect POS before Restaurant Details / other setup steps. */
