@@ -684,12 +684,9 @@ const SummaryDashboard = () => {
 
   // Fetch restaurant goals when navigating to budget page
   useEffect(() => {
-    const isBudgetPage = location.pathname === '/dashboard/budget';
-    
-    if (isBudgetPage) {
-      // Refresh goals when budget page is accessed
-      refreshGoals();
-    }
+    if (location.pathname !== '/dashboard/budget') return;
+    fetchGoals(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   // Fetch data when date range changes (but not on initial load)
