@@ -16,7 +16,8 @@ const FirstBudgetCreatedModal = ({ open, restaurantName, onClose }) => {
       centered
       width={520}
       destroyOnClose
-      zIndex={1200}
+      zIndex={11000}
+      getContainer={() => document.body}
       onCancel={onClose}
       footer={[
         <Button

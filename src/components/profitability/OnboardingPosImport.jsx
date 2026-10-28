@@ -25,7 +25,10 @@ import {
 import { createPosSyncWebSocket } from '../../services/websocket';
 import { apiGet, apiPatch } from '../../utils/axiosInterceptors';
 import { markSquareConnectFromOnboardingScore } from '../../utils/squareOAuth';
-import { ONBOARDING_ROUTES } from '../../utils/onboardingUtils';
+import {
+  markFirstBudgetCongratsPending,
+  ONBOARDING_ROUTES,
+} from '../../utils/onboardingUtils';
 import { getRoleLandingRoute } from '../../utils/rolePermissions';
 import useMissingLaborRatesCheck from '../../hooks/useMissingLaborRatesCheck';
 
@@ -237,6 +240,10 @@ const OnboardingPosImport = ({
         budgetFilled,
         lastSyncHadData: merchantStatus?.lastSyncHadData,
       };
+      // Set before parent navigates so Budget mounts with the modal flag ready.
+      if (budgetFilled || onFinished) {
+        markFirstBudgetCongratsPending();
+      }
       if (onFinished) {
         onFinished(finishPayload);
         return;

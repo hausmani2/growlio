@@ -62,16 +62,19 @@ export const markBudgetPosPrompt = (choice) => {
   writeStorage(sessionStorage, BUDGET_POS_PROMPT_KEY, choice);
 };
 
-/** One-time gate for the post-import “first budget created” screen. */
+/** One-time gate for the post-import “first budget created” modal on Budget. */
 export const markFirstBudgetCongratsPending = () => {
   writeStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY, '1');
+  writeStorage(localStorage, FIRST_BUDGET_CONGRATS_KEY, '1');
 };
 
 export const getFirstBudgetCongratsPending = () =>
-  readStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY) === '1';
+  readStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY) === '1' ||
+  readStorage(localStorage, FIRST_BUDGET_CONGRATS_KEY) === '1';
 
 export const clearFirstBudgetCongratsPending = () => {
   writeStorage(sessionStorage, FIRST_BUDGET_CONGRATS_KEY, null);
+  writeStorage(localStorage, FIRST_BUDGET_CONGRATS_KEY, null);
 };
 
 /** Never force Connect POS before Restaurant Details / other setup steps. */

@@ -20,6 +20,7 @@ import {
   clearFirstBudgetCongratsPending,
   getFirstBudgetCongratsPending,
   getNextIncompleteSetupRoute,
+  markFirstBudgetCongratsPending,
 } from '../../../utils/onboardingUtils';
 import FirstBudgetCreatedModal from '../../onBoarding/FirstBudgetCreatedModal';
 
@@ -52,13 +53,34 @@ const SummaryDashboard = () => {
   const [weekPickerValue, setWeekPickerValue] = useState(null);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [activeBudgetVideoKey, setActiveBudgetVideoKey] = useState('createBudget');
-  const [showFirstBudgetCongrats, setShowFirstBudgetCongrats] = useState(false);
-  const restaurantName = useStore((state) => state.restaurantName());
+  const restaurantName = useStore((state) => {
+    try {
+      return typeof state.restaurantName === 'function'
+        ? state.restaurantName()
+        : state.restaurantName || '';
+    } catch {
+      return '';
+    }
+  });
+  const [showFirstBudgetCongrats, setShowFirstBudgetCongrats] = useState(
+    () =>
+      Boolean(location.state?.showFirstBudgetCongrats) ||
+      getFirstBudgetCongratsPending()
+  );
 
   useEffect(() => {
-    if (!getFirstBudgetCongratsPending()) return;
+    const fromNav = Boolean(location.state?.showFirstBudgetCongrats);
+    const fromStorage = getFirstBudgetCongratsPending();
+    if (!fromNav && !fromStorage) return;
+
     setShowFirstBudgetCongrats(true);
-  }, []);
+    markFirstBudgetCongratsPending();
+
+    // Clear nav state so refresh does not keep re-triggering via history.
+    if (fromNav) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const handleCloseFirstBudgetCongrats = useCallback(() => {
     clearFirstBudgetCongratsPending();
@@ -685,7 +707,7 @@ const SummaryDashboard = () => {
       {/* Weekly Average Data Popup - Show at top when 3 weeks data available - HIGHEST PRIORITY */}
       <Modal
         title="Weekly Average Data Available"
-        open={isWeeklyAverageDataPopupVisible}
+        open={isWeeklyAverageDataPopupVisible && !showFirstBudgetCongrats}
         onCancel={handleCloseWeeklyAverageDataPopup}
         footer={[
           <Button

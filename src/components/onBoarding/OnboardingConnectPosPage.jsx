@@ -283,7 +283,7 @@ const OnboardingConnectPosPage = () => {
     navigate('/dashboard/pos-integrations', { replace: true });
   };
 
-  const handleImportFinished = async () => {
+  const handleImportFinished = async (payload = {}) => {
     markSetupPlanChoice('upgraded');
     markBudgetPosPrompt('imported');
     try {
@@ -291,9 +291,15 @@ const OnboardingConnectPosPage = () => {
     } catch (err) {
       console.warn('Budget refetch after POS import failed:', err);
     }
-    // Land on Budget; SummaryDashboard opens the congratulations modal once.
+    // Always show congrats after setup POS import; Budget page opens the modal.
     markFirstBudgetCongratsPending();
-    navigate(ONBOARDING_ROUTES.DASHBOARD_BUDGET, { replace: true });
+    navigate(ONBOARDING_ROUTES.DASHBOARD_BUDGET, {
+      replace: true,
+      state: {
+        showFirstBudgetCongrats: true,
+        budgetFilled: Boolean(payload?.budgetFilled),
+      },
+    });
   };
 
   return (
