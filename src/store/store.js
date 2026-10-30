@@ -17,6 +17,7 @@ import createPosIntegrationsSlice from './slices/posIntegrationsSlice';
 import createLocationSlice from './slices/locationSlice';
 import createReportCardSlice from './slices/reportCardSlice';
 import { clearClientSessionStorage } from '../utils/clearClientSession';
+import { applyStoredWeekStart } from '../utils/weekStart';
 
 
 const useStore = create(
@@ -426,6 +427,9 @@ const useStore = create(
       }),
       {
         name: 'growlio-store',
+        onRehydrateStorage: () => (state) => {
+          applyStoredWeekStart(state?.restaurantGoals);
+        },
         // Subscription packages must always come from the API (avoid stale pricing after refresh).
         partialize: (state) => {
           const {

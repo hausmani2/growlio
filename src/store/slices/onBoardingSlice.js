@@ -1,4 +1,5 @@
 import { apiPost, apiGet, apiPut } from '../../utils/axiosInterceptors';
+import { applyStoredWeekStart } from '../../utils/weekStart';
 import {
     getFirstRestaurant,
     getLocationOnboardingRedirect,
@@ -2020,6 +2021,7 @@ const createOnBoardingSlice = (set, get) => ({
             
             // If we have valid data with restaurant_days and restaurant ID matches, return cached data
             if (hasValidRestaurantDays && (!restaurantId || !finalRestaurantId || String(state.restaurantGoals.restaurant_id) === String(finalRestaurantId))) {
+                applyStoredWeekStart(state.restaurantGoals);
                 return state.restaurantGoals;
             }
             
@@ -2054,23 +2056,15 @@ const createOnBoardingSlice = (set, get) => ({
                 `/restaurant/goals/?restaurant_id=${encodeURIComponent(finalRestaurantId)}`
             );
             const response = await apiGet(goalsUrl);
-            
-            
+
+            applyStoredWeekStart(response?.data);
+
             set(() => ({
                 restaurantGoalsLoading: false,
                 restaurantGoalsError: null,
                 restaurantGoals: response.data
             }));
 
-            try {
-                const { setDayjsWeekStart } = await import('../../utils/weekStart');
-                if (response?.data?.week_start_day !== undefined) {
-                    setDayjsWeekStart(response.data.week_start_day);
-                }
-            } catch (_) {
-                // weekStart util optional during early boot
-            }
-            
             return response.data;
         } catch (error) {
             console.error('❌ Error fetching restaurant goals:', error);

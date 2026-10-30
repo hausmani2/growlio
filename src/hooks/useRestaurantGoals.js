@@ -42,8 +42,8 @@ const useRestaurantGoals = ({
    * @returns {Promise<Object|null>} Goals data or null if error
    */
   const fetchGoals = useCallback(async (forceRefresh = false) => {
-    // Prevent duplicate concurrent calls
-    if (isFetchingRef.current) {
+    // A forced refresh must not be dropped behind an in-flight cached read.
+    if (isFetchingRef.current && !forceRefresh) {
       return restaurantGoals;
     }
 
@@ -61,8 +61,12 @@ const useRestaurantGoals = ({
         return null;
       }
 
-      // Fetch goals data
-      const goalsData = await getRestaurentGoal(restaurantId);
+      // Fetch goals data. forceRefresh must reach the store or a cached
+      // goals object skips setDayjsWeekStart and Budget keeps a Sunday week.
+      const goalsData = await getRestaurentGoal(
+        restaurantId,
+        Boolean(forceRefresh || refreshOnMount)
+      );
 
       if (goalsData) {
         if (goalsData.restaurant_days && Array.isArray(goalsData.restaurant_days)) {

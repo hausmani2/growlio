@@ -265,16 +265,27 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
     categories.forEach(category => {
       let total = 0;
       
-      // Average hourly rate should be the same value (not a sum) - use first day's value
+      // One setup rate for the week. If days disagree, use labor dollars / hours
+      // so the TOTAL row still satisfies hours × rate = labor budget.
       if (category.key === 'average_hourly_rate') {
-        const firstNonZeroRate = tableData.reduce((foundValue, entry) => {
-          if (foundValue > 0) return foundValue;
+        const rates = [];
+        let hoursSum = 0;
+        let labourSum = 0;
+        tableData.forEach((entry) => {
           const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
-          const rate = processedData[category.key]?.[dateKey] || 0;
-          return rate > 0 ? rate : foundValue;
-        }, 0);
-
-        total = firstNonZeroRate;
+          const rate = processedData.average_hourly_rate?.[dateKey] || 0;
+          if (rate > 0) rates.push(rate);
+          hoursSum += processedData.hours?.[dateKey] || 0;
+          labourSum += processedData.labour?.[dateKey] || 0;
+        });
+        const unique = new Set(rates.map((rate) => Number(rate).toFixed(2)));
+        if (unique.size === 1) {
+          total = rates[0];
+        } else if (hoursSum > 0) {
+          total = labourSum / hoursSum;
+        } else {
+          total = rates[0] || 0;
+        }
       } else {
         tableData.forEach(entry => {
           const dateKey = entry.month_start || entry.date || entry.day || 'N/A';
@@ -314,6 +325,32 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
       maximumFractionDigits: 0
     }).format(Math.round(value || 0));
   }, []);
+
+  const formatHourlyRate = useCallback((value) => {
+    if (value === '-') return '-';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
+  }, []);
+
+  const formatHours = useCallback((value) => {
+    if (value === '-') return '-';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
+  }, []);
+
+  const formatMetricValue = useCallback((category, value) => {
+    if (category?.key === 'average_hourly_rate') return formatHourlyRate(value);
+    if (category?.key === 'hours') return formatHours(value);
+    if (category?.type === 'currency') return formatCurrency(value);
+    if (category?.type === 'number') return formatNumber(value);
+    return value;
+  }, [formatCurrency, formatHourlyRate, formatHours, formatNumber]);
 
   // Color coding for profit/loss values
   const getProfitLossColor = useCallback((value) => {
@@ -785,25 +822,19 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                       }
                       
                       let displayValue = value;
-                      if (category?.type === 'currency') {
-                        if (category.key === 'budgeted_profit_loss') {
-                          displayValue = formatProfitLoss(value);
-                          // Profit/Loss: only red or green, no gray
-                          const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
-                          return (
-                            <td
-                              key={col.key}
-                              className={`${bgColor} px-3 py-2 border border-gray-200 text-center text-sm ${profitColor}`}
-                            >
-                              {displayValue}
-                            </td>
-                          );
-                        } else {
-                          displayValue = formatCurrency(value);
-                        }
-                      } else if (category?.type === 'number') {
-                        displayValue = formatNumber(value);
+                      if (category?.key === 'budgeted_profit_loss') {
+                        displayValue = formatProfitLoss(value);
+                        const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+                        return (
+                          <td
+                            key={col.key}
+                            className={`${bgColor} px-3 py-2 border border-gray-200 text-center text-sm ${profitColor}`}
+                          >
+                            {displayValue}
+                          </td>
+                        );
                       }
+                      displayValue = formatMetricValue(category, value);
                       
                       // All other columns: semibold text
                       return (
@@ -858,23 +889,17 @@ const SummaryTableDashboard = ({ dashboardData, dashboardSummaryData, loading, e
                     const textColor = isTotalRow ? 'text-white font-bold' : 'text-gray-800';
                     
                     let displayValue = value;
-                    if (category.type === 'currency') {
-                      if (category.key === 'budgeted_profit_loss') {
-                        displayValue = formatProfitLoss(value);
-                        // Profit/Loss: only red or green, no gray
-                        const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
-                        return (
-                          <div key={category.key} className="flex justify-between text-xs">
-                            <span className={textColor}>{category.label}</span>
-                            <span className={profitColor}>{displayValue}</span>
-                          </div>
-                        );
-                      } else {
-                        displayValue = formatCurrency(value);
-                      }
-                    } else if (category.type === 'number') {
-                      displayValue = formatNumber(value);
+                    if (category.key === 'budgeted_profit_loss') {
+                      displayValue = formatProfitLoss(value);
+                      const profitColor = value > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold';
+                      return (
+                        <div key={category.key} className="flex justify-between text-xs">
+                          <span className={textColor}>{category.label}</span>
+                          <span className={profitColor}>{displayValue}</span>
+                        </div>
+                      );
                     }
+                    displayValue = formatMetricValue(category, value);
                     
                     // All other columns: semibold text
                     return (

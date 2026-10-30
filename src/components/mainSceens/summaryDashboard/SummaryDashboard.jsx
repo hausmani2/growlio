@@ -23,6 +23,7 @@ import {
   markFirstBudgetCongratsPending,
 } from '../../../utils/onboardingUtils';
 import FirstBudgetCreatedModal from '../../onBoarding/FirstBudgetCreatedModal';
+import { weekRangeForKnownStart } from '../../../utils/weekStart';
 
 
 
@@ -95,20 +96,7 @@ const SummaryDashboard = () => {
     window.open(watchUrl, '_blank', 'noopener,noreferrer');
   }, [activeBudgetVideoKey]);
 
-  // Initialize with current week
-  useEffect(() => {
-    try {
-      
-      if (calendarDateRange.length === 0) {
-        const startOfWeek = dayjs().startOf('week');
-        const endOfWeek = dayjs().endOf('week');
-        setCalendarDateRange([startOfWeek, endOfWeek]);
-        setWeekPickerValue(dayjs());
-      }
-    } catch (error) {
-      console.error('Error in calendar initialization useEffect:', error);
-    }
-  }, [calendarDateRange.length]);
+  const restaurantGoals = useStore((state) => state.restaurantGoals);
 
 
 
@@ -218,6 +206,33 @@ const SummaryDashboard = () => {
   // Use refs to prevent infinite loops and duplicate modals
   const [isInitialized, setIsInitialized] = useState(false);
   const lastDateRange = useRef(null);
+  const appliedWeekStartRef = useRef(null);
+  const calendarDateRangeRef = useRef(calendarDateRange);
+  calendarDateRangeRef.current = calendarDateRange;
+
+  const weekStartDay = restaurantGoals?.week_start_day;
+  const weekStartKnown =
+    weekStartDay !== undefined && weekStartDay !== null && weekStartDay !== '';
+
+  // Do not snapshot Sunday before Operating Information week_start_day is applied.
+  // Rebuild when that day arrives so the table and the week picker stay on the same week.
+  useEffect(() => {
+    if (!weekStartKnown && !isInitialized) return;
+    const day = weekStartKnown ? weekStartDay : 0;
+    const anchor = calendarDateRangeRef.current[0] || dayjs();
+    const range = weekRangeForKnownStart(day, anchor);
+    if (!range) return;
+    if (
+      appliedWeekStartRef.current === range.weekStartDay &&
+      calendarDateRangeRef.current.length === 2
+    ) {
+      return;
+    }
+    appliedWeekStartRef.current = range.weekStartDay;
+    lastDateRange.current = null;
+    setCalendarDateRange([dayjs(range.start), dayjs(range.end)]);
+    setWeekPickerValue(dayjs(range.start));
+  }, [weekStartKnown, weekStartDay, isInitialized]);
   const hasHandledFailResponse = useRef(false);
   const weeklyAverageModalShown = useRef(null);
   const isProcessingWeek = useRef(false);
@@ -271,7 +286,7 @@ const SummaryDashboard = () => {
 
   useEffect(() => {
     const loadLatestReadableBudget = async () => {
-      if (!isSetupComplete || isOwner || roleLoading || summaryLoading || !isInitialized || hasValidData() || readableBudgetFallbackRef.current) {
+      if (!isSetupComplete || isOwner || roleLoading || summaryLoading || !isInitialized || appliedWeekStartRef.current === null || hasValidData() || readableBudgetFallbackRef.current) {
         return;
       }
 
@@ -800,23 +815,27 @@ const SummaryDashboard = () => {
               </p>
             </div>
             
-            {/* Right Side - Week Picker */}
+            {/* Right Side - Week Picker. Hidden until the saved week start is applied. */}
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <DatePicker
-                picker="week"
-                value={weekPickerValue}
-                onChange={handleWeekPickerChange}
-                style={{ width: 220 }}
-                allowClear={false}
-                data-guidance="week_selector"
-                format={(value) => {
-                  if (!value) return 'Select week';
-                  const start = dayjs(value).startOf('week');
-                  const end = dayjs(value).endOf('week');
-                  const wk = dayjs(value).week();
-                  return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
-                }}
-              />
+              {calendarDateRange.length === 2 ? (
+                <DatePicker
+                  picker="week"
+                  value={weekPickerValue}
+                  onChange={handleWeekPickerChange}
+                  style={{ width: 220 }}
+                  allowClear={false}
+                  data-guidance="week_selector"
+                  format={(value) => {
+                    if (!value) return 'Select week';
+                    const start = dayjs(value).startOf('week');
+                    const end = dayjs(value).endOf('week');
+                    const wk = dayjs(value).week();
+                    return `Week ${wk} (${start.format('MMM DD')} - ${end.format('MMM DD')})`;
+                  }}
+                />
+              ) : (
+                <Spin size="small" />
+              )}
             </div>
           </div>
           
@@ -1069,10 +1088,8 @@ const SummaryDashboard = () => {
         ) : (
           <Card>
             <div className="text-center py-8">
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Please select a date range to view dashboard data"
-              />
+              <Spin size="large" />
+              <p className="mt-4 text-gray-600">Loading dashboard data...</p>
             </div>
           </Card>
         )}

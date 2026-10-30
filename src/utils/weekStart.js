@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import updateLocale from 'dayjs/plugin/updateLocale';
+import updateLocale from 'dayjs/plugin/updateLocale.js';
 
 dayjs.extend(updateLocale);
 
@@ -48,6 +48,35 @@ export const setDayjsWeekStart = (weekStartDay) => {
 };
 
 export const getDayjsWeekStart = () => currentWeekStartDay;
+
+/**
+ * Apply a saved week_start_day immediately. Returns null when it is not known
+ * so callers do not fall back to Sunday.
+ */
+export const applyStoredWeekStart = (goals) => {
+  const raw = goals?.week_start_day;
+  if (raw === undefined || raw === null || raw === '') return null;
+  return setDayjsWeekStart(raw);
+};
+
+/**
+ * Week containing `anchor` once week_start_day is known.
+ * Returns null when the start day is missing so the Budget page does not paint Sunday.
+ */
+export const weekRangeForKnownStart = (weekStartDay, anchor = dayjs()) => {
+  if (weekStartDay === undefined || weekStartDay === null || weekStartDay === '') {
+    return null;
+  }
+  const day = setDayjsWeekStart(weekStartDay);
+  const base = dayjs(anchor);
+  const start = base.startOf('week');
+  const end = base.endOf('week');
+  return {
+    start: start.format('YYYY-MM-DD'),
+    end: end.format('YYYY-MM-DD'),
+    weekStartDay: day,
+  };
+};
 
 /**
  * Format the week-start date for API calls using the active dayjs weekStart.
