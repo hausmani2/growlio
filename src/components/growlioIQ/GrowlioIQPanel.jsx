@@ -71,7 +71,7 @@ const healthColor = (label) => {
   return 'warning';
 };
 
-const GrowlioIQPanel = ({ initialDateRange }) => {
+const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
   const navigate = useNavigate();
   const { planLoading, locked, remainingCopy, applyUsage, lockFeature } =
     useLioFeatureUsage(LIO_FEATURE.GROWLIO_IQ);
@@ -198,9 +198,11 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
         <div className="flex items-center gap-3">
           <BulbOutlined className="text-2xl text-[#FF8132]" />
           <div>
-            <h3 className="text-lg font-semibold m-0">Growlio IQ</h3>
+            <h3 className="text-lg font-semibold m-0">Ask LIO — Growlio IQ</h3>
             <p className="text-sm text-gray-500 m-0">
-              AI consultant review of your restaurant data
+              {hideDateControls
+                ? `Uses the Report Card dates${periodLabel ? ` · ${periodLabel}` : ''}`
+                : 'AI consultant review of your restaurant data'}
             </p>
             {remainingCopy ? (
               <p className="text-xs text-gray-500 m-0 mt-1">{remainingCopy}</p>
@@ -257,6 +259,8 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {hideDateControls ? null : (
+              <>
             <Select
               value={null}
               placeholder="Quick range"
@@ -274,6 +278,8 @@ const GrowlioIQPanel = ({ initialDateRange }) => {
               value={dateRange}
               onChange={(dates) => dates && setDateRange(dates)}
             />
+              </>
+            )}
             {locked ? (
               <Button
                 type="primary"

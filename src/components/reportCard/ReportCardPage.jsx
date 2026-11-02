@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { ReportCard, SetupProgressCard, YourGradeCard, DailyPerformanceCard } from "./index";
+import { ReportCard, DailyPerformanceCard, IncompleteSetupGuideCard } from "./index";
 import GrowlioIQPanel from "../growlioIQ/GrowlioIQPanel";
+import KeyFindingsActionPlan from "./KeyFindingsActionPlan";
 import useStore from "../../store/store";
 import LoadingSpinner from "../layout/LoadingSpinner";
-import { Button, Modal, Tooltip, message } from "antd";
+import { Button, Modal, message } from "antd";
 import {
   getOnboardingProgress,
   getNextIncompleteSetupRoute,
@@ -13,28 +14,6 @@ import {
 } from "../../utils/onboardingUtils";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
-import useTooltips from "../../utils/useTooltips";
-
-// Calculate grade based on score - moved outside component to avoid hoisting issues
-const getGradeFromScore = (score) => {
-  if (score >= 90) return 'A+';
-  if (score >= 80) return 'A';
-  if (score >= 70) return 'B';
-  if (score >= 60) return 'C';
-  if (score >= 50) return 'D';
-  return 'F';
-};
-
-// Generate message based on score - moved outside component
-const getMessageFromScore = (score) => {
-  if (score >= 80) {
-    return "Great job! Your restaurant is performing well.\nKeep up the excellent work!";
-  } else if (score >= 60) {
-    return "You're on the right track!\nFocus on optimizing labor, COGS, and rent to improve your grade.";
-  } else {
-    return "Labor, COGS, and rent are too high.\nReduce to improve your grade.";
-  }
-};
 
 const REPORT_CARD_TUTORIAL = {
   title: 'Report Card Tutorial',
@@ -44,7 +23,6 @@ const REPORT_CARD_TUTORIAL = {
 
 const ReportCardPage = () => {
   const navigate = useNavigate();
-  const [showSetupProgress, setShowSetupProgress] = useState(false);
   const [activeRestaurantId, setActiveRestaurantId] = useState(() => localStorage.getItem('restaurant_id'));
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(1, 'month').startOf('month'),
@@ -66,7 +44,6 @@ const ReportCardPage = () => {
   const clearUnseenFindings = useStore((s) => s.clearUnseenFindings);
   const hasFetchedRef = useRef(false); // Prevent multiple API calls
   const hasFetchedOnboardingRef = useRef(false); // Prevent multiple onboarding API calls
-  const onboardingGateModalOpenRef = useRef(false);
   
   // While a new range is loading, keep showing the last good card instead of
   // flashing zeros from a prior "Insufficient Data" response.
@@ -264,8 +241,7 @@ const ReportCardPage = () => {
   // If there's an error or insufficient data, set score to 0
   const rawScore = hasError ? 0 : (apiSummary?.overall_score || summaryData?.overall_score || summaryData?.score || summaryData?.profitability_score || 0);
   const score = Math.min(100, Math.max(0, rawScore)); // Clamp between 0 and 100
-  const grade = apiSummary?.grade || getGradeFromScore(score);
-  
+
   // Extract grade details from API response
   const gradeDetails = apiSummary?.grade_details || summaryData?.grade_details || null;
   
@@ -317,8 +293,6 @@ const ReportCardPage = () => {
 
   // Get dynamic onboarding progress data
   const completionPercentage = onboardingProgress?.completionPercentage ?? 0;
-  const currentStep = onboardingProgress?.currentStep ?? 1;
-  const setupItems = onboardingProgress?.items ?? [];
   const restaurant = onboardingProgress?.restaurant;
   const isOnboardingComplete = restaurant?.onboarding_complete === true;
 
@@ -330,48 +304,17 @@ const ReportCardPage = () => {
     }
   }, [isOnboardingComplete, restaurantOnboardingData]);
 
-  // Handle close out previous days button
-  const handleCloseOutDays = () => {
-    navigate("/dashboard");
-  };
-
-  const showOnboardingRequiredModal = useCallback(() => {
-    if (onboardingGateModalOpenRef.current) return;
-    onboardingGateModalOpenRef.current = true;
-
-    Modal.confirm({
-      title: 'Complete onboarding to continue',
-      content:
-        'To start creating your budget, please complete onboarding first so we can set up your restaurant details correctly.',
-      okText: 'Complete onboarding',
-      cancelText: 'Not now',
-      centered: true,
-      maskClosable: true,
-      onOk: () => {
-        const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
-        if (nextRoute === ONBOARDING_ROUTES.SCORE) {
-          useStore.setState({
-            salesInformationData: null,
-            salesInformationLoading: false,
-            salesInformationError: null,
-          });
-        }
-        navigate(nextRoute || ONBOARDING_ROUTES.ONBOARDING);
-      },
-      onCancel: () => {},
-      afterClose: () => {
-        onboardingGateModalOpenRef.current = false;
-      },
-    });
-  }, [navigate, restaurantOnboardingData]);
-
-  const handleGoToBudgetDashboard = useCallback(() => {
-    if (!isOnboardingComplete) {
-      showOnboardingRequiredModal();
-      return;
+  const handleContinueSetup = useCallback(() => {
+    const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
+    if (nextRoute === ONBOARDING_ROUTES.SCORE) {
+      useStore.setState({
+        salesInformationData: null,
+        salesInformationLoading: false,
+        salesInformationError: null,
+      });
     }
-    navigate('/dashboard/budget');
-  }, [isOnboardingComplete, navigate, showOnboardingRequiredModal]);
+    navigate(nextRoute || ONBOARDING_ROUTES.ONBOARDING);
+  }, [navigate, restaurantOnboardingData]);
 
   const playTutorialInCorner = useCallback(() => {
     window.dispatchEvent(
@@ -389,13 +332,6 @@ const ReportCardPage = () => {
   const openTutorialInNewTab = useCallback(() => {
     window.open(REPORT_CARD_TUTORIAL.watchUrl, '_blank', 'noopener,noreferrer');
   }, []);
-
-  const tooltips = useTooltips('report-card');
-  const budgetDashboardTooltipText =
-    tooltips?.start_creating_budget ||
-    tooltips?.go_to_budget_dashboard ||
-    tooltips?.budget_dashboard ||
-    "Go to your Budget Dashboard to start creating your budget and track daily profitability.";
 
   const showInitialLoading =
     salesInformationSummaryLoading &&
@@ -425,13 +361,32 @@ const ReportCardPage = () => {
             onDateRangeChange={setDateRange}
             loading={salesInformationSummaryLoading}
             gradeDetails={gradeDetails}
-            showNextSteps={!isOnboardingComplete}
+            showNextSteps={false}
+            freeScoreMode={restaurant != null && !isOnboardingComplete}
             restaurantOnboardingData={restaurantOnboardingData}
             showSetupCompletePopup={isOnboardingComplete}
           />
         </div>
 
-        <GrowlioIQPanel initialDateRange={dateRange} />
+        {restaurant == null ? null : isOnboardingComplete ? (
+          <>
+            <KeyFindingsActionPlan
+              startDate={dateRange?.[0]}
+              endDate={dateRange?.[1]}
+              autoRun
+            />
+            <GrowlioIQPanel initialDateRange={dateRange} hideDateControls />
+            <DailyPerformanceCard dateRange={dateRange} goals={goals} />
+          </>
+        ) : (
+          <IncompleteSetupGuideCard
+            items={onboardingProgress?.items || []}
+            setupPercent={completionPercentage}
+            onContinue={handleContinueSetup}
+            onWatchSetupVideo={() => setIsTutorialModalVisible(true)}
+          />
+        )}
+        {restaurant != null && !isOnboardingComplete ? null : (
         <div className="p-3 bg-white rounded-xl shadow-lg border border-gray-100">
           <div className="flex items-center justify-between gap-3">
             <p className="font-medium text-base text-orange-600">
@@ -454,44 +409,6 @@ const ReportCardPage = () => {
             </Button>
           </div>
         </div>
-
-        <Tooltip
-          placement="bottom"
-          title={budgetDashboardTooltipText}
-        >
-          <button
-            type="button"
-            onClick={handleGoToBudgetDashboard}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors text-center"
-            aria-label="Start Creating Your Budget Today"
-          >
-            Start Creating Your Budget Today
-          </button>
-        </Tooltip>
-        
-        {/* Show Daily Performance Card when onboarding is complete */}
-        {isOnboardingComplete ? (
-          <DailyPerformanceCard onCloseOutDays={handleCloseOutDays} />
-        ) : (
-          <>
-            {!showSetupProgress ? (
-              <YourGradeCard
-                grade={grade}
-                setupPercent={completionPercentage}
-                message={getMessageFromScore(score)}
-                title="Get the Most Out of Growlio"
-                subtitle="This is a great start! Enter more information to complete setup."
-                ctaLabel="Continue"
-                onContinue={() => setShowSetupProgress(true)}
-              />
-            ) : (
-              <SetupProgressCard 
-                percent={completionPercentage} 
-                currentStep={currentStep}
-                items={setupItems}
-              />
-            )}
-          </>
         )}
       </div>
 

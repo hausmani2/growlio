@@ -134,13 +134,8 @@ const createLocationSlice = (set, get) => ({
           get()
             .getSalesInformationSummary?.(reportStart, reportEnd)
             .catch(() => {});
-          const dailyStart =
-            summaryRange?.start ?? dayjs().startOf('week').format('YYYY-MM-DD');
-          const dailyEnd =
-            summaryRange?.end ?? dayjs().endOf('week').format('YYYY-MM-DD');
-          get()
-            .getDailyPerformanceData?.(dailyStart, dailyEnd)
-            .catch(() => {});
+          // Daily Performance owns its selected-week fetch. Do not write
+          // Budget / Close Out summary dates into that day list.
         }
         if (path === '/dashboard/profit-loss') {
           get()

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Layout, Modal } from 'antd';
+import { Button, Layout, Modal } from 'antd';
 import Sidebar from './Sidebar';
 import { ArrowUpOutlined, HomeOutlined, InfoCircleOutlined, QuestionCircleOutlined, SettingOutlined, UserOutlined, FileTextOutlined, BellOutlined, MessageOutlined, ShopOutlined, TruckOutlined, DollarOutlined, StarOutlined, ShoppingOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,7 +14,7 @@ import GuidanceOverlay from '../guidance/GuidanceOverlay';
 import useOnboardingStatus from '../../hooks/useOnboardingStatus';
 const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
-import { getIncompleteSetupItems, getNextIncompleteSetupRoute, navigateToBudgetOrConnectPos, isOnboardingComplete, getConnectPosRoute } from '../../utils/onboardingUtils';
+import { getIncompleteSetupItems, getNextIncompleteSetupRoute, navigateToBudgetOrConnectPos, isOnboardingComplete, getConnectPosRoute, getFirstRestaurant } from '../../utils/onboardingUtils';
 import useRestaurantRole from '../../hooks/useRestaurantRole';
 
 /**
@@ -745,11 +745,73 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   // This happens when:
   // 1. restaurant_simulation === true (user selected "I do not have a restaurant" - simulation mode)
   // 2. simulation_onboarding_complete === true (simulation onboarding is complete)
+  const activeRestaurant = getFirstRestaurant(restaurantOnboardingData);
+  const setupIncomplete = Boolean(activeRestaurant) && activeRestaurant.onboarding_complete !== true;
+  const isLitePlan = useMemo(() => {
+    const pkg = subscriptionDetails?.package || currentPackage || null;
+    const planName = String(
+      pkg?.key || pkg?.name || pkg?.display_name || pkg?.package_name || ''
+    ).trim().toLowerCase();
+    return planName === 'lite';
+  }, [subscriptionDetails, currentPackage]);
+  const [setupPromptOpen, setSetupPromptOpen] = useState(false);
+
+  const applyMenuAccess = (item) => {
+    // Keep Report Card, Your Setup, Support, Tutorials, and Settings open.
+    // Lock only pages that need completed restaurant setup.
+    const setupLockKeys = new Set([
+      'budget',
+      'dashboard',
+      'profit-loss',
+      'cashflow',
+      'food-costing',
+      'your-simulator',
+      'simulation-dashboard',
+      'simulation-setup',
+      'simulation-basic-information',
+      'simulation-sales-channels-operating-days',
+      'simulation-labor-information',
+      'simulation-expenses',
+      'go to your budget',
+      'pos',
+      'square',
+      'pos-payments',
+      'pos-timecards',
+      'pos-locations',
+      'pos-orders',
+    ]);
+    const paidKeys = new Set(['food-costing', 'your-simulator', 'leo-ai', 'chat']);
+    const openSetupPrompt = () => setSetupPromptOpen(true);
+    const lockTree = (node) => ({
+      ...node,
+      setupLocked: true,
+      onClick: node.onClick || node.children?.length ? openSetupPrompt : node.onClick,
+      children: node.children?.map(lockTree),
+    });
+    let next = {
+      ...item,
+      children: item.children?.map(applyMenuAccess),
+    };
+    if (isLitePlan && paidKeys.has(item.key)) {
+      next.paidLocked = true;
+      if (!setupIncomplete && item.onClick) {
+        // Paid indicator only — keep navigation for upgrade flows already handled elsewhere.
+        next.paidLocked = true;
+      }
+    }
+    if (setupIncomplete && setupLockKeys.has(item.key)) {
+      next = lockTree(next);
+    }
+    return next;
+  };
+
+  const visibleUserMenus = userMenus.map(applyMenuAccess);
+
   const menuItems = isSimulationMode ? [
     ...simulationMenu,
     // Settings menu is hidden in simulation mode
   ] : [
-    ...(showUserMenus ? userMenus : []),
+    ...(showUserMenus ? visibleUserMenus : []),
     // ...adminMenu,
     ...superAdminMenu,
     ...settingsMenu,
@@ -791,6 +853,31 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
           </Content>
         </div>
       </div>
+      <Modal
+        title="Complete Your Restaurant Setup"
+        open={setupPromptOpen}
+        onCancel={() => setSetupPromptOpen(false)}
+        footer={null}
+        centered
+      >
+        <p className="text-gray-700 mb-4">
+          Finish setting up your restaurant to unlock this feature and start managing profitability.
+        </p>
+        <p className="text-sm text-gray-500 mb-4">
+          Your progress is saved. Free Report Card features do not require POS or a paid plan.
+        </p>
+        <Button
+          type="primary"
+          className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+          onClick={() => {
+            setSetupPromptOpen(false);
+            const nextRoute = getNextIncompleteSetupRoute(restaurantOnboardingData);
+            navigate(nextRoute || '/onboarding');
+          }}
+        >
+          Continue Setup
+        </Button>
+      </Modal>
     </div>
   );
 };

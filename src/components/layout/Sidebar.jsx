@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { MenuOutlined, CloseOutlined, DownOutlined } from '@ant-design/icons';
+import { MenuOutlined, CloseOutlined, DownOutlined, LockOutlined, StarOutlined } from '@ant-design/icons';
 import { FaArrowLeftLong } from 'react-icons/fa6';
 
 /**
@@ -238,8 +238,14 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
               <FallbackGlyph label={item.label} selected={isSelected} />
             </span>
           )}
-          <span className={`font-medium flex-1 ${collapsed ? 'lg:hidden' : ''} ${!item.icon && level > 0 ? 'text-sm' : ''}`}>
+          <span className={`font-medium flex-1 inline-flex items-center gap-2 ${collapsed ? 'lg:hidden' : ''} ${!item.icon && level > 0 ? 'text-sm' : ''}`}>
             {item.label}
+            {item.setupLocked ? (
+              <LockOutlined className="text-gray-400 text-xs" title="Finish setup" />
+            ) : null}
+            {item.paidLocked ? (
+              <StarOutlined className="text-amber-500 text-xs" title="Paid plan" />
+            ) : null}
           </span>
           {badgeCount > 0 && (
             <span
@@ -287,6 +293,12 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
                       }`}
                       title={child.label}
                     >
+                      {child.setupLocked ? (
+                        <LockOutlined className="text-gray-400 text-xs mr-1" title="Finish setup" />
+                      ) : null}
+                      {child.paidLocked ? (
+                        <StarOutlined className="text-amber-500 text-xs mr-1" title="Paid plan" />
+                      ) : null}
                       {child.icon ? (
                         <span
                           className={`text-lg ${

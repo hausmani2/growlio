@@ -250,7 +250,7 @@ const MiniGauge = ({ label, metricKey, tooltipsMap, goal, value, amount, deltaPc
   return (
     <div className="flex flex-col items-center">
       <div className="text-base font-semibold text-gray-900 flex items-center gap-1" >
-        GOAL {g}%
+        Target {g}%
         <TooltipIcon text={getMetricTooltipText(tooltipsMap, metricKey || label)} />
       </div>
 
@@ -310,6 +310,7 @@ const ReportCard = ({
   showNextSteps = false,
   restaurantOnboardingData = null,
   showSetupCompletePopup = false,
+  freeScoreMode = false,
 }) => {
   const navigate = useNavigate();
   const tooltips = useTooltips('report-card');
@@ -329,12 +330,20 @@ const ReportCard = ({
     ? `Complete ${nextSetupItem.label}`
     : "Complete setup";
   
-  // Auto-open modal when showNextSteps is true
+  // Auto-open modal when showNextSteps is true.
+  // Incomplete-setup free-score mode uses the on-page guide card instead.
   useEffect(() => {
-    if (showNextSteps) {
+    if (showNextSteps && !freeScoreMode) {
       setIsNextStepsModalOpen(true);
     }
-  }, [showNextSteps]);
+  }, [showNextSteps, freeScoreMode]);
+
+  const displayTitle = freeScoreMode
+    ? "Your Free Profitability Score"
+    : title;
+  const scoreHeading = freeScoreMode
+    ? "Free Profitability Score"
+    : "Profitability Score";
 
   // Setup complete modal: show once after onboarding is fully complete.
   useEffect(() => {
@@ -518,19 +527,34 @@ const ReportCard = ({
       `}</style>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-3 sm:p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <div className="text-xl sm:text-2xl font-bold text-gray-900">{title}</div>
-          <button
-            type="button"
-            onClick={() => setIsReportCardInfoModalOpen(true)}
-            className="text-gray-400 hover:text-gray-700 transition-colors"
-            aria-label="Report card help"
-            title="What is this page?"
-            data-guidance="info_icon_help"
-          >
-            <InfoCircleOutlined />
-          </button>
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 sm:gap-4 flex-wrap">
+        <div className="flex flex-col gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{displayTitle}</div>
+            <button
+              type="button"
+              onClick={() => setIsReportCardInfoModalOpen(true)}
+              className="text-gray-400 hover:text-gray-700 transition-colors"
+              aria-label="Report card help"
+              title="What is this page?"
+              data-guidance="info_icon_help"
+            >
+              <InfoCircleOutlined />
+            </button>
+          </div>
+          {freeScoreMode ? (
+            <>
+              <p className="text-sm text-gray-600 m-0 max-w-2xl">
+                Here&apos;s a snapshot of your restaurant&apos;s financial health based on your current information.
+              </p>
+              <div className="inline-flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 max-w-2xl">
+                <span className="font-bold leading-5">✓</span>
+                <span>
+                  This is just the beginning. Complete your setup to unlock your full dashboard, daily tracking, and AI insights.
+                </span>
+              </div>
+            </>
+          ) : null}
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="text-xs font-semibold text-gray-900 hidden sm:block lg:block text-center sm:text-left">{formattedDateLabel}</div>
@@ -598,14 +622,16 @@ const ReportCard = ({
             grade={currentGrade}
           />
           <div className="mt-4 text-center leading-tight max-w-xs">
-            <div className="text-2xl font-bold text-gray-900 mb-2">Profitability Score</div>
-        
+            <div className="text-2xl font-bold text-gray-900 mb-2">{scoreHeading}</div>
           </div>
           
         </div>
 
         {/* Right: Gauges + summary */}
         <div className="flex flex-col gap-3">
+          <h3 className="text-lg font-bold text-gray-900 m-0 text-center">
+            Your Costs vs. Targets
+          </h3>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <MiniGauge
               label="Labor"

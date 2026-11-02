@@ -571,11 +571,14 @@ const createSalesInformationSlice = (set, get) => ({
     },
 
     // GET: Fetch daily sales information summary for performance card
-    getDailyPerformanceData: async (startDate, endDate) => {
-        set(() => ({ 
-            dailyPerformanceLoading: true, 
-            dailyPerformanceError: null 
-        }));
+    getDailyPerformanceData: async (startDate, endDate, options = {}) => {
+        const silent = options?.silent === true;
+        if (!silent) {
+            set(() => ({ 
+                dailyPerformanceLoading: true, 
+                dailyPerformanceError: null 
+            }));
+        }
         
         try {
             // Get restaurant_id from store or localStorage
@@ -625,11 +628,13 @@ const createSalesInformationSlice = (set, get) => ({
             // Handle response structure
             const responseData = response.data?.data || response.data || [];
             
-            set(() => ({ 
-                dailyPerformanceData: responseData,
-                dailyPerformanceLoading: false,
-                dailyPerformanceError: null
-            }));
+            if (!silent) {
+                set(() => ({ 
+                    dailyPerformanceData: responseData,
+                    dailyPerformanceLoading: false,
+                    dailyPerformanceError: null
+                }));
+            }
             
             return { 
                 success: true, 
@@ -642,11 +647,13 @@ const createSalesInformationSlice = (set, get) => ({
             
             console.error('❌ [salesInformationSlice] Error fetching daily performance data:', error);
             
-            set(() => ({ 
-                dailyPerformanceData: null,
-                dailyPerformanceLoading: false,
-                dailyPerformanceError: errorMessage
-            }));
+            if (!silent) {
+                set(() => ({ 
+                    dailyPerformanceData: null,
+                    dailyPerformanceLoading: false,
+                    dailyPerformanceError: errorMessage
+                }));
+            }
             
             return { 
                 success: false, 

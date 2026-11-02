@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Spin, Tag } from 'antd';
 import {
   BulbOutlined,
-  CheckOutlined,
-  ExclamationCircleOutlined,
   ReloadOutlined,
   RocketOutlined,
   ThunderboltOutlined,
@@ -48,7 +46,6 @@ const statusTone = (status) => {
 const KeyFindingsActionPlan = ({
   startDate,
   endDate,
-  statusFindings = { over: [], under: [] },
   showNoClosedDaysGuidance = false,
   autoRun = true,
 }) => {
@@ -58,6 +55,7 @@ const KeyFindingsActionPlan = ({
   const [running, setRunning] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState({});
   const pollRef = useRef(null);
   const autoRanRef = useRef('');
 
@@ -71,6 +69,21 @@ const KeyFindingsActionPlan = ({
       : String(endDate);
     return `${start}|${end}`;
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    setDetailsOpen({});
+  }, [rangeKey]);
+
+  const periodOpen = useMemo(() => {
+    if (!endDate) return true;
+    const end = dayjs(endDate).endOf('day');
+    return !end.isBefore(dayjs(), 'day');
+  }, [endDate]);
+
+  const planTitle = periodOpen ? 'LIO Action Plan' : 'LIO Performance Review';
+  const planSubtitle = periodOpen
+    ? 'What to do with the days still left in this period'
+    : 'What happened in this period, and how to keep it from repeating';
 
   const periodLabel = useMemo(() => {
     if (!startDate || !endDate) return '';
@@ -272,18 +285,20 @@ const KeyFindingsActionPlan = ({
   }, [analysis]);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
+    <div
+      id="lio-action-plan"
+      className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <BulbOutlined className="text-xl text-[#FF8132]" />
             <h2 className="text-2xl font-bold text-orange-600 mb-0">
-              LIO Action Plan
+              {planTitle}
             </h2>
           </div>
           <p className="text-sm text-gray-500 m-0">
-            Not just findings — what to do the rest of the week to get sales, COGS,
-            and labor back on track
+            {planSubtitle}
             {periodLabel ? ` · ${periodLabel}` : ''}
           </p>
         </div>
@@ -374,10 +389,14 @@ const KeyFindingsActionPlan = ({
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-gray-800 m-0 flex items-center gap-2">
                     <RocketOutlined className="text-[#FF8132]" />
-                    Actionable plan for the rest of the week
+                    {periodOpen
+                      ? 'Actionable plan for the days still left'
+                      : 'Review of this finished period'}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {weeklyPlan.map((item, idx) => (
+                    {weeklyPlan.map((item, idx) => {
+                      const open = Boolean(detailsOpen[idx]);
+                      return (
                       <div
                         key={idx}
                         className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
@@ -401,7 +420,7 @@ const KeyFindingsActionPlan = ({
                               : ''}
                           </p>
                         ) : null}
-                        {item.period_outlook &&
+                        {open && item.period_outlook &&
                         (item.period_outlook.this_week ||
                           item.period_outlook.month_to_date ||
                           item.period_outlook.monthly_target ||
@@ -432,7 +451,8 @@ const KeyFindingsActionPlan = ({
                               </p>
                             ) : null}
                           </div>
-                        ) : item.daily_target ? (
+                        ) : null}
+                        {open && item.daily_target ? (
                           <div className="rounded-lg bg-orange-50 border border-orange-100 px-3 py-2 mb-2">
                             <p className="text-xs uppercase tracking-wide text-orange-700 m-0 mb-0.5">
                               Daily target
@@ -445,14 +465,27 @@ const KeyFindingsActionPlan = ({
                             </p>
                           </div>
                         ) : null}
-                        {item.action ? (
+                        {open && item.action ? (
                           <p className="text-sm text-gray-700 m-0">
                             <span className="font-medium">Do this: </span>
                             {item.action}
                           </p>
                         ) : null}
+                        <Button
+                          type="link"
+                          className="!px-0"
+                          onClick={() =>
+                            setDetailsOpen((current) => ({
+                              ...current,
+                              [idx]: !current[idx],
+                            }))
+                          }
+                        >
+                          {open ? 'Hide Details' : 'View Details'}
+                        </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
@@ -464,43 +497,6 @@ const KeyFindingsActionPlan = ({
             </div>
           ) : null}
         </>
-      ) : null}
-
-      {/* Keep rule-based over/under as a quick status snapshot */}
-      {!showNoClosedDaysGuidance &&
-      ((statusFindings.over || []).length > 0 ||
-        (statusFindings.under || []).length > 0) ? (
-        <div className="mt-6 pt-5 border-t border-gray-100">
-          <p className="text-sm font-semibold text-gray-700 mb-3 m-0">
-            Status snapshot (this week)
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              {(statusFindings.over || []).length > 0 ? (
-                statusFindings.over.map((finding, idx) => (
-                  <div key={`over-${idx}`} className="flex items-start gap-2">
-                    <ExclamationCircleOutlined className="text-red-500 mt-0.5" />
-                    <span className="text-sm text-gray-700">{finding.text}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-gray-400 italic">No over-goal items</div>
-              )}
-            </div>
-            <div className="space-y-2">
-              {(statusFindings.under || []).length > 0 ? (
-                statusFindings.under.map((finding, idx) => (
-                  <div key={`under-${idx}`} className="flex items-start gap-2">
-                    <CheckOutlined className="text-green-600 mt-0.5" />
-                    <span className="text-sm text-gray-700">{finding.text}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-gray-400 italic">No under-goal items</div>
-              )}
-            </div>
-          </div>
-        </div>
       ) : null}
     </div>
   );
