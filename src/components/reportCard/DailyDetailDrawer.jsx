@@ -105,10 +105,11 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
   const weekdayName = day?.date
     ? dayjs(day.date).format("dddd")
     : WEEKDAYS[dayjs().day()];
-  const score = Number(day?.main_score) || 0;
-  const strong = score >= 70;
-  const sales = Number(day?.sales) || 0;
-  const profit = Number(day?.profit_loss) || 0;
+  const salesReview = Boolean(day?.sales_review);
+  const score = salesReview ? null : (Number(day?.main_score) || 0);
+  const strong = !salesReview && score >= 70;
+  const sales = salesReview || day?.sales == null ? null : Number(day?.sales);
+  const profit = salesReview || day?.profit_loss == null ? null : Number(day?.profit_loss);
 
   const costs = useMemo(() => {
     if (!day) return [];
@@ -128,6 +129,12 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
 
   const insight = useMemo(() => {
     if (!day) return "";
+    if (day.sales_review) {
+      const kind = day.sales_figure_kind === 'estimated_legacy'
+        ? 'This day is an estimate from a monthly total, not verified daily sales.'
+        : 'Sales need review before a percentage can be shown.';
+      return kind;
+    }
     const outcome = profit < 0 ? `lost ${money(Math.abs(profit))}` : `made ${money(profit)}`;
     const overs = costs.filter((row) => row.tone === "over" && row.diff != null);
     if (!overs.length) {
@@ -178,6 +185,9 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
     ? "How to Keep This Going"
     : "How to Prevent This in the Future";
   const guidanceBody = useMemo(() => {
+    if (day?.sales_review) {
+      return 'Sales need review before a percentage can be shown.';
+    }
     const describe = (row) => {
       const pct = row.pct == null ? "" : ` ${Math.round(row.pct)}%`;
       const gap =
@@ -271,24 +281,23 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
               <div>
                 <div className="text-xs uppercase tracking-wide text-gray-500">Grade</div>
                 <div className="text-4xl font-extrabold text-orange-600 leading-none mt-1">
-                  {gradeFromScore(score)}
+                  {salesReview ? 'Review' : gradeFromScore(score)}
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-xs uppercase tracking-wide text-gray-500">Score</div>
-                <div className="text-2xl font-bold text-gray-900">{Math.round(score)}</div>
+                <div className="text-2xl font-bold text-gray-900">{salesReview ? '—' : Math.round(score)}</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 mt-4">
               <div className="rounded-xl bg-slate-50 px-3 py-2">
                 <div className="text-xs text-gray-500">Sales</div>
-                <div className="text-lg font-semibold">{money(sales)}</div>
+                <div className="text-lg font-semibold">{salesReview ? 'Review' : money(sales)}</div>
               </div>
               <div className="rounded-xl bg-slate-50 px-3 py-2">
                 <div className="text-xs text-gray-500">{profit < 0 ? "Loss" : "Profit"}</div>
                 <div className={`text-lg font-semibold ${profit < 0 ? "text-red-600" : "text-green-700"}`}>
-                  {profit < 0 ? "-" : ""}
-                  {money(Math.abs(profit))}
+                  {salesReview || profit == null ? '—' : `${profit < 0 ? "-" : ""}${money(Math.abs(profit))}`}
                 </div>
               </div>
             </div>

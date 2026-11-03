@@ -15,6 +15,7 @@ import {
   showCannotCloseDayWithDataModal,
 } from '../../../utils/dayCloseGuard';
 import { sanitizeDecimalInput } from '../../../utils/formatUtils';
+import { salesBasisNote } from '../../../utils/salesBasis';
 
 const getSummaryEntries = (summary) => {
   if (Array.isArray(summary?.data)) return summary.data;
@@ -1545,7 +1546,14 @@ const SalesDataModal = ({
 
         {/* Daily Data Table */}
         <Card
-          title="Daily Sales Data"
+          title={
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>Daily Sales Data</span>
+              <span className={`text-xs font-semibold ${salesBasisNote(formData.dailyData).tone}`}>
+                {salesBasisNote(formData.dailyData).text}
+              </span>
+            </div>
+          }
           size="small"
           extra={
             <div className="text-xs text-gray-500 flex items-center gap-2">

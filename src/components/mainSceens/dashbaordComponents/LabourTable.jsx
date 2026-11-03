@@ -23,6 +23,7 @@ import {
   hasOpenDaysMissingSales,
 } from '../../../utils/salesEnteredGate';
 import { sanitizeDecimalInput } from '../../../utils/formatUtils';
+import { reportedSalesAmount } from '../../../utils/salesBasis';
 
 const { Title, Text } = Typography;
 
@@ -349,11 +350,8 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
       dayjs(entry.date).format('YYYY-MM-DD') === targetDate
     );
     
-    if (!dailyEntry?.['Sales Performance']) return 0;
-    
-    const salesData = dailyEntry['Sales Performance'];
-    const netSales = parseFloat(salesData.net_sales_actual) || 0;
-    return netSales;
+    if (!dailyEntry?.['Sales Performance']) return null;
+    return reportedSalesAmount(dailyEntry['Sales Performance']);
   };
 
   // Process labor data from dashboard data
@@ -765,6 +763,17 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
 
       const actualLaborDollars = parseFloat(day.actualLaborDollars) || 0;
       const netSales = getNetSalesForDate(day.date);
+      if (netSales == null) {
+        return {
+          ...day,
+          dailyLaborPercentage: null,
+          weeklyLaborPercentage: cumulativeNetSales > 0
+            ? Math.round((cumulativeLaborDollars / cumulativeNetSales) * 100)
+            : null,
+          netSales: null,
+          salesReview: true,
+        };
+      }
       
       // Calculate daily labor percentage: (actual labor dollars / net sales) * 100
       const dailyLaborPercentage = netSales > 0 ? 
@@ -1626,8 +1635,11 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                     return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
                                   }
                                   // Calculate daily percentage using net sales from API
-                                  const actualLabor = parseFloat(record.actualLaborDollars) || 0;
                                   const netSales = getNetSalesForDate(record.date);
+                                  if (netSales == null) {
+                                    return <Text style={{ color: '#d32f2f', fontWeight: 'bold' }}>Review</Text>;
+                                  }
+                                  const actualLabor = parseFloat(record.actualLaborDollars) || 0;
                                   const dailyPercentage = netSales > 0 ? ((actualLabor / netSales) * 100) : 0;
                                   return <Text style={{ 
                                     backgroundColor: '#e8f5e8', 
@@ -1650,16 +1662,27 @@ const LabourTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [],
                                   // Calculate cumulative percentage up to this day
                                   let cumulativeLabor = 0;
                                   let cumulativeSales = 0;
+                                  let sawReview = false;
                                   const daysUpToCurrent = week.dailyData.slice(0, index + 1);
                                   
                                   daysUpToCurrent.forEach(day => {
                                     if (day.restaurantOpen !== false) {
+                                      const daySales = getNetSalesForDate(day.date);
+                                      if (daySales == null) {
+                                        sawReview = true;
+                                        return;
+                                      }
                                       cumulativeLabor += parseFloat(day.actualLaborDollars) || 0;
-                                      cumulativeSales += getNetSalesForDate(day.date);
+                                      cumulativeSales += daySales;
                                     }
                                   });
                                   
-                                  const weeklyPercentage = cumulativeSales > 0 ? ((cumulativeLabor / cumulativeSales) * 100) : 0;
+                                  if (!(cumulativeSales > 0)) {
+                                    return sawReview
+                                      ? <Text style={{ color: '#d32f2f', fontWeight: 'bold' }}>Review</Text>
+                                      : <Text>0.00%</Text>;
+                                  }
+                                  const weeklyPercentage = (cumulativeLabor / cumulativeSales) * 100;
                                   return <Text style={{ 
                                     backgroundColor: '#fff3e0', 
                                     color: '#f57c00',

@@ -23,6 +23,7 @@ import {
   hasOpenDaysMissingSales,
 } from '../../../utils/salesEnteredGate';
 import { sanitizeDecimalInput } from '../../../utils/formatUtils';
+import { isSalesReview, reportedSalesAmount } from '../../../utils/salesBasis';
 
 const { Title, Text } = Typography;
 
@@ -283,11 +284,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                                 entry['Sales Performance']?.restaurant_open !== 0;
         
         // Extract daily net sales from Sales Performance or COGS Performance
-        const dailyNetSales = formatNumber(
-          entry['Sales Performance']?.daily_net_sales || 
-          entry['COGS Performance']?.daily_net_sales || 
-          0
-        );
+        const salesReview = isSalesReview(entry['Sales Performance']);
+        const reported = reportedSalesAmount(entry['Sales Performance']);
+        const dailyNetSales = salesReview || reported == null ? null : formatNumber(reported);
         
         return {
           key: `day-${entry.date}`,
@@ -297,6 +296,7 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
           actual: isRestaurantOpen ? formatNumber(entry['COGS Performance']?.cogs_actual || 0) : 0,
           weeklyRemainingCog: formatNumber(entry['COGS Performance']?.weekly_remaining_cog || 0),
           netSales: dailyNetSales,
+          salesReview,
           restaurantOpen: isRestaurantOpen
         };
       }) || [];
@@ -863,12 +863,22 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                <div className="w-full">
                  <Text strong style={{ color: '#434343', fontSize: '13px' }}>Percentage COGS to Date</Text>
                  <Input
-                   value={`${(() => {
-                     const totalActual = weekFormData.dailyData.reduce((sum, day) => sum + formatNumber(day.actual), 0);
-                     const currentSalesToDate = weekFormData.dailyData.reduce((sum, day) => sum + formatNumber(day.netSales), 0);
+                   value={(() => {
+                     const usableDays = weekFormData.dailyData.filter((day) => !day.salesReview && day.netSales != null);
+                     if (weekFormData.dailyData.some((day) => day.salesReview) && usableDays.length === 0) {
+                       return 'Review';
+                     }
+                     const totalActual = usableDays.reduce((sum, day) => sum + formatNumber(day.actual), 0);
+                     const currentSalesToDate = usableDays.reduce((sum, day) => sum + formatNumber(day.netSales), 0);
                      const netSales = currentSalesToDate || formatNumber(weekFormData.weeklyTotals?.weeklyNetSales || 0);
-                     return netSales > 0 ? ((totalActual / netSales) * 100).toFixed(1) : '0.0';
-                   })()}%`}
+                     if (!(netSales > 0)) {
+                       return weekFormData.dailyData.some((day) => day.salesReview) ? 'Review' : '0.0%';
+                     }
+                     const percent = ((totalActual / netSales) * 100).toFixed(1);
+                     return weekFormData.dailyData.some((day) => day.salesReview)
+                       ? `${percent}% (review days excluded)`
+                       : `${percent}%`;
+                   })()}
                    className="mt-1"
                    disabled
                    style={{ backgroundColor: '#e6e6e6', color: '#1a6fb5', borderColor: '#bfbfbf', opacity: 1, WebkitTextFillColor: '#1a6fb5', cursor: 'default' }}
@@ -967,6 +977,9 @@ const CogsTable = ({ selectedDate, weekDays = [], dashboardData = null, refreshD
                   key: 'netSales',
                   width: 120,
                   render: (value, record) => {
+                    if (record.salesReview || value == null) {
+                      return <Text style={{ color: '#d32f2f', fontWeight: 'bold' }}>Review</Text>;
+                    }
                     const netSales = parseFloat(value) || 0;
                     return (
                       <Text strong style={{ color: '#1890ff' }}>${netSales.toFixed(2)}</Text>

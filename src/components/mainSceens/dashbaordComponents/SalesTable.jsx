@@ -33,7 +33,31 @@ import {
 } from '../../../utils/dayCloseGuard';
 import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 import { roundToCents, sanitizeDecimalInput } from '../../../utils/formatUtils';
+import { salesBasisNote } from '../../../utils/salesBasis';
 const { Title, Text } = Typography;
+
+function moneyLabel(value) {
+  const amount = parseFloat(value);
+  if (!Number.isFinite(amount)) return null;
+  return `$${amount.toFixed(2)}`;
+}
+
+function salesBreakdownNote(days) {
+  const rows = (days || []).filter((day) => day && (day.salesBasis === 'net' || day.salesBasis === 'manual'));
+  const parts = [];
+  const sum = (key) => rows.reduce((total, day) => total + (parseFloat(day[key]) || 0), 0);
+  const tax = sum('salesTax');
+  const tips = sum('tips');
+  const discounts = sum('discounts');
+  const refunds = sum('refunds');
+  const service = sum('serviceCharges');
+  if (tax) parts.push(`Tax ${moneyLabel(tax)}`);
+  if (tips) parts.push(`Tips ${moneyLabel(tips)}`);
+  if (service) parts.push(`Service ${moneyLabel(service)}`);
+  if (discounts) parts.push(`Discounts ${moneyLabel(discounts)}`);
+  if (refunds) parts.push(`Refunds ${moneyLabel(refunds)}`);
+  return parts.join(' · ');
+}
 
 function isDayClosedForWtd(record) {
   if (!record) return true;
@@ -1001,6 +1025,13 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
         actualVsBudgetSales: entry['Sales Performance']?.actual_vs_budget_sales || 0,
         dailyTickets: ensureWholeNumberTickets(entry['Sales Performance']?.daily_tickets),
         averageDailyTicket: entry['Sales Performance']?.average_daily_ticket || 0,
+        salesBasis: entry['Sales Performance']?.sales_basis || '',
+        manualOverride: Boolean(entry['Sales Performance']?.manual_override),
+        salesTax: entry['Sales Performance']?.sales_tax,
+        tips: entry['Sales Performance']?.tips,
+        discounts: entry['Sales Performance']?.discounts,
+        refunds: entry['Sales Performance']?.refunds,
+        serviceCharges: entry['Sales Performance']?.service_charges,
         restaurant_open: (() => {
           const value = entry['Sales Performance']?.restaurant_open;
           // Handle both boolean and integer values
@@ -2840,9 +2871,22 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 min-w-0 flex-wrap">
                             <span>Actual Weekly Sales</span>
-                            <span className="text-xs font-semibold text-red-600">
-                              Gross Sales - Includes Tips & Other Service Charges
-                            </span>
+                            {(() => {
+                              const note = salesBasisNote(week.dailyData);
+                              const breakdown = salesBreakdownNote(week.dailyData);
+                              return (
+                                <>
+                                  <span className={`text-xs font-semibold ${note.tone}`}>
+                                    {note.text}
+                                  </span>
+                                  {breakdown ? (
+                                    <span className="text-xs font-normal text-gray-500">
+                                      {breakdown}
+                                    </span>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
                           </div>
                           {week.dailyData && (
                             <span className="text-xs text-gray-500 whitespace-nowrap shrink-0">

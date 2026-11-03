@@ -352,6 +352,21 @@ const ReportCardPage = () => {
       <div className="w-full flex flex-col gap-3">
        
 
+        {(Number(apiSummary?.sales_review_days) > 0 || Number(apiSummary?.estimated_legacy_days) > 0) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {Number(apiSummary?.sales_review_days) > 0 && (
+              <p className="m-0">
+                {apiSummary.sales_review_days} day(s) need review. Those days are left out of the sales total and percentages.
+              </p>
+            )}
+            {Number(apiSummary?.estimated_legacy_days) > 0 && (
+              <p className="m-0">
+                {apiSummary.estimated_legacy_days} day(s) are estimated from a monthly total split across open days. They are not verified daily sales.
+              </p>
+            )}
+          </div>
+        )}
+
         <div data-guidance="meet_lio_report_card">
           <ReportCard
             score={score}
