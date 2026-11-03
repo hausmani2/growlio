@@ -5,6 +5,7 @@ import {
   Card,
   Collapse,
   DatePicker,
+  Input,
   Select,
   Spin,
   Tag,
@@ -15,16 +16,19 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   RocketOutlined,
+  SendOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import useLioFeatureUsage from '../../hooks/useLioFeatureUsage';
+import useStore from '../../store/store';
 import {
   LIO_FEATURE,
   pollGrowlioIQStatus,
   runGrowlioIQAnalysis,
 } from '../../services/growlioIqApi';
+import lioMascot from '../../assets/pngs/lio-mascot.png';
 
 const { RangePicker } = DatePicker;
 
@@ -85,6 +89,8 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
   const [focus, setFocus] = useState('general');
   const [running, setRunning] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const setPendingChatMessage = useStore((state) => state.setPendingChatMessage);
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -107,7 +113,9 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
     }
   };
 
-  const handleRun = useCallback(async () => {
+  const handleRun = useCallback(async (focusOverride) => {
+    const runFocus =
+      typeof focusOverride === 'string' && focusOverride ? focusOverride : focus;
     if (locked) {
       navigate('/dashboard/pricing');
       return;
@@ -117,6 +125,7 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
       return;
     }
     stopPoll();
+    setExpanded(true);
     setRunning(true);
     setAnalysis(null);
     message.loading({
@@ -131,7 +140,7 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
       const start = await runGrowlioIQAnalysis({
         startDate,
         endDate,
-        focus,
+        focus: runFocus,
         feature: LIO_FEATURE.GROWLIO_IQ,
       });
       if (start?.usage) applyUsage(start.usage);
@@ -182,6 +191,33 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
     return `${dateRange[0].format('MMM D, YYYY')} - ${dateRange[1].format('MMM D, YYYY')}`;
   }, [dateRange]);
 
+  // Custom questions go to the LIO chat advisor with the selected period attached,
+  // so answers stay date-aware without a second date control.
+  const handleAskCustom = useCallback(() => {
+    const question = customQuestion.trim();
+    if (!question) {
+      message.info('Type a question for LIO first');
+      return;
+    }
+    if (typeof setPendingChatMessage !== 'function') {
+      message.error('LIO chat is not available right now');
+      return;
+    }
+    const prefixed = periodLabel
+      ? `For the period ${periodLabel}: ${question}`
+      : question;
+    setPendingChatMessage(prefixed);
+    setCustomQuestion('');
+  }, [customQuestion, periodLabel, setPendingChatMessage]);
+
+  const handlePreset = useCallback(
+    (item) => {
+      setFocus(item.focus);
+      handleRun(item.focus);
+    },
+    [handleRun]
+  );
+
   if (planLoading) {
     return (
       <Card className="shadow-sm border border-gray-100">
@@ -192,27 +228,85 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
     );
   }
 
+  const presetButtons = (
+    <div className="flex flex-wrap gap-2">
+      {SUGGESTED_QUESTIONS.map((item) => (
+        <Button
+          key={item.focus}
+          size="small"
+          shape="round"
+          type={focus === item.focus ? 'primary' : 'default'}
+          disabled={running}
+          className={
+            focus === item.focus
+              ? '!bg-[#FF8132] hover:!bg-[#EB5B00] border-none'
+              : '!border-orange-200 !text-gray-700 hover:!text-[#FF8132] hover:!border-[#FF8132]'
+          }
+          onClick={() => handlePreset(item)}
+        >
+          {item.label}
+        </Button>
+      ))}
+    </div>
+  );
+
+  const customQuestionInput = (
+    <div className="flex items-stretch gap-2">
+      <Input
+        value={customQuestion}
+        onChange={(e) => setCustomQuestion(e.target.value)}
+        onPressEnter={handleAskCustom}
+        placeholder="Ask LIO anything about this period…"
+        maxLength={500}
+        allowClear
+        aria-label="Ask LIO a custom question"
+      />
+      <Button
+        type="primary"
+        icon={<SendOutlined />}
+        className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+        onClick={handleAskCustom}
+        disabled={!customQuestion.trim()}
+      >
+        Ask
+      </Button>
+    </div>
+  );
+
   return (
-    <Card className="shadow-sm border border-gray-100">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-3">
-          <BulbOutlined className="text-2xl text-[#FF8132]" />
-          <div>
-            <h3 className="text-lg font-semibold m-0">Ask LIO — Growlio IQ</h3>
-            <p className="text-sm text-gray-500 m-0">
+    <Card className="shadow-sm border border-gray-100" styles={{ body: { padding: 16 } }}>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={lioMascot}
+            alt="LIO"
+            className="w-11 h-11 sm:w-12 sm:h-12 object-contain shrink-0"
+          />
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold m-0 flex items-center gap-2">
+              <BulbOutlined className="text-[#FF8132]" />
+              Ask LIO — Growlio IQ
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 m-0">
               {hideDateControls
                 ? `Uses the Report Card dates${periodLabel ? ` · ${periodLabel}` : ''}`
                 : 'AI consultant review of your restaurant data'}
+              {remainingCopy ? ` · ${remainingCopy}` : ''}
             </p>
-            {remainingCopy ? (
-              <p className="text-xs text-gray-500 m-0 mt-1">{remainingCopy}</p>
-            ) : null}
           </div>
         </div>
-        <Button onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Collapse' : 'Expand'}
+        <Button size="small" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Hide full analysis' : 'Full analysis'}
         </Button>
       </div>
+
+      {/* Compact state: presets + custom question are always available. */}
+      {!locked ? (
+        <div className="space-y-2 mb-3">
+          {presetButtons}
+          {customQuestionInput}
+        </div>
+      ) : null}
 
       {locked ? (
         <Alert
@@ -240,23 +334,6 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
             showIcon
             message="Growlio IQ reviews your sales, labor, food cost, budget, and operational data, then tells you what to fix next."
           />
-
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.map((item) => (
-              <Button
-                key={item.focus}
-                type={focus === item.focus ? 'primary' : 'default'}
-                className={
-                  focus === item.focus
-                    ? '!bg-[#FF8132] hover:!bg-[#EB5B00] border-none'
-                    : ''
-                }
-                onClick={() => setFocus(item.focus)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
 
           <div className="flex flex-wrap items-center gap-3">
             {hideDateControls ? null : (
@@ -294,7 +371,7 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
                 icon={<ThunderboltOutlined />}
                 loading={running}
                 className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
-                onClick={handleRun}
+                onClick={() => handleRun()}
               >
                 Run Growlio IQ
               </Button>
@@ -429,9 +506,9 @@ const GrowlioIQPanel = ({ initialDateRange, hideDateControls = false }) => {
           ) : null}
         </div>
       ) : (
-        <p className="text-gray-600 m-0">
-          Expand Growlio IQ to get an AI review of your biggest issues, wins, and next
-          steps for {periodLabel || 'your selected period'}.
+        <p className="text-xs text-gray-500 m-0">
+          Pick a question above or open the full analysis for a complete review of{' '}
+          {periodLabel || 'your selected period'}.
         </p>
       )}
     </Card>

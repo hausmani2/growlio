@@ -240,25 +240,38 @@ const MiniGauge = ({ label, metricKey, tooltipsMap, goal, value, amount, deltaPc
   
   const g = clamp(Number(goal) || 0, 0, 100);
   const color = getColor(percentageValue, g);
-  const isUp = Number(deltaPct) > 0;
-  const deltaColor = isUp ? "text-red-600" : "text-green-600";
-  const deltaSign = isUp ? "+" : "";
+
+  // Variance against target, expressed in percentage points of sales
+  // (e.g. labor 33% vs. target 30% => "3% over target").
+  const variancePts = Math.round((percentageValue - g) * 10) / 10;
+  const varianceChip = useMemo(() => {
+    if (!Number.isFinite(variancePts) || Math.abs(variancePts) < 0.05) {
+      return { text: "On target", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    }
+    const abs = Math.abs(variancePts);
+    const shown = Number.isInteger(abs) ? abs : abs.toFixed(1);
+    if (variancePts > 0) {
+      return { text: `${shown}% over target`, cls: "bg-red-50 text-red-700 border-red-200" };
+    }
+    return { text: `${shown}% under target`, cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  }, [variancePts]);
 
   // Use percentage for the progress bar visualization
   const data = useMemo(() => [{ name: label, value: percentageValue, fill: color }], [label, percentageValue, color]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="text-base font-semibold text-gray-900 flex items-center gap-1" >
-        Target {g}%
+    <div className="flex flex-col items-center rounded-xl border border-gray-100 bg-gray-50/60 px-2 py-3 w-[150px] sm:w-[160px]">
+      <div className="text-sm font-bold text-gray-900 text-center leading-tight">{label}</div>
+      <div className="text-xs font-medium text-gray-500 flex items-center gap-1 mt-0.5">
+        Target: {g}%
         <TooltipIcon text={getMetricTooltipText(tooltipsMap, metricKey || label)} />
       </div>
 
-      <div className="relative mt-2">
+      <div className="relative mt-1">
         <RadialBarChart
-          width={150}
-          height={150}
-          innerRadius="85%"
+          width={128}
+          height={128}
+          innerRadius="84%"
           outerRadius="100%"
           data={data}
           startAngle={210}
@@ -269,27 +282,37 @@ const MiniGauge = ({ label, metricKey, tooltipsMap, goal, value, amount, deltaPc
         </RadialBarChart>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {/* Center: Percentage - deltaPct prop is actually the percentage */}
-          <div className="text-4xl font-extrabold text-gray-900 tabular-nums leading-none mb-1">
-            {Math.round(percentageValue)} <span className="text-sm text-gray-500 absolute top-10 ml-1">%</span>
+          {/* Center: actual % of sales */}
+          <div className="text-3xl font-extrabold text-gray-900 tabular-nums leading-none">
+            {Math.round(percentageValue)}<span className="text-sm text-gray-500 font-semibold">%</span>
           </div>
-          {/* Below center: Dollar amount ($15,000) */}
-          <div className="text-sm text-gray-900 font-semibold mb-0.5">
+          {/* Dollar amount for the period */}
+          <div className="text-xs text-gray-700 font-semibold mt-1">
             {formatCurrency(amount || 0)}
           </div>
-          {/* Below dollar: Score (100) - percentage prop is actually the score */}
+          {/* Metric score (feeds the overall profitability score) */}
           {scoreValue !== null && (
-            <div className="text-sm font-semibold text-gray-900 leading-none">
-              {Math.round(scoreValue)}
+            <div className="text-[11px] text-gray-500 leading-none mt-0.5" title="Score for this cost">
+              Score {Math.round(scoreValue)}
             </div>
           )}
         </div>
       </div>
 
-      {/* Label at bottom (Labor) */}
-      <div className="text-lg font-bold text-gray-900">{label}</div>
+      <span
+        className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${varianceChip.cls}`}
+      >
+        {varianceChip.text}
+      </span>
     </div>
   );
+};
+
+const formatMarginPct = (sales, profit) => {
+  const s = Number(sales);
+  const p = Number(profit);
+  if (!Number.isFinite(s) || s <= 0 || !Number.isFinite(p)) return null;
+  return (p / s) * 100;
 };
 
 const ReportCard = ({
@@ -363,6 +386,11 @@ const ReportCard = ({
     ? gradeDetails.label.match(/Grade\s+([A-F])/i)?.[1]?.toUpperCase() 
     : null;
   const currentGrade = gradeFromLabel || getGrade(score);
+  // Profit margin derived from the existing sales / profit figures (no new calculation).
+  const profitMarginPct = useMemo(
+    () => formatMarginPct(summary?.sales, summary?.profit),
+    [summary?.sales, summary?.profit]
+  );
   // Initialize with last month (default for report card)
   const [dateRange, setDateRange] = useState([
     dayjs().subtract(1, 'month').startOf('month'),
@@ -612,27 +640,46 @@ const ReportCard = ({
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8 items-start">
-        {/* Left: Score */}
-        <div className="flex flex-col items-center justify-center">
-          <ScoreDonut 
-            score={score} 
-            size={200} 
-            gradeLabel={gradeDetails?.label || null}
-            grade={currentGrade}
-          />
-          <div className="mt-4 text-center leading-tight max-w-xs">
-            <div className="text-2xl font-bold text-gray-900 mb-2">{scoreHeading}</div>
+      <div className="mt-5 grid grid-cols-1 xl:grid-cols-[minmax(0,420px)_1fr] gap-6 items-start">
+        {/* Left: Profitability summary (score + sales / profit / margin) */}
+        <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+          <div className="text-base font-bold text-gray-900 text-center mb-1">{scoreHeading}</div>
+          <div className="flex flex-col sm:flex-row xl:flex-col items-center gap-3 sm:gap-5 xl:gap-3">
+            <ScoreDonut
+              score={score}
+              size={180}
+              gradeLabel={gradeDetails?.label || null}
+              grade={currentGrade}
+            />
+            <dl className="w-full max-w-xs m-0 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white text-sm">
+              <div className="flex items-center justify-between px-3 py-2">
+                <dt className="text-gray-600 font-medium m-0">Total Sales</dt>
+                <dd className="m-0 font-bold text-gray-900 tabular-nums">
+                  {formatCurrency(summary?.sales || 0)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <dt className="text-gray-600 font-medium m-0">Total Profit</dt>
+                <dd className={`m-0 font-bold tabular-nums ${getProfitColorClass(summary?.profit)}`}>
+                  {formatCurrency(summary?.profit || 0)}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <dt className="text-gray-600 font-medium m-0">Profit Margin</dt>
+                <dd className={`m-0 font-bold tabular-nums ${getProfitColorClass(summary?.profit)}`}>
+                  {profitMarginPct === null ? "—" : `${profitMarginPct.toFixed(1)}%`}
+                </dd>
+              </div>
+            </dl>
           </div>
-          
         </div>
 
-        {/* Right: Gauges + summary */}
+        {/* Right: Cost gauges */}
         <div className="flex flex-col gap-3">
-          <h3 className="text-lg font-bold text-gray-900 m-0 text-center">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 m-0 text-center xl:text-left">
             Your Costs vs. Targets
           </h3>
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-stretch justify-center xl:justify-start gap-2 sm:gap-3">
             <MiniGauge
               label="Labor"
               metricKey="labor"
@@ -675,18 +722,19 @@ const ReportCard = ({
             />
           </div>
 
-          <div className="flex flex-row  items-center justify-center gap-6">
-            <div className="text-lg font-medium text-gray-900">
-              Sales:{" "}
-              <span className="text-green-500 font-bold">{formatCurrency(summary.sales || 0)}</span>
+          {(gradeDetails?.message || gradeDetails?.what_can_you_be_doing) && (
+            <div className="rounded-xl border border-gray-100 bg-white p-3 text-sm">
+              {gradeDetails?.message && (
+                <p className="text-gray-700 m-0 whitespace-pre-line">{gradeDetails.message}</p>
+              )}
+              {gradeDetails?.what_can_you_be_doing && (
+                <p className="text-gray-600 m-0 mt-2">
+                  <span className="font-semibold text-gray-800">What you can be doing: </span>
+                  {gradeDetails.what_can_you_be_doing}
+                </p>
+              )}
             </div>
-            <div className="text-lg font-medium text-gray-900">
-              Profit:{" "}
-              <span className={`font-bold ${getProfitColorClass(summary?.profit)}`}>
-                {formatCurrency(summary.profit || 0)}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
       
@@ -831,20 +879,6 @@ const ReportCard = ({
           </div>
         </div>
       </Modal>
-      
-      <div>
-          {gradeDetails?.message && (
-              <div className="text-base text-gray-700 mb-2 whitespace-pre-line">
-             <span className="font-semibold">Message:</span> {gradeDetails.message}
-              </div>
-            )}
-            {gradeDetails?.what_can_you_be_doing && (
-              <div className="text-sm text-gray-600 italic">
-                <span className="font-semibold not-italic">What can you be doing:</span> {gradeDetails.what_can_you_be_doing}
-              </div>
-            )}
-            
-          </div>
       </div>
     </>
   );

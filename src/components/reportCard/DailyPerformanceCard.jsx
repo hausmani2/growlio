@@ -30,6 +30,8 @@ const getScoreColor = (score) => {
   return s >= 70 ? "#22c55e" : "#facc15";
 };
 
+const GAUGE_SIZE = 104;
+
 const DailyGauge = ({ score, day, date, profitLoss, selected, onClick }) => {
   const s = clamp(Number(score) || 0, 0, 100);
   const color = getScoreColor(s);
@@ -42,15 +44,18 @@ const DailyGauge = ({ score, day, date, profitLoss, selected, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center rounded-xl px-1 py-1 bg-transparent border-0 cursor-pointer ${
-        selected ? "ring-2 ring-orange-500" : ""
+      className={`flex flex-col items-center rounded-xl px-1 py-2 bg-white border cursor-pointer transition-shadow hover:shadow-md w-full ${
+        selected ? "ring-2 ring-orange-500 border-orange-200" : "border-gray-100"
       }`}
       aria-pressed={selected}
+      title="View daily detail"
     >
-      <div className="relative" style={{ width: 120, height: 120 }}>
+      <div className="text-xs font-semibold text-gray-700">{day}</div>
+      <div className="text-[11px] text-gray-500">{date}</div>
+      <div className="relative" style={{ width: GAUGE_SIZE, height: GAUGE_SIZE }}>
         <RadialBarChart
-          width={120}
-          height={120}
+          width={GAUGE_SIZE}
+          height={GAUGE_SIZE}
           innerRadius="80%"
           outerRadius="100%"
           data={data}
@@ -66,19 +71,54 @@ const DailyGauge = ({ score, day, date, profitLoss, selected, onClick }) => {
           />
         </RadialBarChart>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-2xl font-extrabold tabular-nums text-gray-900">
+          <div className="text-xl font-extrabold tabular-nums text-gray-900">
             {Math.round(s)}
           </div>
         </div>
       </div>
-      <div className="mt-2 text-sm font-medium text-center text-gray-700">{day}</div>
-      <div className="text-xs text-center text-gray-500">{date}</div>
-      <div className={`mt-1 text-sm font-semibold ${amountColor}`}>
+      <div className={`text-sm font-semibold ${amountColor}`}>
         {isNegative ? "-" : ""}
         {formatCompactCurrency(Math.abs(profitLossValue))}
       </div>
     </button>
   );
+};
+
+// Non-clickable slot for days that have no score yet (review, not closed, upcoming).
+const DailyPlaceholder = ({ day, date, kind }) => {
+  const copy =
+    kind === "review"
+      ? { label: "Review", help: "Sales need review before this day can be scored." }
+      : kind === "future"
+        ? { label: "Upcoming", help: "This day has not happened yet." }
+        : { label: "Not closed", help: "Close out this day to see its score." };
+  return (
+    <div
+      className="flex flex-col items-center rounded-xl px-1 py-2 border border-dashed border-gray-200 bg-gray-50/60 w-full"
+      aria-disabled="true"
+      title={copy.help}
+    >
+      <div className="text-xs font-semibold text-gray-500">{day}</div>
+      <div className="text-[11px] text-gray-400">{date}</div>
+      <div
+        className="flex items-center justify-center rounded-full border-[6px] border-gray-200 text-xs font-semibold text-gray-400"
+        style={{ width: GAUGE_SIZE - 20, height: GAUGE_SIZE - 20, margin: 10 }}
+      >
+        —
+      </div>
+      <div className="text-xs font-medium text-gray-400">{copy.label}</div>
+    </div>
+  );
+};
+
+const DAY_ABBR = {
+  Monday: "Mon",
+  Tuesday: "Tue",
+  Wednesday: "Wed",
+  Thursday: "Thu",
+  Friday: "Fri",
+  Saturday: "Sat",
+  Sunday: "Sun",
 };
 
 const DailyPerformanceCard = ({ dateRange, goals }) => {
@@ -194,49 +234,74 @@ const DailyPerformanceCard = ({ dateRange, goals }) => {
     loadedWeekKey === activeWeekKey &&
     closedDayRows.length === 0;
 
-  const transformedDailyData = useMemo(() => {
-    return closedDayRows.map((item) => {
-      const dateObj = dayjs(item.date);
-      let dayName = item.day || dateObj.format("ddd");
-      if (dayName && dayName.length > 3) {
-        const dayMap = {
-          Monday: "Mon",
-          Tuesday: "Tue",
-          Wednesday: "Wed",
-          Thursday: "Thu",
-          Friday: "Fri",
-          Saturday: "Sat",
-          Sunday: "Sun",
-        };
-        dayName = dayMap[dayName] || dateObj.format("ddd");
-      }
-      return {
-        raw: item,
-        score: item.main_score || 0,
-        day: dayName,
-        date: dateObj.format("MM/DD"),
-        iso: item.date,
-        profitLoss: item.profit_loss || 0,
-      };
+  // One slot per calendar day in the active week so partial weeks, review days,
+  // unclosed days and upcoming days are all represented without inventing scores.
+  const daySlots = useMemo(() => {
+    if (!activeWeek?.start || !activeWeek?.end) return [];
+    const rowsByDate = new Map();
+    closedDayRows.forEach((item) => {
+      const iso = dayjs(item.date).format("YYYY-MM-DD");
+      rowsByDate.set(iso, item);
     });
-  }, [closedDayRows]);
+    const today = dayjs().startOf("day");
+    const slots = [];
+    let cursor = dayjs(activeWeek.start).startOf("day");
+    const end = dayjs(activeWeek.end).startOf("day");
+    while (cursor.isBefore(end, "day") || cursor.isSame(end, "day")) {
+      const iso = cursor.format("YYYY-MM-DD");
+      const item = rowsByDate.get(iso) || null;
+      let dayName = item?.day || cursor.format("ddd");
+      if (dayName && dayName.length > 3) {
+        dayName = DAY_ABBR[dayName] || cursor.format("ddd");
+      }
+      const scored =
+        item != null &&
+        item.main_score !== null &&
+        item.main_score !== undefined &&
+        !item.sales_review;
+      let kind = "scored";
+      if (!scored) {
+        if (item && (item.sales_review || item.main_score == null)) kind = "review";
+        else if (cursor.isAfter(today, "day")) kind = "future";
+        else kind = "open";
+      }
+      slots.push({
+        raw: item,
+        kind,
+        score: scored ? Number(item.main_score) || 0 : null,
+        day: dayName,
+        date: cursor.format("MM/DD"),
+        iso,
+        profitLoss: scored ? item.profit_loss || 0 : 0,
+      });
+      cursor = cursor.add(1, "day");
+    }
+    return slots;
+  }, [closedDayRows, activeWeek]);
+
+  const scoredSlots = useMemo(
+    () => daySlots.filter((slot) => slot.kind === "scored"),
+    [daySlots]
+  );
 
   const selectedDay =
-    transformedDailyData.find((day) => day.iso === selectedDate)?.raw || null;
+    scoredSlots.find((day) => day.iso === selectedDate)?.raw || null;
 
   const weekLabel = activeWeek
     ? `${activeWeek.start.format("MMM DD")} - ${activeWeek.end.format("MMM DD, YYYY")}`
     : "";
+  const weekCounter = weeks.length ? `Week ${weekIndex + 1} of ${weeks.length}` : "";
+  const reviewCount = daySlots.filter((slot) => slot.kind === "review").length;
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-6">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-orange-600 m-0">Daily Performance</h2>
-            {weekLabel ? (
-              <p className="text-sm text-gray-500 m-0 mt-1">{weekLabel}</p>
-            ) : null}
+            <h2 className="text-xl sm:text-2xl font-bold text-orange-600 m-0">Daily Performance</h2>
+            <p className="text-xs sm:text-sm text-gray-500 m-0 mt-1">
+              Click on any completed day to see detailed performance, comparisons, and LIO insights.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -245,6 +310,14 @@ const DailyPerformanceCard = ({ dateRange, goals }) => {
               onClick={() => changeWeek(Math.max(0, weekIndex - 1))}
               aria-label="Previous week in this date range"
             />
+            <div className="text-center min-w-[150px]">
+              {weekCounter ? (
+                <div className="text-sm font-semibold text-gray-900 leading-tight">{weekCounter}</div>
+              ) : null}
+              {weekLabel ? (
+                <div className="text-xs text-gray-500 leading-tight">{weekLabel}</div>
+              ) : null}
+            </div>
             <Button
               icon={<RightOutlined />}
               disabled={!weeks.length || weekIndex >= weeks.length - 1}
@@ -269,21 +342,7 @@ const DailyPerformanceCard = ({ dateRange, goals }) => {
               showIcon
             />
           </div>
-        ) : showNoClosedDaysGuidance ? (
-          <div className="py-12">
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                <div className="text-center">
-                  <div>No data available for this week</div>
-                  <div className="mt-2 text-sm font-medium !text-orange-600">
-                    Scoring becomes available once you&apos;ve entered your daily numbers and closed out the day.
-                  </div>
-                </div>
-              }
-            />
-          </div>
-        ) : transformedDailyData.length === 0 ? (
+        ) : daySlots.length === 0 ? (
           <div className="py-12">
             <Empty
               description="No data available for this week"
@@ -291,19 +350,41 @@ const DailyPerformanceCard = ({ dateRange, goals }) => {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4 justify-items-center">
-            {transformedDailyData.map((day, idx) => (
-              <DailyGauge
-                key={`${day.iso}-${idx}`}
-                score={day.score}
-                day={day.day}
-                date={day.date}
-                profitLoss={day.profitLoss}
-                selected={day.iso === selectedDate}
-                onClick={() => setSelectedDate(day.iso)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
+              {daySlots.map((day, idx) =>
+                day.kind === "scored" ? (
+                  <DailyGauge
+                    key={`${day.iso}-${idx}`}
+                    score={day.score}
+                    day={day.day}
+                    date={day.date}
+                    profitLoss={day.profitLoss}
+                    selected={day.iso === selectedDate}
+                    onClick={() => setSelectedDate(day.iso)}
+                  />
+                ) : (
+                  <DailyPlaceholder
+                    key={`${day.iso}-${idx}`}
+                    day={day.day}
+                    date={day.date}
+                    kind={day.kind}
+                  />
+                )
+              )}
+            </div>
+            {showNoClosedDaysGuidance ? (
+              <p className="text-sm font-medium text-orange-600 text-center m-0 mt-3">
+                Scoring becomes available once you&apos;ve entered your daily numbers and closed out the day.
+              </p>
+            ) : null}
+            {reviewCount > 0 ? (
+              <p className="text-xs text-amber-700 m-0 mt-3">
+                {reviewCount} day{reviewCount === 1 ? "" : "s"} this week need a sales review
+                before a score can be shown. Open Close Day to confirm the figures.
+              </p>
+            ) : null}
+          </>
         )}
       </div>
 
