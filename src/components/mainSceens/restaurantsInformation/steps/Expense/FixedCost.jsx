@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
+import { sanitizeDecimalInput } from "../../../../../utils/formatUtils";
 
 const FixedCost = ({ data, updateData, errors = {} }) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -53,9 +54,11 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
     };
 
     const handleDynamicFieldChange = (id, value) => {
-        if (value === '' || parseFloat(value) >= 0) {
+        const sanitized = sanitizeDecimalInput(value);
+        // Allow empty / in-progress decimals ("12.") — do not Number() until totals calc.
+        if (sanitized === '' || sanitized === '.' || parseFloat(sanitized) >= 0) {
             const updatedFields = dynamicFields.map(field =>
-                field.id === id ? { ...field, value } : field
+                field.id === id ? { ...field, value: sanitized } : field
             );
             setDynamicFields(updatedFields);
 
@@ -151,13 +154,13 @@ const FixedCost = ({ data, updateData, errors = {} }) => {
                             </div>
                             <div className="flex-1 w-full sm:w-auto">
                                 <Input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
+                                    autoComplete="off"
                                     placeholder="0.00"
                                     value={field.value}
                                     onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
                                     className="w-full sm:w-full h-10 rounded-lg text-sm"
-                                    step="0.01"
-                                    min="0"
                                 />
                             </div>
                             <div className="flex items-center gap-2">

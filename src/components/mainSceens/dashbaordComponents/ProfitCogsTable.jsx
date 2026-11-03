@@ -1,3 +1,4 @@
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
@@ -349,10 +350,12 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Third Party Fees:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.thirdPartyFees}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -369,10 +372,12 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Profit After COGS & Labor:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.profitAfterCogsLabor}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -393,10 +398,12 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Daily Variable Profit %:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.dailyVariableProfitPercentage}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -417,10 +424,12 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Weekly Variable Profit %:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.weeklyVariableProfitPercentage}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -511,9 +520,11 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
                   width: 150,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'thirdPartyFees', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'thirdPartyFees', sanitizeDecimalInput(e.target.value))}
                       prefix="$"
                       className="w-full"
                     />
@@ -526,9 +537,11 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
                   width: 200,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'profitAfterCogsLabor', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'profitAfterCogsLabor', sanitizeDecimalInput(e.target.value))}
                       prefix="$"
                       className="w-full"
                       style={{ 
@@ -545,9 +558,11 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
                   width: 180,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'dailyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'dailyVariableProfitPercentage', sanitizeDecimalInput(e.target.value))}
                       suffix="%"
                       className="w-full"
                       style={{ 
@@ -564,9 +579,11 @@ const ProfitCogsTable = ({ selectedDate, selectedYear, selectedMonth, weekDays =
                   width: 180,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'weeklyVariableProfitPercentage', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'weeklyVariableProfitPercentage', sanitizeDecimalInput(e.target.value))}
                       suffix="%"
                       className="w-full"
                       style={{ 

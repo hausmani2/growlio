@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { InputNumber, message } from 'antd';
+import { Input, message } from 'antd';
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 
 const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }) => {
   const [errors, setErrors] = useState({});
-  const [avgHourlyRate, setAvgHourlyRate] = useState(data?.avgHourlyRate || 0);
+  const [avgHourlyRate, setAvgHourlyRate] = useState(
+    data?.avgHourlyRate === 0 || data?.avgHourlyRate
+      ? String(data.avgHourlyRate)
+      : ''
+  );
   const MIN_AVG_HOURLY_RATE = 1;
   const MAX_AVG_HOURLY_RATE = 500;
 
   useEffect(() => {
+    const num = parseFloat(avgHourlyRate);
     updateData({
-      avgHourlyRate
+      avgHourlyRate: Number.isFinite(num) ? num : 0,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avgHourlyRate]);
@@ -18,10 +24,11 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
   // Use useCallback to ensure the function reference is stable and uses latest values
   const validate = useCallback(() => {
     const newErrors = {};
+    const rate = parseFloat(avgHourlyRate);
     
-    if (!avgHourlyRate || avgHourlyRate <= 0) {
+    if (!Number.isFinite(rate) || rate <= 0) {
       newErrors.avgHourlyRate = 'Please enter a valid average hourly rate.';
-    } else if (avgHourlyRate < MIN_AVG_HOURLY_RATE || avgHourlyRate > MAX_AVG_HOURLY_RATE) {
+    } else if (rate < MIN_AVG_HOURLY_RATE || rate > MAX_AVG_HOURLY_RATE) {
       newErrors.avgHourlyRate = `Average hourly rate must be between $${MIN_AVG_HOURLY_RATE} and $${MAX_AVG_HOURLY_RATE}.`;
     }
     
@@ -57,28 +64,26 @@ const LaborInformationStep = ({ data, updateData, onNext, onBack, validateStep }
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Average Hourly Rate <span className="text-red-500">*</span>
           </label>
-          <InputNumber
+          <Input
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             placeholder="0.00"
             value={avgHourlyRate}
-            onChange={(value) => {
-              // Guard against extremely large values; validation also enforces range.
-              const num = typeof value === 'number' ? value : Number(value);
-              if (!Number.isFinite(num)) {
-                setAvgHourlyRate(0);
+            onChange={(e) => {
+              const value = sanitizeDecimalInput(e.target.value);
+              const num = parseFloat(value);
+              if (Number.isFinite(num) && num > MAX_AVG_HOURLY_RATE) {
+                setAvgHourlyRate(String(MAX_AVG_HOURLY_RATE));
               } else {
-                setAvgHourlyRate(num > MAX_AVG_HOURLY_RATE ? MAX_AVG_HOURLY_RATE : num);
+                setAvgHourlyRate(value);
               }
               if (errors.avgHourlyRate) {
                 setErrors(prev => ({ ...prev, avgHourlyRate: '' }));
               }
             }}
-            min={MIN_AVG_HOURLY_RATE}
-            max={MAX_AVG_HOURLY_RATE}
-            step={0.01}
-            precision={2}
             className={`w-full h-11 ${errors.avgHourlyRate ? 'border-red-500' : ''}`}
             prefix="$"
-            required
             status={errors.avgHourlyRate ? 'error' : ''}
           />
           {errors.avgHourlyRate && (

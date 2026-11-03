@@ -1,5 +1,5 @@
 import { Input, Select, Tooltip } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useStore from "../../../../../store/store";
 import { apiGet } from "../../../../../utils/axiosInterceptors";
 import { fetchTooltips } from "../../../../../utils";
@@ -9,17 +9,17 @@ import TooltipIcon from "../../../../common/TooltipIcon";
 import { buildLocationSelectModel } from "../../../../../utils/locationLimits";
 
 const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = false, hideLocationCount = false }) => {
-    const { 
-        checkRestaurantName, 
-        clearRestaurantNameCheck,
-        restaurantNameCheckLoading, 
-        restaurantNameCheckError, 
-        restaurantNameExists,
-        completeOnboardingData,
-        currentPackage,
-        subscriptionDetails,
-        fetchCurrentSubscriptionDetails
-    } = useStore();
+    // Narrow store subscriptions — bare useStore() re-renders on every Zustand write
+    // and (with disabled-while-loading) steals focus on Windows/Chrome mid-keystroke.
+    const checkRestaurantName = useStore((s) => s.checkRestaurantName);
+    const clearRestaurantNameCheck = useStore((s) => s.clearRestaurantNameCheck);
+    const restaurantNameCheckLoading = useStore((s) => s.restaurantNameCheckLoading);
+    const restaurantNameCheckError = useStore((s) => s.restaurantNameCheckError);
+    const restaurantNameExists = useStore((s) => s.restaurantNameExists);
+    const completeOnboardingData = useStore((s) => s.completeOnboardingData);
+    const currentPackage = useStore((s) => s.currentPackage);
+    const subscriptionDetails = useStore((s) => s.subscriptionDetails);
+    const fetchCurrentSubscriptionDetails = useStore((s) => s.fetchCurrentSubscriptionDetails);
     const tooltips = useTooltips('onboarding-basic');
     
     // Check if Basic Information step is completed
@@ -51,15 +51,17 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
     const isRestaurantNameLocked = !isRestaurantNameEditable;
     
     const [localRestaurantName, setLocalRestaurantName] = useState("");
+    const [localLocationName, setLocalLocationName] = useState("");
+    const debounceTimerRef = useRef(null);
     
     // Initialize local state with data when component mounts or data changes
     useEffect(() => {
-
-        if (data.restaurantName) {
-            setLocalRestaurantName(data.restaurantName);
-        }
+        setLocalRestaurantName(data.restaurantName || "");
     }, [data.restaurantName]);
-    const [debounceTimer, setDebounceTimer] = useState(null);
+
+    useEffect(() => {
+        setLocalLocationName(data.locationName || "");
+    }, [data.locationName]);
 
     // Load subscription details to drive dynamic location limits + pricing
     useEffect(() => {
@@ -98,38 +100,41 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
         }
     }, [isRestaurantNameLocked, clearRestaurantNameCheck]);
 
-    // Debounced restaurant name check
+    // Debounced restaurant name check (never disable the input while this runs)
     useEffect(() => {
         if (isRestaurantNameLocked) {
-            return;
+            return undefined;
         }
 
-        if (debounceTimer) {
-            clearTimeout(debounceTimer);
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
         }
 
         if (localRestaurantName && localRestaurantName.trim().length > 2) {
-            const timer = setTimeout(() => {
+            debounceTimerRef.current = setTimeout(() => {
                 checkRestaurantName(localRestaurantName);
-            }, 1000); // 1 second delay
-
-            setDebounceTimer(timer);
+            }, 1000);
         } else {
             clearRestaurantNameCheck();
         }
 
         return () => {
-            if (debounceTimer) {
-                clearTimeout(debounceTimer);
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
             }
         };
     }, [localRestaurantName, checkRestaurantName, clearRestaurantNameCheck, isRestaurantNameLocked]);
 
-    // Update local state and parent data
+    // Keep typing in local state; sync parent on change without disabling the field.
     const handleRestaurantNameChange = (value) => {
         if (isRestaurantNameLocked) return;
         setLocalRestaurantName(value);
         updateData('restaurantName', value);
+    };
+
+    const handleLocationNameChange = (value) => {
+        setLocalLocationName(value);
+        updateData('locationName', value);
     };
 
     // Handle blur event - check restaurant name when user moves to next field
@@ -223,19 +228,21 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     <div className="relative">
                         <Input 
                             type="text" 
-                            id="restaurantName" 
+                            id="restaurantName"
+                            autoComplete="organization"
                             placeholder="Enter your company name" 
                             className={`w-full h-11 rounded-lg text-sm ${
                                 combinedErrors.restaurantName ? 'border-red-500' : 'border-gray-300'
                             } ${isRestaurantNameLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                            value={isRestaurantNameEditable ? (localRestaurantName || data.restaurantName || '') : (data.restaurantName || '')}
+                            value={isRestaurantNameEditable ? (localRestaurantName || '') : (data.restaurantName || '')}
                             onChange={(e) => handleRestaurantNameChange(e.target.value)}
                             onBlur={handleRestaurantNameBlur}
                             status={combinedErrors.restaurantName ? 'error' : ''}
-                            disabled={restaurantNameCheckLoading || isRestaurantNameLocked}
+                            // Do NOT disable while name-check is loading — that blurs the field on Windows/Chrome.
+                            disabled={isRestaurantNameLocked}
                         />
                         {restaurantNameCheckLoading && isRestaurantNameEditable && (
-                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                             </div>
                         )}
@@ -323,15 +330,14 @@ const RestaurantInformation = ({ data, updateData, errors = {}, isUpdateMode = f
                     </label>
                     <Input 
                         type="text" 
-                        id="locationName" 
+                        id="locationName"
+                        autoComplete="off"
                         placeholder="Enter your location" 
                         className={`w-full h-11 rounded-lg text-sm ${
                             errors.locationName ? 'border-red-500' : 'border-gray-300'
                         }`}
-                        value={data.locationName || ""}
-                        onChange={(e) => {
-                            updateData('locationName', e.target.value);
-                        }}
+                        value={localLocationName}
+                        onChange={(e) => handleLocationNameChange(e.target.value)}
                         status={errors.locationName ? 'error' : ''}
                     />
                     {errors.locationName && (

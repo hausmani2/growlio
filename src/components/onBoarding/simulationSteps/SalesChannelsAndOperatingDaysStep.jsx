@@ -399,9 +399,9 @@ const SalesChannelsAndOperatingDaysStep = ({ data, updateData, onNext, onBack, v
                           )}
                           <div className="flex items-center gap-2 mt-2">
                             <Input
-                              type="number"
-                              min="0"
-                              max="100"
+                              type="text"
+                              inputMode="numeric"
+                              autoComplete="off"
                               value={provider.providerFee}
                               onChange={(e) => {
                                 const value = e.target.value;

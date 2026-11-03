@@ -44,11 +44,25 @@ const RestaurantWrapperContent = () => {
     } = useStore();
     const { validationErrors, clearFieldError, validateAllForms } = useFormValidation();
     const { navigateToNextStep, activeTab, tabs } = useTabHook();
+    // Debounce Zustand temp-form writes so mid-keystroke store updates don't steal focus (Windows/Chrome).
+    const tempFormSyncTimersRef = useRef({});
+
+    const syncTempFormField = (group, field, value) => {
+        const key = `${group}.${field}`;
+        if (tempFormSyncTimersRef.current[key]) {
+            clearTimeout(tempFormSyncTimersRef.current[key]);
+        }
+        tempFormSyncTimersRef.current[key] = setTimeout(() => {
+            updateTempFormData("Basic Information", group, field, value);
+        }, 300);
+    };
     
     // Check if this is update mode (accessed from sidebar) or onboarding mode
     const isUpdateMode = !location.pathname.includes('/onboarding');
-    const activeLocationName =
-        headerLocations?.find((loc) => loc.id === selectedLocationId)?.name || 'Selected location';
+    const activeLocationName = getLocationDisplayName(
+        headerLocations?.find((loc) => loc.id === selectedLocationId) || {},
+        'Selected location'
+    );
 
     // Prefill owner name fields from profile
     useEffect(() => {
@@ -254,8 +268,7 @@ const RestaurantWrapperContent = () => {
             ...prev,
             [field]: value
         }));
-        // Also update in store
-        updateTempFormData("Basic Information", "restaurantData", field, value);
+        syncTempFormField("restaurantData", field, value);
         clearFieldError(field);
     };
 
@@ -265,8 +278,7 @@ const RestaurantWrapperContent = () => {
             ...prev,
             [field]: value
         }));
-        // Also update in store
-        updateTempFormData("Basic Information", "addressData", field, value);
+        syncTempFormField("addressData", field, value);
         clearFieldError(field);
     };
 
@@ -276,8 +288,7 @@ const RestaurantWrapperContent = () => {
             ...prev,
             [field]: value
         }));
-        // Also update in store
-        updateTempFormData("Basic Information", "addressTypeData", field, value);
+        syncTempFormField("addressTypeData", field, value);
         clearFieldError(field);
     };
 
@@ -330,12 +341,18 @@ const RestaurantWrapperContent = () => {
             const next = Array.isArray(prev) ? [...prev] : [];
             if (!next[index]) return prev;
             next[index] = { ...next[index], [field]: value };
-            try {
-                const { updateTempFormDataMultiple } = useStore.getState();
-                updateTempFormDataMultiple?.("Basic Information", "additionalLocations", next);
-            } catch (e) {
-                // ignore
+            const key = `additionalLocations.${index}.${field}`;
+            if (tempFormSyncTimersRef.current[key]) {
+                clearTimeout(tempFormSyncTimersRef.current[key]);
             }
+            tempFormSyncTimersRef.current[key] = setTimeout(() => {
+                try {
+                    const { updateTempFormDataMultiple } = useStore.getState();
+                    updateTempFormDataMultiple?.("Basic Information", "additionalLocations", next);
+                } catch (e) {
+                    // ignore
+                }
+            }, 300);
             return next;
         });
     };
@@ -670,6 +687,7 @@ const RestaurantWrapperContent = () => {
                                     </label>
                                     <Input
                                         id={`locationName_${locationNumber}`}
+                                        autoComplete="off"
                                         placeholder={`Enter location ${locationNumber} name`}
                                         className={`w-full h-11 rounded-lg text-sm ${locErrors.locationName ? 'border-red-500' : 'border-gray-300'}`}
                                         value={loc.locationName || ""}

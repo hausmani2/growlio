@@ -3,6 +3,7 @@ import { Input, Select, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../../../../store/store";
+import { sanitizeDecimalInput } from "../../../../../utils/formatUtils";
 
 const MONTHS = [
   "January",
@@ -246,31 +247,51 @@ const SalesDataWrapper = () => {
                   disabled
                 />
                 <Input
-                  value={formatMoney(r.sales)}
-                  onChange={(e) => updateRow(r.id, { sales: String(toNumber(e.target.value)) })}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={r.sales}
+                  onChange={(e) => updateRow(r.id, { sales: sanitizeDecimalInput(e.target.value) })}
+                  onBlur={() => updateRow(r.id, { sales: r.sales === '' ? '' : String(toNumber(r.sales)) })}
                   className="w-full"
-                  placeholder="$0"
+                  placeholder="0"
+                  prefix="$"
                   style={{ height: '40px' }}
                 />
                 <Input
-                  value={formatMoney(r.laborCost)}
-                  onChange={(e) => updateRow(r.id, { laborCost: String(toNumber(e.target.value)) })}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={r.laborCost}
+                  onChange={(e) => updateRow(r.id, { laborCost: sanitizeDecimalInput(e.target.value) })}
+                  onBlur={() => updateRow(r.id, { laborCost: r.laborCost === '' ? '' : String(toNumber(r.laborCost)) })}
                   className="w-full"
-                  placeholder="$0"
+                  placeholder="0"
+                  prefix="$"
                   style={{ height: '40px' }}
                 />
                 <Input
-                  value={formatMoney(r.cogs)}
-                  onChange={(e) => updateRow(r.id, { cogs: String(toNumber(e.target.value)) })}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={r.cogs}
+                  onChange={(e) => updateRow(r.id, { cogs: sanitizeDecimalInput(e.target.value) })}
+                  onBlur={() => updateRow(r.id, { cogs: r.cogs === '' ? '' : String(toNumber(r.cogs)) })}
                   className="w-full"
-                  placeholder="$0"
+                  placeholder="0"
+                  prefix="$"
                   style={{ height: '40px' }}
                 />
                 <Input
-                  value={formatMoney(r.expenses)}
-                  onChange={(e) => updateRow(r.id, { expenses: String(toNumber(e.target.value)) })}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={r.expenses}
+                  onChange={(e) => updateRow(r.id, { expenses: sanitizeDecimalInput(e.target.value) })}
+                  onBlur={() => updateRow(r.id, { expenses: r.expenses === '' ? '' : String(toNumber(r.expenses)) })}
                   className="w-full"
-                  placeholder="$0"
+                  placeholder="0"
+                  prefix="$"
                   style={{ height: '40px' }}
                 />
                 <Input 

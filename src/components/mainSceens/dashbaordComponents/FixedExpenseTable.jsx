@@ -1,3 +1,4 @@
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
@@ -307,10 +308,12 @@ const FixedExpenseTable = ({ selectedDate, selectedYear, selectedMonth, weekDays
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Fixed Weekly Expenses:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.fixedWeeklyExpenses}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -376,9 +379,11 @@ const FixedExpenseTable = ({ selectedDate, selectedYear, selectedMonth, weekDays
                   width: 200,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'fixedWeeklyExpenses', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'fixedWeeklyExpenses', sanitizeDecimalInput(e.target.value))}
                       prefix="$"
                       className="w-full"
                     />

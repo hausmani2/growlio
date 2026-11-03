@@ -1,3 +1,4 @@
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Select, Table, Card, Row, Col, Typography, Space, Divider, message, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, CalculatorOutlined, DollarOutlined } from '@ant-design/icons';
@@ -323,10 +324,12 @@ const NetProfitTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = 
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Net Profit:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.netProfit}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -347,10 +350,12 @@ const NetProfitTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = 
               <div className="w-full">
                 <Text strong className="text-sm sm:text-base">Net Profit Margin %:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={weekFormData.weeklyTotals.netProfitMargin}
                   onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
+                    const value = sanitizeDecimalInput(e.target.value);
                     setWeekFormData(prev => ({
                       ...prev,
                       weeklyTotals: {
@@ -430,9 +435,11 @@ const NetProfitTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = 
                   width: 150,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'netProfit', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'netProfit', sanitizeDecimalInput(e.target.value))}
                       prefix="$"
                       className="w-full"
                       style={{ 
@@ -449,9 +456,11 @@ const NetProfitTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = 
                   width: 180,
                   render: (value, record, index) => (
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
                       value={value}
-                      onChange={(e) => handleDailyDataChange(index, 'netProfitMargin', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleDailyDataChange(index, 'netProfitMargin', sanitizeDecimalInput(e.target.value))}
                       suffix="%"
                       className="w-full"
                       style={{ 

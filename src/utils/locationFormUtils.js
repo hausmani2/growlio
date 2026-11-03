@@ -16,7 +16,15 @@ export const mapApiLocationToTypeData = (loc = {}) => ({
 
 export const getLocationDisplayName = (loc = {}, fallback = 'Unnamed location') => {
   const name = String(loc.location_name || loc.name || '').trim();
-  return name || fallback;
+  // Treat legacy seed names as unset so setup forms stay blank/editable.
+  if (
+    !name ||
+    name.toLowerCase() === 'new restaurant' ||
+    name.toLowerCase() === 'main location'
+  ) {
+    return fallback;
+  }
+  return name;
 };
 
 /** Real company names only — blank and legacy "New Restaurant" stay empty in the form. */

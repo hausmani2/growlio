@@ -4,6 +4,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import useTooltips from "../../../../../utils/useTooltips";
 import TooltipIcon from "../../../../common/TooltipIcon";
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
+import { sanitizeDecimalInput } from "../../../../../utils/formatUtils";
 
 const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise = false }, ref) => {
     const tooltips = useTooltips('onboarding-expense');
@@ -273,13 +274,13 @@ const VariableFixed = forwardRef(({ data, updateData, errors = {}, isFranchise =
                                     />
                                 ) : (
                                     <Input
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoComplete="off"
                                         placeholder="0.00"
                                         value={field.value}
-                                        onChange={(e) => handleDynamicFieldChange(field.id, e.target.value)}
+                                        onChange={(e) => handleDynamicFieldChange(field.id, sanitizeDecimalInput(e.target.value))}
                                         className="w-full sm:w-full h-10 rounded-lg text-sm"
-                                        step="0.01"
-                                        min="0"
                                     />
                                 )}
                             </div>

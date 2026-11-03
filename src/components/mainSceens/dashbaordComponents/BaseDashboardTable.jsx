@@ -1,3 +1,4 @@
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, DatePicker, Card, Row, Col, Typography, Space, Divider, message, Spin, Empty } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -217,9 +218,11 @@ const BaseDashboardTable = ({
               <Col span={12} key={index}>
                 <Text strong>{column.title}:</Text>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={formData[column.key] || ''}
-                  onChange={(e) => handleFormDataChange(column.key, parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleFormDataChange(column.key, sanitizeDecimalInput(e.target.value))}
                   prefix={column.prefix || ''}
                   style={{ marginTop: 8 }}
                   placeholder={column.placeholder || `Enter ${column.title}`}
@@ -289,9 +292,11 @@ const BaseDashboardTable = ({
                         </Col>
                         <Col>
                           <Input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
                             value={monthlyData[column.key] || ''}
-                            onChange={(e) => handleMonthlyDataChange(column.key, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleMonthlyDataChange(column.key, sanitizeDecimalInput(e.target.value))}
                             prefix={column.prefix || ''}
                             style={{ width: 150 }}
                             placeholder={column.placeholder || `Enter ${column.title}`}

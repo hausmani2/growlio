@@ -883,7 +883,7 @@ const SimulationDashboard = () => {
                     className="w-full"
                     size="large"
                     placeholder="Working days"
-                    disabled={daysLoading}
+                    // Spinner/state can show loading; disabling steals focus on Windows/Chrome.
                   />
                 </div>
 

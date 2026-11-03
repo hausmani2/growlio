@@ -9,6 +9,7 @@ import { useTabHook } from '../../useTabHook';
 import { useLocation, useNavigate } from 'react-router-dom';
 import LeftArrow from '../../../../../assets/svgs/left-arrow.svg';
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
+import { sanitizeDecimalInput } from '../../../../../utils/formatUtils';
 
 const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false, errors = {} }) => {
     const location = useLocation();
@@ -132,7 +133,9 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                     </label>
                     <div className="relative">
                         <Input 
-                            type="number" 
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
                             id="avg_hourly_rate" 
                             placeholder="Enter Hourly Wage" 
                             className={`w-full h-11 rounded-lg text-sm pl-6 ${
@@ -140,23 +143,15 @@ const LaborEntryMethod = ({ data, updateData, onSaveAndContinue, loading = false
                             }`}
                             value={data.avg_hourly_rate || ''}
                             onChange={(e) => {
-                                const value = e.target.value.trim();
-                                // Keep the raw input but prevent obviously invalid extremes.
+                                const value = sanitizeDecimalInput(e.target.value);
+                                // Keep the raw decimal string; clamp only finished numbers.
                                 if (value === '') {
                                     updateData('avg_hourly_rate', '');
                                     return;
                                 }
                                 const num = parseFloat(value);
-                                if (Number.isNaN(num)) {
-                                    updateData('avg_hourly_rate', value);
-                                    return;
-                                }
-                                if (num > MAX_AVG_HOURLY_RATE) {
+                                if (Number.isFinite(num) && num > MAX_AVG_HOURLY_RATE) {
                                     updateData('avg_hourly_rate', String(MAX_AVG_HOURLY_RATE));
-                                    return;
-                                }
-                                if (num < 0) {
-                                    updateData('avg_hourly_rate', '0');
                                     return;
                                 }
                                 updateData('avg_hourly_rate', value);

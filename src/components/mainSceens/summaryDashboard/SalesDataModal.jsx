@@ -14,6 +14,7 @@ import {
   isDayCurrentlyOpen,
   showCannotCloseDayWithDataModal,
 } from '../../../utils/dayCloseGuard';
+import { sanitizeDecimalInput } from '../../../utils/formatUtils';
 
 const getSummaryEntries = (summary) => {
   if (Array.isArray(summary?.data)) return summary.data;
@@ -1361,9 +1362,11 @@ const SalesDataModal = ({
                 <div>
                   <Text strong className="text-sm">Sales Budget:</Text>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={formData.weeklyTotals.salesBudget}
-                    onChange={(e) => handleWeeklyTotalsChange('salesBudget', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleWeeklyTotalsChange('salesBudget', sanitizeDecimalInput(e.target.value))}
                     prefix="$"
                     placeholder="0.00"
                     className="mt-1"
@@ -1374,9 +1377,11 @@ const SalesDataModal = ({
                 <div>
                   <Text strong className="text-sm">Actual Sales - In Store:</Text>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={formData.weeklyTotals.actualSalesInStore}
-                    onChange={(e) => handleWeeklyTotalsChange('actualSalesInStore', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleWeeklyTotalsChange('actualSalesInStore', sanitizeDecimalInput(e.target.value))}
                     prefix="$"
                     placeholder="0.00"
                     className="mt-1"
@@ -1387,9 +1392,11 @@ const SalesDataModal = ({
                 <div>
                   <Text strong className="text-sm">Actual Sales - App:</Text>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={formData.weeklyTotals.actualSalesAppOnline}
-                    onChange={(e) => handleWeeklyTotalsChange('actualSalesAppOnline', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleWeeklyTotalsChange('actualSalesAppOnline', sanitizeDecimalInput(e.target.value))}
                     prefix="$"
                     placeholder="0.00"
                     className="mt-1"
@@ -1400,9 +1407,11 @@ const SalesDataModal = ({
                 <div>
                   <Text strong className="text-sm">Daily Tickets:</Text>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={formData.weeklyTotals.dailyTickets}
-                    onChange={(e) => handleWeeklyTotalsChange('dailyTickets', parseFloat(e.target.value) || 0)}
+                    onChange={(e) => handleWeeklyTotalsChange('dailyTickets', sanitizeDecimalInput(e.target.value, 0))}
                     placeholder="0"
                     className="mt-1"
                   />
@@ -1421,11 +1430,13 @@ const SalesDataModal = ({
                       <div>
                         <Text strong className="text-sm">Actual Sales - {provider.provider_name}:</Text>
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          autoComplete="off"
                           value={formData.weeklyTotals[`actualSales${provider.provider_name.replace(/\s+/g, '')}`] || 0}
                           onChange={(e) => {
                             const providerKey = `actualSales${provider.provider_name.replace(/\s+/g, '')}`;
-                            handleWeeklyTotalsChange(providerKey, parseFloat(e.target.value) || 0);
+                            handleWeeklyTotalsChange(providerKey, sanitizeDecimalInput(e.target.value));
                           }}
                           prefix="$"
                           placeholder="0.00"
@@ -1467,7 +1478,9 @@ const SalesDataModal = ({
                 <div>
                   <Text strong className="text-sm">Average Hourly Rate:</Text>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={newLaborRateValue || formData.weeklyTotals.average_hourly_rate}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -1719,9 +1732,11 @@ const SalesDataModal = ({
                     const isClosed = isDayClosed(record);
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, 'budgetedSales', sanitizeDecimalInput(e.target.value), record)}
                         onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -1812,9 +1827,11 @@ const SalesDataModal = ({
                     const isClosed = isDayClosed(record);
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, 'budgetedSales', parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, 'budgetedSales', sanitizeDecimalInput(e.target.value), record)}
                         onBlur={(e) => handleBudgetedSalesBlur(index, parseFloat(e.target.value) || 0, record)}
                         placeholder="0.00"
                         className="w-full"
@@ -1841,9 +1858,11 @@ const SalesDataModal = ({
                     const isDisabled = isFuture || isClosed;
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, 'actualSalesInStore', parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, 'actualSalesInStore', sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -1869,9 +1888,11 @@ const SalesDataModal = ({
                     const isDisabled = isFuture || isClosed;
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, 'actualSalesAppOnline', parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, 'actualSalesAppOnline', sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -1898,9 +1919,11 @@ const SalesDataModal = ({
                     const isDisabled = isFuture || isClosed;
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, `actualSales${provider.provider_name.replace(/\s+/g, '')}`, sanitizeDecimalInput(e.target.value), record)}
                         placeholder="0.00"
                         className="w-full"
                         disabled={isDisabled}
@@ -1943,9 +1966,11 @@ const SalesDataModal = ({
                     const isDisabled = isFuture || isClosed;
                     return (
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
+                        autoComplete="off"
                         value={value}
-                        onChange={(e) => handleInputChange(index, 'dailyTickets', parseFloat(e.target.value) || 0, record)}
+                        onChange={(e) => handleInputChange(index, 'dailyTickets', sanitizeDecimalInput(e.target.value, 0), record)}
                         placeholder="0"
                         className="w-full"
                         disabled={isDisabled}

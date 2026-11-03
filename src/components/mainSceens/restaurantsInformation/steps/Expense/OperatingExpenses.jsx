@@ -4,6 +4,7 @@ import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, SaveOutlined } from "
 import MonthlyWeeklyToggle from "../../../../buttons/MonthlyWeeklyToggle";
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, calculateMonthlyCost, calculateWeeklyCost } from "../../../../../utils/simulationUtils";
 import { SETUP_LATER_TOOLTIP } from "../../../../../utils/onboardingUtils";
+import { sanitizeDecimalInput } from "../../../../../utils/formatUtils";
 import {
   shouldSeedDefaultExpenses,
   shouldApplyFranchiseExpenses,
@@ -255,7 +256,8 @@ const OperatingExpenses = ({
       return {
         id: f.id,
         name: f.label || '',
-        amount: parseFloat(f.value || 0),
+        // Keep raw string so mid-entry decimals like "12." are not coerced away.
+        amount: f.value === null || f.value === undefined ? '' : String(f.value),
         fixed_expense_type: expenseType.toUpperCase() === "MONTHLY" ? "MONTHLY" : "WEEKLY",
         is_active: f.is_active !== undefined ? f.is_active : true,
         is_value_type: f.is_value_type !== undefined ? f.is_value_type : true, // Default to value type
@@ -343,8 +345,8 @@ const OperatingExpenses = ({
         const next = fixedFields.map((f) => {
           if (f.id === expense.id) {
             if (field === 'amount') {
-              const normalized = normalizeExpenseAmount(value, f.is_value_type !== undefined ? f.is_value_type : true);
-              return { ...f, value: normalized.toString() };
+              // Store sanitized decimal string while typing; normalize on blur.
+              return { ...f, value: value === '' ? '' : String(value) };
             } else if (field === 'name') {
               return { ...f, label: value };
             } else if (field === 'is_active') {
@@ -365,8 +367,7 @@ const OperatingExpenses = ({
         const next = variableFields.map((f) => {
           if (f.id === expense.id) {
             if (field === 'amount') {
-              const normalized = normalizeExpenseAmount(value, f.is_value_type !== undefined ? f.is_value_type : true);
-              return { ...f, value: normalized.toString() };
+              return { ...f, value: value === '' ? '' : String(value) };
             } else if (field === 'name') {
               return { ...f, label: value };
             } else if (field === 'is_active') {
@@ -665,12 +666,20 @@ const OperatingExpenses = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Amount {modalForm.is_value_type ? "($)" : "(%)"}
             </label>
-            <InputNumber
-              value={modalForm.amount}
-              onChange={(value) => setModalForm((prev) => ({ ...prev, amount: value || 0 }))}
-              min={0}
-              max={!modalForm.is_value_type ? 100 : undefined}
+            <Input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={modalForm.amount === 0 || modalForm.amount ? String(modalForm.amount) : ''}
+              onChange={(e) => {
+                setModalForm((prev) => ({
+                  ...prev,
+                  amount: sanitizeDecimalInput(e.target.value),
+                }));
+              }}
               className="w-full"
+              prefix={modalForm.is_value_type ? '$' : undefined}
+              suffix={!modalForm.is_value_type ? '%' : undefined}
             />
           </div>
         </div>
@@ -830,14 +839,22 @@ const ExpenseRow = ({
 
         {/* Amount Input */}
         <div className="md:col-span-2" data-guidance={isFirstExpense ? "expense_first_amount" : undefined}>
-          <InputNumber
+          <Input
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             placeholder="0.00"
-            value={expense.amount}
-            onChange={onUpdateAmount}
-            min={0}
-            max={!expense.is_value_type ? 100 : undefined}
-            step={0.01}
-            precision={2}
+            value={expense.amount === 0 || expense.amount ? String(expense.amount) : ''}
+            onChange={(e) => {
+              onUpdateAmount(sanitizeDecimalInput(e.target.value));
+            }}
+            onBlur={() => {
+              const normalized = Number(parseFloat(expense.amount) || 0);
+              const capped = expense.is_value_type
+                ? Math.max(0, normalized)
+                : Math.min(100, Math.max(0, normalized));
+              onUpdateAmount(String(capped));
+            }}
             className="w-full h-9"
             prefix={expense.is_value_type ? "$" : undefined}
             suffix={!expense.is_value_type ? "%" : undefined}

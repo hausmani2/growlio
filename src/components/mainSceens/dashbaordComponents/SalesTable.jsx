@@ -718,10 +718,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
   // Helper function to handle daily tickets input change with validation
   const handleDailyTicketsChange = (value, setterFunction) => {
-    // Remove any non-numeric characters except for the minus sign
+    // Keep empty while typing; do not coerce to 0 mid-keystroke (Windows/Chrome focus loss).
     const cleanValue = value.toString().replace(/[^0-9]/g, '');
-    const wholeNumber = parseInt(cleanValue) || 0;
-    setterFunction(wholeNumber);
+    setterFunction(cleanValue === '' ? '' : parseInt(cleanValue, 10));
   };
 
   // Helper function to validate daily tickets input
@@ -2622,19 +2621,16 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                     return (
                       <div>
                         <Input
-                          type='number'
-                          value={value || 0}
-                          onChange={(e) => handleDailyTicketsChange(e.target.value, (value) => handleDailyDataChange(index, 'dailyTickets', value, record))}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          value={value === 0 || value ? value : ''}
+                          onChange={(e) => handleDailyTicketsChange(e.target.value, (next) => handleDailyDataChange(index, 'dailyTickets', next, record))}
                           onBlur={(e) => {
                             const wholeNumber = ensureWholeNumberTickets(e.target.value);
-                            if (wholeNumber !== parseFloat(e.target.value)) {
-                              handleDailyDataChange(index, 'dailyTickets', wholeNumber, record);
-                            }
+                            handleDailyDataChange(index, 'dailyTickets', wholeNumber, record);
                           }}
                           placeholder="0"
-                          step="1"
-                          min="0"
-                          pattern="[0-9]*"
                           className="w-full"
                           disabled={isDisabled}
                           readOnly={isFuture}

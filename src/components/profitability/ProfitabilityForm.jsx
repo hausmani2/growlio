@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input, message } from "antd";
+import { sanitizeDecimalInput } from "../../utils/formatUtils";
 import GrowlioLogo from "../common/GrowlioLogo";
 import ImageLayout from "../imageWrapper/ImageLayout";
 import Mask from "../../assets/pngs/new-onboard.png";
@@ -165,14 +166,16 @@ const ProfitabilityForm = () => {
                                 </label>
                                 <div className="relative">
                                     <Input
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoComplete="off"
                                         id="lastMonthSales"
                                         placeholder="Enter sales amount"
                                         className={`w-full h-11 rounded-lg text-sm pl-6 ${
                                             errors.lastMonthSales ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                         value={formData.lastMonthSales}
-                                        onChange={(e) => handleInputChange('lastMonthSales', e.target.value)}
+                                        onChange={(e) => handleInputChange('lastMonthSales', sanitizeDecimalInput(e.target.value))}
                                         status={errors.lastMonthSales ? 'error' : ''}
                                     />
                                     {formData.lastMonthSales && (
@@ -193,14 +196,16 @@ const ProfitabilityForm = () => {
                                 </label>
                                 <div className="relative">
                                     <Input
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoComplete="off"
                                         id="lastMonthCOGS"
                                         placeholder="Enter COGS amount"
                                         className={`w-full h-11 rounded-lg text-sm pl-6 ${
                                             errors.lastMonthCOGS ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                         value={formData.lastMonthCOGS}
-                                        onChange={(e) => handleInputChange('lastMonthCOGS', e.target.value)}
+                                        onChange={(e) => handleInputChange('lastMonthCOGS', sanitizeDecimalInput(e.target.value))}
                                         status={errors.lastMonthCOGS ? 'error' : ''}
                                     />
                                     {formData.lastMonthCOGS && (
@@ -221,14 +226,16 @@ const ProfitabilityForm = () => {
                                 </label>
                                 <div className="relative">
                                     <Input
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoComplete="off"
                                         id="lastMonthLabor"
                                         placeholder="Enter labor expense"
                                         className={`w-full h-11 rounded-lg text-sm pl-6 ${
                                             errors.lastMonthLabor ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                         value={formData.lastMonthLabor}
-                                        onChange={(e) => handleInputChange('lastMonthLabor', e.target.value)}
+                                        onChange={(e) => handleInputChange('lastMonthLabor', sanitizeDecimalInput(e.target.value))}
                                         status={errors.lastMonthLabor ? 'error' : ''}
                                     />
                                     {formData.lastMonthLabor && (
@@ -249,14 +256,16 @@ const ProfitabilityForm = () => {
                                 </label>
                                 <div className="relative">
                                     <Input
-                                        type="number"
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoComplete="off"
                                         id="monthlyRent"
                                         placeholder="Enter monthly rent"
                                         className={`w-full h-11 rounded-lg text-sm pl-6 ${
                                             errors.monthlyRent ? 'border-red-500' : 'border-gray-300'
                                         }`}
                                         value={formData.monthlyRent}
-                                        onChange={(e) => handleInputChange('monthlyRent', e.target.value)}
+                                        onChange={(e) => handleInputChange('monthlyRent', sanitizeDecimalInput(e.target.value))}
                                         status={errors.monthlyRent ? 'error' : ''}
                                     />
                                     {formData.monthlyRent && (

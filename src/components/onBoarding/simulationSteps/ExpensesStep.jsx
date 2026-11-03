@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Select, InputNumber, Switch, Button, Modal, Input, message } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { DEFAULT_EXPENSES, EXPENSE_CATEGORIES, formatExpenseForAPI, calculateMonthlyCost, calculateWeeklyCost } from '../../../utils/simulationUtils';
-import { formatCurrency } from '../../../utils/formatUtils';
+import { formatCurrency, sanitizeDecimalInput } from '../../../utils/formatUtils';
 
 const { Option } = Select;
 
@@ -200,10 +200,8 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false, o
       const updated = [...prev];
       const current = updated[index] || {};
       if (field === 'amount') {
-        const raw = Number(value ?? 0);
-        const safe = Number.isFinite(raw) ? raw : 0;
-        const normalized = current.is_value_type ? Math.max(0, safe) : Math.min(100, Math.max(0, safe));
-        updated[index] = { ...current, amount: normalized };
+        // Keep decimal string while typing ("12."); normalize on blur.
+        updated[index] = { ...current, amount: value === '' ? '' : value };
       } else if (field === 'is_value_type') {
         const raw = Number(current.amount ?? 0);
         const safe = Number.isFinite(raw) ? raw : 0;
@@ -574,14 +572,18 @@ const ExpensesStep = ({ data, updateData, onNext, onBack, isFranchise = false, o
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Amount <span className="text-red-500">*</span>
             </label>
-            <InputNumber
+            <Input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
               placeholder="0.00"
-              value={modalForm.amount}
-              onChange={(value) => setModalForm(prev => ({ ...prev, amount: value || 0 }))}
-              min={0}
-              max={!modalForm.is_value_type ? 100 : undefined}
-              step={0.01}
-              precision={2}
+              value={modalForm.amount === 0 || modalForm.amount ? String(modalForm.amount) : ''}
+              onChange={(e) => {
+                setModalForm((prev) => ({
+                  ...prev,
+                  amount: sanitizeDecimalInput(e.target.value),
+                }));
+              }}
               className="w-full h-11"
               prefix={modalForm.is_value_type ? "$" : undefined}
               suffix={!modalForm.is_value_type ? "%" : undefined}
@@ -686,13 +688,22 @@ const ExpenseRow = ({
 
         {/* Amount Input */}
         <div className="md:col-span-2">
-          <InputNumber
+          <Input
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             placeholder="0.00"
-            value={expense.amount}
-            onChange={onUpdateAmount}
-            min={0}
-            step={0.01}
-            precision={2}
+            value={expense.amount === 0 || expense.amount ? String(expense.amount) : ''}
+            onChange={(e) => {
+              onUpdateAmount(sanitizeDecimalInput(e.target.value));
+            }}
+            onBlur={() => {
+              const normalized = Number(parseFloat(expense.amount) || 0);
+              const capped = expense.is_value_type
+                ? Math.max(0, normalized)
+                : Math.min(100, Math.max(0, normalized));
+              onUpdateAmount(String(capped));
+            }}
             className="w-full h-9"
             prefix={expense.is_value_type ? "$" : undefined}
             suffix={!expense.is_value_type ? "%" : undefined}

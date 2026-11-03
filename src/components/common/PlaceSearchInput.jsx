@@ -196,7 +196,8 @@ const PlaceSearchInput = ({
                     onFocus={handleFocus}
                     onBlur={handleBlur}
                     placeholder={placeholder}
-                    disabled={disabled || isFetchingDetails}
+                    // Do not disable while details load — that blurs mid-keystroke on Windows/Chrome.
+                    disabled={disabled}
                     className={`
                         w-full h-11 px-4 pr-10 rounded-lg text-sm
                         border transition-all duration-200

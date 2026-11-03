@@ -464,7 +464,6 @@ const Profile = () => {
                       form={profileForm}
                       layout="vertical"
                       onFinish={handleProfileUpdate}
-                      disabled={profileLoading}
                     >
                       <Form.Item label="First Name" name="first_name" rules={[{ required: true, message: 'First name is required' }]}>
                         <Input prefix={<UserOutlined />} placeholder="First name" size="large" />
