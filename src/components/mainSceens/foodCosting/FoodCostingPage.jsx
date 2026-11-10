@@ -3211,9 +3211,44 @@ const FoodCostingPage = () => {
         title="Build from Photo with LIO"
         open={photoModalOpen}
         onCancel={() => setPhotoModalOpen(false)}
-        footer={null}
-        width={800}
+        footer={
+          draftResult ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                onClick={() => {
+                  setDraftResult(null);
+                  setDraftLines([]);
+                }}
+              >
+                Analyze another photo
+              </Button>
+              <Popconfirm
+                title="Discard this draft?"
+                onConfirm={() => handleDiscardDraft(draftResult.draft.id)}
+              >
+                <Button danger>Discard draft</Button>
+              </Popconfirm>
+              <Button
+                type="primary"
+                loading={confirmingDraft}
+                className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
+                onClick={handleConfirmDraft}
+              >
+                Confirm & save recipe
+              </Button>
+            </div>
+          ) : null
+        }
+        width="min(1120px, 96vw)"
+        centered
         destroyOnClose
+        styles={{
+          body: {
+            maxHeight: 'calc(100vh - 180px)',
+            overflowY: 'auto',
+            paddingTop: 12,
+          },
+        }}
       >
         <Alert
           className="mb-4"
@@ -3253,45 +3288,51 @@ const FoodCostingPage = () => {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div>
-                <p className="font-semibold text-lg m-0">
+          <div className="space-y-4 min-w-0">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-lg m-0 break-words">
                   {draftResult.draft?.menu_item_name_guess || 'Draft recipe'}
                 </p>
-                <p className="text-sm text-gray-500 m-0">
-                  <ConfidenceLabel>Starting confidence</ConfidenceLabel>:{' '}
-                  {draftResult.draft?.starting_confidence_score}% · AI builds{' '}
-                  {draftResult.ai_builds_used}/{draftResult.ai_builds_limit}
-                </p>
-                <p className="text-sm text-gray-600 m-0 mt-1">
-                  Est. plate cost: $
-                  {Number(
-                    draftResult.draft?.estimated_plate_cost ??
-                      draftLines.reduce(
-                        (sum, line) =>
-                          sum +
-                          (line.exclude
-                            ? 0
-                            : Number(line.line_cost_estimate || 0)),
-                        0
-                      )
-                  ).toFixed(2)}{' '}
-                  ·{' '}
-                  {
-                    draftLines.filter(
-                      (line) => !line.exclude && line.needs_pricing
-                    ).length
-                  }{' '}
-                  ingredient(s) need pricing
-                </p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-500 mt-1">
+                  <span>
+                    <ConfidenceLabel>Starting confidence</ConfidenceLabel>:{' '}
+                    {draftResult.draft?.starting_confidence_score}%
+                  </span>
+                  <span>
+                    AI builds {draftResult.ai_builds_used}/
+                    {draftResult.ai_builds_limit}
+                  </span>
+                  <span>
+                    Est. plate cost: $
+                    {Number(
+                      draftResult.draft?.estimated_plate_cost ??
+                        draftLines.reduce(
+                          (sum, line) =>
+                            sum +
+                            (line.exclude
+                              ? 0
+                              : Number(line.line_cost_estimate || 0)),
+                          0
+                        )
+                    ).toFixed(2)}
+                  </span>
+                  <span>
+                    {
+                      draftLines.filter(
+                        (line) => !line.exclude && line.needs_pricing
+                      ).length
+                    }{' '}
+                    ingredient(s) need pricing
+                  </span>
+                </div>
               </div>
-              <Tag icon={<CheckCircleOutlined />} color="processing">
+              <Tag icon={<CheckCircleOutlined />} color="processing" className="shrink-0">
                 Draft pending review
               </Tag>
             </div>
 
-            <div className="max-w-xs">
+            <div className="max-w-[200px]">
               <p className="text-sm font-medium mb-1">Selling price</p>
               <InputNumber
                 className="w-full"
@@ -3319,153 +3360,151 @@ const FoodCostingPage = () => {
               />
             ) : null}
 
-            <Table
-              rowKey="draft_line_id"
-              size="small"
-              pagination={false}
-              dataSource={draftLines}
-              columns={[
-                {
-                  title: 'Ingredient',
-                  dataIndex: 'name',
-                  render: (value, record, index) => (
-                    <Input
-                      value={value}
-                      onChange={(e) => {
-                        const next = [...draftLines];
-                        next[index] = { ...record, name: e.target.value };
-                        setDraftLines(next);
-                      }}
-                    />
-                  ),
-                },
-                {
-                  title: 'Portion',
-                  dataIndex: 'quantity',
-                  width: 110,
-                  render: (value, record, index) => (
-                    <InputNumber
-                      className="w-full"
-                      min={0}
-                      step={0.1}
-                      value={value}
-                      onChange={(val) => {
-                        const next = [...draftLines];
-                        next[index] = { ...record, quantity: val };
-                        setDraftLines(next);
-                      }}
-                    />
-                  ),
-                },
-                {
-                  title: 'Unit',
-                  dataIndex: 'unit',
-                  width: 100,
-                  render: (value, record, index) => (
-                    <Select
-                      className="w-full"
-                      value={value}
-                      options={UNIT_OPTIONS}
-                      onChange={(val) => {
-                        const next = [...draftLines];
-                        next[index] = { ...record, unit: val };
-                        setDraftLines(next);
-                      }}
-                    />
-                  ),
-                },
-                {
-                  title: 'Type',
-                  dataIndex: 'line_type',
-                  width: 100,
-                  render: (v) => <Tag>{v}</Tag>,
-                },
-                {
-                  title: 'Match',
-                  key: 'match',
-                  width: 130,
-                  render: (_, record) =>
-                    record.matched_ingredient_name ? (
-                      <Tag color="blue">{record.matched_ingredient_name}</Tag>
-                    ) : (
-                      <Tag color="orange">New</Tag>
+            <div className="rounded-lg border border-gray-200 overflow-hidden">
+              <Table
+                rowKey="draft_line_id"
+                size="small"
+                pagination={false}
+                dataSource={draftLines}
+                scroll={{ x: 980 }}
+                tableLayout="fixed"
+                columns={[
+                  {
+                    title: 'Ingredient',
+                    dataIndex: 'name',
+                    width: 180,
+                    ellipsis: true,
+                    render: (value, record, index) => (
+                      <Input
+                        size="small"
+                        title={value}
+                        value={value}
+                        onChange={(e) => {
+                          const next = [...draftLines];
+                          next[index] = { ...record, name: e.target.value };
+                          setDraftLines(next);
+                        }}
+                      />
                     ),
-                },
-                {
-                  title: 'Unit cost',
-                  key: 'unit_cost',
-                  width: 100,
-                  render: (_, record) =>
-                    record.cost_per_standardized_unit != null
-                      ? `$${Number(record.cost_per_standardized_unit).toFixed(4)}`
-                      : '—',
-                },
-                {
-                  title: 'Est. cost',
-                  key: 'est_cost',
-                  width: 90,
-                  render: (_, record) =>
-                    record.line_cost_estimate != null
-                      ? `$${Number(record.line_cost_estimate).toFixed(2)}`
-                      : '—',
-                },
-                {
-                  title: 'Pricing',
-                  key: 'pricing',
-                  width: 110,
-                  render: (_, record) =>
-                    record.needs_pricing ? (
-                      <Tag color="orange">Needs pricing</Tag>
-                    ) : (
-                      <Tag color="green">Priced</Tag>
+                  },
+                  {
+                    title: 'Portion',
+                    dataIndex: 'quantity',
+                    width: 88,
+                    render: (value, record, index) => (
+                      <InputNumber
+                        size="small"
+                        className="w-full"
+                        min={0}
+                        step={0.1}
+                        value={value}
+                        onChange={(val) => {
+                          const next = [...draftLines];
+                          next[index] = { ...record, quantity: val };
+                          setDraftLines(next);
+                        }}
+                      />
                     ),
-                },
-                {
-                  title: 'Keep',
-                  dataIndex: 'exclude',
-                  width: 80,
-                  render: (value, record, index) => (
-                    <Select
-                      value={!value}
-                      options={[
-                        { value: true, label: 'Yes' },
-                        { value: false, label: 'No' },
-                      ]}
-                      onChange={(keep) => {
-                        const next = [...draftLines];
-                        next[index] = { ...record, exclude: !keep };
-                        setDraftLines(next);
-                      }}
-                    />
-                  ),
-                },
-              ]}
-            />
-
-            <Space>
-              <Button
-                type="primary"
-                loading={confirmingDraft}
-                className="!bg-[#FF8132] hover:!bg-[#EB5B00] border-none"
-                onClick={handleConfirmDraft}
-              >
-                Confirm & save recipe
-              </Button>
-              <Popconfirm
-                title="Discard this draft?"
-                onConfirm={() => handleDiscardDraft(draftResult.draft.id)}
-              >
-                <Button danger>Discard draft</Button>
-              </Popconfirm>
-              <Button
-                onClick={() => {
-                  setDraftResult(null);
-                  setDraftLines([]);
-                }}
-              >
-                Analyze another photo
-              </Button>
-            </Space>
+                  },
+                  {
+                    title: 'Unit',
+                    dataIndex: 'unit',
+                    width: 88,
+                    render: (value, record, index) => (
+                      <Select
+                        size="small"
+                        className="w-full"
+                        value={value}
+                        options={UNIT_OPTIONS}
+                        onChange={(val) => {
+                          const next = [...draftLines];
+                          next[index] = { ...record, unit: val };
+                          setDraftLines(next);
+                        }}
+                      />
+                    ),
+                  },
+                  {
+                    title: 'Type',
+                    dataIndex: 'line_type',
+                    width: 84,
+                    render: (v) => (
+                      <Tag className="!m-0 !text-[11px]">{v}</Tag>
+                    ),
+                  },
+                  {
+                    title: 'Match',
+                    key: 'match',
+                    width: 160,
+                    ellipsis: true,
+                    render: (_, record) =>
+                      record.matched_ingredient_name ? (
+                        <span
+                          className="block truncate text-xs text-blue-700"
+                          title={record.matched_ingredient_name}
+                        >
+                          {record.matched_ingredient_name}
+                        </span>
+                      ) : (
+                        <Tag color="orange" className="!m-0">New</Tag>
+                      ),
+                  },
+                  {
+                    title: 'Unit cost',
+                    key: 'unit_cost',
+                    width: 96,
+                    align: 'right',
+                    render: (_, record) =>
+                      record.cost_per_standardized_unit != null
+                        ? `$${Number(record.cost_per_standardized_unit).toFixed(4)}`
+                        : '—',
+                  },
+                  {
+                    title: 'Est. cost',
+                    key: 'est_cost',
+                    width: 88,
+                    align: 'right',
+                    render: (_, record) =>
+                      record.line_cost_estimate != null
+                        ? `$${Number(record.line_cost_estimate).toFixed(2)}`
+                        : '—',
+                  },
+                  {
+                    title: 'Pricing',
+                    key: 'pricing',
+                    width: 108,
+                    render: (_, record) =>
+                      record.needs_pricing ? (
+                        <Tag color="orange" className="!m-0 !text-[11px]">Needs pricing</Tag>
+                      ) : (
+                        <Tag color="green" className="!m-0 !text-[11px]">Priced</Tag>
+                      ),
+                  },
+                  {
+                    title: 'Keep',
+                    dataIndex: 'exclude',
+                    width: 76,
+                    fixed: 'right',
+                    render: (value, record, index) => (
+                      <Select
+                        size="small"
+                        className="w-full"
+                        value={!value}
+                        options={[
+                          { value: true, label: 'Yes' },
+                          { value: false, label: 'No' },
+                        ]}
+                        onChange={(keep) => {
+                          const next = [...draftLines];
+                          next[index] = { ...record, exclude: !keep };
+                          setDraftLines(next);
+                        }}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </div>
           </div>
         )}
       </Modal>
