@@ -57,20 +57,50 @@ const pctOf = (row, key, amountKey) => {
   return (amount / sales) * 100;
 };
 
-const costSnapshot = (label, actual, sales, goalPct, pct) => {
+/**
+ * Cash Flow–aligned cost card for one day.
+ * Variance matches Cashflow: (actual − budget) / sales × 100.
+ */
+const costSnapshot = (label, actual, budget, sales, pct, source) => {
   const salesN = Number(sales);
   const actualN = Number(actual);
-  const goal = Number(goalPct);
+  const budgetN = Number(budget);
   const percent = pct == null ? null : Number(pct);
-  if (!(salesN > 0) || !Number.isFinite(actualN) || !(goal > 0)) {
-    return { label, pct: percent, target: goal || null, diff: null, tone: "neutral", amount: actualN };
+  const amount = Number.isFinite(actualN) ? actualN : null;
+  const budgetAmount = Number.isFinite(budgetN) ? budgetN : null;
+  const basis = salesN > 0 ? salesN : budgetN;
+  let variancePct = null;
+  let tone = "neutral";
+  if (
+    Number.isFinite(actualN) &&
+    Number.isFinite(budgetN) &&
+    budgetN > 0 &&
+    Number.isFinite(basis) &&
+    basis > 0
+  ) {
+    const raw = ((actualN - budgetN) / basis) * 100;
+    if (Number.isFinite(raw) && Math.abs(raw) >= 0.05) {
+      variancePct = Math.abs(raw);
+      tone = raw > 0 ? "over" : "under";
+    } else {
+      tone = "ok";
+      variancePct = 0;
+    }
   }
-  const targetDollars = salesN * (goal / 100);
-  const diff = actualN - targetDollars;
-  let tone = "ok";
-  if (diff > 0.5) tone = "over";
-  else if (diff < -0.5) tone = "under";
-  return { label, pct: percent, target: goal, diff, tone, amount: actualN };
+  return {
+    label,
+    pct: percent,
+    amount,
+    budgetAmount,
+    source: source || "actual",
+    variancePct,
+    tone,
+    // Keep diff for insight copy: dollars vs that day's budget.
+    diff:
+      Number.isFinite(actualN) && Number.isFinite(budgetN)
+        ? actualN - budgetN
+        : null,
+  };
 };
 
 // A history row is usable only when it carries a verified daily figure.
@@ -95,15 +125,21 @@ const CostGaugeTile = ({ row }) => {
     () => [{ name: row.label, value: pct == null ? 0 : pct, fill: color }],
     [row.label, pct, color]
   );
-  const chip =
-    row.diff != null && Math.abs(row.diff) >= 0.5
-      ? `${money(Math.abs(row.diff))} ${row.tone === "over" ? "over" : "under"}`
-      : row.diff != null
-        ? "On target"
-        : "";
+  const sourceLabel = row.source === "budget" ? "Budget" : "Actual";
+  let chip = "";
+  if (row.variancePct != null && row.tone === "over") {
+    chip = `${row.variancePct.toFixed(1)}% over budget`;
+  } else if (row.variancePct != null && row.tone === "under") {
+    chip = `${row.variancePct.toFixed(1)}% under budget`;
+  } else if (row.tone === "ok") {
+    chip = "On budget";
+  }
   return (
     <div className="rounded-xl border border-gray-100 bg-white px-2 py-2 flex flex-col items-center">
-      <div className="text-xs font-semibold text-gray-700">{row.label}</div>
+      <div className="w-full flex items-center justify-between gap-1 px-0.5">
+        <div className="text-xs font-semibold text-gray-700">{row.label}</div>
+        <div className="text-[10px] font-medium text-gray-400">{sourceLabel}</div>
+      </div>
       <div className="relative" style={{ width: 86, height: 86 }}>
         <RadialBarChart
           width={86}
@@ -122,14 +158,17 @@ const CostGaugeTile = ({ row }) => {
             isAnimationActive={false}
           />
         </RadialBarChart>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className="text-base font-extrabold tabular-nums text-gray-900">
-            {pct == null ? "—" : `${Math.round(pct)}%`}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-sm font-extrabold tabular-nums text-gray-900 leading-none">
+            {row.amount == null ? "—" : money(row.amount)}
           </span>
+          {pct != null ? (
+            <span className="text-[10px] text-gray-500 mt-0.5">{Math.round(pct)}% of sales</span>
+          ) : null}
         </div>
       </div>
       <div className="text-[11px] text-gray-500 leading-tight">
-        {row.target ? `Target ${Math.round(Number(row.target))}%` : "No target"}
+        {row.budgetAmount != null ? `Budget ${money(row.budgetAmount)}` : "No budget"}
       </div>
       {chip ? (
         <div
@@ -236,19 +275,42 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
 
   const costs = useMemo(() => {
     if (!day) return [];
+    // Same dollars + budget variance Cash Flow uses for the day cards.
     return [
-      costSnapshot("Labor", day.actual_labour, day.sales, goals?.labor, pctOf(day, "labour_pct", "actual_labour")),
-      costSnapshot("Food", day.actual_cogs, day.sales, goals?.cogs, pctOf(day, "cogs_pct", "actual_cogs")),
-      costSnapshot("Rent", day.actual_rent, day.sales, goals?.rent, pctOf(day, "rent_pct", "actual_rent")),
+      costSnapshot(
+        "Labor",
+        day.actual_labour,
+        day.budget_labour,
+        day.sales,
+        pctOf(day, "labour_pct", "actual_labour"),
+        day.labour_source || "actual"
+      ),
+      costSnapshot(
+        "Food",
+        day.actual_cogs,
+        day.budget_cogs,
+        day.sales,
+        pctOf(day, "cogs_pct", "actual_cogs"),
+        day.cogs_source || "actual"
+      ),
+      costSnapshot(
+        "Rent",
+        day.actual_rent,
+        day.budget_rent,
+        day.sales,
+        pctOf(day, "rent_pct", "actual_rent"),
+        day.rent_source || "budget"
+      ),
       costSnapshot(
         "Operating",
         day.actual_expenses,
+        day.budget_expenses,
         day.sales,
-        goals?.operatingExpenses,
-        pctOf(day, "expense_pct", "actual_expenses")
+        pctOf(day, "expense_pct", "actual_expenses"),
+        day.expense_source || "budget"
       ),
     ];
-  }, [day, goals]);
+  }, [day]);
 
   const insight = useMemo(() => {
     if (!day) return "";
@@ -261,10 +323,10 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
     const outcome = profit < 0 ? `lost ${money(Math.abs(profit))}` : `made ${money(profit)}`;
     const overs = costs.filter((row) => row.tone === "over" && row.diff != null);
     if (!overs.length) {
-      return `${weekdayName} sold ${money(sales)} and ${outcome}. Costs stayed at or under target.`;
+      return `${weekdayName} sold ${money(sales)} and ${outcome}. Costs stayed at or under budget.`;
     }
     const details = overs
-      .map((row) => `${row.label.toLowerCase()} was ${money(Math.abs(row.diff))} over target`)
+      .map((row) => `${row.label.toLowerCase()} was ${money(Math.abs(row.diff))} over budget`)
       .join(", ");
     return `${weekdayName} sold ${money(sales)} and ${outcome}. ${details.charAt(0).toUpperCase()}${details.slice(1)}.`;
   }, [costs, day, profit, sales, weekdayName]);
@@ -386,7 +448,7 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
     if (strong) {
       steps.push(`Keep this ${weekdayName}: ${money(sales)} in sales and ${result}.`);
       if (held.length) {
-        steps.push(`${held.map(describe).join(", ")} stayed at or under target — repeat the same staffing and purchasing.`);
+        steps.push(`${held.map(describe).join(", ")} stayed at or under budget — repeat the same staffing and purchasing.`);
       }
     } else {
       if (overs.length) {
