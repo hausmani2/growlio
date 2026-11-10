@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isSalesReview, reportedSalesAmount, salesBasisNote } from './salesBasis.js';
+import {
+  daySalesBreakdownParts,
+  isSalesReview,
+  reportedSalesAmount,
+  salesBasisNote,
+} from './salesBasis.js';
 
 describe('sales basis notes', () => {
   it('needs review outranks every other basis in a mixed week', () => {
@@ -33,6 +38,19 @@ describe('sales basis notes', () => {
     assert.match(verified.text, /Net sales exclude tax/);
     assert.match(verified.text, /Manually overridden/);
     assert.equal(verified.tone, 'text-green-700');
+  });
+
+  it('day sales breakdown lists only present tax tip service discount amounts', () => {
+    assert.deepEqual(
+      daySalesBreakdownParts({
+        salesTax: '12.50',
+        tips: 0,
+        serviceCharges: '3.00',
+        discounts: '1.25',
+      }),
+      ['Tax $12.50', 'Service $3.00', 'Discounts $1.25']
+    );
+    assert.deepEqual(daySalesBreakdownParts({}), []);
   });
 
   it('a review day does not yield a sales amount for a percentage', () => {

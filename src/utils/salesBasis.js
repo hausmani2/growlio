@@ -24,6 +24,32 @@ export function reportedSalesAmount(sales) {
   return Number.isFinite(amount) ? amount : null;
 }
 
+function moneyLabel(value) {
+  const amount = parseFloat(value);
+  if (!Number.isFinite(amount) || Math.abs(amount) < 0.005) return null;
+  return `$${amount.toFixed(2)}`;
+}
+
+/**
+ * Per-day Square / Close Day breakdown for Net Sales hover.
+ * Returns labels like "Tax $12.34" only when the amount is present.
+ */
+export function daySalesBreakdownParts(day) {
+  if (!day) return [];
+  const parts = [];
+  const tax = moneyLabel(day.salesTax ?? day.sales_tax);
+  const tips = moneyLabel(day.tips);
+  const service = moneyLabel(day.serviceCharges ?? day.service_charges);
+  const discounts = moneyLabel(day.discounts);
+  const refunds = moneyLabel(day.refunds);
+  if (tax) parts.push(`Tax ${tax}`);
+  if (tips) parts.push(`Tips ${tips}`);
+  if (service) parts.push(`Service ${service}`);
+  if (discounts) parts.push(`Discounts ${discounts}`);
+  if (refunds) parts.push(`Refunds ${refunds}`);
+  return parts;
+}
+
 export function salesBasisNote(days) {
   const rows = (days || []).filter(Boolean);
   if (rows.some((day) => isSalesReview(day))) {

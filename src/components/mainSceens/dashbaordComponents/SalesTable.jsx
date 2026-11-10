@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin } from 'antd';
+import { Modal, Button, Input, Table, Card, Row, Col, Typography, Space, message, Empty, Spin, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DollarOutlined, ExclamationCircleOutlined, CalendarOutlined, WarningOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -33,7 +33,7 @@ import {
 } from '../../../utils/dayCloseGuard';
 import { getNextIncompleteSetupRoute } from '../../../utils/onboardingUtils';
 import { roundToCents, sanitizeDecimalInput } from '../../../utils/formatUtils';
-import { salesBasisNote } from '../../../utils/salesBasis';
+import { daySalesBreakdownParts, salesBasisNote } from '../../../utils/salesBasis';
 const { Title, Text } = Typography;
 
 function moneyLabel(value) {
@@ -57,6 +57,42 @@ function salesBreakdownNote(days) {
   if (discounts) parts.push(`Discounts ${moneyLabel(discounts)}`);
   if (refunds) parts.push(`Refunds ${moneyLabel(refunds)}`);
   return parts.join(' · ');
+}
+
+function netSalesBreakdownTooltip(day) {
+  const parts = daySalesBreakdownParts(day);
+  if (!parts.length) {
+    return 'No tax, tips, service, or discounts recorded for this day';
+  }
+  return (
+    <div className="text-xs leading-5">
+      <div className="font-semibold mb-0.5">Excluded from net sales</div>
+      {parts.map((part) => (
+        <div key={part}>{part}</div>
+      ))}
+    </div>
+  );
+}
+
+function NetSalesActualCell({ amount, day, closed = false }) {
+  if (closed) {
+    return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+  }
+  return (
+    <Tooltip title={netSalesBreakdownTooltip(day)} placement="topLeft">
+      <Text
+        style={{
+          backgroundColor: '#f0f8ff',
+          padding: '2px 6px',
+          borderRadius: '3px',
+          cursor: 'help',
+          borderBottom: '1px dashed #91caff',
+        }}
+      >
+        ${Number(amount || 0).toFixed(2)}
+      </Text>
+    </Tooltip>
+  );
 }
 
 function isDayClosedForWtd(record) {
@@ -2633,7 +2669,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
                     calculatedNetSales += providerSales;
 
-                    return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
+                    return (
+                      <NetSalesActualCell amount={calculatedNetSales} day={record} />
+                    );
                   }
                 },
                 {
@@ -3108,7 +3146,7 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                               width: 150,
                               render: (value, record) => {
                                 if (record.restaurant_open === 0) {
-                                  return <Text style={{ color: '#999', fontStyle: 'italic' }}>CLOSED</Text>;
+                                  return <NetSalesActualCell closed day={record} />;
                                 }
                                 // Calculate the sum of actual sales for this day (including dynamic providers)
                                 // Only include enabled sales channels
@@ -3132,7 +3170,9 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
 
                                 calculatedNetSales += providerSales;
 
-                                return <Text style={{ backgroundColor: '#f0f8ff', padding: '2px 6px', borderRadius: '3px' }}>${calculatedNetSales.toFixed(2)}</Text>;
+                                return (
+                                  <NetSalesActualCell amount={calculatedNetSales} day={record} />
+                                );
                               }
                             },
                             {
@@ -3311,9 +3351,32 @@ const SalesTable = ({ selectedDate, selectedYear, selectedMonth, weekDays = [], 
                 ))}
 
                 <div>
-                  <Text strong>Net Sales - Actual:</Text>
+                  {(() => {
+                    const weekBreakdown = salesBreakdownNote(weeklyData?.[0]?.dailyData);
+                    return (
+                      <Tooltip
+                        title={
+                          weekBreakdown ? (
+                            <div className="text-xs leading-5">
+                              <div className="font-semibold mb-0.5">Week total excluded from net sales</div>
+                              {weekBreakdown.split(' · ').map((part) => (
+                                <div key={part}>{part}</div>
+                              ))}
+                            </div>
+                          ) : (
+                            'No tax, tips, service, or discounts recorded for this week'
+                          )
+                        }
+                        placement="left"
+                      >
+                        <Text strong style={{ cursor: 'help', borderBottom: '1px dashed #91caff' }}>
+                          Net Sales - Actual:
+                        </Text>
+                      </Tooltip>
+                    );
+                  })()}
                   <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                    (Calculated: In Store + App + Online + Providers)
+                    (Calculated: In Store + App + Online + Providers) · hover for tax/tips
                   </Text>
                   <Input
                     value={`${(weeklyTotals.netSalesActual || 0).toFixed(2)}`}
