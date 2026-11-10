@@ -376,13 +376,6 @@ const EnvelopeProgress = ({ percent, barClass }) => {
   );
 };
 
-/** Last day of the Sun–Sat week that is not in the future. */
-const weekStripAnchor = (dateValue) => {
-  const weekEnd = dateValue.add(6 - dateValue.day(), 'day');
-  const today = dayjs();
-  return (weekEnd.isAfter(today, 'day') ? today : weekEnd).format('YYYY-MM-DD');
-};
-
 const CashFlowModule = () => {
   const {
     cashFlowData,
@@ -395,7 +388,6 @@ const CashFlowModule = () => {
   const [envelopeMode, setEnvelopeMode] = useState('actual');
   const [weekDays, setWeekDays] = useState([]);
   const loadedKey = useRef('');
-  const weekDaysCache = useRef({});
   const requestSeq = useRef(0);
 
   // Forecast only adds budget for days still ahead of today. Once the week has
@@ -417,41 +409,21 @@ const CashFlowModule = () => {
 
   useEffect(() => {
     const selected = selectedDate.format('YYYY-MM-DD');
-    const anchor = weekStripAnchor(selectedDate);
     const key = `${selected}|${selectedLocationId || ''}`;
     if (loadedKey.current === key) return;
     loadedKey.current = key;
     setEnvelopeMode('actual');
 
     const seq = ++requestSeq.current;
-    const cacheKey = `${anchor}|${selectedLocationId || ''}`;
 
     (async () => {
-      const rememberDays = (days) => {
-        if (!days?.length || requestSeq.current !== seq) return;
-        weekDaysCache.current[cacheKey] = days;
-        setWeekDays(days);
-      };
-
-      // The strip must be loaded through the end of the week. Asking for an
-      // earlier day makes the API return $0 for every day after that date.
-      const cachedDays = weekDaysCache.current[cacheKey];
-      if (cachedDays && requestSeq.current === seq) setWeekDays(cachedDays);
-      else if (requestSeq.current === seq) setWeekDays([]);
-
-      if (anchor === selected) {
-        const payload = await fetchCashFlow(selected);
-        rememberDays(payload?.week_to_date?.days);
-        return;
-      }
-
-      const [, weekPayload] = await Promise.all([
-        fetchCashFlow(selected),
-        cachedDays
-          ? Promise.resolve(null)
-          : fetchCashFlow(anchor, null, { commit: false }),
-      ]);
-      rememberDays(weekPayload?.week_to_date?.days);
+      // Always take the strip from the selected date's payload. The API already
+      // returns all 7 days for the location week that contains that date.
+      // (A Sunday-based "week end" anchor used to pull the next week when the
+      // location week start is not Sunday — e.g. Mon Nov 9 → Tue 10–Mon 16.)
+      const payload = await fetchCashFlow(selected);
+      if (requestSeq.current !== seq) return;
+      setWeekDays(payload?.week_to_date?.days || []);
     })();
   }, [selectedDate, selectedLocationId, fetchCashFlow]);
 
