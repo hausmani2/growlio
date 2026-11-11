@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from '../utils/axiosInterceptors';
+import { apiGet, apiPatch, apiPost } from '../utils/axiosInterceptors';
 
 const withIds = (params = {}) => {
   const restaurantId =
@@ -41,5 +41,15 @@ export const markAllNotificationsRead = async () => {
     mark_all: true,
     restaurant_id,
   });
+  return res.data;
+};
+
+export const fetchEmailNotificationPreferences = async () => {
+  const res = await apiGet('/notifications/email-preferences/');
+  return res.data;
+};
+
+export const updateEmailNotificationPreferences = async (payload) => {
+  const res = await apiPatch('/notifications/email-preferences/', payload);
   return res.data;
 };

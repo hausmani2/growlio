@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
-import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined, CreditCardOutlined, BellOutlined } from '@ant-design/icons';
 import LocationsTab from './LocationsTab';
 import BillingTab from './BillingTab';
+import NotificationsTab from './NotificationsTab';
 import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
@@ -635,6 +636,18 @@ const Profile = () => {
               <BillingTab />
             </TabPane>
           )}
+
+          <TabPane
+            tab={
+              <span className="flex items-center gap-2">
+                <BellOutlined />
+                Notifications
+              </span>
+            }
+            key="notifications"
+          >
+            <NotificationsTab />
+          </TabPane>
 
           {/* Security Tab */}
           <TabPane 
