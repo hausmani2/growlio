@@ -74,8 +74,8 @@ const NotificationsTab = () => {
         <div className="pb-3 border-b border-gray-200 mb-6">
           <h3 className="text-xl font-bold text-orange-600">Email Notifications</h3>
           <Text className="text-gray-600 block mt-2">
-            Choose how often you want each email. Set a notification to Never to stop
-            receiving it.
+            Choose Daily to receive that email, or Never to stop it. Close Day Reminder
+            and the Daily Profit Report are controlled separately.
           </Text>
         </div>
 
@@ -88,7 +88,7 @@ const NotificationsTab = () => {
             <Form.Item
               label="Close Day Reminder"
               name="close_day_reminder"
-              extra="Reminds you to enter today's close-out numbers when they are still missing."
+              extra="Daily emails a reminder when today's close-out numbers are still missing. Never turns this reminder off."
               rules={[{ required: true, message: 'Select a frequency' }]}
             >
               <Select
@@ -99,9 +99,9 @@ const NotificationsTab = () => {
             </Form.Item>
 
             <Form.Item
-              label="Previous Day Summary"
+              label="Previous Day Summary (Daily Profit Report)"
               name="previous_day_summary"
-              extra="Emails a snapshot of yesterday's sales, labor, food cost, and profit."
+              extra="Daily sends yesterday's budget vs actual report with LIO notes when the day was closed out. Never turns this report off. Not sent if yesterday has no data."
               rules={[{ required: true, message: 'Select a frequency' }]}
             >
               <Select
