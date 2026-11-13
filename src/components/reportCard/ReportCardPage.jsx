@@ -25,8 +25,8 @@ const ReportCardPage = () => {
   const navigate = useNavigate();
   const [activeRestaurantId, setActiveRestaurantId] = useState(() => localStorage.getItem('restaurant_id'));
   const [dateRange, setDateRange] = useState([
-    dayjs().subtract(1, 'month').startOf('month'),
-    dayjs().subtract(1, 'month').endOf('month'),
+    dayjs().startOf('week'),
+    dayjs().endOf('week'),
   ]);
   const [isTutorialModalVisible, setIsTutorialModalVisible] = useState(false);
   

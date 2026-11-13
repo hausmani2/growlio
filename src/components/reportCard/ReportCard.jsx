@@ -391,12 +391,12 @@ const ReportCard = ({
     () => formatMarginPct(summary?.sales, summary?.profit),
     [summary?.sales, summary?.profit]
   );
-  // Initialize with last month (default for report card)
+  // Default to current week (client: Report Card should always open here)
   const [dateRange, setDateRange] = useState([
-    dayjs().subtract(1, 'month').startOf('month'),
-    dayjs().subtract(1, 'month').endOf('month'),
+    dayjs().startOf('week'),
+    dayjs().endOf('week'),
   ]);
-  const [quickSelectLabel, setQuickSelectLabel] = useState('Last Month');
+  const [quickSelectLabel, setQuickSelectLabel] = useState('Current Week');
 
   // Format date label based on selected range
   const formattedDateLabel = useMemo(() => {
@@ -414,6 +414,8 @@ const ReportCard = ({
       setDateRange(dates);
       // Update quick select label based on selection
       const today = dayjs();
+      const currentWeekStart = today.startOf('week');
+      const currentWeekEnd = today.endOf('week');
       const lastWeekStart = today.subtract(1, 'week').startOf('week');
       const lastWeekEnd = today.subtract(1, 'week').endOf('week');
       const lastMonthStart = today.subtract(1, 'month').startOf('month');
@@ -424,8 +426,10 @@ const ReportCard = ({
       const lastYearEnd = today.subtract(1, 'year').endOf('year');
       const currentMonthStart = today.startOf('month');
       const currentMonthEnd = today.endOf('month');
-      
-      if (dates[0].isSame(lastWeekStart, 'day') && dates[1].isSame(lastWeekEnd, 'day')) {
+
+      if (dates[0].isSame(currentWeekStart, 'day') && dates[1].isSame(currentWeekEnd, 'day')) {
+        setQuickSelectLabel('Current Week');
+      } else if (dates[0].isSame(lastWeekStart, 'day') && dates[1].isSame(lastWeekEnd, 'day')) {
         setQuickSelectLabel('Last Week');
       } else if (dates[0].isSame(currentMonthStart, 'day') && dates[1].isSame(currentMonthEnd, 'day')) {
         setQuickSelectLabel('Current Month');
@@ -451,10 +455,15 @@ const ReportCard = ({
   const handleQuickSelect = (option) => {
     let newDates = null;
     switch (option) {
+      case 'current_week':
+        newDates = [dayjs().startOf('week'), dayjs().endOf('week')];
+        setQuickSelectLabel('Current Week');
+        break;
       case 'last_week':
-        const lastWeekStart = dayjs().subtract(1, 'week').startOf('week');
-        const lastWeekEnd = dayjs().subtract(1, 'week').endOf('week');
-        newDates = [lastWeekStart, lastWeekEnd];
+        newDates = [
+          dayjs().subtract(1, 'week').startOf('week'),
+          dayjs().subtract(1, 'week').endOf('week'),
+        ];
         setQuickSelectLabel('Last Week');
         break;
       case 'current_month':
@@ -490,6 +499,7 @@ const ReportCard = ({
 
   const quickSelectMenu = {
     items: [
+      { key: 'current_week', label: 'Current Week' },
       { key: 'last_week', label: 'Last Week' },
       { key: 'current_month', label: 'Current Month' },
       { key: 'last_month', label: 'Last Month' },

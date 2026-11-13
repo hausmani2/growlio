@@ -135,7 +135,7 @@ const CostGaugeTile = ({ row }) => {
     chip = "On budget";
   }
   return (
-    <div className="rounded-xl border border-gray-100 bg-white px-2 py-2 flex flex-col items-center">
+    <div className="rounded-xl border border-gray-100 bg-white px-2 py-2 flex flex-col items-center min-w-0">
       <div className="w-full flex items-center justify-between gap-1 px-0.5">
         <div className="text-xs font-semibold text-gray-700">{row.label}</div>
         <div className="text-[10px] font-medium text-gray-400">{sourceLabel}</div>
@@ -158,21 +158,23 @@ const CostGaugeTile = ({ row }) => {
             isAnimationActive={false}
           />
         </RadialBarChart>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="text-sm font-extrabold tabular-nums text-gray-900 leading-none">
             {row.amount == null ? "—" : money(row.amount)}
           </span>
-          {pct != null ? (
-            <span className="text-[10px] text-gray-500 mt-0.5">{Math.round(pct)}% of sales</span>
-          ) : null}
         </div>
       </div>
-      <div className="text-[11px] text-gray-500 leading-tight">
+      {pct != null ? (
+        <div className="text-[11px] text-gray-500 leading-tight text-center px-0.5">
+          {Math.round(pct)}% of sales
+        </div>
+      ) : null}
+      <div className="text-[11px] text-gray-500 leading-tight text-center px-0.5">
         {row.budgetAmount != null ? `Budget ${money(row.budgetAmount)}` : "No budget"}
       </div>
       {chip ? (
         <div
-          className={`text-[11px] font-semibold leading-tight ${
+          className={`text-[11px] font-semibold leading-tight text-center px-0.5 ${
             row.tone === "over" ? "text-red-600" : "text-green-700"
           }`}
         >
@@ -430,13 +432,17 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
     if (day?.sales_review) {
       return ['Confirm this day\'s sales in Close Day so LIO can score it.'];
     }
-    const describe = (row) => {
-      const pct = row.pct == null ? "" : ` ${Math.round(row.pct)}%`;
+    const describeOver = (row) => {
       const gap =
         row.diff != null && Math.abs(row.diff) >= 0.5
-          ? ` (${money(Math.abs(row.diff))} ${row.tone === "over" ? "over" : "under"})`
-          : "";
-      return `${row.label}${pct}${gap}`;
+          ? `${money(Math.abs(row.diff))} over budget`
+          : "over budget";
+      const pctNote = row.pct == null ? "" : ` (${Math.round(row.pct)}% of sales)`;
+      return `${row.label} was ${gap}${pctNote}`;
+    };
+    const describeHeld = (row) => {
+      const pctNote = row.pct == null ? "" : ` (${Math.round(row.pct)}% of sales)`;
+      return `${row.label}${pctNote}`;
     };
     const overs = costs.filter((row) => row.tone === "over");
     const held = costs.filter((row) => row.tone === "under" || row.tone === "ok");
@@ -448,40 +454,57 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
     if (strong) {
       steps.push(`Keep this ${weekdayName}: ${money(sales)} in sales and ${result}.`);
       if (held.length) {
-        steps.push(`${held.map(describe).join(", ")} stayed at or under budget — repeat the same staffing and purchasing.`);
+        steps.push(
+          `${held.map(describeHeld).join(", ")} stayed at or under budget — repeat the same staffing and purchasing.`
+        );
       }
     } else {
       if (overs.length) {
-        steps.push(`On the next ${weekdayName}, correct ${overs.map(describe).join(", ")}.`);
+        steps.push(
+          `On the next ${weekdayName}, focus on ${overs.map((row) => row.label).join(" and ")}:`
+        );
+        overs.forEach((row) => {
+          steps.push(`${describeOver(row)}.`);
+        });
       } else {
-        steps.push(`On the next ${weekdayName}, this day had ${money(sales)} in sales and ${result}.`);
+        steps.push(
+          `On the next ${weekdayName}, this day had ${money(sales)} in sales and ${result}.`
+        );
       }
       if (overs.some((row) => row.label === "Labor")) {
-        steps.push("Match scheduled hours to the sales this weekday actually brings in; trim early-shift or late-shift overlap first.");
+        steps.push(
+          "Match scheduled hours to the sales this weekday actually brings in; trim early-shift or late-shift overlap first."
+        );
       }
       if (overs.some((row) => row.label === "Food")) {
-        steps.push("Tighten portions, waste, and invoice prices. Do not treat the food gap as a reason to simply buy less food.");
+        steps.push(
+          "Tighten portions, waste, and invoice prices. Do not treat the food gap as a reason to simply buy less food."
+        );
       }
       if (overs.some((row) => row.label === "Rent" || row.label === "Operating")) {
-        steps.push("Rent and operating costs are mostly fixed — the lever is sales. Plan a traffic or ticket push for this weekday.");
+        steps.push(
+          "Rent and operating costs are mostly fixed — the lever is sales. Plan a traffic or ticket push for this weekday."
+        );
       }
     }
     if (history.length && historySummary) {
       const compared = [];
       if (historySummary.salesAvg > 0) {
         const direction = sales >= historySummary.salesAvg ? "above" : "below";
-        compared.push(`sales were ${direction} their ${money(historySummary.salesAvg)} average`);
+        compared.push(
+          `sales were ${direction} their ${money(historySummary.salesAvg)} average`
+        );
       }
       const laborNow = costs.find((row) => row.label === "Labor")?.pct;
       if (laborNow != null && historySummary.laborAvg != null) {
         compared.push(
-          `labor was ${Math.round(laborNow)}% versus their ${Math.round(historySummary.laborAvg)}% average`
+          `labor was ${Math.round(laborNow)}% of sales versus their ${Math.round(historySummary.laborAvg)}% average`
         );
       }
       const foodNow = costs.find((row) => row.label === "Food")?.pct;
       if (foodNow != null && historySummary.foodAvg != null) {
         compared.push(
-          `food was ${Math.round(foodNow)}% versus their ${Math.round(historySummary.foodAvg)}% average`
+          `food was ${Math.round(foodNow)}% of sales versus their ${Math.round(historySummary.foodAvg)}% average`
         );
       }
       if (compared.length) {
@@ -638,12 +661,14 @@ const DailyDetailDrawer = ({ open, day, goals, onClose, onViewPlan }) => {
             <p className="m-0 text-gray-700">{insight}</p>
           </div>
 
-          <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3">
+          <div className="rounded-2xl border border-orange-100 bg-orange-50 p-3 overflow-hidden">
             <p className="m-0 font-semibold text-orange-800">{guidance}</p>
             {guidanceSteps.length ? (
-              <ol className="m-0 mt-1 pl-4 space-y-1 text-gray-700 list-decimal">
+              <ol className="m-0 mt-1 pl-4 space-y-1.5 text-gray-700 list-decimal break-words">
                 {guidanceSteps.map((step, idx) => (
-                  <li key={idx}>{step}</li>
+                  <li key={idx} className="pr-1 leading-snug">
+                    {step}
+                  </li>
                 ))}
               </ol>
             ) : null}
