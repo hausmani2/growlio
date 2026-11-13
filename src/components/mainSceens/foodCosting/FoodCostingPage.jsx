@@ -290,6 +290,8 @@ const FoodCostingPage = () => {
   const [applyingInvoice, setApplyingInvoice] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [invoiceLines, setInvoiceLines] = useState([]);
+  const [reviewInvoiceNumber, setReviewInvoiceNumber] = useState('');
+  const [reviewInvoiceDate, setReviewInvoiceDate] = useState('');
   const [ingredientPrefill, setIngredientPrefill] = useState(null);
   const [invoiceLineAddingIndex, setInvoiceLineAddingIndex] = useState(null);
   const [extraMatchIngredients, setExtraMatchIngredients] = useState([]);
@@ -976,6 +978,10 @@ const FoodCostingPage = () => {
       return catalog.find((ing) => String(ing.id) === String(id)) || null;
     };
     setSelectedInvoice(invoice);
+    setReviewInvoiceNumber(invoice?.invoice_number || '');
+    setReviewInvoiceDate(
+      invoice?.invoice_date ? String(invoice.invoice_date).slice(0, 10) : ''
+    );
     setInvoiceLines(
       (invoice.lines || []).map((line) => {
         const ingredientId = line.ingredient || line.ingredient_id || null;
@@ -1217,13 +1223,16 @@ const FoodCostingPage = () => {
           total_cost: line.total_cost || 0,
           is_non_food: !!line.is_non_food,
         }));
+      // When LIO extracts from a photo/PDF, omit #/date so OCR fills them;
+      // user confirms on Review & apply instead of risking mismatches.
+      const useLioExtract = !!invoiceFile && extractWithAi;
       const result = await createInvoice({
         file: invoiceFile,
-        extractWithAi: !!invoiceFile && extractWithAi,
+        extractWithAi: useLioExtract,
         vendorName: values.vendor_name || '',
         vendorId: values.vendor_id || null,
-        invoiceNumber: values.invoice_number || '',
-        invoiceDate: values.invoice_date || '',
+        invoiceNumber: useLioExtract ? '' : values.invoice_number || '',
+        invoiceDate: useLioExtract ? '' : values.invoice_date || '',
         lines,
       });
       message.success('Invoice saved for review');
@@ -1248,11 +1257,17 @@ const FoodCostingPage = () => {
     }
   };
 
+  const invoiceHeaderPayload = () => ({
+    invoice_number: (reviewInvoiceNumber || '').trim(),
+    invoice_date: (reviewInvoiceDate || '').trim() || null,
+  });
+
   const handleSaveInvoiceLines = async () => {
     if (!selectedInvoice?.id) return;
     try {
       setSavingInvoice(true);
       const updated = await updateInvoice(selectedInvoice.id, {
+        ...invoiceHeaderPayload(),
         lines: invoiceLines.map((line) => ({
           id: line.id,
           ingredient_id: line.ingredient_id || null,
@@ -1267,13 +1282,17 @@ const FoodCostingPage = () => {
         })),
       });
       setSelectedInvoice(updated);
+      setReviewInvoiceNumber(updated?.invoice_number || '');
+      setReviewInvoiceDate(
+        updated?.invoice_date ? String(updated.invoice_date).slice(0, 10) : ''
+      );
       setInvoiceLines(
         (updated.lines || []).map((line) => ({
           ...line,
           ingredient_id: line.ingredient || null,
         }))
       );
-      message.success('Invoice lines updated');
+      message.success('Invoice updated');
       refresh(['dashboard', 'invoices']);
     } catch (error) {
       message.error(error?.response?.data?.error || 'Failed to update invoice');
@@ -1287,6 +1306,7 @@ const FoodCostingPage = () => {
     try {
       setApplyingInvoice(true);
       const updated = await updateInvoice(selectedInvoice.id, {
+        ...invoiceHeaderPayload(),
         lines: invoiceLines.map((line) => ({
           id: line.id,
           ingredient_id: line.ingredient_id || null,
@@ -1306,9 +1326,14 @@ const FoodCostingPage = () => {
       message.success(
         `Applied costs to ${result?.updated_ingredient_ids?.length || 0} ingredient(s)`
       );
-      setSelectedInvoice(result.invoice || updated);
+      const nextInvoice = result.invoice || updated;
+      setSelectedInvoice(nextInvoice);
+      setReviewInvoiceNumber(nextInvoice?.invoice_number || '');
+      setReviewInvoiceDate(
+        nextInvoice?.invoice_date ? String(nextInvoice.invoice_date).slice(0, 10) : ''
+      );
       setInvoiceLines(
-        ((result.invoice || updated)?.lines || []).map((line) => ({
+        (nextInvoice?.lines || []).map((line) => ({
           ...line,
           ingredient_id: line.ingredient || null,
         }))
@@ -3547,7 +3572,7 @@ const FoodCostingPage = () => {
           className="mb-4"
           type="info"
           showIcon
-          message="LIO can read invoice photos and create draft line items. You still review and apply costs."
+          message="LIO can read invoice photos, detect invoice # and date, and create draft line items. Confirm #/date on Review & apply, then apply costs."
         />
         <Form
           form={invoiceForm}
@@ -3574,18 +3599,27 @@ const FoodCostingPage = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="invoice_number" label="Invoice #">
-                <Input placeholder="Optional" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="invoice_date" label="Invoice date (YYYY-MM-DD)">
-                <Input placeholder="2026-07-23" />
-              </Form.Item>
-            </Col>
-          </Row>
+          {!(invoiceFile && extractWithAi) ? (
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item name="invoice_number" label="Invoice #">
+                  <Input placeholder="Optional" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="invoice_date" label="Invoice date (YYYY-MM-DD)">
+                  <Input placeholder="2026-07-23" />
+                </Form.Item>
+              </Col>
+            </Row>
+          ) : (
+            <Alert
+              className="mb-4"
+              type="success"
+              showIcon
+              message="LIO will detect invoice # and date from your upload. Confirm them on Review & apply."
+            />
+          )}
           <div className="mb-4 space-y-2">
             <Upload
               beforeUpload={(file) => handleFileSelect(file, setInvoiceFile)}
@@ -3694,6 +3728,45 @@ const FoodCostingPage = () => {
                 selectedInvoice.status || ''
               ).replaceAll('_', ' ')}`}
             />
+            <Row gutter={12}>
+              <Col span={12}>
+                <div className="mb-1 text-sm font-medium text-gray-700">Invoice #</div>
+                <Input
+                  value={reviewInvoiceNumber}
+                  placeholder="Confirm invoice number"
+                  onChange={(e) => setReviewInvoiceNumber(e.target.value)}
+                />
+                {selectedInvoice?.raw_extraction?.invoice_number &&
+                String(selectedInvoice.raw_extraction.invoice_number).trim() !==
+                  String(reviewInvoiceNumber || '').trim() ? (
+                  <p className="m-0 mt-1 text-xs text-amber-700">
+                    LIO detected:{' '}
+                    {String(selectedInvoice.raw_extraction.invoice_number).trim()}
+                  </p>
+                ) : null}
+              </Col>
+              <Col span={12}>
+                <div className="mb-1 text-sm font-medium text-gray-700">
+                  Invoice date (YYYY-MM-DD)
+                </div>
+                <Input
+                  value={reviewInvoiceDate}
+                  placeholder="2026-07-23"
+                  onChange={(e) => setReviewInvoiceDate(e.target.value)}
+                />
+                {selectedInvoice?.raw_extraction?.invoice_date &&
+                String(selectedInvoice.raw_extraction.invoice_date)
+                  .trim()
+                  .slice(0, 10) !== String(reviewInvoiceDate || '').trim() ? (
+                  <p className="m-0 mt-1 text-xs text-amber-700">
+                    LIO detected:{' '}
+                    {String(selectedInvoice.raw_extraction.invoice_date)
+                      .trim()
+                      .slice(0, 10)}
+                  </p>
+                ) : null}
+              </Col>
+            </Row>
             <Table
               rowKey="id"
               size="small"
