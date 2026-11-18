@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Form, Input, Button, message, Modal, Typography, Row, Col, Avatar, Tabs, Table, Select, Tag, Popconfirm } from 'antd';
-import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined, CreditCardOutlined, BellOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, DeleteOutlined, SaveOutlined, KeyOutlined, SecurityScanOutlined, TeamOutlined, PlusOutlined, EditOutlined, EnvironmentOutlined, CreditCardOutlined, BellOutlined, ClusterOutlined } from '@ant-design/icons';
 import LocationsTab from './LocationsTab';
 import BillingTab from './BillingTab';
 import NotificationsTab from './NotificationsTab';
+import FranchiseNetworkTab from './FranchiseNetworkTab';
 import { apiGet, apiPut, apiPost, apiPatch, apiDelete } from '../../../utils/axiosInterceptors';
 import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
@@ -52,6 +53,21 @@ const Profile = () => {
 
     return !activePlan && hasCheckedSubscription && !subscriptionDetailsLoading;
   }, [activePlan, hasCheckedSubscription, subscriptionDetailsLoading]);
+
+  const canUseFranchiseNetwork = useMemo(() => {
+    if (!isOwner) return false;
+    const planName = String(
+      activePlan?.key ||
+        activePlan?.name ||
+        activePlan?.display_name ||
+        activePlan?.package_name ||
+        ''
+    )
+      .trim()
+      .toLowerCase();
+    const features = activePlan?.features || {};
+    return features.franchisor_network === true || planName === 'pro' || planName.includes('pro');
+  }, [activePlan, isOwner]);
   
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -620,6 +636,20 @@ const Profile = () => {
               key="locations"
             >
               <LocationsTab />
+            </TabPane>
+          )}
+
+          {isOwner && canUseFranchiseNetwork && (
+            <TabPane
+              tab={
+                <span className="flex items-center gap-2">
+                  <ClusterOutlined />
+                  Location Network
+                </span>
+              }
+              key="location-network"
+            >
+              <FranchiseNetworkTab />
             </TabPane>
           )}
 

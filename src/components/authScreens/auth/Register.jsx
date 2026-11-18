@@ -79,7 +79,29 @@ const Register = () => {
           // @grw.com (and any auto-authenticated signup): tokens returned
           message.success('Registration successful! Welcome to Growlio!');
           trackOpenAiRegistrationCompleted({ email: email.trim().toLowerCase() });
-          navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
+          let franchiseReturn = null;
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const nextParam = params.get('next');
+            const storedReturn = sessionStorage.getItem('franchise_invite_return');
+            franchiseReturn =
+              (nextParam && nextParam.startsWith('/franchise/invite/'))
+                ? nextParam
+                : (storedReturn && storedReturn.startsWith('/franchise/invite/')
+                    ? storedReturn
+                    : null);
+            if (franchiseReturn) {
+              sessionStorage.removeItem('franchise_invite_return');
+            }
+          } catch (_) {
+            /* ignore */
+          }
+          navigate(
+            franchiseReturn || '/congratulations',
+            franchiseReturn
+              ? { replace: true }
+              : { replace: true, state: { skipSetupCheck: true } }
+          );
         }
       } else {
         isRegisterInProgressRef.current = false;

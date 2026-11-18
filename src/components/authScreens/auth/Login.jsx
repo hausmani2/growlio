@@ -129,6 +129,29 @@ const Login = () => {
       }
       
       if (result.success) {
+        // Franchise invite: return to accept page when login was started from that flow
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const nextParam = params.get('next');
+          const storedReturn = sessionStorage.getItem('franchise_invite_return');
+          const franchiseReturn =
+            (nextParam && nextParam.startsWith('/franchise/invite/'))
+              ? nextParam
+              : (storedReturn && storedReturn.startsWith('/franchise/invite/')
+                  ? storedReturn
+                  : null);
+          if (franchiseReturn) {
+            sessionStorage.removeItem('franchise_invite_return');
+            showWelcome('Login successful! Returning to your invitation...');
+            setTimeout(() => {
+              navigate(franchiseReturn, { replace: true });
+            }, 300);
+            return;
+          }
+        } catch (_) {
+          /* ignore */
+        }
+
         // CRITICAL: simulation-onboarding and restaurants-onboarding APIs are already called in login() function
         // They are called in this order:
         // 1. simulation/simulation-onboarding/ (GET) - FIRST

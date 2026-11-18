@@ -12,6 +12,7 @@ import ProtectedRoutes from './routes/ProtectedRoutes';
 import LoginPage from './components/authScreens/LoginPage';
 import SuperAdminLoginPage from './components/authScreens/SuperAdminLoginPage';
 import SignUpPage from './components/authScreens/SignUpPage';
+import FranchiseInviteAccept from './components/franchise/FranchiseInviteAccept';
 import Congratulations from './components/authScreens/auth/Congratulations';
 import ForgotPassword from './components/authScreens/auth/ForgotPassword';
 import VerifyEmail from './components/authScreens/auth/VerifyEmail';
@@ -284,6 +285,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin/login" element={<SuperAdminLoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/franchise/invite/:token" element={<FranchiseInviteAccept />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/set-password" element={<SetPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />

@@ -2,6 +2,15 @@ export const RESTAURANT_ROLES = {
   OWNER: 'owner',
   MANAGER: 'manager',
   LEADER: 'leader',
+  FRANCHISE_VIEWER: 'franchisor_viewer',
+};
+
+export const isFranchiseReadOnlyView = () => {
+  try {
+    return localStorage.getItem('franchise_view_readonly') === 'true';
+  } catch {
+    return false;
+  }
 };
 
 export const normalizeRestaurantRole = (role) => {
@@ -9,18 +18,43 @@ export const normalizeRestaurantRole = (role) => {
   if (normalized === RESTAURANT_ROLES.OWNER) return RESTAURANT_ROLES.OWNER;
   if (normalized === RESTAURANT_ROLES.MANAGER) return RESTAURANT_ROLES.MANAGER;
   if (normalized === RESTAURANT_ROLES.LEADER) return RESTAURANT_ROLES.LEADER;
+  if (normalized === RESTAURANT_ROLES.FRANCHISE_VIEWER) return RESTAURANT_ROLES.FRANCHISE_VIEWER;
   return RESTAURANT_ROLES.LEADER;
 };
 
 export const getRolePermissions = (role) => {
   const hasProvidedRole = String(role || '').trim().length > 0;
-  const normalizedRole = normalizeRestaurantRole(role);
+  const franchiseReadOnly =
+    String(role || '').trim().toLowerCase() === RESTAURANT_ROLES.FRANCHISE_VIEWER ||
+    isFranchiseReadOnlyView();
+  const normalizedRole = franchiseReadOnly
+    ? RESTAURANT_ROLES.FRANCHISE_VIEWER
+    : normalizeRestaurantRole(role);
+
+  if (franchiseReadOnly) {
+    return {
+      role: RESTAURANT_ROLES.FRANCHISE_VIEWER,
+      isOwner: false,
+      isManager: false,
+      isLeader: false,
+      isFranchiseViewer: true,
+      canManageLocations: false,
+      canManageUsers: false,
+      canCreateBudget: false,
+      canViewBudget: true,
+      canCloseDays: false,
+      canAccessSimulator: true,
+      canAccessReportCard: true,
+      readOnly: true,
+    };
+  }
 
   return {
     role: normalizedRole,
     isOwner: normalizedRole === RESTAURANT_ROLES.OWNER,
     isManager: normalizedRole === RESTAURANT_ROLES.MANAGER,
     isLeader: normalizedRole === RESTAURANT_ROLES.LEADER,
+    isFranchiseViewer: false,
     canManageLocations: normalizedRole === RESTAURANT_ROLES.OWNER,
     canManageUsers: normalizedRole === RESTAURANT_ROLES.OWNER,
     canCreateBudget: [RESTAURANT_ROLES.OWNER, RESTAURANT_ROLES.MANAGER].includes(normalizedRole),
@@ -31,6 +65,7 @@ export const getRolePermissions = (role) => {
     // Treat only a missing role as report-card eligible so the landing route
     // does not fall back to Close Out Your Day(s) during that handoff.
     canAccessReportCard: !hasProvidedRole || normalizedRole === RESTAURANT_ROLES.OWNER,
+    readOnly: false,
   };
 };
 

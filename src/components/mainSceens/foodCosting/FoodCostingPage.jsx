@@ -32,6 +32,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import PageHeaderSection from '../../common/PageHeaderSection';
 import TooltipIcon from '../../common/TooltipIcon';
+import FranchiseFoodCostPackagesPanel from './FranchiseFoodCostPackagesPanel';
 import useStore from '../../../store/store';
 import {
   archiveIngredient,
@@ -2401,6 +2402,11 @@ const FoodCostingPage = () => {
             </Button>
           </Space>
         }
+      />
+
+      <FranchiseFoodCostPackagesPanel
+        restaurantId={restaurantId}
+        locationId={locationId}
       />
 
       <Tabs

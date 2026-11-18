@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import GrowlioLogo from '../common/GrowlioLogo';
 import useStore from '../../store/store';
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
-import { Dropdown, Menu, Modal, Button, message, Select } from 'antd';
+import { Dropdown, Menu, Modal, Button, message, Select, Alert } from 'antd';
 import growlioLogo from "../../assets/svgs/growlio-logo.png"
 import NotificationBell from './NotificationBell';
 import { getEffectiveLocationCap } from '../../utils/locationLimits';
@@ -11,6 +11,14 @@ import {
   ONBOARDING_ROUTES,
   setAutoZeroProfitabilityFromSimulation,
 } from '../../utils/onboardingUtils';
+import { apiGet } from '../../utils/axiosInterceptors';
+import {
+  enterFranchiseReadOnlyView,
+  exitFranchiseReadOnlyView,
+  getFranchiseHomeRestaurantId,
+  getFranchiseViewLabel,
+  isFranchiseReadOnlyView,
+} from '../../utils/franchiseContext';
 
 const getInitials = (name = '') => {
   const parts = name.trim().split(' ');
@@ -42,6 +50,68 @@ const Header = ({ onMenuClick }) => {
     const [isSimulationMode, setIsSimulationMode] = useState(false);
     const [showRestaurantModal, setShowRestaurantModal] = useState(false);
     const [isSwitching, setIsSwitching] = useState(false);
+    const [franchiseOptions, setFranchiseOptions] = useState([]);
+    const [franchiseReadonly, setFranchiseReadonly] = useState(isFranchiseReadOnlyView());
+    const [franchiseLabel, setFranchiseLabel] = useState(getFranchiseViewLabel());
+
+    const homeRestaurantId =
+      getFranchiseHomeRestaurantId() || localStorage.getItem('restaurant_id');
+
+    const refreshFranchiseOptions = useCallback(async () => {
+      const rid = getFranchiseHomeRestaurantId() || localStorage.getItem('restaurant_id');
+      if (!rid || isSimulationMode) {
+        setFranchiseOptions([]);
+        return;
+      }
+      try {
+        const res = await apiGet(
+          `/restaurant_v2/franchise/network/accessible/?restaurant_id=${rid}`
+        );
+        const rows = Array.isArray(res?.data?.results) ? res.data.results : [];
+        setFranchiseOptions(rows);
+      } catch {
+        setFranchiseOptions([]);
+      }
+    }, [isSimulationMode]);
+
+    useEffect(() => {
+      refreshFranchiseOptions();
+      const sync = () => {
+        setFranchiseReadonly(isFranchiseReadOnlyView());
+        setFranchiseLabel(getFranchiseViewLabel());
+      };
+      window.addEventListener('franchise-view-changed', sync);
+      return () => window.removeEventListener('franchise-view-changed', sync);
+    }, [refreshFranchiseOptions]);
+
+    const handleFranchiseRestaurantChange = async (value) => {
+      const selected = franchiseOptions.find((r) => String(r.restaurant_id) === String(value));
+      if (!selected) return;
+      const home =
+        getFranchiseHomeRestaurantId() ||
+        franchiseOptions.find((r) => r.status === 'own')?.restaurant_id ||
+        localStorage.getItem('restaurant_id');
+
+      if (selected.read_only) {
+        enterFranchiseReadOnlyView({
+          homeRestaurantId: home,
+          franchiseeRestaurantId: selected.restaurant_id,
+          label: selected.location_name || selected.restaurant_name,
+        });
+        setFranchiseReadonly(true);
+        setFranchiseLabel(selected.location_name || selected.restaurant_name);
+      } else {
+        exitFranchiseReadOnlyView();
+        localStorage.setItem('restaurant_id', String(selected.restaurant_id));
+        setFranchiseReadonly(false);
+      }
+      try {
+        await fetchLocations?.(selected.restaurant_id, true);
+      } catch (_) {
+        /* ignore */
+      }
+      window.location.reload();
+    };
     
     // Check if user is in simulation mode - use cached data from store first
     // CRITICAL: Must verify BOTH restaurant_simulation flag AND that user has simulation restaurants
@@ -267,6 +337,26 @@ const Header = ({ onMenuClick }) => {
     ]);
 
     return (
+      <>
+        {franchiseReadonly && (
+          <Alert
+            type="info"
+            showIcon
+            banner
+            message={`Viewing ${franchiseLabel} — read-only franchise network access`}
+            action={
+              <Button
+                size="small"
+                onClick={() => {
+                  exitFranchiseReadOnlyView();
+                  window.location.reload();
+                }}
+              >
+                Back to HQ
+              </Button>
+            }
+          />
+        )}
         <header className="flex items-center justify-between w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white border-b border-gray-200 shadow-sm">
             {/* Left side - Hamburger menu and logo */}
             <div className="flex items-center gap-4">
@@ -299,6 +389,22 @@ const Header = ({ onMenuClick }) => {
 
             {/* Right side - Location + User Info */}
             <div className="flex items-center gap-3">
+                {!isSimulationMode && franchiseOptions.length > 1 && (
+                    <Select
+                        className="min-w-[160px] max-w-[260px]"
+                        placeholder="Network restaurant"
+                        value={
+                          Number(localStorage.getItem('restaurant_id')) || undefined
+                        }
+                        options={franchiseOptions.map((r) => ({
+                            value: r.restaurant_id,
+                            label: r.read_only
+                              ? `${r.location_name || r.restaurant_name} (read-only)`
+                              : `${r.restaurant_name || 'My restaurant'} (HQ)`,
+                        }))}
+                        onChange={handleFranchiseRestaurantChange}
+                    />
+                )}
                 {!isSimulationMode && visibleLocations.length > 0 && (
                     <Select
                         className="min-w-[140px] max-w-[220px]"
@@ -367,6 +473,7 @@ const Header = ({ onMenuClick }) => {
                 </div>
             </Modal>
         </header>
+      </>
     );
 };
 
