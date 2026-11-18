@@ -3,6 +3,10 @@ import { Alert, Button, Card, Spin, Typography, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '../../utils/axiosInterceptors';
 import useStore from '../../store/store';
+import {
+  clearFranchiseInviteReturn,
+  setFranchiseInviteReturn,
+} from '../../utils/franchiseContext';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -47,11 +51,7 @@ const FranchiseInviteAccept = () => {
       await apiPost(`/restaurant_v2/franchise/invite/${token}/accept/`, {});
       setJoined(true);
       message.success('You joined the location network.');
-      try {
-        sessionStorage.removeItem('franchise_invite_return');
-      } catch (_) {
-        /* ignore */
-      }
+      clearFranchiseInviteReturn();
       // Refresh preview so status shows joined if they stay on the page
       try {
         const response = await apiGet(`/restaurant_v2/franchise/invite/${token}/`);
@@ -114,11 +114,7 @@ const FranchiseInviteAccept = () => {
 
   const goAuth = (path) => {
     const returnTo = `/franchise/invite/${token}`;
-    try {
-      sessionStorage.setItem('franchise_invite_return', returnTo);
-    } catch (_) {
-      /* ignore */
-    }
+    setFranchiseInviteReturn(returnTo);
     navigate(`${path}?next=${encodeURIComponent(returnTo)}`);
   };
 
@@ -167,12 +163,22 @@ const FranchiseInviteAccept = () => {
                 className="mb-4"
               />
             ) : !isAuthenticated ? (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button type="primary" className="bg-orange-500" onClick={() => goAuth('/signup')}>
-                  Create account
-                </Button>
-                <Button onClick={() => goAuth('/login')}>Log in</Button>
-              </div>
+              preview.needs_password_setup ? (
+                <div className="space-y-3">
+                  <Alert
+                    type="info"
+                    showIcon
+                    message="Open the Set password & join button in your invitation email to activate your account and join."
+                  />
+                  <Button onClick={() => goAuth('/login')}>Already set a password? Log in</Button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button type="primary" className="bg-orange-500" onClick={() => goAuth('/login')}>
+                    Log in to join
+                  </Button>
+                </div>
+              )
             ) : (
               <div className="space-y-3">
                 {user?.email &&

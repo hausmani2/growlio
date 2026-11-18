@@ -9,6 +9,7 @@ import TermsOfService from '../../legal/TermsOfService';
 import PrivacyPolicy from '../../legal/PrivacyPolicy';
 import DataProcessingAgreement from '../../legal/DataProcessingAgreement';
 import { trackOpenAiRegistrationCompleted } from '../../../utils/openaiAdsPixel';
+import { getFranchiseInviteReturn } from '../../../utils/franchiseContext';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -83,16 +84,11 @@ const Register = () => {
           try {
             const params = new URLSearchParams(window.location.search);
             const nextParam = params.get('next');
-            const storedReturn = sessionStorage.getItem('franchise_invite_return');
+            const storedReturn = getFranchiseInviteReturn();
             franchiseReturn =
               (nextParam && nextParam.startsWith('/franchise/invite/'))
                 ? nextParam
-                : (storedReturn && storedReturn.startsWith('/franchise/invite/')
-                    ? storedReturn
-                    : null);
-            if (franchiseReturn) {
-              sessionStorage.removeItem('franchise_invite_return');
-            }
+                : storedReturn;
           } catch (_) {
             /* ignore */
           }

@@ -1,7 +1,51 @@
 /**
  * Client-side franchise read-only viewing context.
  * Backend enforces read-only; this drives UI switcher + write CTA hiding.
+ *
+ * Invite return URL must live in localStorage: login/set-password call
+ * sessionStorage.clear() and would wipe a session-only return path.
  */
+
+const INVITE_RETURN_KEY = 'franchise_invite_return';
+
+export const setFranchiseInviteReturn = (path) => {
+  if (!path || !String(path).startsWith('/franchise/invite/')) return;
+  try {
+    localStorage.setItem(INVITE_RETURN_KEY, path);
+    sessionStorage.setItem(INVITE_RETURN_KEY, path);
+  } catch (_) {
+    /* ignore */
+  }
+};
+
+export const getFranchiseInviteReturn = () => {
+  try {
+    const fromLocal = localStorage.getItem(INVITE_RETURN_KEY);
+    if (fromLocal && fromLocal.startsWith('/franchise/invite/')) return fromLocal;
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    const fromSession = sessionStorage.getItem(INVITE_RETURN_KEY);
+    if (fromSession && fromSession.startsWith('/franchise/invite/')) return fromSession;
+  } catch (_) {
+    /* ignore */
+  }
+  return null;
+};
+
+export const clearFranchiseInviteReturn = () => {
+  try {
+    localStorage.removeItem(INVITE_RETURN_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    sessionStorage.removeItem(INVITE_RETURN_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+};
 
 export const getFranchiseHomeRestaurantId = () => {
   try {

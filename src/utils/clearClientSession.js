@@ -87,10 +87,29 @@ export const clearClientSessionStorage = () => {
     // ignore
   }
 
+  // Preserve franchise invite return across login/set-password session wipes.
+  let franchiseInviteReturn = null;
+  try {
+    franchiseInviteReturn =
+      localStorage.getItem('franchise_invite_return') ||
+      sessionStorage.getItem('franchise_invite_return');
+  } catch (_) {
+    // ignore
+  }
+
   try {
     sessionStorage.clear();
   } catch (_) {
     // ignore
+  }
+
+  if (franchiseInviteReturn && String(franchiseInviteReturn).startsWith('/franchise/invite/')) {
+    try {
+      localStorage.setItem('franchise_invite_return', franchiseInviteReturn);
+      sessionStorage.setItem('franchise_invite_return', franchiseInviteReturn);
+    } catch (_) {
+      // ignore
+    }
   }
 
   clearBrowserCookies();

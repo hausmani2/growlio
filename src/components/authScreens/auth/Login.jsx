@@ -9,6 +9,7 @@ import { LoadingOutlined } from '@ant-design/icons';
 import growlioLogo from "../../../assets/svgs/growlio-logo.png"
 import Smile from "../../../assets/lio.png"
 import { getRoleLandingRoute } from '../../../utils/rolePermissions';
+import { getFranchiseInviteReturn } from '../../../utils/franchiseContext';
 
 const Login = () => {
   const [form, setForm] = useState({ 
@@ -34,7 +35,13 @@ const Login = () => {
   // login() (auth is set true before login() returns) and can skip welcome toasts.
   useEffect(() => {
     if (useStore.getState().isAuthenticated) {
-      navigate('/', { replace: true });
+      const params = new URLSearchParams(window.location.search);
+      const nextParam = params.get('next');
+      const franchiseReturn =
+        (nextParam && nextParam.startsWith('/franchise/invite/'))
+          ? nextParam
+          : getFranchiseInviteReturn();
+      navigate(franchiseReturn || '/', { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -129,19 +136,17 @@ const Login = () => {
       }
       
       if (result.success) {
-        // Franchise invite: return to accept page when login was started from that flow
+        // Franchise invite: return to accept page when login was started from that flow.
+        // Prefer ?next=, else localStorage (survives sessionStorage.clear on login).
         try {
           const params = new URLSearchParams(window.location.search);
           const nextParam = params.get('next');
-          const storedReturn = sessionStorage.getItem('franchise_invite_return');
+          const storedReturn = getFranchiseInviteReturn();
           const franchiseReturn =
             (nextParam && nextParam.startsWith('/franchise/invite/'))
               ? nextParam
-              : (storedReturn && storedReturn.startsWith('/franchise/invite/')
-                  ? storedReturn
-                  : null);
+              : storedReturn;
           if (franchiseReturn) {
-            sessionStorage.removeItem('franchise_invite_return');
             showWelcome('Login successful! Returning to your invitation...');
             setTimeout(() => {
               navigate(franchiseReturn, { replace: true });

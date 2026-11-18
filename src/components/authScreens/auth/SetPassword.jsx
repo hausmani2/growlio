@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, message } from 'antd';
 import Lock from '../../../assets/svgs/lock.svg';
@@ -7,17 +7,33 @@ import useStore from '../../../store/store';
 import { apiPost } from '../../../utils/axiosInterceptors';
 import { clearClientSessionStorage } from '../../../utils/clearClientSession';
 import { trackOpenAiRegistrationCompleted } from '../../../utils/openaiAdsPixel';
+import {
+  clearFranchiseInviteReturn,
+  getFranchiseInviteReturn,
+} from '../../../utils/franchiseContext';
 
 const SetPassword = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const token = params.get('token') || '';
   const email = params.get('email') || '';
+  const franchiseInvite = params.get('franchise_invite') || '';
+  const isAuthenticated = useStore((s) => s.isAuthenticated);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Setup links are one-time. If the invitee is already logged in, skip this form.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (franchiseInvite) {
+      navigate(`/franchise/invite/${franchiseInvite}`, { replace: true });
+      return;
+    }
+    navigate('/', { replace: true });
+  }, [isAuthenticated, franchiseInvite, navigate]);
 
   const applyAuth = (payload) => {
     const { access, refresh, ...userData } = payload?.data || payload || {};
@@ -81,23 +97,58 @@ const SetPassword = () => {
 
     setLoading(true);
     try {
-      const res = await apiPost('/authentication/set-password/', {
+      const body = {
         token,
         password,
         confirm_password: confirmPassword,
-      });
+      };
+      if (franchiseInvite) {
+        body.franchise_invite = franchiseInvite;
+      }
+      const res = await apiPost('/authentication/set-password/', body);
       const ok = applyAuth(res.data);
-      message.success('Password set successfully');
+      const joined = Boolean(res?.data?.franchise_joined);
+      if (joined) {
+        clearFranchiseInviteReturn();
+        message.success('Password set — you joined the location network.');
+      } else if (res?.data?.franchise_join_error) {
+        message.warning(res.data.franchise_join_error);
+      } else {
+        message.success('Password set successfully');
+      }
       trackOpenAiRegistrationCompleted({ email });
+      if (joined) {
+        navigate('/congratulations', { replace: true, state: { skipSetupCheck: true } });
+        return;
+      }
+      const franchiseReturn = ok ? getFranchiseInviteReturn() : null;
+      if (franchiseReturn) {
+        navigate(franchiseReturn, { replace: true });
+        return;
+      }
       navigate(ok ? '/congratulations' : '/login', {
         replace: true,
         state: { skipSetupCheck: true },
       });
     } catch (error) {
-      const parsed = parseBackendErrors(error?.response?.data);
-      setErrors(parsed);
-      if (parsed.password) {
-        message.error(parsed.password);
+      const raw = error?.response?.data;
+      const msg =
+        (typeof raw?.error === 'string' && raw.error) ||
+        (Array.isArray(raw?.error) && raw.error[0]) ||
+        '';
+      // Used invite/setup links: token cleared after first successful set-password
+      if (/invalid or expired|already set|password already/i.test(String(msg))) {
+        setErrors({
+          password:
+            'This setup link was already used. Sign in with your password instead.',
+        });
+        message.info('Password already set — please sign in.');
+      } else {
+        const parsed = parseBackendErrors(raw);
+        setErrors(parsed);
+        if (parsed.password) {
+          message.error(parsed.password);
+        }
       }
     } finally {
       setLoading(false);
@@ -115,11 +166,17 @@ const SetPassword = () => {
           className="w-full bg-white p-8 rounded-xl shadow-lg border border-gray-100"
         >
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-orange-600 mb-2">Set your password</h1>
+            <h1 className="text-2xl font-bold text-orange-600 mb-2">
+              {franchiseInvite ? 'Join & set your password' : 'Set your password'}
+            </h1>
             <p className="text-gray-600 text-sm">
-              {email
-                ? `Finish setting up ${email}`
-                : 'Create a password to secure your Growlio account.'}
+              {franchiseInvite
+                ? email
+                  ? `Set a password for ${email} to join the location network.`
+                  : 'Set a password to join the location network.'
+                : email
+                  ? `Finish setting up ${email}`
+                  : 'Create a password to secure your Growlio account.'}
             </p>
           </div>
 
