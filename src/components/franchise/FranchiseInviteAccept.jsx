@@ -20,6 +20,7 @@ const FranchiseInviteAccept = () => {
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
   const [joined, setJoined] = useState(false);
+  const [joinError, setJoinError] = useState(null);
   const autoJoinAttempted = useRef(false);
 
   const loadPreview = useCallback(async () => {
@@ -45,8 +46,9 @@ const FranchiseInviteAccept = () => {
   }, [loadPreview]);
 
   const handleJoin = useCallback(async () => {
-    if (!token || joining || joined) return;
+    if (!token || joining || joined || joinError) return;
     setJoining(true);
+    setJoinError(null);
     try {
       await apiPost(`/restaurant_v2/franchise/invite/${token}/accept/`, {});
       setJoined(true);
@@ -71,19 +73,22 @@ const FranchiseInviteAccept = () => {
           Object.values(data).flat?.()?.[0]) ||
         err?.message ||
         'Could not accept invitation.';
-      message.error(typeof msg === 'string' ? msg : 'Could not accept invitation.');
-      autoJoinAttempted.current = false;
+      const text = typeof msg === 'string' ? msg : 'Could not accept invitation.';
+      // Keep autoJoinAttempted=true so we never infinite-retry accept.
+      setJoinError(text);
+      message.error(text);
     } finally {
       setJoining(false);
     }
-  }, [token, joining, joined]);
+  }, [token, joining, joined, joinError]);
 
   // Creating an account alone does not join — accept must be called.
-  // When the invitee returns authenticated, join automatically.
+  // When the invitee returns authenticated, join automatically (once).
   useEffect(() => {
     if (
       loading ||
       error ||
+      joinError ||
       !preview?.can_accept ||
       !isAuthenticated ||
       joined ||
@@ -104,6 +109,7 @@ const FranchiseInviteAccept = () => {
   }, [
     loading,
     error,
+    joinError,
     preview,
     isAuthenticated,
     user?.email,
@@ -155,6 +161,13 @@ const FranchiseInviteAccept = () => {
                 message="You're linked. Continue to your dashboard to finish setup."
                 className="mb-4"
               />
+            ) : joinError ? (
+              <div className="space-y-3">
+                <Alert type="error" showIcon message={joinError} className="mb-0" />
+                <Button type="primary" className="bg-orange-500" onClick={() => navigate('/')}>
+                  Go to dashboard
+                </Button>
+              </div>
             ) : !preview.can_accept ? (
               <Alert
                 type="info"

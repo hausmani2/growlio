@@ -57,6 +57,7 @@ const FranchiseNetworkTab = () => {
   const subscriptionDetails = useStore((s) => s.subscriptionDetails);
   const currentPackage = useStore((s) => s.currentPackage);
   const fetchLocations = useStore((s) => s.fetchLocations);
+  const currentUserEmail = useStore((s) => (s.user?.email || '').trim().toLowerCase());
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -169,13 +170,17 @@ const FranchiseNetworkTab = () => {
       load();
     } catch (err) {
       const data = err?.response?.data;
+      const emailErr = Array.isArray(data?.email) ? data.email[0] : data?.email;
       const msg =
-        data?.email?.[0] ||
-        data?.detail ||
-        data?.error ||
+        (typeof emailErr === 'string' && emailErr) ||
+        (typeof data?.detail === 'string' && data.detail) ||
+        (typeof data?.error === 'string' && data.error) ||
         (typeof data === 'string' ? data : null) ||
         'Failed to send invite.';
-      message.error(typeof msg === 'string' ? msg : 'Failed to send invite.');
+      if (typeof emailErr === 'string' && emailErr) {
+        form.setFields([{ name: 'email', errors: [emailErr] }]);
+      }
+      message.error(msg);
     } finally {
       setInviteSubmitting(false);
     }
@@ -536,7 +541,21 @@ const FranchiseNetworkTab = () => {
           <Form.Item
             name="email"
             label="Email"
-            rules={[{ required: true }, { type: 'email' }]}
+            rules={[
+              { required: true },
+              { type: 'email' },
+              {
+                validator: (_, value) => {
+                  const inviteEmail = (value || '').trim().toLowerCase();
+                  if (inviteEmail && currentUserEmail && inviteEmail === currentUserEmail) {
+                    return Promise.reject(
+                      new Error('You cannot invite your own email to the location network.')
+                    );
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
             <Input placeholder="owner@location.com" />
           </Form.Item>
