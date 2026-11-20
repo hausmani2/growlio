@@ -363,22 +363,33 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
 
         {/* Menu Content - Improved scrolling and spacing */}
         <div className="flex-1 flex flex-col h-[calc(90vh-100px)] overflow-hidden">
-          <div className="flex-1 overflow-y-auto py-3 thin-scrollbar">
-            <nav className="space-y-1 px-2">
-              {/* Main menu items */}
-              {menuItems.slice(0, -1).map((item) => renderMenuItem(item))}
-            </nav>
-          </div>
-          
-          {/* Settings section at the bottom */}
-          <div className="border-t border-gray-200 pt-4 px-2 bg-gray-50">
-            <div className={`px-2 mb-2 ${collapsed ? 'lg:hidden' : ''}`}>
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Settings</span>
-            </div>
-            <nav className="space-y-1">
-              {menuItems.slice(-1).map((item) => renderMenuItem(item))}
-            </nav>
-          </div>
+          {(() => {
+            const settingsKeys = new Set(['profile']);
+            const mainItems = menuItems.filter((item) => !settingsKeys.has(item.key));
+            const settingsItems = menuItems.filter((item) => settingsKeys.has(item.key));
+            return (
+              <>
+                <div className="flex-1 overflow-y-auto py-3 thin-scrollbar">
+                  <nav className="space-y-1 px-2">
+                    {mainItems.map((item) => renderMenuItem(item))}
+                  </nav>
+                </div>
+
+                {settingsItems.length > 0 && (
+                  <div className="border-t border-gray-200 pt-4 px-2 bg-gray-50">
+                    <div className={`px-2 mb-2 ${collapsed ? 'lg:hidden' : ''}`}>
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Settings
+                      </span>
+                    </div>
+                    <nav className="space-y-1">
+                      {settingsItems.map((item) => renderMenuItem(item))}
+                    </nav>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </>

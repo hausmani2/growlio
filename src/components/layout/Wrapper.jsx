@@ -16,6 +16,7 @@ const { Content } = Layout;
 import lioIcon from "../../assets/lio.png";
 import { getIncompleteSetupItems, getNextIncompleteSetupRoute, navigateToBudgetOrConnectPos, isOnboardingComplete, getConnectPosRoute, getFirstRestaurant } from '../../utils/onboardingUtils';
 import useRestaurantRole from '../../hooks/useRestaurantRole';
+import { isFranchiseReadOnlyView } from '../../utils/franchiseContext';
 
 /**
  * Wrapper component
@@ -27,6 +28,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSimulationMode, setIsSimulationMode] = useState(false);
+  const [franchiseReadonly, setFranchiseReadonly] = useState(() => isFranchiseReadOnlyView());
   const { canManageLocations, canAccessSimulator, canAccessReportCard } = useRestaurantRole();
   const restaurantId = useStore((state) => state.restaurantId);
   const selectedLocationId = useStore((state) => state.selectedLocationId);
@@ -64,6 +66,22 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
   const isOnSimulationRoute =
     location.pathname.startsWith('/simulation') ||
     location.pathname.startsWith('/onboarding/simulation');
+
+  // Keep Settings hidden while viewing a franchisee (read-only network access).
+  useEffect(() => {
+    const syncFranchiseView = () => setFranchiseReadonly(isFranchiseReadOnlyView());
+    syncFranchiseView();
+    window.addEventListener('franchise-view-changed', syncFranchiseView);
+    return () => window.removeEventListener('franchise-view-changed', syncFranchiseView);
+  }, []);
+
+  // Settings is franchisor HQ — bounce away if opened during franchisee view.
+  useEffect(() => {
+    if (!franchiseReadonly) return;
+    if (location.pathname.startsWith('/dashboard/profile')) {
+      navigate('/dashboard/report-card', { replace: true });
+    }
+  }, [franchiseReadonly, location.pathname, navigate]);
 
   // Refetch the active page when the user switches location (not on every /dashboard mount).
   useEffect(() => {
@@ -807,15 +825,18 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
 
   const visibleUserMenus = userMenus.map(applyMenuAccess);
 
-  const menuItems = isSimulationMode ? [
-    ...simulationMenu,
-    // Settings menu is hidden in simulation mode
-  ] : [
-    ...(showUserMenus ? visibleUserMenus : []),
-    // ...adminMenu,
-    ...superAdminMenu,
-    ...settingsMenu,
-  ];
+  const menuItems = isSimulationMode
+    ? [
+        ...simulationMenu,
+        // Settings menu is hidden in simulation mode
+      ]
+    : [
+        ...(showUserMenus ? visibleUserMenus : []),
+        // ...adminMenu,
+        ...superAdminMenu,
+        // Hide franchisor Settings while viewing a franchisee dashboard
+        ...(franchiseReadonly ? [] : settingsMenu),
+      ];
 
   const handleMenuClick = () => {
     setMobileMenuOpen(!mobileMenuOpen);

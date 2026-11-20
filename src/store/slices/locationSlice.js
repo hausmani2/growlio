@@ -1,5 +1,10 @@
 import { apiGet } from '../../utils/axiosInterceptors';
 import dayjs from 'dayjs';
+import {
+  getFranchiseViewLocationId,
+  isFranchiseReadOnlyView,
+  setFranchiseViewLocationId,
+} from '../../utils/franchiseContext';
 
 const STORAGE_KEY = 'selected_location_id';
 
@@ -218,10 +223,22 @@ const createLocationSlice = (set, get) => ({
       );
       const locations = response.data?.locations || [];
       let selected = get().selectedLocationId;
-      const stillValid = locations.some((loc) => loc.id === selected);
+      // Franchisee view: prefer pinned franchise location over persisted HQ id.
+      if (isFranchiseReadOnlyView()) {
+        const pinned = getFranchiseViewLocationId();
+        if (pinned && locations.some((loc) => String(loc.id) === String(pinned))) {
+          selected = Number(pinned);
+        }
+      }
+      const stillValid = locations.some((loc) => String(loc.id) === String(selected));
       if (!stillValid && locations.length > 0) {
         selected = locations[0].id;
+      }
+      if (selected != null) {
         get().setSelectedLocationId(selected);
+        if (isFranchiseReadOnlyView()) {
+          setFranchiseViewLocationId(selected);
+        }
       }
       set({
         locations,
@@ -239,6 +256,30 @@ const createLocationSlice = (set, get) => ({
   },
 
   getSelectedLocationId: async () => {
+    // Franchisee view: never use a stale HQ location from zustand persist.
+    if (isFranchiseReadOnlyView()) {
+      const pinned = getFranchiseViewLocationId();
+      const restaurantId =
+        localStorage.getItem('franchise_view_restaurant_id') ||
+        localStorage.getItem('restaurant_id');
+      const locations = restaurantId
+        ? await get().fetchLocations(restaurantId, false)
+        : await get().fetchLocations();
+      if (pinned && locations.some((loc) => String(loc.id) === String(pinned))) {
+        const numeric = Number(pinned);
+        if (String(get().selectedLocationId) !== String(numeric)) {
+          get().setSelectedLocationId(numeric);
+        }
+        return numeric;
+      }
+      const first = locations[0]?.id ?? null;
+      if (first != null) {
+        setFranchiseViewLocationId(first);
+        get().setSelectedLocationId(first);
+      }
+      return first;
+    }
+
     let id = get().selectedLocationId;
     if (id) return id;
     const locations = await get().fetchLocations();

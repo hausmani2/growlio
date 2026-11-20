@@ -1,6 +1,10 @@
 import { apiPost, apiGet } from '../../utils/axiosInterceptors';
 import { enrichUserWithRestaurantRole } from '../../utils/rolePermissions';
 import { clearClientSessionStorage } from '../../utils/clearClientSession';
+import {
+  ensureFranchiseRestaurantIdPersisted,
+  isFranchiseReadOnlyView,
+} from '../../utils/franchiseContext';
 
 // Simple token check - just undefined vs token
 const hasToken = (token) => {
@@ -61,11 +65,34 @@ const getVerifiedOnboardingRestaurantId = (state, storedId) => {
   return isKnown ? String(storedId) : null;
 };
 
+const pickHomeRestaurant = (restaurants) => {
+  if (!Array.isArray(restaurants) || restaurants.length === 0) return null;
+  // Franchisor HQ (owned) must win over a franchisee they can only view.
+  const owned = restaurants.find((r) => r.is_primary_owner === true);
+  return owned || restaurants[0];
+};
+
 const syncRestaurantIdFromOnboarding = (set, restaurantData, locationId = null) => {
   const restaurantsList = Array.isArray(restaurantData?.restaurants)
     ? restaurantData.restaurants
     : [];
-  const picked = pickRestaurantFromList(restaurantsList, locationId);
+  // Franchisee dashboard view: keep pinned franchisee restaurant_id.
+  if (isFranchiseReadOnlyView()) {
+    const franchiseeId = ensureFranchiseRestaurantIdPersisted();
+    if (franchiseeId) {
+      set(() => ({ restaurantId: String(franchiseeId) }));
+    }
+    const picked =
+      restaurantsList.find(
+        (r) => Number(r.restaurant_id) === Number(franchiseeId)
+      ) || pickRestaurantFromList(restaurantsList, locationId);
+    return {
+      restaurantsList,
+      restaurantId: franchiseeId ? String(franchiseeId) : null,
+      picked,
+    };
+  }
+  const picked = pickHomeRestaurant(restaurantsList);
   const restaurantId = picked?.restaurant_id ?? null;
   if (restaurantId) {
     localStorage.setItem('restaurant_id', String(restaurantId));

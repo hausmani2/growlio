@@ -25,12 +25,17 @@ import {
   CheckCircleOutlined,
   SwapOutlined,
   DashboardOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../../../utils/axiosInterceptors';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import useStore from '../../../store/store';
-import { enterFranchiseReadOnlyView } from '../../../utils/franchiseContext';
+import {
+  enterFranchiseReadOnlyView,
+  isFranchiseReadOnlyView,
+  setFranchiseViewLocationId,
+} from '../../../utils/franchiseContext';
 
 const { Text } = Typography;
 
@@ -89,6 +94,9 @@ const FranchiseNetworkTab = () => {
     isOwner && (features.franchisor_network === true || planKey === 'pro');
 
   const load = useCallback(async () => {
+    // View Dashboard switches restaurant_id to the franchisee before reload.
+    // Do not refetch the franchisor network with that id (it 403s briefly).
+    if (isFranchiseReadOnlyView()) return;
     if (!restaurantId || !canUseNetwork) return;
     setLoading(true);
     try {
@@ -100,6 +108,7 @@ const FranchiseNetworkTab = () => {
       const data = response?.data;
       setRows(Array.isArray(data?.results) ? data.results : []);
     } catch (err) {
+      if (isFranchiseReadOnlyView()) return;
       const msg =
         err?.response?.data?.detail ||
         err?.response?.data?.error ||
@@ -112,6 +121,7 @@ const FranchiseNetworkTab = () => {
   }, [restaurantId, canUseNetwork, search, statusFilter, planFilter]);
 
   const loadPackages = useCallback(async () => {
+    if (isFranchiseReadOnlyView()) return;
     if (!restaurantId || !canUseNetwork) return;
     try {
       const res = await apiGet(
@@ -230,13 +240,30 @@ const FranchiseNetworkTab = () => {
       message.warning('Only joined locations can be reviewed.');
       return;
     }
+    const hqLocationId =
+      useStore.getState().selectedLocationId ||
+      localStorage.getItem('selected_location_id');
     enterFranchiseReadOnlyView({
       homeRestaurantId: restaurantId,
       franchiseeRestaurantId: row.franchisee_restaurant_id,
       label: row.location_name,
+      homeLocationId: hqLocationId,
     });
     try {
-      await fetchLocations?.(row.franchisee_restaurant_id, true);
+      // Reset location-scoped caches, then pin franchisee's default location
+      // into localStorage + zustand persist so reload does not restore HQ ids.
+      useStore.getState().clearLocationScopedCaches?.();
+      useStore.getState().setSelectedLocationId?.(null);
+      const locs = await fetchLocations?.(row.franchisee_restaurant_id, true);
+      const firstId = Array.isArray(locs) && locs[0]?.id ? locs[0].id : null;
+      if (firstId) {
+        setFranchiseViewLocationId(firstId);
+        useStore.getState().setSelectedLocationId?.(firstId);
+      }
+      useStore.setState({
+        restaurantId: String(row.franchisee_restaurant_id),
+        locationsRestaurantId: String(row.franchisee_restaurant_id),
+      });
     } catch (_) {
       /* ignore */
     }
@@ -415,6 +442,15 @@ const FranchiseNetworkTab = () => {
             </p>
           </div>
           <Space wrap>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                load();
+                loadPackages();
+              }}
+            >
+              Refresh
+            </Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
               Export CSV
             </Button>

@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../utils/axiosInterceptors';
 import useStore from '../store/store';
 import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../utils/rolePermissions';
+import {
+  alignSelectedLocationToRestaurant,
+  isFranchiseReadOnlyView,
+} from '../utils/franchiseContext';
 
 const useRestaurantRole = () => {
   const user = useStore((state) => state.user);
@@ -17,15 +21,34 @@ const useRestaurantRole = () => {
     let cancelled = false;
 
     const fetchRole = async () => {
-      if (!restaurantId || !selectedLocationId) {
+      // Franchisor viewing a franchisee: skip members role fetch (read-only, no Settings).
+      if (isFranchiseReadOnlyView()) {
+        setLoading(false);
+        return;
+      }
+
+      if (!restaurantId) {
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
+        const store = useStore.getState();
+        const aligned = await alignSelectedLocationToRestaurant({
+          fetchLocations: store.fetchLocations,
+          setSelectedLocationId: store.setSelectedLocationId,
+          preferredLocationId: selectedLocationId,
+        });
+        if (cancelled) return;
+        const locationId = aligned.locationId || selectedLocationId;
+        if (!locationId) {
+          setLoading(false);
+          return;
+        }
+
         const response = await apiGet(
-          `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${selectedLocationId}`
+          `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${locationId}`
         );
         const memberList = Array.isArray(response.data) ? response.data : response.data?.data || [];
 

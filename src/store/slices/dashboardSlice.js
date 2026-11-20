@@ -1,6 +1,10 @@
 import { apiGet, apiPost } from "../../utils/axiosInterceptors";
 import dayjs from 'dayjs';
 import { assertLaborOrCogsAllowedBySales } from "../../utils/salesEnteredGate";
+import {
+    ensureFranchiseRestaurantIdPersisted,
+    isFranchiseReadOnlyView,
+} from "../../utils/franchiseContext";
 
 const createDashboardSlice = (set, get) => {
     return {
@@ -798,10 +802,24 @@ const createDashboardSlice = (set, get) => {
             try {
                 const state = get();
 
+                // Franchisee view: never replace with HQ onboarding restaurant.
+                if (isFranchiseReadOnlyView()) {
+                    const franchiseeId = ensureFranchiseRestaurantIdPersisted();
+                    if (franchiseeId) {
+                        if (String(state.restaurantId || '') !== String(franchiseeId)) {
+                            set({ restaurantId: String(franchiseeId) });
+                        }
+                        return String(franchiseeId);
+                    }
+                }
+
                 if (typeof state.getRestaurantOnboarding === 'function') {
                     const cached = state.restaurantOnboardingData?.restaurants;
-                    if (Array.isArray(cached) && cached.length > 0 && cached[0]?.restaurant_id) {
-                        const id = String(cached[0].restaurant_id);
+                    const ownedCached = Array.isArray(cached)
+                      ? cached.find((r) => r.is_primary_owner === true) || cached[0]
+                      : null;
+                    if (ownedCached?.restaurant_id && !isFranchiseReadOnlyView()) {
+                        const id = String(ownedCached.restaurant_id);
                         if (String(state.restaurantId || '') !== id) {
                             set({ restaurantId: id });
                         }
@@ -811,8 +829,9 @@ const createDashboardSlice = (set, get) => {
 
                     const result = await state.getRestaurantOnboarding(false);
                     const restaurants = result?.data?.restaurants || [];
-                    if (restaurants.length > 0 && restaurants[0]?.restaurant_id) {
-                        const id = String(restaurants[0].restaurant_id);
+                    const owned = restaurants.find((r) => r.is_primary_owner === true) || restaurants[0];
+                    if (owned?.restaurant_id && !isFranchiseReadOnlyView()) {
+                        const id = String(owned.restaurant_id);
                         set({ restaurantId: id });
                         localStorage.setItem('restaurant_id', id);
                         return id;

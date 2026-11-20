@@ -18,6 +18,7 @@ import {
   shouldAutoZeroProfitabilityFromSimulation,
 } from '../utils/onboardingUtils';
 import { getRoleLandingRoute, getRolePermissions } from '../utils/rolePermissions';
+import { setRestaurantIdUnlessFranchiseView } from '../utils/franchiseContext';
 
 const ProtectedRoutes = () => {
   const location = useLocation();
@@ -161,9 +162,9 @@ const ProtectedRoutes = () => {
           setIsOnBoardingCompleted(false);
         }
         
-        // Store restaurant ID if available
+        // Store restaurant ID if available (never overwrite franchisee view context)
         if (result.restaurantId) {
-          localStorage.setItem('restaurant_id', result.restaurantId.toString());
+          setRestaurantIdUnlessFranchiseView(result.restaurantId);
         }
       } else {
         // Set to false on failure

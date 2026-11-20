@@ -10,6 +10,7 @@ import useStore from '../../../store/store';
 import useRestaurantRole from '../../../hooks/useRestaurantRole';
 import { RESTAURANT_ROLES, getRolePermissions, normalizeRestaurantRole } from '../../../utils/rolePermissions';
 import { isUnlimitedCount } from '../../../utils/packageDisplay';
+import { alignSelectedLocationToRestaurant } from '../../../utils/franchiseContext';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -161,12 +162,21 @@ const Profile = () => {
   };
 
   const fetchMembers = async () => {
-    if (!restaurantId || !activeLocationId) return;
+    if (!restaurantId) return;
 
     try {
       setMembersLoading(true);
+      const store = useStore.getState();
+      const aligned = await alignSelectedLocationToRestaurant({
+        fetchLocations: store.fetchLocations,
+        setSelectedLocationId: store.setSelectedLocationId,
+        preferredLocationId: activeLocationId,
+      });
+      const locationForMembers = aligned.locationId || activeLocationId;
+      if (!locationForMembers) return;
+
       const response = await apiGet(
-        `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${activeLocationId}`
+        `/restaurant_v2/members/?restaurant_id=${restaurantId}&location_id=${locationForMembers}`
       );
       setMembers(Array.isArray(response.data) ? response.data : response.data?.data || []);
     } catch (error) {

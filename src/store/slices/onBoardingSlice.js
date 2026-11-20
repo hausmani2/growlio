@@ -6,6 +6,7 @@ import {
     hasOneMonthSalesInfo,
     isOnLocationOnboardingPage,
 } from '../../utils/onboardingUtils';
+import { setRestaurantIdUnlessFranchiseView } from '../../utils/franchiseContext';
 
 const createOnBoardingSlice = (set, get) => ({
     name: 'onBoarding',
@@ -748,7 +749,7 @@ const createOnBoardingSlice = (set, get) => ({
             
             if (foundRestaurantId) {
                 // Save restaurant_id to localStorage for persistence
-                localStorage.setItem('restaurant_id', foundRestaurantId);
+                setRestaurantIdUnlessFranchiseView(foundRestaurantId);
                 
                 // Preserve existing step statuses and only update the current step
                 const updatedData = {
@@ -1118,7 +1119,7 @@ const createOnBoardingSlice = (set, get) => ({
                 // Extract restaurant_id from first step if available
                 if (restaurant_id && !updatedOnboardingData.restaurant_id) {
                     updatedOnboardingData.restaurant_id = restaurant_id;
-                    localStorage.setItem('restaurant_id', restaurant_id);
+                    setRestaurantIdUnlessFranchiseView(restaurant_id);
                 }
                 
                 // Map API field names to our expected format
@@ -1746,9 +1747,10 @@ const createOnBoardingSlice = (set, get) => ({
                 }
                 
                 
-                // Store restaurant ID in localStorage and store if found
+                // Store restaurant ID in localStorage and store if found.
+                // Do not overwrite franchisee restaurant while viewing Location Network.
                 if (restaurantId) {
-                    localStorage.setItem('restaurant_id', restaurantId.toString());
+                    setRestaurantIdUnlessFranchiseView(restaurantId);
                 }
                 
                 if (hasCompletedOnboarding) {

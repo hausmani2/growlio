@@ -13,11 +13,15 @@ import {
 } from '../../utils/onboardingUtils';
 import { apiGet } from '../../utils/axiosInterceptors';
 import {
+  alignSelectedLocationToRestaurant,
   enterFranchiseReadOnlyView,
+  ensureFranchiseRestaurantIdPersisted,
   exitFranchiseReadOnlyView,
   getFranchiseHomeRestaurantId,
   getFranchiseViewLabel,
+  getFranchiseViewLocationId,
   isFranchiseReadOnlyView,
+  setFranchiseViewLocationId,
 } from '../../utils/franchiseContext';
 
 const getInitials = (name = '') => {
@@ -58,7 +62,13 @@ const Header = ({ onMenuClick }) => {
       getFranchiseHomeRestaurantId() || localStorage.getItem('restaurant_id');
 
     const refreshFranchiseOptions = useCallback(async () => {
-      const rid = getFranchiseHomeRestaurantId() || localStorage.getItem('restaurant_id');
+      // Network switcher data is only for HQ. Franchisee view must not call it
+      // with the franchisee restaurant id.
+      if (isFranchiseReadOnlyView()) {
+        setFranchiseOptions([]);
+        return;
+      }
+      const rid = localStorage.getItem('restaurant_id');
       if (!rid || isSimulationMode) {
         setFranchiseOptions([]);
         return;
@@ -93,10 +103,14 @@ const Header = ({ onMenuClick }) => {
         localStorage.getItem('restaurant_id');
 
       if (selected.read_only) {
+        const hqLocationId =
+          useStore.getState().selectedLocationId ||
+          localStorage.getItem('selected_location_id');
         enterFranchiseReadOnlyView({
           homeRestaurantId: home,
           franchiseeRestaurantId: selected.restaurant_id,
           label: selected.location_name || selected.restaurant_name,
+          homeLocationId: hqLocationId,
         });
         setFranchiseReadonly(true);
         setFranchiseLabel(selected.location_name || selected.restaurant_name);
@@ -106,7 +120,17 @@ const Header = ({ onMenuClick }) => {
         setFranchiseReadonly(false);
       }
       try {
-        await fetchLocations?.(selected.restaurant_id, true);
+        const store = useStore.getState();
+        store.clearLocationScopedCaches?.();
+        await alignSelectedLocationToRestaurant({
+          fetchLocations: store.fetchLocations,
+          setSelectedLocationId: store.setSelectedLocationId,
+          clearLocationScopedCaches: store.clearLocationScopedCaches,
+        });
+        if (selected.read_only) {
+          const lid = store.selectedLocationId;
+          if (lid != null) setFranchiseViewLocationId(lid);
+        }
       } catch (_) {
         /* ignore */
       }
@@ -305,9 +329,11 @@ const Header = ({ onMenuClick }) => {
     // Regular users who can also simulate should NOT see this button
     const shouldShowRestaurantButton = isSimulationMode && !hasRegularRestaurants;
 
-    const restaurantIdForLocations =
-        restaurantOnboardingData?.restaurants?.[0]?.restaurant_id ||
-        localStorage.getItem('restaurant_id');
+    // In franchisee view, always use the switched restaurant_id — never HQ onboarding id.
+    const restaurantIdForLocations = franchiseReadonly
+        ? localStorage.getItem('restaurant_id')
+        : restaurantOnboardingData?.restaurants?.[0]?.restaurant_id ||
+          localStorage.getItem('restaurant_id');
 
     const pkg = subscriptionDetails?.package || currentPackage || null;
     const locationCap = getEffectiveLocationCap(pkg, subscriptionDetails?.restaurant || null);
@@ -315,11 +341,50 @@ const Header = ({ onMenuClick }) => {
         ? locations.slice(0, locationCap >= 9999 ? locations.length : locationCap)
         : [];
 
+    // Keep restaurant_id + location_id paired for franchisee view AND after Back to HQ.
+    useEffect(() => {
+        let cancelled = false;
+        const syncContext = async () => {
+            try {
+                if (franchiseReadonly) {
+                    ensureFranchiseRestaurantIdPersisted();
+                }
+                const store = useStore.getState();
+                const aligned = await alignSelectedLocationToRestaurant({
+                    fetchLocations: store.fetchLocations,
+                    setSelectedLocationId: store.setSelectedLocationId,
+                    clearLocationScopedCaches: store.clearLocationScopedCaches,
+                    preferredLocationId: franchiseReadonly
+                        ? getFranchiseViewLocationId()
+                        : localStorage.getItem('selected_location_id'),
+                });
+                if (cancelled || aligned.locationId == null) return;
+                if (
+                    String(store.selectedLocationId) !== String(aligned.locationId)
+                ) {
+                    window.dispatchEvent(
+                        new CustomEvent('growlio:location-changed', {
+                            detail: { locationId: aligned.locationId },
+                        })
+                    );
+                }
+            } catch (error) {
+                console.warn('[Header] Restaurant/location align failed:', error);
+            }
+        };
+        syncContext();
+        return () => {
+            cancelled = true;
+        };
+    }, [franchiseReadonly, fetchLocations]);
+
     useEffect(() => {
         const isOnSimulationRoute =
             location.pathname.startsWith('/simulation') ||
             location.pathname.startsWith('/onboarding/simulation');
         if (isOnSimulationRoute || isSimulationMode) return;
+        // Franchisee dashboard is single-location; handled by franchise sync above.
+        if (franchiseReadonly) return;
         if (!hasRegularRestaurants && !restaurantOnboardingData?.restaurants?.length) return;
         if (!restaurantIdForLocations) return;
 
@@ -330,6 +395,7 @@ const Header = ({ onMenuClick }) => {
     }, [
         fetchCurrentSubscriptionDetails,
         fetchLocations,
+        franchiseReadonly,
         hasRegularRestaurants,
         isSimulationMode,
         location.pathname,
@@ -347,9 +413,26 @@ const Header = ({ onMenuClick }) => {
             action={
               <Button
                 size="small"
-                onClick={() => {
-                  exitFranchiseReadOnlyView();
-                  window.location.reload();
+                onClick={async () => {
+                  const restored = exitFranchiseReadOnlyView();
+                  try {
+                    const store = useStore.getState();
+                    store.clearLocationScopedCaches?.();
+                    // Sync Zustand persist immediately so reload does not keep
+                    // franchisee location_id paired with HQ restaurant_id.
+                    if (restored?.restaurantId) {
+                      store.setRestaurantId?.(String(restored.restaurantId));
+                    }
+                    await alignSelectedLocationToRestaurant({
+                      fetchLocations: store.fetchLocations,
+                      setSelectedLocationId: store.setSelectedLocationId,
+                      clearLocationScopedCaches: store.clearLocationScopedCaches,
+                      preferredLocationId: restored?.locationId,
+                    });
+                  } catch (_) {
+                    /* ignore */
+                  }
+                  window.location.assign('/dashboard/report-card');
                 }}
               >
                 Back to HQ
@@ -389,23 +472,8 @@ const Header = ({ onMenuClick }) => {
 
             {/* Right side - Location + User Info */}
             <div className="flex items-center gap-3">
-                {!isSimulationMode && franchiseOptions.length > 1 && (
-                    <Select
-                        className="min-w-[160px] max-w-[260px]"
-                        placeholder="Network restaurant"
-                        value={
-                          Number(localStorage.getItem('restaurant_id')) || undefined
-                        }
-                        options={franchiseOptions.map((r) => ({
-                            value: r.restaurant_id,
-                            label: r.read_only
-                              ? `${r.location_name || r.restaurant_name} (read-only)`
-                              : `${r.restaurant_name || 'My restaurant'} (HQ)`,
-                        }))}
-                        onChange={handleFranchiseRestaurantChange}
-                    />
-                )}
-                {!isSimulationMode && visibleLocations.length > 0 && (
+                {/* During franchisee view: no restaurant/location dropdowns — Back to HQ only. */}
+                {!isSimulationMode && !franchiseReadonly && visibleLocations.length > 0 && (
                     <Select
                         className="min-w-[140px] max-w-[220px]"
                         value={selectedLocationId ?? undefined}
