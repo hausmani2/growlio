@@ -79,6 +79,18 @@ const Header = ({ onMenuClick }) => {
         );
         const rows = Array.isArray(res?.data?.results) ? res.data.results : [];
         setFranchiseOptions(rows);
+        try {
+          sessionStorage.setItem(
+            'franchise_own_restaurant_ids',
+            JSON.stringify(
+              rows
+                .filter((row) => row.status === 'own')
+                .map((row) => String(row.restaurant_id))
+            )
+          );
+        } catch (_) {
+          /* ignore */
+        }
       } catch {
         setFranchiseOptions([]);
       }

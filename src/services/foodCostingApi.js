@@ -124,7 +124,7 @@ export const updateIngredient = async (id, payload) => {
   return res.data;
 };
 
-export const archiveIngredient = async (id) => {
+export const deleteIngredient = async (id) => {
   const res = await apiDelete(`/food_costing/ingredients/${id}/`);
   return res.data;
 };

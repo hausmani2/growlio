@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Dropdown, Progress, Segmented, Spin, Table, Tag, Tooltip } from 'antd';
+import { Button, Card, DatePicker, Dropdown, Progress, Segmented, Spin, Table, Tag } from 'antd';
 import {
   CameraOutlined,
   CheckCircleOutlined,
@@ -12,19 +12,24 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import lioMascot from '../../../assets/pngs/lio-mascot.png';
 
+const missingNumber = (value) => value === null || value === undefined || value === '';
+
 const money = (value) => {
+  if (missingNumber(value)) return '—';
   const num = Number(value);
   if (!Number.isFinite(num)) return '—';
   return `$${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 };
 
 const moneyExact = (value) => {
+  if (missingNumber(value)) return '—';
   const num = Number(value);
   if (!Number.isFinite(num)) return '—';
   return `$${num.toFixed(2)}`;
 };
 
 const pct = (value, digits = 1) => {
+  if (missingNumber(value)) return '—';
   const num = Number(value);
   if (!Number.isFinite(num)) return '—';
   return `${num.toFixed(digits)}%`;
@@ -100,13 +105,8 @@ const profitabilityTag = (status) => {
   if (status === 'Good') return <Tag color="green">Good</Tag>;
   if (status === 'Watch') return <Tag color="orange">Watch</Tag>;
   if (status === 'Poor') return <Tag color="red">Poor</Tag>;
+  if (status === 'Unrated') return <Tag>Not rated</Tag>;
   return <Tag>Unknown</Tag>;
-};
-
-const priorityTag = (priority) => {
-  if (priority === 'high') return <Tag color="red">High Priority</Tag>;
-  if (priority === 'medium') return <Tag color="orange">Medium Priority</Tag>;
-  return <Tag>Low Priority</Tag>;
 };
 
 const Donut = ({ percent, label }) => {
@@ -173,9 +173,7 @@ const DriverListCard = ({ title, subtitle, sharePct, shareLabel, items, extra })
           title: 'Food Cost %',
           dataIndex: 'food_cost_percent',
           key: 'fc',
-          render: (v) => (
-            <span className={Number(v) >= 35 ? 'text-red-600' : ''}>{pct(v)}</span>
-          ),
+          render: (v, row) => (row.cost_available === false ? 'Cost unavailable' : pct(v)),
         },
         { title: 'Sell Price', dataIndex: 'selling_price', key: 'm', render: (v) => moneyExact(v) },
         {
@@ -183,7 +181,7 @@ const DriverListCard = ({ title, subtitle, sharePct, shareLabel, items, extra })
           dataIndex: 'period_profit',
           key: 'p',
           width: 140,
-          render: (v) => moneyExact(v),
+          render: (v, row) => (row.cost_available === false ? 'Unknown' : moneyExact(v)),
         },
       ]}
     />
@@ -287,19 +285,16 @@ const MenuIntelligenceDashboard = ({
   );
   const intel = dashboard?.intelligence;
   const empty = intel?.empty_state;
-  const showEmptyOnly = Boolean(empty && empty.type !== 'partial');
+  const showEmptyOnly = empty?.type === 'no_menu' || empty?.type === 'pos_uncosted';
 
   const kpi = intel?.kpis || {};
   const salesDrivers = intel?.sales_drivers || {};
   const profitDrivers = intel?.profit_drivers || {};
-  const opportunities = intel?.opportunities || [];
+  const insights = intel?.insights || [];
   const accuracyActions = intel?.accuracy_actions || [];
   const performance = intel?.performance || [];
 
   const filteredPerformance = useMemo(() => {
-    if (performanceFilter === 'opportunity') {
-      return performance.filter((row) => row.is_biggest_opportunity);
-    }
     if (performanceFilter === 'review') {
       return performance.filter((row) => row.needs_review);
     }
@@ -342,41 +337,13 @@ const MenuIntelligenceDashboard = ({
         title: 'Theo. FC%',
         dataIndex: 'theoretical_fc_pct',
         key: 'theo',
-        render: (v) => (
-          <span className={Number(v) >= 35 ? 'font-medium text-red-600' : ''}>{pct(v)}</span>
-        ),
-      },
-      {
-        title: (
-          <Tooltip title="Location Close Out actual — not tracked per item">
-            <span>Actual FC%</span>
-          </Tooltip>
-        ),
-        dataIndex: 'actual_fc_pct',
-        key: 'actual',
-        render: (v) => pct(v),
-      },
-      {
-        title: (
-          <Tooltip title="Item theoretical FC% minus location actual FC%">
-            <span>Variance</span>
-          </Tooltip>
-        ),
-        dataIndex: 'variance_pts',
-        key: 'var',
-        render: (v) => {
-          const num = Number(v);
-          if (!Number.isFinite(num)) return '—';
-          return (
-            <span className={num > 0 ? 'text-red-600' : 'text-emerald-600'}>{pts(v)}</span>
-          );
-        },
+        render: (v, row) => (row.cost_available === false ? 'Cost unavailable' : pct(v)),
       },
       {
         title: 'Margin %',
         dataIndex: 'margin_pct',
         key: 'marginPct',
-        render: (v) => pct(v),
+        render: (v, row) => (row.cost_available === false ? 'Unknown' : pct(v)),
       },
       {
         title: 'Sell Price',
@@ -390,7 +357,7 @@ const MenuIntelligenceDashboard = ({
         dataIndex: 'period_profit',
         key: 'contrib',
         width: 150,
-        render: (v) => moneyExact(v),
+        render: (v, row) => (row.cost_available === false ? 'Unknown' : moneyExact(v)),
       },
       {
         title: 'Trend',
@@ -405,14 +372,10 @@ const MenuIntelligenceDashboard = ({
         render: profitabilityTag,
       },
       {
-        title: 'Confidence',
-        dataIndex: 'confidence',
+        title: 'Recipe confidence',
+        dataIndex: 'recipe_confidence',
         key: 'conf',
-        render: (v) => (
-          <span className={Number(v) < 71 ? 'font-medium text-red-600' : 'text-gray-700'}>
-            {pct(v, 0)}
-          </span>
-        ),
+        render: (v) => pct(v, 0),
       },
     ],
     [onAction]
@@ -444,8 +407,14 @@ const MenuIntelligenceDashboard = ({
     );
   }
 
-  const varianceClass =
-    Number(kpi.food_cost_variance_pts) > 0 ? 'text-red-600' : 'text-emerald-600';
+  const pricing = kpi.pricing_confidence || {};
+  const coverage = kpi.menu_costing_coverage_pct;
+  const varianceShown = kpi.food_cost_variance_status === 'shown';
+  const varianceClass = varianceShown
+    ? Number(kpi.food_cost_variance_pts) > 0
+      ? 'text-red-600'
+      : 'text-emerald-600'
+    : 'text-gray-900';
 
   const applyDateRange = (start, end, label) => {
     if (!start || !end) return;
@@ -503,66 +472,83 @@ const MenuIntelligenceDashboard = ({
           </div>
         </div>
 
-        {empty?.type === 'partial' ? (
+        {empty?.message ? (
           <Card className="border border-emerald-100 bg-emerald-50 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="font-medium text-gray-900">{empty.title}</p>
                 <p className="text-sm text-gray-600">{empty.message}</p>
               </div>
-              <div className="flex items-center gap-4">
-                <Progress
-                  type="circle"
-                  percent={Math.round(Number(kpi.sales_costed_pct) || 0)}
-                  size={72}
-                  strokeColor="#16a34a"
-                />
+              {empty.primary_label ? (
                 <Button type="primary" className="!bg-[#16a34a] border-none" onClick={() => onAction(empty.primary_action)}>
                   {empty.primary_label}
                 </Button>
-              </div>
+              ) : null}
             </div>
           </Card>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card className="shadow-sm border border-gray-100">
+            <p className="text-sm text-gray-500">Menu costing coverage</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900">
+              {coverage == null ? '—' : pct(coverage, 0)}
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              Share of sales with a complete recipe. This is separate from recipe confidence and pricing.
+            </p>
+          </Card>
+          <Card className="shadow-sm border border-gray-100">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-gray-500">Pricing confidence</p>
+                <p className="mt-1 text-2xl font-semibold text-gray-900">
+                  {pricing.ingredient_count
+                    ? `${pricing.current_count || 0} of ${pricing.ingredient_count}`
+                    : '—'}
+                </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Confirmed prices from the last 30 days. Estimated prices and missing dates are not counted.
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Estimated {pricing.estimated_count || 0}. Missing date {pricing.missing_date_count || 0}. Older than 30 days {pricing.stale_count || 0}.
+                </p>
+              </div>
+              <Button icon={<UploadOutlined />} onClick={() => onAction('upload_invoice')}>
+                Update prices
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard
             title="Sales-Weighted Food Cost"
             value={pct(kpi.sales_weighted_food_cost_pct)}
-            hint="Theoretical, based on what you sold"
+            hint={coverage == null ? 'No costed sales in this period' : `Based on ${pct(coverage, 0)} of your sales`}
             valueClassName="text-emerald-600"
           />
           <KpiCard
             title="Actual Food Cost"
             value={pct(kpi.actual_food_cost_pct)}
-            hint="From invoices / Close Out COGS"
+            hint="Close Out COGS for this period. Not what the recipes used."
             valueClassName="text-[#FF8132]"
           />
           <KpiCard
             title="Food Cost Variance"
-            value={pts(kpi.food_cost_variance_pts)}
-            hint={
-              kpi.food_cost_variance_dollars != null
-                ? `${money(Math.abs(kpi.food_cost_variance_dollars))} vs theoretical`
-                : 'Same period comparison'
-            }
+            value={varianceShown ? pts(kpi.food_cost_variance_pts) : 'Insufficient data'}
+            hint={kpi.food_cost_variance_summary || 'Not comparable yet'}
             valueClassName={varianceClass}
           />
           <KpiCard
             title="Average Menu Margin"
             value={pct(kpi.average_menu_margin_pct)}
-            hint="Contribution on items sold"
-          />
-          <KpiCard
-            title="Menu Opportunity"
-            value={money(kpi.menu_opportunity_annual)}
-            hint="Estimated annual opportunity"
-            valueClassName="text-sky-700"
+            hint="Menu margin on costed items, not net profit"
           />
           <KpiCard
             title="Menu Accuracy"
             value={pct(kpi.menu_accuracy_pct, 0)}
-            hint={`${kpi.items_needing_attention || 0} items need attention`}
+            hint={`Recipe confidence, weighted by sales. ${kpi.items_needing_attention || 0} items need attention.`}
             footer={
               <Progress
                 percent={Math.round(Number(kpi.menu_accuracy_pct) || 0)}
@@ -604,50 +590,24 @@ const MenuIntelligenceDashboard = ({
           />
         </div>
 
-        <Card
-          className="shadow-sm border border-gray-100"
-          title="LIO Menu Insights"
-          extra={<span className="text-xs text-gray-400">Updated just now</span>}
-        >
-          <p className="mb-3 font-medium text-gray-900">
-            LIO found {money(kpi.menu_opportunity_annual)} in annual menu opportunities.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {opportunities.length ? (
-              opportunities.map((opp, index) => (
-                <button
-                  key={`${opp.type}-${opp.menu_item_id || opp.ingredient_id || index}`}
-                  type="button"
-                  className="w-full rounded-xl border border-gray-100 p-3 text-left hover:border-[#FF8132]"
-                  onClick={() =>
-                    onAction(
-                      opp.type === 'accuracy_before_action' ? 'edit_menu_item' : 'view_simulator',
-                      opp
-                    )
-                  }
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {index + 1}. {opp.title}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600">{opp.lio_note || opp.rationale}</p>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-emerald-700">
-                      {money(opp.estimated_annual_impact)}
-                    </span>
+        <Card className="shadow-sm border border-gray-100" title="LIO Menu Insights">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <img src={lioMascot} alt="LIO" className="h-16 w-auto object-contain" />
+            <div className="space-y-2">
+              {insights.length ? (
+                insights.map((insight) => (
+                  <div key={insight.type || insight.title}>
+                    <p className="font-medium text-gray-900">{insight.title}</p>
+                    <p className="text-sm text-gray-600">{insight.message}</p>
                   </div>
-                </button>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500">
-                Cost more high-selling items to unlock LIO opportunities.
-              </p>
-            )}
+                ))
+              ) : (
+                <p className="text-sm text-gray-600">
+                  LIO will point you to the Action Center when a recipe or price needs a check.
+                </p>
+              )}
+            </div>
           </div>
-          <Button type="link" className="mt-2 px-0" onClick={() => onAction('view_simulator')}>
-            See all opportunities
-          </Button>
         </Card>
 
         <div className="grid gap-4 xl:grid-cols-5">
@@ -670,14 +630,11 @@ const MenuIntelligenceDashboard = ({
                     className="flex flex-col gap-2 rounded-xl border border-gray-100 p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {row.name} recipe is {Math.round(row.confidence)}% confirmed
-                      </p>
+                      <p className="font-medium text-gray-900">{row.name}</p>
                       <p className="text-sm text-gray-600">{row.message}</p>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {priorityTag(row.priority)}
-                        <span className="text-xs text-gray-500">{row.impact_label}</span>
-                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Recipe confidence {pct(row.recipe_confidence, 0)} · {row.impact_label}
+                      </p>
                     </div>
                     <Button
                       size="small"
@@ -690,7 +647,7 @@ const MenuIntelligenceDashboard = ({
                         })
                       }
                     >
-                      Review
+                      {row.action_label || 'Review'}
                     </Button>
                   </div>
                 ))
@@ -710,7 +667,6 @@ const MenuIntelligenceDashboard = ({
                 onChange={setPerformanceFilter}
                 options={[
                   { label: 'All', value: 'all' },
-                  { label: 'Biggest opportunity', value: 'opportunity' },
                   { label: 'Needs review', value: 'review' },
                 ]}
               />

@@ -35,7 +35,7 @@ import TooltipIcon from '../../common/TooltipIcon';
 import FranchiseFoodCostPackagesPanel from './FranchiseFoodCostPackagesPanel';
 import useStore from '../../../store/store';
 import {
-  archiveIngredient,
+  deleteIngredient,
   archiveMenuItem,
   archiveVendor,
   applyInvoiceCosts,
@@ -1727,6 +1727,12 @@ const FoodCostingPage = () => {
       case 'edit_ingredient':
         await openIngredientFromSuggestion(payload);
         break;
+      case 'confirm_unusual_cost':
+        if (!menuItemId) break;
+        await updateMenuItem(menuItemId, { confirm_unusual_cost: true });
+        message.success('Saved. This check comes back only if the recipe or its prices change.');
+        await refresh(['dashboard']);
+        break;
       case 'edit_menu_item':
       case 'review_recipe':
       default:
@@ -2126,15 +2132,15 @@ const FoodCostingPage = () => {
             Edit
           </Button>
           <Popconfirm
-            title="Archive this ingredient?"
+            title="Delete this ingredient?"
             onConfirm={async () => {
-              await archiveIngredient(record.id);
-              message.success('Ingredient archived');
+              await deleteIngredient(record.id);
+              message.success('Ingredient deleted');
               refresh(['dashboard', 'ingredients', 'menu']);
             }}
           >
             <Button size="small" danger>
-              Archive
+              Delete
             </Button>
           </Popconfirm>
         </Space>
@@ -2169,18 +2175,25 @@ const FoodCostingPage = () => {
     {
       title: 'Plate cost',
       key: 'plate',
-      render: (_, r) =>
-        r.current_recipe
-          ? `$${Number(r.current_recipe.plate_cost || 0).toFixed(2)}`
-          : '—',
+      render: (_, r) => {
+        if (!r.current_recipe) return '—';
+        if (r.cost_available === false && Number(r.current_recipe.plate_cost || 0) === 0) {
+          return 'Cost unavailable';
+        }
+        return `$${Number(r.current_recipe.plate_cost || 0).toFixed(2)}`;
+      },
     },
     {
       title: 'Food cost %',
       key: 'fc',
-      render: (_, r) =>
-        r.current_recipe?.food_cost_percent != null
-          ? `${Number(r.current_recipe.food_cost_percent).toFixed(1)}%`
-          : '—',
+      render: (_, r) => {
+        if (!r.current_recipe) return '—';
+        if (r.cost_available === false && Number(r.current_recipe.plate_cost || 0) === 0) {
+          return 'Cost unavailable';
+        }
+        if (r.current_recipe.food_cost_percent == null) return '—';
+        return `${Number(r.current_recipe.food_cost_percent).toFixed(1)}%`;
+      },
     },
     {
       title: <ConfidenceLabel>Confidence</ConfidenceLabel>,
@@ -3118,14 +3131,16 @@ const FoodCostingPage = () => {
                     Add line
                   </Button>
                 </div>
-                {fields.map((field) => (
-                  <Row gutter={8} key={field.key} align="middle">
+                {fields.map((field) => {
+                  const { key, ...fieldProps } = field;
+                  return (
+                  <Row gutter={8} key={key} align="middle">
                     <Col span={8}>
-                      <Form.Item {...field} name={[field.name, 'ingredient_id']} hidden>
+                      <Form.Item {...fieldProps} name={[field.name, 'ingredient_id']} hidden>
                         <Input />
                       </Form.Item>
                       <Form.Item
-                        {...field}
+                        {...fieldProps}
                         name={[field.name, 'name']}
                         rules={[{ required: true, message: 'Required' }]}
                       >
@@ -3167,7 +3182,7 @@ const FoodCostingPage = () => {
                     </Col>
                     <Col span={4}>
                       <Form.Item
-                        {...field}
+                        {...fieldProps}
                         name={[field.name, 'quantity']}
                         rules={[{ required: true, message: 'Required' }]}
                       >
@@ -3175,7 +3190,7 @@ const FoodCostingPage = () => {
                       </Form.Item>
                     </Col>
                     <Col span={4}>
-                      <Form.Item {...field} name={[field.name, 'unit']}>
+                      <Form.Item {...fieldProps} name={[field.name, 'unit']}>
                         <Select options={UNIT_OPTIONS} />
                       </Form.Item>
                     </Col>
@@ -3230,7 +3245,8 @@ const FoodCostingPage = () => {
                       </Button>
                     </Col>
                   </Row>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Form.List>
@@ -3663,21 +3679,23 @@ const FoodCostingPage = () => {
                     Add line
                   </Button>
                 </div>
-                {fields.map((field) => (
-                  <Row gutter={8} key={field.key} align="middle">
+                {fields.map((field) => {
+                  const { key, ...fieldProps } = field;
+                  return (
+                  <Row gutter={8} key={key} align="middle">
                     <Col span={10}>
-                      <Form.Item {...field} name={[field.name, 'raw_name']} className="mb-2">
+                      <Form.Item {...fieldProps} name={[field.name, 'raw_name']} className="mb-2">
                         <Input placeholder="Item name" />
                       </Form.Item>
                     </Col>
                     <Col span={5}>
-                      <Form.Item {...field} name={[field.name, 'actual_weight']} className="mb-2">
+                      <Form.Item {...fieldProps} name={[field.name, 'actual_weight']} className="mb-2">
                         <InputNumber className="w-full" min={0} placeholder="Weight" />
                       </Form.Item>
                     </Col>
                     <Col span={4}>
                       <Form.Item
-                        {...field}
+                        {...fieldProps}
                         name={[field.name, 'actual_weight_unit']}
                         className="mb-2"
                       >
@@ -3692,7 +3710,7 @@ const FoodCostingPage = () => {
                       </Form.Item>
                     </Col>
                     <Col span={4}>
-                      <Form.Item {...field} name={[field.name, 'total_cost']} className="mb-2">
+                      <Form.Item {...fieldProps} name={[field.name, 'total_cost']} className="mb-2">
                         <InputNumber className="w-full" min={0} step={0.01} placeholder="Cost" />
                       </Form.Item>
                     </Col>
@@ -3702,7 +3720,8 @@ const FoodCostingPage = () => {
                       </Button>
                     </Col>
                   </Row>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Form.List>

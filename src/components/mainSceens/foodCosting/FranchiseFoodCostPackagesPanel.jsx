@@ -16,6 +16,15 @@ const FranchiseFoodCostPackagesPanel = ({ restaurantId, locationId }) => {
 
   const load = async () => {
     if (!restaurantId || readOnly) return;
+    try {
+      const ownIds = JSON.parse(sessionStorage.getItem('franchise_own_restaurant_ids') || '[]');
+      if (Array.isArray(ownIds) && ownIds.map(String).includes(String(restaurantId))) {
+        setRows([]);
+        return;
+      }
+    } catch {
+      /* fall through and ask the package list */
+    }
     setLoading(true);
     try {
       const res = await apiGet(
