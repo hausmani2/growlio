@@ -1,5 +1,5 @@
 import SubTrack from '../../../../../assets/svgs/Subtract.svg';
-import { Select, Tooltip } from 'antd';
+import { Checkbox, Select, Tooltip } from 'antd';
 import useTooltips from '../../../../../utils/useTooltips';
 import TooltipIcon from '../../../../common/TooltipIcon';
 import { useEffect } from 'react';
@@ -46,6 +46,14 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
         return options;
     };
 
+    const varianceCoverageOptions = [
+        { value: '', label: 'Keep variance hidden' },
+        ...Array.from({ length: 101 }, (_, percent) => ({
+            value: percent,
+            label: `${percent}%`,
+        })),
+    ];
+
     const tooltips = useTooltips('onboarding-food');
 
     return (
@@ -90,6 +98,66 @@ const FoodCostDetails = ({ data, updateData, errors = {} }) => {
                             <span className="text-red-500 text-xs mt-1">{errors.cogs_goal}</span>
                         )}
                         
+                    </div>
+                </div>
+
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-5 space-y-4">
+                    <div>
+                        <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                            Menu Intelligence
+                            <TooltipIcon text="This controls the Food Cost Variance card. It subtracts the recipe food cost from the Close Out food cost. Pick how much of sales must have a complete recipe, then confirm fresh prices and that both numbers measure the same kind of cost. Leave the percent on Keep variance hidden and that card stays on Insufficient data." />
+                        </h4>
+                        <p className="mt-1 text-sm text-gray-600">
+                            These choices control the Food Cost Variance card. The weekly COGS goal above is separate.
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+                        <label className="block text-sm font-semibold text-gray-700">
+                            Show Food Cost Variance when at least this much of sales has a complete recipe.
+                        </label>
+                        <Select
+                            placeholder="Keep variance hidden"
+                            value={
+                                data?.variance_coverage_pct === null ||
+                                data?.variance_coverage_pct === undefined ||
+                                data?.variance_coverage_pct === ''
+                                    ? ''
+                                    : Number(data.variance_coverage_pct)
+                            }
+                            onChange={(value) =>
+                                updateData('variance_coverage_pct', value === '' ? null : Number(value))
+                            }
+                            options={varianceCoverageOptions}
+                            className="w-full h-11 rounded-lg text-sm"
+                            showSearch={false}
+                        />
+                        <p className="text-xs text-gray-500">
+                            Choose a percent from the list. Keep variance hidden leaves the Dashboard card on Insufficient data.
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <Checkbox
+                            className="items-start text-sm text-gray-700"
+                            checked={Boolean(data?.variance_pricing_confirmed)}
+                            onChange={(event) =>
+                                updateData('variance_pricing_confirmed', event.target.checked)
+                            }
+                        >
+                            Confirmed prices from the last 30 days are reliable enough for this comparison.
+                        </Checkbox>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                        <Checkbox
+                            className="items-start text-sm text-gray-700"
+                            checked={Boolean(data?.variance_costs_comparable)}
+                            onChange={(event) =>
+                                updateData('variance_costs_comparable', event.target.checked)
+                            }
+                        >
+                            Close Out COGS and recipe food cost are the same kind of cost.
+                        </Checkbox>
                     </div>
                 </div>
             </div>

@@ -44,13 +44,20 @@ const FoodCostWrapperContent = () => {
     }, [isUpdateMode]);
     
     // State for Food Cost Details
+    const emptyVariance = {
+        variance_coverage_pct: null,
+        variance_pricing_confirmed: false,
+        variance_costs_comparable: false,
+    };
     const [foodCostData, setFoodCostData] = useState({
-        cogs_goal: "30%" // Default to 30%
+        cogs_goal: "30%",
+        ...emptyVariance,
     });
 
     // Combined state for API
     const [combinedData, setCombinedData] = useState({
-        cogs_goal: "30%" // Default to 30%
+        cogs_goal: "30%",
+        ...emptyVariance,
     });
 
     // Load saved data when component mounts or when completeOnboardingData changes
@@ -60,14 +67,24 @@ const FoodCostWrapperContent = () => {
         if (foodCostInfoData && foodCostInfoData.data) {
             const data = foodCostInfoData.data;
             
+            const variance = {
+                variance_coverage_pct:
+                    data.variance_coverage_pct === null || data.variance_coverage_pct === undefined || data.variance_coverage_pct === ''
+                        ? null
+                        : Number(data.variance_coverage_pct),
+                variance_pricing_confirmed: Boolean(data.variance_pricing_confirmed),
+                variance_costs_comparable: Boolean(data.variance_costs_comparable),
+            };
             setFoodCostData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%"
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%",
+                ...variance,
             }));
             
             setCombinedData(prev => ({
                 ...prev,
-                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%"
+                cogs_goal: data.cogs_goal ? (data.cogs_goal.toString().includes('%') ? data.cogs_goal.toString() : `${data.cogs_goal}%`) : prev.cogs_goal || "30%",
+                ...variance,
             }));
         }
     }, [completeOnboardingData]);
@@ -116,7 +133,15 @@ const FoodCostWrapperContent = () => {
             const cogsGoalClean = combinedData.cogs_goal ? combinedData.cogs_goal.toString().replace('%', '') : '';
             
             const stepData = {
-                cogs_goal: parseFloat(cogsGoalClean) || 0
+                cogs_goal: parseFloat(cogsGoalClean) || 0,
+                variance_coverage_pct:
+                    combinedData.variance_coverage_pct === null ||
+                    combinedData.variance_coverage_pct === undefined ||
+                    combinedData.variance_coverage_pct === ''
+                        ? null
+                        : Number(combinedData.variance_coverage_pct),
+                variance_pricing_confirmed: Boolean(combinedData.variance_pricing_confirmed),
+                variance_costs_comparable: Boolean(combinedData.variance_costs_comparable),
             };
 
             
