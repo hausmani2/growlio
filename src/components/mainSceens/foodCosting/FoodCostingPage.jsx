@@ -2058,12 +2058,16 @@ const FoodCostingPage = () => {
   const saveMenuItem = async () => {
     try {
       const values = await menuForm.validateFields();
-      const ingredientLines = (values.recipe_lines || [])
+      // Save is on the packaging step, which used to unmount the ingredient
+      // list. validateFields only returns mounted fields, so read the full
+      // form store and always send both lists.
+      const stored = menuForm.getFieldsValue(true);
+      const ingredientLines = (stored.recipe_lines || values.recipe_lines || [])
         .filter((line) => line?.name || line?.ingredient_id)
         .map((line) => ({ ...line, line_role: 'ingredient' }));
       const packagingLines = noPackagingRequired
         ? []
-        : (values.packaging_lines || [])
+        : (stored.packaging_lines || values.packaging_lines || [])
             .filter((line) => line?.name || line?.ingredient_id)
             .map((line) => ({ ...line, line_role: 'packaging' }));
       if (!noPackagingRequired && packagingLines.length === 0) {
@@ -2131,7 +2135,17 @@ const FoodCostingPage = () => {
         },
       });
     } catch (error) {
-      if (error?.errorFields) return;
+      if (error?.errorFields) {
+        const fields = error.errorFields.map((field) => field?.name?.[0]);
+        if (fields.includes('recipe_lines')) {
+          setMenuEditorTab('ingredients');
+          message.error('Finish the ingredient lines before saving.');
+        } else if (fields.includes('packaging_lines')) {
+          setMenuEditorTab('packaging');
+          message.error('Finish the packaging lines before saving.');
+        }
+        return;
+      }
       message.error(error?.response?.data?.error || 'Failed to save menu item');
     }
   };
@@ -3526,8 +3540,7 @@ const FoodCostingPage = () => {
               Packaging & Disposables
             </button>
           </div>
-          {menuEditorTab === 'ingredients' ? (
-            <>
+          <div className={menuEditorTab === 'ingredients' ? undefined : 'hidden'}>
             <MenuLineList
               listName="recipe_lines"
               title="Recipe ingredients"
@@ -3556,9 +3569,8 @@ const FoodCostingPage = () => {
                 Do not leave boxes, bags, napkins, utensils, or other disposables on this tab.
               </p>
             </div>
-            </>
-          ) : (
-            <div className="space-y-3">
+          </div>
+          <div className={menuEditorTab === 'packaging' ? 'space-y-3' : 'hidden'}>
               {lioPackagingNote ? (
                 <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                   {lioPackagingNote}
@@ -3612,7 +3624,6 @@ const FoodCostingPage = () => {
                 Check this only when the item never uses packaging or disposables.
               </p>
             </div>
-          )}
           <Form.Item shouldUpdate noStyle>
             {() => {
               const costOf = (listName) =>
