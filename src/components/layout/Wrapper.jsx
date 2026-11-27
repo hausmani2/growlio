@@ -450,6 +450,12 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       label: 'Menu Intelligence',
       onClick: () => navigate('/dashboard/food-costing'),
     },
+    {
+      key: 'delivery-intelligence',
+      icon: <TruckOutlined />,
+      label: 'Delivery Intelligence',
+      onClick: () => navigate('/dashboard/delivery-intelligence'),
+    },
     ...(isRegularUser && canAccessSimulator
       ? [
           {
@@ -783,6 +789,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       'profit-loss',
       'cashflow',
       'food-costing',
+      'delivery-intelligence',
       'your-simulator',
       'simulation-dashboard',
       'simulation-setup',
@@ -798,7 +805,7 @@ const Wrapper = ({ showSidebar = false, children, className }) => {
       'pos-locations',
       'pos-orders',
     ]);
-    const paidKeys = new Set(['food-costing', 'your-simulator', 'leo-ai', 'chat']);
+    const paidKeys = new Set(['food-costing', 'delivery-intelligence', 'your-simulator', 'leo-ai', 'chat']);
     const openSetupPrompt = () => setSetupPromptOpen(true);
     const lockTree = (node) => ({
       ...node,

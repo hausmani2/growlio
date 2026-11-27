@@ -68,6 +68,7 @@ import PosTimecards from './components/mainSceens/posDetails/PosTimecards';
 import PosIntegrationsPage from './components/mainSceens/posIntegrations/PosIntegrationsPage';
 import SuperAdminPosIntegrations from './components/superadmin/components/SuperAdminPosIntegrations';
 import FoodCostingPage from './components/mainSceens/foodCosting/FoodCostingPage';
+import DeliveryIntelligencePage from './components/mainSceens/foodCosting/DeliveryIntelligencePage';
 import FloatingYouTubePlayer from './components/common/FloatingYouTubePlayer';
 import TermsOfService from './components/legal/TermsOfService';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
@@ -349,6 +350,7 @@ function App() {
           <Route path="/dashboard/pos/timecards" element={<Wrapper showSidebar={true} children={<PosTimecards />} />} />
           <Route path="/dashboard/pos-integrations" element={<Wrapper showSidebar={true} children={<PosIntegrationsPage />} />} />
           <Route path="/dashboard/food-costing" element={<Wrapper showSidebar={true} children={<FoodCostingPage />} />} />
+          <Route path="/dashboard/delivery-intelligence" element={<Wrapper showSidebar={true} children={<DeliveryIntelligencePage />} />} />
               {/* Profitability Score Routes - Can be accessed before full onboarding */}
         <Route path="/onboarding/profitability" element={<Wrapper showSidebar={true} children={<ProfitabilityScore />} />} />
         <Route path="/onboarding/profitability/form" element={<Wrapper showSidebar={true} children={<ProfitabilityWizard />} />} />

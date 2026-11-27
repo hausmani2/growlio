@@ -3,6 +3,7 @@ import {
   apiGet,
   apiPatch,
   apiPost,
+  apiPut,
   apiPostWithTimeout,
   apiGetWithTimeout,
   AI_UPLOAD_TIMEOUT,
@@ -431,5 +432,52 @@ export const applySimulatorChanges = async (payload) => {
 export const fetchSimulatorSnapshots = async () => {
   const { query } = withIds();
   const res = await apiGet(`/food_costing/simulator/snapshots/?${query}`);
+  return res.data;
+};
+
+export const fetchDeliveryIntelligence = async (platforms) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (Array.isArray(platforms)) params.set('platforms', platforms.join(','));
+  const res = await apiGet(`/food_costing/delivery-intelligence/?${params.toString()}`);
+  return res.data;
+};
+
+export const saveDeliveryAssumptions = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPut('/food_costing/delivery-intelligence/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const simulateDeliveryOrder = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/delivery-intelligence/simulate/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const implementDeliveryRecommendation = async (payload) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost('/food_costing/delivery-intelligence/recommendations/', {
+    restaurant_id,
+    location_id,
+    ...payload,
+  });
+  return res.data;
+};
+
+export const trackDeliveryRecommendation = async (id) => {
+  const { restaurant_id, location_id } = withIds();
+  const res = await apiPost(
+    `/food_costing/delivery-intelligence/recommendations/${id}/track/`,
+    { restaurant_id, location_id }
+  );
   return res.data;
 };

@@ -61,6 +61,7 @@ const Sidebar = ({ menuItems = [], mobileMenuOpen = false, onMobileMenuToggle })
     '/dashboard/pos-integrations': 'pos',
     '/onboarding/connect-pos': 'connect-pos',
     '/dashboard/food-costing': 'food-costing',
+    '/dashboard/delivery-intelligence': 'delivery-intelligence',
     '/dashboard/square': 'square',
     '/dashboard/pos/orders': 'pos-orders',
     '/dashboard/pos/locations': 'pos-locations',
