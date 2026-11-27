@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AutoComplete,
   Button,
   Card,
+  Checkbox,
   Col,
   Form,
   Input,
@@ -43,6 +44,7 @@ import {
   createIngredient,
   createInvoice,
   createMenuItem,
+  fetchCurrentPackagingStandard,
   createPhotoDraft,
   createVendor,
   discardInvoice,
@@ -198,6 +200,204 @@ const orderMenuItems = (results, ids) => {
   );
 };
 
+function menuIngredientMatch(line, recipeIngredientChoices, ingredients) {
+  const source = recipeIngredientChoices.length > 0 ? recipeIngredientChoices : ingredients;
+  return source.find(
+    (ing) =>
+      ing.id === line?.ingredient_id ||
+      (line?.name && ing.name.toLowerCase() === String(line.name).toLowerCase())
+  );
+}
+
+function menuLineAmounts(line, match) {
+  if (!match) return { unitCost: null, total: null };
+  const unitCost = Number(match.cost_per_standardized_unit || 0);
+  const qty = qtyInCostUnit(line?.quantity, line?.unit, match.standardized_unit);
+  return { unitCost, total: unitCost * qty };
+}
+
+function MenuLineList({
+  listName,
+  title,
+  addLabel,
+  moveLabel,
+  moveTo,
+  menuForm,
+  ingredients,
+  recipeIngredientChoices,
+  recipeIngredientSelectOptions,
+  onMove,
+  disabled,
+}) {
+  const itemLabel = listName === 'packaging_lines' ? 'Item' : 'Ingredient';
+  return (
+    <Form.List name={listName}>
+      {(fields, { add, remove }) => (
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="m-0 text-base font-semibold text-gray-900">{title}</p>
+            <Button
+              icon={<PlusOutlined />}
+              disabled={disabled}
+              onClick={() =>
+                add({
+                  ingredient_id: undefined,
+                  name: '',
+                  quantity: 1,
+                  unit: listName === 'packaging_lines' ? 'each' : 'oz',
+                  is_confirmed: true,
+                })
+              }
+            >
+              {addLabel}
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[760px]">
+              <div className="grid grid-cols-[minmax(160px,1.4fr)_92px_108px_84px_108px_148px] items-center gap-x-3 border-b border-gray-200 px-1 pb-2 text-xs font-medium text-gray-500">
+                <span>{itemLabel}</span>
+                <span>Quantity</span>
+                <span>Unit</span>
+                <span className="text-right">Cost</span>
+                <span className="text-right">Total</span>
+                <span />
+              </div>
+              <div>
+                {fields.map((field) => {
+                  const { key, ...fieldProps } = field;
+                  return (
+                    <div
+                      key={key}
+                      className="grid grid-cols-[minmax(160px,1.4fr)_92px_108px_84px_108px_148px] items-center gap-x-3 border-b border-gray-100 px-1 py-2.5"
+                    >
+                      <div>
+                        <Form.Item {...fieldProps} name={[field.name, 'ingredient_id']} hidden>
+                          <Input />
+                        </Form.Item>
+                        <Form.Item
+                          {...fieldProps}
+                          name={[field.name, 'name']}
+                          className="!mb-0"
+                          rules={disabled ? [] : [{ required: true, message: 'Required' }]}
+                        >
+                          <AutoComplete
+                            allowClear
+                            disabled={disabled}
+                            placeholder={
+                              listName === 'packaging_lines' ? 'Pizza box' : 'Ingredient'
+                            }
+                            options={recipeIngredientSelectOptions}
+                            filterOption={(input, option) =>
+                              String(option?.label || option?.value || '')
+                                .toLowerCase()
+                                .includes(String(input || '').toLowerCase())
+                            }
+                            onChange={(typed) => {
+                              const source =
+                                recipeIngredientChoices.length > 0
+                                  ? recipeIngredientChoices
+                                  : ingredients;
+                              const match = source.find(
+                                (item) =>
+                                  String(item.name || '').toLowerCase() ===
+                                  String(typed || '').trim().toLowerCase()
+                              );
+                              const lines = [...(menuForm.getFieldValue(listName) || [])];
+                              const current = lines[field.name] || {};
+                              lines[field.name] = {
+                                ...current,
+                                name: typed || '',
+                                ingredient_id: match?.id,
+                                ...(match?.standardized_unit
+                                  ? { unit: match.standardized_unit }
+                                  : {}),
+                              };
+                              menuForm.setFieldsValue({ [listName]: lines });
+                            }}
+                          />
+                        </Form.Item>
+                      </div>
+                      <Form.Item
+                        {...fieldProps}
+                        name={[field.name, 'quantity']}
+                        className="!mb-0"
+                        rules={disabled ? [] : [{ required: true, message: 'Required' }]}
+                      >
+                        <InputNumber className="w-full" min={0} step={0.1} disabled={disabled} />
+                      </Form.Item>
+                      <Form.Item {...fieldProps} name={[field.name, 'unit']} className="!mb-0">
+                        <Select options={UNIT_OPTIONS} disabled={disabled} />
+                      </Form.Item>
+                      <Form.Item shouldUpdate noStyle>
+                        {() => {
+                          const line = (menuForm.getFieldValue(listName) || [])[field.name] || {};
+                          const match = menuIngredientMatch(
+                            line,
+                            recipeIngredientChoices,
+                            ingredients
+                          );
+                          const { unitCost, total } = menuLineAmounts(line, match);
+                          const needsReview =
+                            Boolean(match) && (match.is_estimated_cost || unitCost <= 0);
+                          if (!match) {
+                            return (
+                              <>
+                                <span className="text-right text-sm text-gray-300">—</span>
+                                <span className="text-right text-xs text-gray-500">
+                                  {line.name ? 'New item' : 'Needs pricing'}
+                                </span>
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <span className="text-right text-sm tabular-nums text-gray-700">
+                                ${unitCost.toFixed(2)}
+                              </span>
+                              <span className="text-right">
+                                <span className="block text-sm font-medium tabular-nums text-gray-900">
+                                  ${total.toFixed(2)}
+                                </span>
+                                {needsReview ? (
+                                  <span className="mt-1 inline-block whitespace-nowrap rounded bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-orange-600">
+                                    Review
+                                  </span>
+                                ) : null}
+                              </span>
+                            </>
+                          );
+                        }}
+                      </Form.Item>
+                      <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                        <button
+                          type="button"
+                          className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-40"
+                          disabled={disabled}
+                          onClick={() => onMove(listName, moveTo, field.name)}
+                        >
+                          {moveLabel}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-sm text-red-500 hover:text-red-600 disabled:opacity-40"
+                          disabled={disabled}
+                          onClick={() => remove(field.name)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Form.List>
+  );
+}
+
 const FoodCostingPage = () => {
   const navigate = useNavigate();
   const fetchCurrentSubscriptionDetails = useStore(
@@ -274,6 +474,71 @@ const FoodCostingPage = () => {
   const squareImportPollRef = React.useRef(null);
   const [menuForm] = Form.useForm();
   const [recipeIngredientChoices, setRecipeIngredientChoices] = useState([]);
+  const [noPackagingRequired, setNoPackagingRequired] = useState(false);
+  const [lioPackagingNote, setLioPackagingNote] = useState('');
+  const [menuEditorTab, setMenuEditorTab] = useState('ingredients');
+  const packagingTouchedRef = useRef(false);
+  const applyingStandardRef = useRef(false);
+  const watchedCategory = Form.useWatch('category', menuForm);
+  const watchedSize = Form.useWatch('size_label', menuForm);
+
+  useEffect(() => {
+    if (
+      !menuModalOpen ||
+      editingMenuItem ||
+      noPackagingRequired ||
+      packagingTouchedRef.current
+    ) {
+      return undefined;
+    }
+    const category = String(watchedCategory || '').trim();
+    if (!category) {
+      setLioPackagingNote('');
+      return undefined;
+    }
+    let cancelled = false;
+    fetchCurrentPackagingStandard({
+      category,
+      sizeLabel: watchedSize || '',
+    })
+      .then((result) => {
+        if (cancelled || packagingTouchedRef.current) return;
+        const standard = result?.standard;
+        if (!standard?.lines?.length) {
+          setLioPackagingNote('');
+          return;
+        }
+        applyingStandardRef.current = true;
+        menuForm.setFieldsValue({
+          packaging_lines: standard.lines.map((line) => ({
+            ingredient_id: line.ingredient_id,
+            name: line.name,
+            quantity: Number(line.quantity),
+            unit: line.unit,
+            is_confirmed: true,
+            line_role: 'packaging',
+          })),
+        });
+        setLioPackagingNote(
+          result.message ||
+            'I added your saved packaging — review or edit.'
+        );
+        applyingStandardRef.current = false;
+      })
+      .catch(() => {
+        if (!cancelled) setLioPackagingNote('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    menuModalOpen,
+    editingMenuItem,
+    watchedCategory,
+    watchedSize,
+    noPackagingRequired,
+    menuForm,
+  ]);
 
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -1599,10 +1864,16 @@ const FoodCostingPage = () => {
 
   const openCreateMenuItem = () => {
     setEditingMenuItem(null);
+    packagingTouchedRef.current = false;
+    setNoPackagingRequired(false);
+    setLioPackagingNote('');
+    setMenuEditorTab('ingredients');
     menuForm.resetFields();
     menuForm.setFieldsValue({
       selling_price: '0.00',
+      size_label: '',
       recipe_lines: [emptyRecipeLine()],
+      packaging_lines: [],
     });
     setMenuModalOpen(true);
     loadRecipeIngredientChoices();
@@ -1610,6 +1881,10 @@ const FoodCostingPage = () => {
 
   const openEditMenuItem = (record) => {
     setEditingMenuItem(record);
+    packagingTouchedRef.current = true;
+    setNoPackagingRequired(record?.packaging_status === 'none_required');
+    setLioPackagingNote('');
+    setMenuEditorTab('ingredients');
     const lines =
       record?.current_recipe?.lines?.map((line) => ({
         ingredient_id: line.ingredient,
@@ -1618,13 +1893,18 @@ const FoodCostingPage = () => {
         unit: line.unit,
         is_confirmed: line.is_confirmed,
         notes: line.notes,
+        line_role: line.line_role || 'ingredient',
       })) || [];
+    const ingredientLines = lines.filter((line) => line.line_role !== 'packaging');
+    const packagingLines = lines.filter((line) => line.line_role === 'packaging');
     menuForm.setFieldsValue({
       name: record.name,
       category: record.category,
+      size_label: record.size_label || '',
       selling_price: record.selling_price != null ? String(record.selling_price) : '0.00',
       notes: record.notes,
-      recipe_lines: lines.length ? lines : [emptyRecipeLine()],
+      recipe_lines: ingredientLines.length ? ingredientLines : [emptyRecipeLine()],
+      packaging_lines: packagingLines,
     });
     setMenuModalOpen(true);
     loadRecipeIngredientChoices();
@@ -1753,14 +2033,91 @@ const FoodCostingPage = () => {
     loadTabData('dashboard', { dateFrom: from, dateTo: to });
   };
 
+  const packagingSignature = (lines) =>
+    (lines || [])
+      .map(
+        (line) =>
+          `${line.ingredient_id || String(line.name || '').trim().toLowerCase()}|${Number(
+            line.quantity
+          )}|${line.unit}`
+      )
+      .sort()
+      .join('||');
+
+  const askPackagingChoice = (title, okText, cancelText) =>
+    new Promise((resolve) => {
+      Modal.confirm({
+        title,
+        okText,
+        cancelText,
+        onOk: () => resolve('ok'),
+        onCancel: () => resolve('cancel'),
+      });
+    });
+
   const saveMenuItem = async () => {
     try {
       const values = await menuForm.validateFields();
+      const ingredientLines = (values.recipe_lines || [])
+        .filter((line) => line?.name || line?.ingredient_id)
+        .map((line) => ({ ...line, line_role: 'ingredient' }));
+      const packagingLines = noPackagingRequired
+        ? []
+        : (values.packaging_lines || [])
+            .filter((line) => line?.name || line?.ingredient_id)
+            .map((line) => ({ ...line, line_role: 'packaging' }));
+      if (!noPackagingRequired && packagingLines.length === 0) {
+        message.error('Add packaging or choose No packaging required.');
+        setMenuEditorTab('packaging');
+        return;
+      }
+      let standardAction = 'decline';
+      if (!noPackagingRequired) {
+        const category = String(values.category || '').trim();
+        let standard = null;
+        if (category) {
+          try {
+            const result = await fetchCurrentPackagingStandard({
+              category,
+              sizeLabel: values.size_label || '',
+            });
+            standard = result?.standard || null;
+          } catch {
+            standard = null;
+          }
+        }
+        const same =
+          standard &&
+          packagingSignature(packagingLines) === packagingSignature(standard.lines);
+        if (same && (!packagingTouchedRef.current || editingMenuItem?.packaging_status === 'standard')) {
+          standardAction = 'keep';
+        } else if (same) {
+          standardAction = 'decline';
+        } else if (standard) {
+          const choice = await askPackagingChoice(
+            'This packaging is different from the saved standard.',
+            'Update category standard',
+            'Only this item'
+          );
+          standardAction = choice === 'ok' ? 'update' : 'only_this_item';
+        } else if (category) {
+          const choice = await askPackagingChoice(
+            'Save as packaging standard for this category?',
+            'Save standard',
+            'Only this item'
+          );
+          standardAction = choice === 'ok' ? 'save' : 'decline';
+        }
+      }
       const payload = {
-        ...values,
-        recipe_lines: (values.recipe_lines || []).filter(
-          (line) => line?.name || line?.ingredient_id
-        ),
+        name: values.name,
+        category: values.category || '',
+        size_label: values.size_label || '',
+        selling_price: values.selling_price,
+        notes: values.notes || '',
+        recipe_lines: [...ingredientLines, ...packagingLines],
+        packaging_decision: noPackagingRequired ? 'none_required' : 'reviewed',
+        standard_action: standardAction,
       };
       const saved = editingMenuItem
         ? await updateMenuItem(editingMenuItem.id, payload)
@@ -3087,13 +3444,31 @@ const FoodCostingPage = () => {
         title={editingMenuItem ? 'Edit menu item' : 'Add menu item'}
         open={menuModalOpen}
         onCancel={() => setMenuModalOpen(false)}
-        onOk={saveMenuItem}
-        okText="Save"
-        width={720}
-        okButtonProps={{ className: '!bg-[#FF8132] border-none' }}
+        footer={null}
+        width={900}
         destroyOnClose
+        styles={{
+          body: {
+            maxHeight: 'calc(100vh - 140px)',
+            overflowY: 'auto',
+          },
+        }}
       >
-        <Form form={menuForm} layout="vertical" className="mt-4">
+        <p className="mb-4 text-sm text-gray-500">
+          {menuEditorTab === 'ingredients'
+            ? 'Step 1 of 2. Enter the menu details and ingredients.'
+            : 'Step 2 of 2. Add the packaging, or say this item does not need any.'}
+        </p>
+        <Form
+          form={menuForm}
+          layout="vertical"
+          onValuesChange={(changed) => {
+            if (changed.packaging_lines && !applyingStandardRef.current) {
+              packagingTouchedRef.current = true;
+              setLioPackagingNote('');
+            }
+          }}
+        >
           <Form.Item
             name="name"
             label="Menu item name"
@@ -3102,12 +3477,17 @@ const FoodCostingPage = () => {
             <Input placeholder="Margherita Pizza" />
           </Form.Item>
           <Row gutter={12}>
-            <Col span={12}>
+            <Col span={8}>
               <Form.Item name="category" label="Category">
                 <Input placeholder="Pizza" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col span={8}>
+              <Form.Item name="size_label" label="Size">
+                <Input placeholder="14 inch" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
               <Form.Item name="selling_price" label="Selling price">
                 <InputNumber
                   className="w-full"
@@ -3122,134 +3502,174 @@ const FoodCostingPage = () => {
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.List name="recipe_lines">
-            {(fields, { add, remove }) => (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium m-0">Recipe lines</p>
-                  <Button size="small" icon={<PlusOutlined />} onClick={() => add(emptyRecipeLine())}>
-                    Add line
-                  </Button>
+          <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setMenuEditorTab('ingredients')}
+              className={`rounded-md px-3 py-2 text-sm font-semibold ${
+                menuEditorTab === 'ingredients'
+                  ? 'bg-[#FF8132] text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Ingredients
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuEditorTab('packaging')}
+              className={`rounded-md px-3 py-2 text-sm font-semibold ${
+                menuEditorTab === 'packaging'
+                  ? 'bg-[#FF8132] text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Packaging & Disposables
+            </button>
+          </div>
+          {menuEditorTab === 'ingredients' ? (
+            <>
+            <MenuLineList
+              listName="recipe_lines"
+              title="Recipe ingredients"
+              addLabel="Add ingredient"
+              moveLabel="Move"
+              moveTo="packaging_lines"
+              menuForm={menuForm}
+              ingredients={ingredients}
+              recipeIngredientChoices={recipeIngredientChoices}
+              recipeIngredientSelectOptions={recipeIngredientSelectOptions}
+              onMove={(fromList, toList, index) => {
+                const source = [...(menuForm.getFieldValue(fromList) || [])];
+                const line = source[index];
+                if (!line) return;
+                source.splice(index, 1);
+                const dest = [...(menuForm.getFieldValue(toList) || [])];
+                dest.push(line);
+                packagingTouchedRef.current = true;
+                if (toList === 'packaging_lines') setNoPackagingRequired(false);
+                menuForm.setFieldsValue({ [fromList]: source, [toList]: dest });
+              }}
+            />
+            <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3">
+              <p className="m-0 text-sm font-semibold text-orange-700">Next step: Add packaging</p>
+              <p className="mb-0 mt-1 text-sm text-gray-600">
+                Do not leave boxes, bags, napkins, utensils, or other disposables on this tab.
+              </p>
+            </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {lioPackagingNote ? (
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                  {lioPackagingNote}
                 </div>
-                {fields.map((field) => {
-                  const { key, ...fieldProps } = field;
-                  return (
-                  <Row gutter={8} key={key} align="middle">
-                    <Col span={8}>
-                      <Form.Item {...fieldProps} name={[field.name, 'ingredient_id']} hidden>
-                        <Input />
-                      </Form.Item>
-                      <Form.Item
-                        {...fieldProps}
-                        name={[field.name, 'name']}
-                        rules={[{ required: true, message: 'Required' }]}
-                      >
-                        <AutoComplete
-                          allowClear
-                          placeholder="Search or add ingredient"
-                          options={recipeIngredientSelectOptions}
-                          filterOption={(input, option) =>
-                            String(option?.label || option?.value || '')
-                              .toLowerCase()
-                              .includes(String(input || '').toLowerCase())
-                          }
-                          onChange={(typed) => {
-                            const source =
-                              recipeIngredientChoices.length > 0
-                                ? recipeIngredientChoices
-                                : ingredients;
-                            const match = source.find(
-                              (item) =>
-                                String(item.name || '').toLowerCase() ===
-                                String(typed || '').trim().toLowerCase()
-                            );
-                            const lines = [
-                              ...(menuForm.getFieldValue('recipe_lines') || []),
-                            ];
-                            const current = lines[field.name] || {};
-                            lines[field.name] = {
-                              ...current,
-                              name: typed || '',
-                              ingredient_id: match?.id,
-                              ...(match?.standardized_unit
-                                ? { unit: match.standardized_unit }
-                                : {}),
-                            };
-                            menuForm.setFieldsValue({ recipe_lines: lines });
-                          }}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Form.Item
-                        {...fieldProps}
-                        name={[field.name, 'quantity']}
-                        rules={[{ required: true, message: 'Required' }]}
-                      >
-                        <InputNumber className="w-full" min={0} step={0.1} placeholder="Qty" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Form.Item {...fieldProps} name={[field.name, 'unit']}>
-                        <Select options={UNIT_OPTIONS} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Form.Item shouldUpdate noStyle>
-                        {() => {
-                          const lines = menuForm.getFieldValue('recipe_lines') || [];
-                          const line = lines[field.name] || {};
-                          const source =
-                            recipeIngredientChoices.length > 0
-                              ? recipeIngredientChoices
-                              : ingredients;
-                          const match = source.find(
-                            (ing) =>
-                              ing.id === line.ingredient_id ||
-                              (line.name &&
-                                ing.name.toLowerCase() ===
-                                  String(line.name).toLowerCase())
-                          );
-                          const unitCost = match
-                            ? Number(match.cost_per_standardized_unit || 0)
-                            : 0;
-                          const qty = qtyInCostUnit(
-                            line.quantity,
-                            line.unit,
-                            match?.standardized_unit
-                          );
-                          const lineCost = unitCost * qty;
-                          if (!match) {
-                            return line.name ? (
-                              <Tag color="blue">New ingredient</Tag>
-                            ) : (
-                              <Tag color="orange">Needs pricing</Tag>
-                            );
-                          }
-                          return (
-                            <span className="text-xs text-gray-600">
-                              ${lineCost.toFixed(2)}
-                              {match.is_estimated_cost || unitCost <= 0 ? (
-                                <Tag color="orange" className="ml-1">
-                                  Review
-                                </Tag>
-                              ) : null}
-                            </span>
-                          );
-                        }}
-                      </Form.Item>
-                    </Col>
-                    <Col span={4}>
-                      <Button danger type="link" onClick={() => remove(field.name)}>
-                        Remove
-                      </Button>
-                    </Col>
-                  </Row>
+              ) : null}
+              {editingMenuItem?.packaging_status === 'unreviewed' ? (
+                <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-gray-700">
+                  Packaging has not been reviewed. Add it here, move a line from Ingredients, or choose no packaging. This existing item does not get a saved standard added on its own.
+                </div>
+              ) : (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-gray-700">
+                  Include the boxes, bags, napkins, utensils, and cups used to serve this item, for takeout, delivery, or in the restaurant.
+                </div>
+              )}
+              <MenuLineList
+                listName="packaging_lines"
+                title="Packaging & disposables"
+                addLabel="Add packaging item"
+                moveLabel="Move"
+                moveTo="recipe_lines"
+                disabled={noPackagingRequired}
+                menuForm={menuForm}
+                ingredients={ingredients}
+                recipeIngredientChoices={recipeIngredientChoices}
+                recipeIngredientSelectOptions={recipeIngredientSelectOptions}
+                onMove={(fromList, toList, index) => {
+                  const source = [...(menuForm.getFieldValue(fromList) || [])];
+                  const line = source[index];
+                  if (!line) return;
+                  source.splice(index, 1);
+                  const dest = [...(menuForm.getFieldValue(toList) || [])];
+                  dest.push(line);
+                  packagingTouchedRef.current = true;
+                  menuForm.setFieldsValue({ [fromList]: source, [toList]: dest });
+                }}
+              />
+              <Checkbox
+                checked={noPackagingRequired}
+                onChange={(event) => {
+                  packagingTouchedRef.current = true;
+                  setNoPackagingRequired(event.target.checked);
+                  setLioPackagingNote('');
+                  if (event.target.checked) {
+                    menuForm.setFieldsValue({ packaging_lines: [] });
+                  }
+                }}
+              >
+                No packaging required for this item
+              </Checkbox>
+              <p className="!mt-1 text-xs text-gray-500">
+                Check this only when the item never uses packaging or disposables.
+              </p>
+            </div>
+          )}
+          <Form.Item shouldUpdate noStyle>
+            {() => {
+              const costOf = (listName) =>
+                (menuForm.getFieldValue(listName) || []).reduce((sum, line) => {
+                  const match = menuIngredientMatch(
+                    line,
+                    recipeIngredientChoices,
+                    ingredients
                   );
-                })}
-              </div>
-            )}
-          </Form.List>
+                  return sum + (menuLineAmounts(line, match).total || 0);
+                }, 0);
+              const ingredientCost = costOf('recipe_lines');
+              const packagingCost = noPackagingRequired ? 0 : costOf('packaging_lines');
+              const shownCost = menuEditorTab === 'ingredients' ? ingredientCost : packagingCost;
+              const totalLabel =
+                menuEditorTab === 'ingredients' ? 'Ingredients total' : 'Packaging total';
+              return (
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+                  <div>
+                    <p className="m-0 text-sm text-gray-700">
+                      {totalLabel}: ${shownCost.toFixed(2)}
+                    </p>
+                    <p className="m-0 text-xs text-gray-500">
+                      Combined ${ (ingredientCost + packagingCost).toFixed(2) }
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {menuEditorTab === 'ingredients' ? (
+                      <>
+                        <Button onClick={() => setMenuModalOpen(false)}>Cancel</Button>
+                        <Button
+                          type="primary"
+                          className="!bg-[#FF8132] border-none"
+                          onClick={() => setMenuEditorTab('packaging')}
+                        >
+                          Next: Packaging
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button onClick={() => setMenuEditorTab('ingredients')}>
+                          Back: Ingredients
+                        </Button>
+                        <Button
+                          type="primary"
+                          className="!bg-[#FF8132] border-none"
+                          onClick={saveMenuItem}
+                        >
+                          Save menu item
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            }}
+          </Form.Item>
         </Form>
       </Modal>
 

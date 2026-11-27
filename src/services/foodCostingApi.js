@@ -196,6 +196,15 @@ export const createMenuItem = async (payload) => {
   return res.data;
 };
 
+export const fetchCurrentPackagingStandard = async ({ category, sizeLabel } = {}) => {
+  const { query } = withIds();
+  const params = new URLSearchParams(query);
+  if (category) params.set('category', category);
+  if (sizeLabel) params.set('size_label', sizeLabel);
+  const res = await apiGet(`/food_costing/packaging-standards/current/?${params.toString()}`);
+  return res.data;
+};
+
 export const updateMenuItem = async (id, payload) => {
   const res = await apiPatch(`/food_costing/menu-items/${id}/`, payload);
   return res.data;
